@@ -1,13 +1,24 @@
 
-import { Search, Filter } from 'lucide-react';
-import { useState } from 'react';
+import { Search, Filter, Command } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useSearchForm } from '@/hooks/useSearchForm';
+import SearchSuggestions from '@/components/SearchSuggestions';
 
 const Hero = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const {
+    searchQuery,
+    setSearchQuery,
+    showSuggestions,
+    activeFilters,
+    toggleFilter,
+    searchRef,
+    inputRef,
+    handleSearch,
+    handleSuggestionClick,
+    handleSearchFocus,
+  } = useSearchForm();
 
   const filterOptions = [
     { id: 'titulo', label: 'Título' },
@@ -15,26 +26,6 @@ const Hero = () => {
     { id: 'video', label: 'Vídeo' },
     { id: 'podcast', label: 'Podcast' }
   ];
-
-  const toggleFilter = (filterId: string) => {
-    setActiveFilters(prev => 
-      prev.includes(filterId) 
-        ? prev.filter(id => id !== filterId)
-        : [...prev, filterId]
-    );
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const queryParams = new URLSearchParams();
-    if (searchQuery.trim()) {
-      queryParams.set('q', searchQuery);
-    }
-    activeFilters.forEach(filter => {
-      queryParams.append('filtros', filter);
-    });
-    window.location.href = `/buscar?${queryParams.toString()}`;
-  };
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-lsb-primary via-blue-900 to-indigo-900">
@@ -76,21 +67,37 @@ const Hero = () => {
               
               <form onSubmit={handleSearch} className="space-y-4">
                 {/* Search Input */}
-                <div className="relative">
+                <div className="relative" ref={searchRef}>
                   <Input
+                    ref={inputRef}
                     type="text"
-                    placeholder="Digite sua busca aqui..."
+                    placeholder="Digite sua busca aqui... (Ctrl+K)"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-4 pr-12 py-3 bg-white/90 border-0 rounded-xl text-gray-900 placeholder-gray-600 focus:ring-2 focus:ring-lsb-accent"
+                    onFocus={handleSearchFocus}
+                    className="w-full pl-4 pr-20 py-3 bg-white/90 border-0 rounded-xl text-gray-900 placeholder-gray-600 focus:ring-2 focus:ring-lsb-accent"
                   />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="absolute right-2 top-2 bottom-2 px-4 bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary rounded-lg"
-                  >
-                    <Search className="h-4 w-4" />
-                  </Button>
+                  <div className="absolute right-2 top-2 bottom-2 flex items-center gap-1">
+                    <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                      <Command className="h-3 w-3" />
+                      K
+                    </kbd>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      className="px-3 bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary rounded-lg"
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <SearchSuggestions
+                    query={searchQuery}
+                    onSuggestionClick={handleSuggestionClick}
+                    onClose={() => {}}
+                    isVisible={showSuggestions}
+                    className="bg-white/95 backdrop-blur-sm border-white/20"
+                  />
                 </div>
 
                 {/* Filter Chips */}

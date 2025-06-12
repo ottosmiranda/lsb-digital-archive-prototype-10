@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 interface SearchResult {
   id: number;
@@ -23,7 +23,9 @@ interface SearchFilters {
 }
 
 export const useSearchResults = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  
   const [filters, setFilters] = useState<SearchFilters>({
     resourceType: [],
     subject: [],
@@ -729,7 +731,7 @@ export const useSearchResults = () => {
         id: 60,
         title: 'Poesia Visual em Libras',
         type: 'titulo' as const,
-        author: 'Poeta Surda Isabella Nunes',
+        author: 'Poeta Surdo Isabella Nunes',
         pages: 134,
         description: 'Antologia de poemas em língua de sinais.',
         year: 2022,
@@ -1256,6 +1258,16 @@ export const useSearchResults = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const setQuery = (newQuery: string) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (newQuery) {
+      newSearchParams.set('q', newQuery);
+    } else {
+      newSearchParams.delete('q');
+    }
+    setSearchParams(newSearchParams);
+  };
+
   return {
     query,
     filters,
@@ -1269,6 +1281,7 @@ export const useSearchResults = () => {
     handleFilterChange,
     handleSortChange,
     handlePageChange,
-    setFilters
+    setFilters,
+    setQuery
   };
 };

@@ -146,7 +146,10 @@ const SearchWelcomeState = ({ onQuickSearch }: SearchWelcomeStateProps) => {
           Digite sua busca na caixa acima ou use os filtros para explorar nossa coleção
         </p>
         <Button 
-          onClick={() => document.querySelector('input[type="search"]')?.focus()}
+          onClick={() => {
+            const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement;
+            searchInput?.focus();
+          }}
           className="bg-lsb-primary hover:bg-lsb-primary/90 text-white"
         >
           <Search className="h-4 w-4 mr-2" />

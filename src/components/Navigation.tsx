@@ -1,14 +1,19 @@
 
-import { useState } from 'react';
-import { Search, Menu, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, Menu, X, Command } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import SearchSuggestions from '@/components/SearchSuggestions';
 
 const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const navItems = [
     { label: 'Assuntos', href: '/assuntos' },
@@ -16,11 +21,66 @@ const Navigation = () => {
     { label: 'Sobre', href: '/sobre' }
   ];
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+K or Cmd+K to focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setShowSuggestions(true);
+      }
+      
+      // Escape to close suggestions
+      if (e.key === 'Escape') {
+        setShowSuggestions(false);
+        inputRef.current?.blur();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Update search query from URL on page load
+  useEffect(() => {
+    if (location.pathname === '/buscar') {
+      const urlParams = new URLSearchParams(location.search);
+      const query = urlParams.get('q');
+      if (query) {
+        setSearchQuery(query);
+      }
+    }
+  }, [location]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/buscar?q=${encodeURIComponent(searchQuery)}`);
+      setShowSuggestions(false);
     }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setSearchQuery(suggestion);
+    navigate(`/buscar?q=${encodeURIComponent(suggestion)}`);
+    setShowSuggestions(false);
+  };
+
+  const handleSearchFocus = () => {
+    setShowSuggestions(true);
   };
 
   return (
@@ -55,22 +115,37 @@ const Navigation = () => {
           </div>
 
           {/* Search Bar */}
-          <div className="hidden md:block flex-1 max-w-md mx-8">
+          <div className="hidden md:block flex-1 max-w-md mx-8" ref={searchRef}>
             <form onSubmit={handleSearch} className="relative">
               <Input
+                ref={inputRef}
                 type="text"
-                placeholder="Pesquisar livro, autor, vídeo ou palavra-chave"
+                placeholder="Pesquisar... (Ctrl+K)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-4 pr-12 py-2 rounded-full border-2 border-gray-200 focus:border-lsb-accent focus:ring-2 focus:ring-lsb-accent/20"
+                onFocus={handleSearchFocus}
+                className="w-full pl-4 pr-20 py-2 rounded-full border-2 border-gray-200 focus:border-lsb-accent focus:ring-2 focus:ring-lsb-accent/20"
               />
-              <Button
-                type="submit"
-                size="sm"
-                className="absolute right-1 top-1 bottom-1 px-3 bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary rounded-full"
-              >
-                <Search className="h-4 w-4" />
-              </Button>
+              <div className="absolute right-1 top-1 bottom-1 flex items-center gap-1">
+                <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                  <Command className="h-3 w-3" />
+                  K
+                </kbd>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="px-3 bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary rounded-full"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <SearchSuggestions
+                query={searchQuery}
+                onSuggestionClick={handleSuggestionClick}
+                onClose={() => setShowSuggestions(false)}
+                isVisible={showSuggestions}
+              />
             </form>
           </div>
 

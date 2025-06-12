@@ -1,11 +1,14 @@
 
+import { useState } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeader from '@/components/SearchHeader';
 import SearchFilters from '@/components/SearchFilters';
 import SearchResultsGrid from '@/components/SearchResultsGrid';
+import SearchResultsList from '@/components/SearchResultsList';
 import EmptySearchState from '@/components/EmptySearchState';
 import SearchWelcomeState from '@/components/SearchWelcomeState';
 import SearchPagination from '@/components/SearchPagination';
+import FilterChips from '@/components/FilterChips';
 import Footer from '@/components/Footer';
 
 interface SearchResult {
@@ -62,9 +65,35 @@ const SearchLayout = ({
   onClearFilters,
   onQuickSearch
 }: SearchLayoutProps) => {
+  const [view, setView] = useState<'grid' | 'list'>('grid');
+  
   const hasResults = currentResults.length > 0;
   const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
   const showWelcomeState = !loading && !query && !hasActiveFilters && !hasResults;
+
+  const handleRemoveFilter = (filterType: string, value?: string) => {
+    const newFilters = { ...filters };
+    
+    switch (filterType) {
+      case 'resourceType':
+        newFilters.resourceType = newFilters.resourceType.filter(type => type !== value);
+        break;
+      case 'subject':
+        newFilters.subject = newFilters.subject.filter(subject => subject !== value);
+        break;
+      case 'author':
+        newFilters.author = '';
+        break;
+      case 'year':
+        newFilters.year = '';
+        break;
+      case 'duration':
+        newFilters.duration = '';
+        break;
+    }
+    
+    onFiltersChange(newFilters);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -76,7 +105,9 @@ const SearchLayout = ({
             query={query}
             resultCount={totalResults}
             sortBy={sortBy}
+            view={view}
             onSortChange={onSortChange}
+            onViewChange={setView}
           />
         )}
         
@@ -91,23 +122,40 @@ const SearchLayout = ({
           <div className="flex-1">
             {showWelcomeState ? (
               <SearchWelcomeState onQuickSearch={onQuickSearch || (() => {})} />
-            ) : showEmptyState ? (
-              <EmptySearchState 
-                query={query} 
-                onClearFilters={onClearFilters} 
-              />
             ) : (
               <>
-                <SearchResultsGrid 
-                  results={currentResults}
-                  loading={loading}
+                <FilterChips
+                  filters={filters}
+                  onRemoveFilter={handleRemoveFilter}
+                  onClearAll={onClearFilters}
                 />
                 
-                <SearchPagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={onPageChange}
-                />
+                {showEmptyState ? (
+                  <EmptySearchState 
+                    query={query} 
+                    onClearFilters={onClearFilters} 
+                  />
+                ) : (
+                  <>
+                    {view === 'grid' ? (
+                      <SearchResultsGrid 
+                        results={currentResults}
+                        loading={loading}
+                      />
+                    ) : (
+                      <SearchResultsList 
+                        results={currentResults}
+                        loading={loading}
+                      />
+                    )}
+                    
+                    <SearchPagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={onPageChange}
+                    />
+                  </>
+                )}
               </>
             )}
           </div>

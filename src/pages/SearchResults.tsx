@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navigation from '@/components/Navigation';
@@ -53,12 +52,56 @@ const SearchResults = () => {
     }
   }, [filters]); // Depend on filter changes
 
+  // Sort results when sortBy changes
+  useEffect(() => {
+    if (results.length > 0) {
+      console.log('Sorting results by:', sortBy);
+      const sortedResults = sortResults([...results], sortBy);
+      setResults(sortedResults);
+    }
+  }, [sortBy]);
+
   const hasActiveFilters = (filterObj: any) => {
     return filterObj.resourceType.length > 0 || 
            filterObj.subject.length > 0 || 
            filterObj.author || 
            filterObj.year || 
            filterObj.duration;
+  };
+
+  const sortResults = (resultsToSort: any[], sortType: string) => {
+    switch (sortType) {
+      case 'recent':
+        return resultsToSort.sort((a, b) => b.year - a.year);
+      
+      case 'accessed':
+        // Mock implementation - in real app this would use actual access data
+        return resultsToSort.sort(() => Math.random() - 0.5);
+      
+      case 'type':
+        const typeOrder = { 'video': 0, 'podcast': 1, 'titulo': 2 };
+        return resultsToSort.sort((a, b) => {
+          const aOrder = typeOrder[a.type] ?? 3;
+          const bOrder = typeOrder[b.type] ?? 3;
+          if (aOrder !== bOrder) return aOrder - bOrder;
+          return a.title.localeCompare(b.title);
+        });
+      
+      case 'relevance':
+      default:
+        // For relevance, we'll sort by a combination of factors
+        return resultsToSort.sort((a, b) => {
+          // Mock relevance score based on title match and year
+          const queryLower = query.toLowerCase();
+          const aRelevance = a.title.toLowerCase().includes(queryLower) ? 2 : 0;
+          const bRelevance = b.title.toLowerCase().includes(queryLower) ? 2 : 0;
+          
+          const aScore = aRelevance + (a.year / 1000); // Newer items get slight boost
+          const bScore = bRelevance + (b.year / 1000);
+          
+          return bScore - aScore;
+        });
+    }
   };
 
   const performSearch = (searchQuery: string, currentFilters: any) => {
@@ -68,8 +111,9 @@ const SearchResults = () => {
     setTimeout(() => {
       if (searchQuery || hasActiveFilters(currentFilters)) {
         const searchResults = generateMockResults(searchQuery, currentFilters);
-        console.log('Search results:', searchResults);
-        setResults(searchResults);
+        const sortedResults = sortResults(searchResults, sortBy);
+        console.log('Search results:', sortedResults);
+        setResults(sortedResults);
       } else {
         setResults([]);
       }
@@ -193,6 +237,7 @@ const SearchResults = () => {
   };
 
   const handleSortChange = (newSort: string) => {
+    console.log('Sort changed to:', newSort);
     setSortBy(newSort);
   };
 

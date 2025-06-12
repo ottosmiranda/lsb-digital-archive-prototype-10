@@ -4,6 +4,7 @@ import SearchHeader from '@/components/SearchHeader';
 import SearchFilters from '@/components/SearchFilters';
 import SearchResultsGrid from '@/components/SearchResultsGrid';
 import EmptySearchState from '@/components/EmptySearchState';
+import SearchWelcomeState from '@/components/SearchWelcomeState';
 import SearchPagination from '@/components/SearchPagination';
 import Footer from '@/components/Footer';
 
@@ -42,6 +43,7 @@ interface SearchLayoutProps {
   onSortChange: (sort: string) => void;
   onPageChange: (page: number) => void;
   onClearFilters: () => void;
+  onQuickSearch?: (query: string) => void;
 }
 
 const SearchLayout = ({
@@ -57,31 +59,39 @@ const SearchLayout = ({
   onFiltersChange,
   onSortChange,
   onPageChange,
-  onClearFilters
+  onClearFilters,
+  onQuickSearch
 }: SearchLayoutProps) => {
   const hasResults = currentResults.length > 0;
   const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
+  const showWelcomeState = !loading && !query && !hasActiveFilters && !hasResults;
 
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <SearchHeader 
-          query={query}
-          resultCount={totalResults}
-          sortBy={sortBy}
-          onSortChange={onSortChange}
-        />
+        {!showWelcomeState && (
+          <SearchHeader 
+            query={query}
+            resultCount={totalResults}
+            sortBy={sortBy}
+            onSortChange={onSortChange}
+          />
+        )}
         
         <div className="flex flex-col lg:flex-row gap-8 mt-8">
-          <SearchFilters 
-            filters={filters}
-            onFiltersChange={onFiltersChange}
-          />
+          {!showWelcomeState && (
+            <SearchFilters 
+              filters={filters}
+              onFiltersChange={onFiltersChange}
+            />
+          )}
           
           <div className="flex-1">
-            {showEmptyState ? (
+            {showWelcomeState ? (
+              <SearchWelcomeState onQuickSearch={onQuickSearch || (() => {})} />
+            ) : showEmptyState ? (
               <EmptySearchState 
                 query={query} 
                 onClearFilters={onClearFilters} 

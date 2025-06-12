@@ -16,7 +16,8 @@ const SearchResults = () => {
     handleFilterChange,
     handleSortChange,
     handlePageChange,
-    setFilters
+    setFilters,
+    setQuery
   } = useSearchResults();
 
   const handleClearFilters = () => {
@@ -27,6 +28,10 @@ const SearchResults = () => {
       year: '',
       duration: ''
     });
+  };
+
+  const handleQuickSearch = (searchQuery: string) => {
+    setQuery(searchQuery);
   };
 
   return (
@@ -44,6 +49,7 @@ const SearchResults = () => {
       onSortChange={handleSortChange}
       onPageChange={handlePageChange}
       onClearFilters={handleClearFilters}
+      onQuickSearch={handleQuickSearch}
     />
   );
 };

@@ -45,6 +45,16 @@ const SearchFilters = ({ filters, onFiltersChange }: SearchFiltersProps) => {
     onFiltersChange({ ...filters, subject: newSubjects });
   };
 
+  const handleYearChange = (value: string) => {
+    const yearValue = value === 'all' ? '' : value;
+    onFiltersChange({ ...filters, year: yearValue });
+  };
+
+  const handleDurationChange = (value: string) => {
+    const durationValue = value === 'all' ? '' : value;
+    onFiltersChange({ ...filters, duration: durationValue });
+  };
+
   const clearFilters = () => {
     onFiltersChange({
       resourceType: [],
@@ -122,12 +132,12 @@ const SearchFilters = ({ filters, onFiltersChange }: SearchFiltersProps) => {
       {/* Year Filter */}
       <div>
         <Label className="text-sm font-medium mb-3 block">Ano</Label>
-        <Select value={filters.year} onValueChange={(value) => onFiltersChange({ ...filters, year: value })}>
+        <Select value={filters.year || 'all'} onValueChange={handleYearChange}>
           <SelectTrigger>
             <SelectValue placeholder="Selecionar ano" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos os anos</SelectItem>
+            <SelectItem value="all">Todos os anos</SelectItem>
             {years.map((year) => (
               <SelectItem key={year} value={year}>{year}</SelectItem>
             ))}
@@ -138,12 +148,12 @@ const SearchFilters = ({ filters, onFiltersChange }: SearchFiltersProps) => {
       {/* Duration Filter */}
       <div>
         <Label className="text-sm font-medium mb-3 block">Duração (vídeos/podcasts)</Label>
-        <Select value={filters.duration} onValueChange={(value) => onFiltersChange({ ...filters, duration: value })}>
+        <Select value={filters.duration || 'all'} onValueChange={handleDurationChange}>
           <SelectTrigger>
             <SelectValue placeholder="Qualquer duração" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Qualquer duração</SelectItem>
+            <SelectItem value="all">Qualquer duração</SelectItem>
             <SelectItem value="short">Até 10 minutos</SelectItem>
             <SelectItem value="medium">10 - 30 minutos</SelectItem>
             <SelectItem value="long">Mais de 30 minutos</SelectItem>

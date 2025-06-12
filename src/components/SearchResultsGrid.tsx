@@ -3,6 +3,7 @@ import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 interface SearchResult {
   id: number;
@@ -24,6 +25,8 @@ interface SearchResultsGridProps {
 }
 
 const SearchResultsGrid = ({ results, loading }: SearchResultsGridProps) => {
+  const navigate = useNavigate();
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'video':
@@ -48,6 +51,10 @@ const SearchResultsGrid = ({ results, loading }: SearchResultsGridProps) => {
       default:
         return { label: 'Recurso', color: 'bg-gray-100 text-gray-800' };
     }
+  };
+
+  const handleResourceClick = (resourceId: number) => {
+    navigate(`/recurso/${resourceId}`);
   };
 
   if (loading) {
@@ -127,7 +134,7 @@ const SearchResultsGrid = ({ results, loading }: SearchResultsGridProps) => {
                 {/* Action Button */}
                 <Button 
                   className="w-full mt-4 bg-lsb-primary hover:bg-lsb-primary/90 text-white"
-                  onClick={() => window.open(`/recurso/${result.id}`, '_blank')}
+                  onClick={() => handleResourceClick(result.id)}
                 >
                   {result.type === 'video' && 'Assistir Vídeo'}
                   {result.type === 'podcast' && 'Ouvir Podcast'}

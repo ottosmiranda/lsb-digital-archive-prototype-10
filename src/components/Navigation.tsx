@@ -3,10 +3,12 @@ import { useState } from 'react';
 import { Search, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
 
   const navItems = [
     { label: 'Assuntos', href: '/assuntos' },
@@ -17,7 +19,7 @@ const Navigation = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      window.location.href = `/buscar?q=${encodeURIComponent(searchQuery)}`;
+      navigate(`/buscar?q=${encodeURIComponent(searchQuery)}`);
     }
   };
 
@@ -27,27 +29,27 @@ const Navigation = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <a href="/" className="flex items-center space-x-2">
+            <Link to="/" className="flex items-center space-x-2">
               <div className="w-10 h-10 bg-lsb-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-xl">LSB</span>
               </div>
               <span className="hidden sm:block font-bold text-xl lsb-primary">
                 Biblioteca Digital
               </span>
-            </a>
+            </Link>
           </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-8">
               {navItems.map((item) => (
-                <a
+                <Link
                   key={item.label}
-                  href={item.href}
+                  to={item.href}
                   className="text-gray-700 hover:text-lsb-primary px-3 py-2 text-sm font-medium transition-colors duration-150"
                 >
                   {item.label}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -109,13 +111,13 @@ const Navigation = () => {
 
               {/* Mobile Menu Items */}
               {navItems.map((item) => (
-                <a
+                <Link
                   key={item.label}
-                  href={item.href}
+                  to={item.href}
                   className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-lsb-primary hover:bg-gray-50 rounded-md transition-colors duration-150"
                 >
                   {item.label}
-                </a>
+                </Link>
               ))}
             </div>
           </div>

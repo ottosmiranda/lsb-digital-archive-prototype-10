@@ -21,14 +21,13 @@ const Hero = () => {
   } = useSearchForm();
 
   const filterOptions = [
-    { id: 'titulo', label: 'Título' },
-    { id: 'autor', label: 'Autor' },
-    { id: 'video', label: 'Vídeo' },
-    { id: 'podcast', label: 'Podcast' }
+    { id: 'titulo', label: 'Livros' },
+    { id: 'video', label: 'Vídeos' },
+    { id: 'podcast', label: 'Podcasts' }
   ];
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-lsb-primary via-blue-900 to-indigo-900">
+    <section className="relative bg-gradient-to-br from-lsb-primary via-blue-900 to-indigo-900">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
@@ -96,7 +95,7 @@ const Hero = () => {
                     onSuggestionClick={handleSuggestionClick}
                     onClose={() => {}}
                     isVisible={showSuggestions}
-                    className="bg-white/95 backdrop-blur-sm border-white/20"
+                    className="bg-white/95 backdrop-blur-sm border-white/20 z-[9999]"
                   />
                 </div>
 

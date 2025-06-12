@@ -32,6 +32,9 @@ const Navigation = () => {
     { label: 'Sobre', href: '/sobre' }
   ];
 
+  // Hide search on homepage to avoid duplication with Hero search
+  const isHomePage = location.pathname === '/';
+
   // Update search query from URL on page load
   useEffect(() => {
     if (location.pathname === '/buscar') {
@@ -75,40 +78,42 @@ const Navigation = () => {
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="hidden md:block flex-1 max-w-md mx-8" ref={searchRef}>
-            <form onSubmit={handleSearch} className="relative">
-              <Input
-                ref={inputRef}
-                type="text"
-                placeholder="Pesquisar... (Ctrl+K)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={handleSearchFocus}
-                className="w-full pl-4 pr-20 py-2 rounded-full border-2 border-gray-200 focus:border-lsb-accent focus:ring-2 focus:ring-lsb-accent/20"
-              />
-              <div className="absolute right-1 top-1 bottom-1 flex items-center gap-1">
-                <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                  <Command className="h-3 w-3" />
-                  K
-                </kbd>
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="px-3 bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary rounded-full"
-                >
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
+          {/* Search Bar - Hidden on homepage */}
+          {!isHomePage && (
+            <div className="hidden md:block flex-1 max-w-md mx-8" ref={searchRef}>
+              <form onSubmit={handleSearch} className="relative">
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Pesquisar... (Ctrl+K)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={handleSearchFocus}
+                  className="w-full pl-4 pr-20 py-2 rounded-full border-2 border-gray-200 focus:border-lsb-accent focus:ring-2 focus:ring-lsb-accent/20"
+                />
+                <div className="absolute right-1 top-1 bottom-1 flex items-center gap-1">
+                  <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                    <Command className="h-3 w-3" />
+                    K
+                  </kbd>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="px-3 bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary rounded-full"
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
 
-              <SearchSuggestions
-                query={searchQuery}
-                onSuggestionClick={handleSuggestionClick}
-                onClose={() => setShowSuggestions(false)}
-                isVisible={showSuggestions}
-              />
-            </form>
-          </div>
+                <SearchSuggestions
+                  query={searchQuery}
+                  onSuggestionClick={handleSuggestionClick}
+                  onClose={() => setShowSuggestions(false)}
+                  isVisible={showSuggestions}
+                />
+              </form>
+            </div>
+          )}
 
           {/* Mobile menu button */}
           <div className="md:hidden">
@@ -127,34 +132,36 @@ const Navigation = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden animate-fade-in">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-lsb-gray">
-              {/* Mobile Search */}
-              <div className="relative mb-4" ref={mobileSearchForm.searchRef}>
-                <form onSubmit={mobileSearchForm.handleSearch}>
-                  <Input
-                    ref={mobileSearchForm.inputRef}
-                    type="text"
-                    placeholder="Pesquisar..."
-                    value={mobileSearchForm.searchQuery}
-                    onChange={(e) => mobileSearchForm.setSearchQuery(e.target.value)}
-                    onFocus={mobileSearchForm.handleSearchFocus}
-                    className="w-full pl-4 pr-12 py-2 rounded-full"
-                  />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="absolute right-1 top-1 bottom-1 px-3 bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary rounded-full"
-                  >
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </form>
+              {/* Mobile Search - Hidden on homepage */}
+              {!isHomePage && (
+                <div className="relative mb-4" ref={mobileSearchForm.searchRef}>
+                  <form onSubmit={mobileSearchForm.handleSearch}>
+                    <Input
+                      ref={mobileSearchForm.inputRef}
+                      type="text"
+                      placeholder="Pesquisar..."
+                      value={mobileSearchForm.searchQuery}
+                      onChange={(e) => mobileSearchForm.setSearchQuery(e.target.value)}
+                      onFocus={mobileSearchForm.handleSearchFocus}
+                      className="w-full pl-4 pr-12 py-2 rounded-full"
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      className="absolute right-1 top-1 bottom-1 px-3 bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary rounded-full"
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </form>
 
-                <SearchSuggestions
-                  query={mobileSearchForm.searchQuery}
-                  onSuggestionClick={mobileSearchForm.handleSuggestionClick}
-                  onClose={() => mobileSearchForm.setShowSuggestions(false)}
-                  isVisible={mobileSearchForm.showSuggestions}
-                />
-              </div>
+                  <SearchSuggestions
+                    query={mobileSearchForm.searchQuery}
+                    onSuggestionClick={mobileSearchForm.handleSuggestionClick}
+                    onClose={() => mobileSearchForm.setShowSuggestions(false)}
+                    isVisible={mobileSearchForm.showSuggestions}
+                  />
+                </div>
+              )}
 
               {/* Mobile Menu Items */}
               {navItems.map((item) => (

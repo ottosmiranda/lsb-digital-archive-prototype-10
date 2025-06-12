@@ -121,7 +121,16 @@ const SearchResults = () => {
           
           <div className="flex-1">
             {showEmptyState ? (
-              <EmptySearchState query={query} onClearFilters={() => setFilters({})} />
+              <EmptySearchState 
+                query={query} 
+                onClearFilters={() => setFilters({
+                  resourceType: [],
+                  subject: [],
+                  author: '',
+                  year: '',
+                  duration: ''
+                })} 
+              />
             ) : (
               <SearchResultsGrid 
                 results={results}

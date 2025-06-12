@@ -50,12 +50,18 @@ export const useSearchResults = () => {
   const currentResults = allResults.slice(startIndex, endIndex);
   const hasMore = currentPage < totalPages;
 
+  // Helper function to check if any filter object has active filters
+  const checkHasActiveFilters = (filterObj: SearchFilters): boolean => {
+    return filterObj.resourceType.length > 0 || 
+           filterObj.subject.length > 0 || 
+           Boolean(filterObj.author) || 
+           Boolean(filterObj.year) || 
+           Boolean(filterObj.duration);
+  };
+
+  // Memoized boolean for current filters state
   const hasActiveFilters = useMemo((): boolean => {
-    return filters.resourceType.length > 0 || 
-           filters.subject.length > 0 || 
-           Boolean(filters.author) || 
-           Boolean(filters.year) || 
-           Boolean(filters.duration);
+    return checkHasActiveFilters(filters);
   }, [filters]);
 
   const sortResults = (resultsToSort: SearchResult[], sortType: string) => {
@@ -199,7 +205,7 @@ export const useSearchResults = () => {
     console.log('Performing search with:', { searchQuery, currentFilters });
     
     setTimeout(() => {
-      if (searchQuery || hasActiveFilters(currentFilters)) {
+      if (searchQuery || checkHasActiveFilters(currentFilters)) {
         const searchResults = generateMockResults(searchQuery, currentFilters);
         const sortedResults = sortResults(searchResults, sortBy);
         console.log('Search results:', sortedResults);
@@ -230,7 +236,7 @@ export const useSearchResults = () => {
 
   // Perform search when filters change
   useEffect(() => {
-    if (query || hasActiveFilters(filters)) {
+    if (query || hasActiveFilters) {
       console.log('Filter search triggered with filters:', filters);
       performSearch(query, filters);
       setCurrentPage(1);

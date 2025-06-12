@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navigation from '@/components/Navigation';
@@ -6,6 +7,14 @@ import SearchFilters from '@/components/SearchFilters';
 import SearchResultsGrid from '@/components/SearchResultsGrid';
 import EmptySearchState from '@/components/EmptySearchState';
 import Footer from '@/components/Footer';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
@@ -17,9 +26,10 @@ const SearchResults = () => {
     duration: ''
   });
   const [sortBy, setSortBy] = useState('relevance');
-  const [results, setResults] = useState([]);
+  const [allResults, setAllResults] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const resultsPerPage = 9;
 
   const query = searchParams.get('q') || '';
   
@@ -27,6 +37,14 @@ const SearchResults = () => {
   const appliedFilters = useMemo(() => {
     return searchParams.getAll('filtros') || [];
   }, [searchParams]);
+
+  // Calculate pagination values
+  const totalResults = allResults.length;
+  const totalPages = Math.ceil(totalResults / resultsPerPage);
+  const startIndex = (currentPage - 1) * resultsPerPage;
+  const endIndex = startIndex + resultsPerPage;
+  const currentResults = allResults.slice(startIndex, endIndex);
+  const hasMore = currentPage < totalPages;
 
   // Initialize filters from URL params only once
   useEffect(() => {
@@ -42,6 +60,7 @@ const SearchResults = () => {
   useEffect(() => {
     console.log('Search triggered with query:', query);
     performSearch(query, filters);
+    setCurrentPage(1); // Reset to first page on new search
   }, [query]); // Only depend on query changes
 
   // Perform search when filters change
@@ -49,15 +68,17 @@ const SearchResults = () => {
     if (query || hasActiveFilters(filters)) {
       console.log('Filter search triggered with filters:', filters);
       performSearch(query, filters);
+      setCurrentPage(1); // Reset to first page on filter change
     }
   }, [filters]); // Depend on filter changes
 
   // Sort results when sortBy changes
   useEffect(() => {
-    if (results.length > 0) {
+    if (allResults.length > 0) {
       console.log('Sorting results by:', sortBy);
-      const sortedResults = sortResults([...results], sortBy);
-      setResults(sortedResults);
+      const sortedResults = sortResults([...allResults], sortBy);
+      setAllResults(sortedResults);
+      setCurrentPage(1); // Reset to first page on sort change
     }
   }, [sortBy]);
 
@@ -113,9 +134,9 @@ const SearchResults = () => {
         const searchResults = generateMockResults(searchQuery, currentFilters);
         const sortedResults = sortResults(searchResults, sortBy);
         console.log('Search results:', sortedResults);
-        setResults(sortedResults);
+        setAllResults(sortedResults);
       } else {
-        setResults([]);
+        setAllResults([]);
       }
       setLoading(false);
     }, 500);
@@ -241,7 +262,13 @@ const SearchResults = () => {
     setSortBy(newSort);
   };
 
-  const hasResults = results.length > 0;
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of results when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const hasResults = allResults.length > 0;
   const showEmptyState = !loading && !hasResults && (query || hasActiveFilters(filters));
 
   return (
@@ -251,7 +278,7 @@ const SearchResults = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <SearchHeader 
           query={query}
-          resultCount={results.length}
+          resultCount={totalResults}
           sortBy={sortBy}
           onSortChange={handleSortChange}
         />
@@ -275,11 +302,47 @@ const SearchResults = () => {
                 })} 
               />
             ) : (
-              <SearchResultsGrid 
-                results={results}
-                loading={loading}
-                hasMore={hasMore}
-              />
+              <>
+                <SearchResultsGrid 
+                  results={currentResults}
+                  loading={loading}
+                  hasMore={hasMore}
+                />
+                
+                {hasResults && totalPages > 1 && (
+                  <div className="mt-8 flex justify-center">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => handlePageChange(page)}
+                              isActive={currentPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        
+                        <PaginationItem>
+                          <PaginationNext 
+                            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

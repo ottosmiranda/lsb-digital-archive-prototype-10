@@ -21,7 +21,7 @@ interface SearchResult {
 interface SearchResultsGridProps {
   results: SearchResult[];
   loading: boolean;
-  hasMore: boolean;
+  hasMore?: boolean; // Made optional since pagination handles this now
 }
 
 const SearchResultsGrid = ({ results, loading }: SearchResultsGridProps) => {

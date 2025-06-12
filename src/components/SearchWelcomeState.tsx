@@ -54,7 +54,7 @@ const SearchWelcomeState = ({
               <h3 className="font-semibold text-lg mb-2 lsb-primary">
                 {type.title}
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 font-normal">
                 {type.description}
               </p>
             </CardContent>

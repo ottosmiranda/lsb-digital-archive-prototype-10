@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -51,13 +50,13 @@ export const useSearchResults = () => {
   const currentResults = allResults.slice(startIndex, endIndex);
   const hasMore = currentPage < totalPages;
 
-  const hasActiveFilters = (filterObj: SearchFilters) => {
-    return filterObj.resourceType.length > 0 || 
-           filterObj.subject.length > 0 || 
-           filterObj.author || 
-           filterObj.year || 
-           filterObj.duration;
-  };
+  const hasActiveFilters = useMemo((): boolean => {
+    return filters.resourceType.length > 0 || 
+           filters.subject.length > 0 || 
+           Boolean(filters.author) || 
+           Boolean(filters.year) || 
+           Boolean(filters.duration);
+  }, [filters]);
 
   const sortResults = (resultsToSort: SearchResult[], sortType: string) => {
     switch (sortType) {
@@ -272,7 +271,7 @@ export const useSearchResults = () => {
     totalPages,
     currentPage,
     loading,
-    hasActiveFilters: hasActiveFilters(filters),
+    hasActiveFilters,
     handleFilterChange,
     handleSortChange,
     handlePageChange,

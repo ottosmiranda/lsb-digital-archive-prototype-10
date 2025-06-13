@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeader from '@/components/SearchHeader';
@@ -9,11 +10,11 @@ import SearchWelcomeState from '@/components/SearchWelcomeState';
 import SearchPagination from '@/components/SearchPagination';
 import FilterChips from '@/components/FilterChips';
 import Footer from '@/components/Footer';
-import { SearchResult, SearchFilters } from '@/types/searchTypes';
+import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
 
 interface SearchLayoutProps {
   query: string;
-  filters: SearchFilters;
+  filters: SearchFiltersType;
   sortBy: string;
   currentResults: SearchResult[];
   totalResults: number;
@@ -21,7 +22,7 @@ interface SearchLayoutProps {
   currentPage: number;
   loading: boolean;
   hasActiveFilters: boolean;
-  onFiltersChange: (filters: SearchFilters) => void;
+  onFiltersChange: (filters: SearchFiltersType) => void;
   onSortChange: (sort: string) => void;
   onPageChange: (page: number) => void;
   onClearFilters: () => void;

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeader from '@/components/SearchHeader';
@@ -10,27 +9,7 @@ import SearchWelcomeState from '@/components/SearchWelcomeState';
 import SearchPagination from '@/components/SearchPagination';
 import FilterChips from '@/components/FilterChips';
 import Footer from '@/components/Footer';
-
-interface SearchResult {
-  id: number;
-  title: string;
-  type: 'video' | 'titulo' | 'podcast';
-  author: string;
-  duration?: string;
-  pages?: number;
-  thumbnail?: string;
-  description: string;
-  year: number;
-  subject: string;
-}
-
-interface SearchFilters {
-  resourceType: string[];
-  subject: string[];
-  author: string;
-  year: string;
-  duration: string;
-}
+import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
 interface SearchLayoutProps {
   query: string;

@@ -1,22 +1,9 @@
-
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-
-interface SearchResult {
-  id: number;
-  title: string;
-  type: 'video' | 'titulo' | 'podcast';
-  author: string;
-  duration?: string;
-  pages?: number;
-  thumbnail?: string;
-  description: string;
-  year: number;
-  subject: string;
-}
+import { SearchResult } from '@/types/searchTypes';
 
 interface SearchResultsListProps {
   results: SearchResult[];

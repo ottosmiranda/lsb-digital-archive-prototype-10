@@ -1,0 +1,34 @@
+
+[
+  {
+    "id": 1,
+    "title": "Introdução à Libras",
+    "type": "video",
+    "author": "Prof. Maria Silva",
+    "duration": "25:30",
+    "description": "Curso básico de Língua Brasileira de Sinais para iniciantes.",
+    "year": 2023,
+    "subject": "Educação",
+    "thumbnail": "/placeholder.svg"
+  },
+  {
+    "id": 2,
+    "title": "Manual Completo de Libras",
+    "type": "titulo",
+    "author": "Prof. Eduardo Mendes",
+    "pages": 420,
+    "description": "Guia completo para aprendizado da Língua Brasileira de Sinais.",
+    "year": 2023,
+    "subject": "Educação"
+  },
+  {
+    "id": 3,
+    "title": "Podcast Mãos que Falam",
+    "type": "podcast",
+    "author": "Ana Costa",
+    "duration": "45:20",
+    "description": "Conversas sobre inclusão e acessibilidade.",
+    "year": 2023,
+    "subject": "Inclusão"
+  }
+]

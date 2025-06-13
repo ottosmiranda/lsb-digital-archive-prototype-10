@@ -234,7 +234,8 @@ export class DataService {
         description,
         year,
         subject,
-        duration: item.total_episodes ? `${item.total_episodes} episódios` : undefined
+        duration: item.total_episodes ? `${item.total_episodes} episódios` : undefined,
+        thumbnail: item.imagem_url
       };
 
       return result;
@@ -277,7 +278,7 @@ export class DataService {
         year,
         subject,
         duration,
-        thumbnail: item.thumbnail
+        thumbnail: item.imagem_url
       };
 
       return result;
@@ -324,7 +325,8 @@ export class DataService {
         description,
         year,
         subject,
-        pages: item.paginas
+        pages: item.paginas,
+        thumbnail: item.imagem_url
       };
 
       return result;

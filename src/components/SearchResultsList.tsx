@@ -1,3 +1,4 @@
+
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +44,10 @@ const SearchResultsList = ({ results, loading }: SearchResultsListProps) => {
     navigate(`/recurso/${resourceId}`);
   };
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    e.currentTarget.style.display = 'none';
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -74,8 +79,18 @@ const SearchResultsList = ({ results, loading }: SearchResultsListProps) => {
             <CardContent className="p-6">
               <div className="flex gap-4">
                 {/* Thumbnail */}
-                <div className="w-24 h-24 bg-gray-100 rounded flex-shrink-0 flex items-center justify-center">
-                  {getTypeIcon(result.type)}
+                <div className="relative w-24 h-24 bg-gray-100 rounded flex-shrink-0 overflow-hidden">
+                  {result.thumbnail ? (
+                    <img 
+                      src={result.thumbnail} 
+                      alt={result.title}
+                      className="w-full h-full object-cover"
+                      onError={handleImageError}
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+                    {getTypeIcon(result.type)}
+                  </div>
                 </div>
 
                 {/* Content */}

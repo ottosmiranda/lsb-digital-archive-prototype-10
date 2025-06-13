@@ -1,3 +1,4 @@
+
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +44,10 @@ const SearchResultsGrid = ({ results, loading }: SearchResultsGridProps) => {
     navigate(`/recurso/${resourceId}`);
   };
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    e.currentTarget.style.display = 'none';
+  };
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -50,9 +55,10 @@ const SearchResultsGrid = ({ results, loading }: SearchResultsGridProps) => {
           <Card key={index} className="animate-pulse">
             <CardContent className="p-6">
               <div className="space-y-3">
+                <div className="h-32 bg-gray-200 rounded"></div>
                 <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                 <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                <div className="h-20 bg-gray-200 rounded"></div>
+                <div className="h-16 bg-gray-200 rounded"></div>
                 <div className="h-8 bg-gray-200 rounded w-1/3"></div>
               </div>
             </CardContent>
@@ -69,63 +75,78 @@ const SearchResultsGrid = ({ results, loading }: SearchResultsGridProps) => {
         
         return (
           <Card key={result.id} className="group hover-lift animate-fade-in">
-            <CardContent className="p-6">
+            <CardContent className="p-0">
               <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <Badge className={`${typeBadge.color} flex items-center gap-1`}>
+                {/* Thumbnail */}
+                <div className="relative h-32 bg-gray-100 rounded-t-lg overflow-hidden">
+                  {result.thumbnail ? (
+                    <img 
+                      src={result.thumbnail} 
+                      alt={result.title}
+                      className="w-full h-full object-cover"
+                      onError={handleImageError}
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
                     {getTypeIcon(result.type)}
-                    {typeBadge.label}
-                  </Badge>
+                  </div>
+                  <div className="absolute top-2 left-2">
+                    <Badge className={`${typeBadge.color} flex items-center gap-1`}>
+                      {getTypeIcon(result.type)}
+                      {typeBadge.label}
+                    </Badge>
+                  </div>
                   {result.duration && (
-                    <div className="flex items-center text-xs text-gray-500">
+                    <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded flex items-center">
                       <Clock className="h-3 w-3 mr-1" />
                       {result.duration}
                     </div>
                   )}
                   {result.pages && (
-                    <div className="text-xs text-gray-500">
+                    <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
                       {result.pages} páginas
                     </div>
                   )}
                 </div>
 
-                {/* Title */}
-                <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-lsb-primary transition-colors">
-                  {result.title}
-                </h3>
+                <div className="p-4 space-y-3">
+                  {/* Title */}
+                  <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-lsb-primary transition-colors">
+                    {result.title}
+                  </h3>
 
-                {/* Author and Year */}
-                <div className="flex items-center text-sm text-gray-600 space-x-4">
-                  <div className="flex items-center">
-                    <User className="h-3 w-3 mr-1" />
-                    {result.author}
+                  {/* Author and Year */}
+                  <div className="flex items-center text-sm text-gray-600 space-x-4">
+                    <div className="flex items-center">
+                      <User className="h-3 w-3 mr-1" />
+                      {result.author}
+                    </div>
+                    <div className="flex items-center">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {result.year}
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    {result.year}
-                  </div>
+
+                  {/* Description */}
+                  <p className="text-sm text-gray-600 line-clamp-3">
+                    {result.description}
+                  </p>
+
+                  {/* Subject */}
+                  <Badge variant="outline" className="w-fit">
+                    {result.subject}
+                  </Badge>
+
+                  {/* Action Button */}
+                  <Button 
+                    className="w-full mt-4 bg-lsb-primary hover:bg-lsb-primary/90 text-white"
+                    onClick={() => handleResourceClick(result.id)}
+                  >
+                    {result.type === 'video' && 'Assistir Vídeo'}
+                    {result.type === 'podcast' && 'Ouvir Podcast'}
+                    {result.type === 'titulo' && 'Ler Agora'}
+                  </Button>
                 </div>
-
-                {/* Description */}
-                <p className="text-sm text-gray-600 line-clamp-3">
-                  {result.description}
-                </p>
-
-                {/* Subject */}
-                <Badge variant="outline" className="w-fit">
-                  {result.subject}
-                </Badge>
-
-                {/* Action Button */}
-                <Button 
-                  className="w-full mt-4 bg-lsb-primary hover:bg-lsb-primary/90 text-white"
-                  onClick={() => handleResourceClick(result.id)}
-                >
-                  {result.type === 'video' && 'Assistir Vídeo'}
-                  {result.type === 'podcast' && 'Ouvir Podcast'}
-                  {result.type === 'titulo' && 'Ler Agora'}
-                </Button>
               </div>
             </CardContent>
           </Card>

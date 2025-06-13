@@ -704,7 +704,7 @@
                 "url": "/static/books/fs000430.pdf"
             }
         ],
-        "aulas": [
+       "aulas": [
             {
                 "id": "6lzAMEdDU-M",
                 "tipo": "aula",
@@ -712,9 +712,7 @@
                 "descricao": "Assista mais Motivação: COMO EMPREENDER: DEIXANDO AS COISAS CHATAS E OBTENDO MAIS RESULTADOS | Flávio ...",
                 "canal": "Motivado",
                 "imagem_url": "https://i.ytimg.com/vi/6lzAMEdDU-M/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "BR",
                 "embed_url": "https://www.youtube.com/embed/6lzAMEdDU-M"
             },
@@ -725,9 +723,7 @@
                 "descricao": "Inscrições abertas para o MBA com Flávio Augusto sobre vendas, Marketing e geração de valor: https://r.clique.ly/8b8c8e63ed No ...",
                 "canal": "O Conselho | Flávio Augusto",
                 "imagem_url": "https://i.ytimg.com/vi/8H5Sj07kQ5g/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "BR",
                 "embed_url": "https://www.youtube.com/embed/8H5Sj07kQ5g"
             },
@@ -738,9 +734,7 @@
                 "descricao": "Essas duas ideias vão mudar o teu jogo e acima de tudo mostrar-te que não precisas de muito começar. #negocios ...",
                 "canal": "Dinheiro Limpo",
                 "imagem_url": "https://i.ytimg.com/vi/VOV8uqCWLos/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "BR",
                 "embed_url": "https://www.youtube.com/embed/VOV8uqCWLos"
             },
@@ -751,9 +745,7 @@
                 "descricao": "FAÇA PARTE DA TURMA 22 DO VIVER DE RENDA! Link da pré-matrícula: https://r.clique.ly/49c2296be5 - Trecho do episódio ...",
                 "canal": "Bruno Perini - Você MAIS Rico",
                 "imagem_url": "https://i.ytimg.com/vi/Xx9wbV8D07Y/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "BR",
                 "embed_url": "https://www.youtube.com/embed/Xx9wbV8D07Y"
             },
@@ -764,9 +756,7 @@
                 "descricao": "Te ajudo a trabalhar em Home Office com celular como Afiliado profissional, me chame no Link: ...",
                 "canal": "Glauber Uchôa Oficial",
                 "imagem_url": "https://i.ytimg.com/vi/zKlONxUq21E/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "BR",
                 "embed_url": "https://www.youtube.com/embed/zKlONxUq21E"
             },
@@ -777,9 +767,7 @@
                 "descricao": "Assista mais Motivação: COMO SE REERGUER MESMO QUEBRADO E FICAR RICO | Flávio Augusto ...",
                 "canal": "Motivado",
                 "imagem_url": "https://i.ytimg.com/vi/VEaVa4pkFJ4/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "BR",
                 "embed_url": "https://www.youtube.com/embed/VEaVa4pkFJ4"
             },
@@ -790,9 +778,7 @@
                 "descricao": "Aqui no canal, te ajudamos a transformar sua mentalidade financeira e dar os passos certos rumo à liberdade financeira.",
                 "canal": "Mente Próspera",
                 "imagem_url": "https://i.ytimg.com/vi/o1fc-QKRq7s/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "BR",
                 "embed_url": "https://www.youtube.com/embed/o1fc-QKRq7s"
             },
@@ -803,9 +789,7 @@
                 "descricao": "Participe da Aula Magna GRATUITA com Flávio Augusto: https://r.clique.ly/bdbdaf6463 No episódio de hoje recebemos: Bettina ...",
                 "canal": "O Conselho | Flávio Augusto",
                 "imagem_url": "https://i.ytimg.com/vi/qPp9360Xfwc/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "BR",
                 "embed_url": "https://www.youtube.com/embed/qPp9360Xfwc"
             },
@@ -816,9 +800,7 @@
                 "descricao": "Brasil ARRASANDO em Portugal com Negócios INOVADORES! O talento e a visão empreendedora do Brasil chegam a ...",
                 "canal": "InvestTeam",
                 "imagem_url": "https://i.ytimg.com/vi/Y99GXwutGaw/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "BR",
                 "embed_url": "https://www.youtube.com/embed/Y99GXwutGaw"
             },
@@ -829,50 +811,9 @@
                 "descricao": "Link Do Vídeo Completo https://youtu.be/IhERJEe62uE =============================================== Tenha ...",
                 "canal": "Começando Meu Negócio",
                 "imagem_url": "https://i.ytimg.com/vi/09DOcgTxNrM/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "BR",
                 "embed_url": "https://www.youtube.com/embed/09DOcgTxNrM"
-            },
-            {
-                "id": "6lzAMEdDU-M",
-                "tipo": "aula",
-                "titulo": "COMO TER UM NEGÓCIO MILIONÁRIO EM 2025 | Flávio Augusto",
-                "descricao": "Assista mais Motivação: COMO EMPREENDER: DEIXANDO AS COISAS CHATAS E OBTENDO MAIS RESULTADOS | Flávio ...",
-                "canal": "Motivado",
-                "imagem_url": "https://i.ytimg.com/vi/6lzAMEdDU-M/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
-                "pais": "US",
-                "embed_url": "https://www.youtube.com/embed/6lzAMEdDU-M"
-            },
-            {
-                "id": "8H5Sj07kQ5g",
-                "tipo": "aula",
-                "titulo": "VISÃO DE NEGÓCIOS | O CAMINHO QUE VAI LEVAR SUA EMPRESA AO SUCESSO | O Conselho 14",
-                "descricao": "Inscrições abertas para o MBA com Flávio Augusto sobre vendas, Marketing e geração de valor: https://r.clique.ly/8b8c8e63ed No ...",
-                "canal": "O Conselho | Flávio Augusto",
-                "imagem_url": "https://i.ytimg.com/vi/8H5Sj07kQ5g/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
-                "pais": "US",
-                "embed_url": "https://www.youtube.com/embed/8H5Sj07kQ5g"
-            },
-            {
-                "id": "VOV8uqCWLos",
-                "tipo": "aula",
-                "titulo": "Ideias de negócios que rendem milhões",
-                "descricao": "Essas duas ideias vão mudar o teu jogo e acima de tudo mostrar-te que não precisas de muito começar. #negocios ...",
-                "canal": "Dinheiro Limpo",
-                "imagem_url": "https://i.ytimg.com/vi/VOV8uqCWLos/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
-                "pais": "US",
-                "embed_url": "https://www.youtube.com/embed/VOV8uqCWLos"
             },
             {
                 "id": "cIV1XCa7wXE",
@@ -881,37 +822,9 @@
                 "descricao": "Aprenda a investir comigo no Brasil e no mundo: https://sard.ink/3L5H5AM 11 Anos de Conselhos Brutalmente Honestos Sobre ...",
                 "canal": "Investidor Sardinha l Raul Sena",
                 "imagem_url": "https://i.ytimg.com/vi/cIV1XCa7wXE/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "US",
                 "embed_url": "https://www.youtube.com/embed/cIV1XCa7wXE"
-            },
-            {
-                "id": "qPp9360Xfwc",
-                "tipo": "aula",
-                "titulo": "NEGOCIAÇÃO | Técnicas para fechar negócios de SUCESSO | O Conselho 18",
-                "descricao": "Participe da Aula Magna GRATUITA com Flávio Augusto: https://r.clique.ly/bdbdaf6463 No episódio de hoje recebemos: Bettina ...",
-                "canal": "O Conselho | Flávio Augusto",
-                "imagem_url": "https://i.ytimg.com/vi/qPp9360Xfwc/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
-                "pais": "US",
-                "embed_url": "https://www.youtube.com/embed/qPp9360Xfwc"
-            },
-            {
-                "id": "VEaVa4pkFJ4",
-                "tipo": "aula",
-                "titulo": "COMO EMPREENDER: DEIXANDO AS COISAS CHATAS E OBTENDO MAIS RESULTADOS | Flávio Augusto",
-                "descricao": "Assista mais Motivação: COMO SE REERGUER MESMO QUEBRADO E FICAR RICO | Flávio Augusto ...",
-                "canal": "Motivado",
-                "imagem_url": "https://i.ytimg.com/vi/VEaVa4pkFJ4/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
-                "pais": "US",
-                "embed_url": "https://www.youtube.com/embed/VEaVa4pkFJ4"
             },
             {
                 "id": "1NFQePqGfkw",
@@ -920,24 +833,9 @@
                 "descricao": "ATENÇÃO: Garanta sua vaga para a Bequest Academy. https://links.bequestacademy.com.br/qLB07R Me siga no Instagram: ...",
                 "canal": "Iagor Gonçalves",
                 "imagem_url": "https://i.ytimg.com/vi/1NFQePqGfkw/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "US",
                 "embed_url": "https://www.youtube.com/embed/1NFQePqGfkw"
-            },
-            {
-                "id": "Xx9wbV8D07Y",
-                "tipo": "aula",
-                "titulo": "EMPREENDER SÓ É DIFÍCIL PRA QUEM NÃO FAZ CONTA #shorts",
-                "descricao": "FAÇA PARTE DA TURMA 22 DO VIVER DE RENDA! Link da pré-matrícula: https://r.clique.ly/49c2296be5 - Trecho do episódio ...",
-                "canal": "Bruno Perini - Você MAIS Rico",
-                "imagem_url": "https://i.ytimg.com/vi/Xx9wbV8D07Y/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
-                "pais": "US",
-                "embed_url": "https://www.youtube.com/embed/Xx9wbV8D07Y"
             },
             {
                 "id": "0UdZwKvHuxk",
@@ -946,9 +844,7 @@
                 "descricao": "Você não abriu empresa pra virar refém dela. Quer escalar seus negócios? Comece por aqui: . . 1️⃣ Automatize processos ...",
                 "canal": "Ana Kucker",
                 "imagem_url": "https://i.ytimg.com/vi/0UdZwKvHuxk/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "US",
                 "embed_url": "https://www.youtube.com/embed/0UdZwKvHuxk"
             },
@@ -959,12 +855,8 @@
                 "descricao": "Pequenas Empresas Grandes Negócios 07/06/2025 [PEQUENAS EMPRESAS & GRANDES NEGÓCIOS] Ganhe Dinheiro ...",
                 "canal": "Capacita Cursos Online",
                 "imagem_url": "https://i.ytimg.com/vi/yi_LDPxKlCM/hqdefault.jpg",
-                "categorias": [
-                    "negócios"
-                ],
+                "categorias": ["negócios"],
                 "pais": "US",
                 "embed_url": "https://www.youtube.com/embed/yi_LDPxKlCM"
             }
         ]
-    }
-}

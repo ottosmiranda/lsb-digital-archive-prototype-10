@@ -74,7 +74,7 @@ export class DataService {
       console.log('Processing podcasts:', data.conteudo.podcasts.length);
       data.conteudo.podcasts.forEach((item: any) => {
         try {
-          const transformed = this.transformItem(item, 'podcast', idCounter++);
+          const transformed = this.transformPodcast(item, idCounter++);
           if (transformed) results.push(transformed);
         } catch (error) {
           console.warn('Error transforming podcast item:', error, item);
@@ -82,12 +82,12 @@ export class DataService {
       });
     }
 
-    // Process videos
-    if (data.conteudo.videos && Array.isArray(data.conteudo.videos)) {
-      console.log('Processing videos:', data.conteudo.videos.length);
-      data.conteudo.videos.forEach((item: any) => {
+    // Process aulas (videos) - corrected from 'videos' to 'aulas'
+    if (data.conteudo.aulas && Array.isArray(data.conteudo.aulas)) {
+      console.log('Processing aulas (videos):', data.conteudo.aulas.length);
+      data.conteudo.aulas.forEach((item: any) => {
         try {
-          const transformed = this.transformItem(item, 'video', idCounter++);
+          const transformed = this.transformVideo(item, idCounter++);
           if (transformed) results.push(transformed);
         } catch (error) {
           console.warn('Error transforming video item:', error, item);
@@ -100,7 +100,7 @@ export class DataService {
       console.log('Processing livros:', data.conteudo.livros.length);
       data.conteudo.livros.forEach((item: any) => {
         try {
-          const transformed = this.transformItem(item, 'titulo', idCounter++);
+          const transformed = this.transformBook(item, idCounter++);
           if (transformed) results.push(transformed);
         } catch (error) {
           console.warn('Error transforming livro item:', error, item);
@@ -112,77 +112,131 @@ export class DataService {
     return results;
   }
 
-  private transformItem(item: any, type: 'video' | 'titulo' | 'podcast', id: number): SearchResult | null {
+  private transformPodcast(item: any, id: number): SearchResult | null {
     if (!item) return null;
 
     try {
-      // Extract basic fields with fallbacks
-      const title = item.titulo || item.title || 'Título não informado';
-      const description = item.descricao || item.description || 'Descrição não disponível';
-      const author = item.publicador || item.autor || item.author || 'Autor não informado';
+      const title = item.titulo || 'Podcast sem título';
+      const description = item.descricao || 'Descrição não disponível';
+      const author = item.publicador || 'Autor não informado';
+      const year = item.ano ? parseInt(item.ano) : 2023;
       
-      // Handle different duration formats
-      let duration: string | undefined;
-      if (type === 'podcast' && item.total_episodes) {
-        duration = `${item.total_episodes} episódios`;
-      } else if (item.duracao) {
-        duration = item.duracao;
-      } else if (item.duration) {
-        duration = item.duration;
-      }
-
-      // Handle pages for books
-      const pages = item.paginas || item.pages;
-
-      // Handle thumbnail/image
-      const thumbnail = item.imagem_url || item.thumbnail || item.imagem;
-
-      // Extract year from various possible fields
-      let year = 2023; // default
-      if (item.ano) {
-        year = parseInt(item.ano);
-      } else if (item.year) {
-        year = parseInt(item.year);
-      } else if (item.data_publicacao) {
-        // Try to extract year from date string
-        const yearMatch = item.data_publicacao.match(/\d{4}/);
-        if (yearMatch) {
-          year = parseInt(yearMatch[0]);
-        }
-      }
-
-      // Handle subject/category
-      let subject = 'Geral';
+      // Handle categories
+      let subject = 'Podcast';
       if (item.categorias && Array.isArray(item.categorias) && item.categorias.length > 0) {
         subject = item.categorias[0];
-      } else if (item.assunto) {
-        subject = item.assunto;
-      } else if (item.subject) {
-        subject = item.subject;
       }
 
       const result: SearchResult = {
         id,
         title,
-        type,
+        type: 'podcast',
         author,
         description,
         year,
         subject,
-        ...(duration && { duration }),
-        ...(pages && { pages }),
-        ...(thumbnail && { thumbnail })
+        duration: item.total_episodes ? `${item.total_episodes} episódios` : undefined
       };
 
       return result;
     } catch (error) {
-      console.error('Error in transformItem:', error, item);
+      console.error('Error in transformPodcast:', error, item);
+      return null;
+    }
+  }
+
+  private transformVideo(item: any, id: number): SearchResult | null {
+    if (!item) return null;
+
+    try {
+      const title = item.titulo || 'Vídeo sem título';
+      const description = item.descricao || 'Descrição não disponível';
+      const author = item.canal || item.publicador || 'Canal não informado';
+      const year = item.ano ? parseInt(item.ano) : 2023;
+      
+      // Handle categories
+      let subject = 'Educação';
+      if (item.categorias && Array.isArray(item.categorias) && item.categorias.length > 0) {
+        subject = item.categorias[0];
+      }
+
+      // Handle duration - use provided duration or extract from YouTube if available
+      let duration: string | undefined;
+      if (item.duracao) {
+        duration = item.duracao;
+      } else if (item.url && item.url.includes('youtube.com')) {
+        // For YouTube videos without duration, we'll set a default
+        duration = 'N/A';
+      }
+
+      const result: SearchResult = {
+        id,
+        title,
+        type: 'video',
+        author,
+        description,
+        year,
+        subject,
+        duration,
+        thumbnail: item.thumbnail
+      };
+
+      return result;
+    } catch (error) {
+      console.error('Error in transformVideo:', error, item);
+      return null;
+    }
+  }
+
+  private transformBook(item: any, id: number): SearchResult | null {
+    if (!item) return null;
+
+    try {
+      // Handle incomplete book data
+      let title = item.titulo || item.title;
+      
+      // If no title, try to extract from filename/path
+      if (!title && item.arquivo) {
+        const filename = item.arquivo.split('/').pop() || '';
+        title = filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      }
+      
+      if (!title) {
+        title = 'Livro sem título';
+      }
+
+      const description = item.descricao || item.description || 'Livro em formato PDF disponível para download';
+      const author = item.autor || item.publicador || 'Autor não informado';
+      const year = item.ano ? parseInt(item.ano) : 2023;
+      
+      // Handle categories
+      let subject = 'Literatura';
+      if (item.categorias && Array.isArray(item.categorias) && item.categorias.length > 0) {
+        subject = item.categorias[0];
+      } else if (item.assunto) {
+        subject = item.assunto;
+      }
+
+      const result: SearchResult = {
+        id,
+        title,
+        type: 'titulo',
+        author,
+        description,
+        year,
+        subject,
+        pages: item.paginas
+      };
+
+      return result;
+    } catch (error) {
+      console.error('Error in transformBook:', error, item);
       return null;
     }
   }
 
   private getFallbackData(): SearchResult[] {
-    // Minimal fallback data
+    // Minimal fallback data with Portuguese content
     return [
       {
         id: 1,
@@ -206,13 +260,13 @@ export class DataService {
       },
       {
         id: 3,
-        title: 'Podcast Mãos que Falam',
-        type: 'podcast',
-        author: 'Ana Costa',
+        title: 'Técnicas de Negociação',
+        type: 'video',
+        author: 'Instituto de Comunicação',
         duration: '45:20',
-        description: 'Conversas sobre inclusão e acessibilidade.',
+        description: 'Aprenda técnicas avançadas de negociação e comunicação.',
         year: 2023,
-        subject: 'Inclusão'
+        subject: 'Negócios'
       }
     ];
   }

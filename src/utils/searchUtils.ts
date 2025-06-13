@@ -1,6 +1,14 @@
 
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
+// Helper function to normalize text for better Portuguese search
+const normalizeText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // Remove accents
+};
+
 export const filterResults = (
   results: SearchResult[], 
   searchQuery: string, 
@@ -8,11 +16,16 @@ export const filterResults = (
 ): SearchResult[] => {
   return results.filter(item => {
     if (searchQuery) {
-      const queryLower = searchQuery.toLowerCase();
-      const matchesQuery = item.title.toLowerCase().includes(queryLower) ||
-                         item.description.toLowerCase().includes(queryLower) ||
-                         item.author.toLowerCase().includes(queryLower) ||
-                         item.subject.toLowerCase().includes(queryLower);
+      const queryNormalized = normalizeText(searchQuery);
+      const titleNormalized = normalizeText(item.title);
+      const descriptionNormalized = normalizeText(item.description);
+      const authorNormalized = normalizeText(item.author);
+      const subjectNormalized = normalizeText(item.subject);
+      
+      const matchesQuery = titleNormalized.includes(queryNormalized) ||
+                         descriptionNormalized.includes(queryNormalized) ||
+                         authorNormalized.includes(queryNormalized) ||
+                         subjectNormalized.includes(queryNormalized);
       if (!matchesQuery) return false;
     }
 
@@ -25,8 +38,9 @@ export const filterResults = (
     }
 
     if (currentFilters.author) {
-      const authorLower = currentFilters.author.toLowerCase();
-      if (!item.author.toLowerCase().includes(authorLower)) return false;
+      const authorNormalized = normalizeText(item.author);
+      const filterAuthorNormalized = normalizeText(currentFilters.author);
+      if (!authorNormalized.includes(filterAuthorNormalized)) return false;
     }
 
     if (currentFilters.year) {
@@ -75,9 +89,12 @@ export const sortResults = (resultsToSort: SearchResult[], sortType: string, que
     case 'relevance':
     default:
       return resultsToSort.sort((a, b) => {
-        const queryLower = query.toLowerCase();
-        const aRelevance = a.title.toLowerCase().includes(queryLower) ? 2 : 0;
-        const bRelevance = b.title.toLowerCase().includes(queryLower) ? 2 : 0;
+        const queryNormalized = normalizeText(query);
+        const aTitleNormalized = normalizeText(a.title);
+        const bTitleNormalized = normalizeText(b.title);
+        
+        const aRelevance = aTitleNormalized.includes(queryNormalized) ? 2 : 0;
+        const bRelevance = bTitleNormalized.includes(queryNormalized) ? 2 : 0;
         
         const aScore = aRelevance + (a.year / 1000);
         const bScore = bRelevance + (b.year / 1000);

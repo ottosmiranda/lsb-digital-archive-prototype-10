@@ -58,37 +58,127 @@ export class DataService {
     }
   }
 
-  private validateAndTransformData(data: any[]): SearchResult[] {
-    if (!Array.isArray(data)) {
-      throw new Error('Data must be an array');
+  private validateAndTransformData(data: any): SearchResult[] {
+    console.log('Raw data structure:', data);
+    
+    if (!data || !data.conteudo) {
+      console.error('Invalid data structure - missing conteudo property');
+      return this.getFallbackData();
     }
 
-    return data.map((item, index) => {
-      // Transform your JSON structure to match SearchResult interface
-      return {
-        id: item.id || index + 1,
-        title: item.title || item.nome || 'Título não informado',
-        type: this.normalizeType(item.type || item.tipo || 'titulo'),
-        author: item.author || item.autor || 'Autor não informado',
-        duration: item.duration || item.duracao,
-        pages: item.pages || item.paginas,
-        thumbnail: item.thumbnail || item.imagem,
-        description: item.description || item.descricao || 'Descrição não disponível',
-        year: parseInt(item.year || item.ano || '2023'),
-        subject: item.subject || item.assunto || 'Geral'
-      };
-    });
+    const results: SearchResult[] = [];
+    let idCounter = 1;
+
+    // Process podcasts
+    if (data.conteudo.podcasts && Array.isArray(data.conteudo.podcasts)) {
+      console.log('Processing podcasts:', data.conteudo.podcasts.length);
+      data.conteudo.podcasts.forEach((item: any) => {
+        try {
+          const transformed = this.transformItem(item, 'podcast', idCounter++);
+          if (transformed) results.push(transformed);
+        } catch (error) {
+          console.warn('Error transforming podcast item:', error, item);
+        }
+      });
+    }
+
+    // Process videos
+    if (data.conteudo.videos && Array.isArray(data.conteudo.videos)) {
+      console.log('Processing videos:', data.conteudo.videos.length);
+      data.conteudo.videos.forEach((item: any) => {
+        try {
+          const transformed = this.transformItem(item, 'video', idCounter++);
+          if (transformed) results.push(transformed);
+        } catch (error) {
+          console.warn('Error transforming video item:', error, item);
+        }
+      });
+    }
+
+    // Process livros (books)
+    if (data.conteudo.livros && Array.isArray(data.conteudo.livros)) {
+      console.log('Processing livros:', data.conteudo.livros.length);
+      data.conteudo.livros.forEach((item: any) => {
+        try {
+          const transformed = this.transformItem(item, 'titulo', idCounter++);
+          if (transformed) results.push(transformed);
+        } catch (error) {
+          console.warn('Error transforming livro item:', error, item);
+        }
+      });
+    }
+
+    console.log('Total transformed results:', results.length);
+    return results;
   }
 
-  private normalizeType(type: string): 'video' | 'titulo' | 'podcast' {
-    const normalizedType = type.toLowerCase();
-    if (normalizedType.includes('video') || normalizedType.includes('vídeo')) {
-      return 'video';
+  private transformItem(item: any, type: 'video' | 'titulo' | 'podcast', id: number): SearchResult | null {
+    if (!item) return null;
+
+    try {
+      // Extract basic fields with fallbacks
+      const title = item.titulo || item.title || 'Título não informado';
+      const description = item.descricao || item.description || 'Descrição não disponível';
+      const author = item.publicador || item.autor || item.author || 'Autor não informado';
+      
+      // Handle different duration formats
+      let duration: string | undefined;
+      if (type === 'podcast' && item.total_episodes) {
+        duration = `${item.total_episodes} episódios`;
+      } else if (item.duracao) {
+        duration = item.duracao;
+      } else if (item.duration) {
+        duration = item.duration;
+      }
+
+      // Handle pages for books
+      const pages = item.paginas || item.pages;
+
+      // Handle thumbnail/image
+      const thumbnail = item.imagem_url || item.thumbnail || item.imagem;
+
+      // Extract year from various possible fields
+      let year = 2023; // default
+      if (item.ano) {
+        year = parseInt(item.ano);
+      } else if (item.year) {
+        year = parseInt(item.year);
+      } else if (item.data_publicacao) {
+        // Try to extract year from date string
+        const yearMatch = item.data_publicacao.match(/\d{4}/);
+        if (yearMatch) {
+          year = parseInt(yearMatch[0]);
+        }
+      }
+
+      // Handle subject/category
+      let subject = 'Geral';
+      if (item.categorias && Array.isArray(item.categorias) && item.categorias.length > 0) {
+        subject = item.categorias[0];
+      } else if (item.assunto) {
+        subject = item.assunto;
+      } else if (item.subject) {
+        subject = item.subject;
+      }
+
+      const result: SearchResult = {
+        id,
+        title,
+        type,
+        author,
+        description,
+        year,
+        subject,
+        ...(duration && { duration }),
+        ...(pages && { pages }),
+        ...(thumbnail && { thumbnail })
+      };
+
+      return result;
+    } catch (error) {
+      console.error('Error in transformItem:', error, item);
+      return null;
     }
-    if (normalizedType.includes('podcast') || normalizedType.includes('áudio')) {
-      return 'podcast';
-    }
-    return 'titulo';
   }
 
   private getFallbackData(): SearchResult[] {

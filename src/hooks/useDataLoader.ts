@@ -11,14 +11,24 @@ export const useDataLoader = () => {
   useEffect(() => {
     const loadInitialData = async () => {
       if (!dataLoaded) {
+        console.log('🔄 useDataLoader: Starting initial data load...');
         setLoading(true);
         try {
           const data = await dataService.loadData();
+          console.log('✅ useDataLoader: Data loaded successfully, count:', data.length);
+          
+          // Check if we're using fallback data
+          const usingFallback = data.length === 3 && data.some(item => item.title === 'Introdução à Libras');
+          if (usingFallback) {
+            console.warn('⚠️ useDataLoader: DETECTED FALLBACK DATA - Real JSON failed to load!');
+          } else {
+            console.log('✅ useDataLoader: Real JSON data loaded successfully');
+          }
+          
           setAllData(data);
           setDataLoaded(true);
-          console.log('Initial data loaded successfully');
         } catch (error) {
-          console.error('Error loading initial data:', error);
+          console.error('❌ useDataLoader: Error loading initial data:', error);
         } finally {
           setLoading(false);
         }

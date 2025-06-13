@@ -18,21 +18,26 @@ export class DataService {
   async loadData(): Promise<SearchResult[]> {
     // Return cached data if available
     if (this.cachedData) {
+      console.log('Returning cached data, length:', this.cachedData.length);
       return this.cachedData;
     }
 
     // Return existing loading promise if already loading
     if (this.loadingPromise) {
+      console.log('Returning existing loading promise');
       return this.loadingPromise;
     }
 
     // Start loading data
+    console.log('Starting fresh data load...');
     this.loadingPromise = this.fetchData();
     
     try {
       this.cachedData = await this.loadingPromise;
+      console.log('Data loaded successfully, total items:', this.cachedData.length);
       return this.cachedData;
     } catch (error) {
+      console.error('Failed to load data, clearing loading promise:', error);
       this.loadingPromise = null;
       throw error;
     }
@@ -40,75 +45,141 @@ export class DataService {
 
   private async fetchData(): Promise<SearchResult[]> {
     try {
-      const response = await fetch('/lsb-data.json');
+      console.log('Fetching /lsb-data.json...');
+      
+      // Add cache-busting timestamp
+      const timestamp = new Date().getTime();
+      const url = `/lsb-data.json?t=${timestamp}`;
+      console.log('Fetching URL:', url);
+      
+      const response = await fetch(url);
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
-        console.warn('JSON file not found, using fallback mock data');
+        console.warn(`JSON file request failed with status ${response.status}, using fallback mock data`);
         return this.getFallbackData();
       }
 
-      const data = await response.json();
+      console.log('Response OK, parsing JSON...');
+      const rawText = await response.text();
+      console.log('Raw response length:', rawText.length);
+      console.log('Raw response preview (first 500 chars):', rawText.substring(0, 500));
+      
+      let data;
+      try {
+        data = JSON.parse(rawText);
+        console.log('JSON parsed successfully');
+        console.log('Parsed data keys:', Object.keys(data));
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        console.error('JSON parse error details:', {
+          message: parseError.message,
+          line: parseError.line,
+          column: parseError.column
+        });
+        console.warn('JSON parsing failed, using fallback mock data');
+        return this.getFallbackData();
+      }
       
       // Validate and transform data
-      return this.validateAndTransformData(data);
+      console.log('Validating and transforming data...');
+      const transformedData = this.validateAndTransformData(data);
+      console.log('Data transformation complete, final count:', transformedData.length);
+      return transformedData;
     } catch (error) {
-      console.error('Error loading data:', error);
-      console.warn('Using fallback mock data');
+      console.error('Error in fetchData:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      console.warn('Fetch failed, using fallback mock data');
       return this.getFallbackData();
     }
   }
 
   private validateAndTransformData(data: any): SearchResult[] {
     console.log('Raw data structure:', data);
+    console.log('Data type:', typeof data);
+    console.log('Is array:', Array.isArray(data));
     
-    if (!data || !data.conteudo) {
-      console.error('Invalid data structure - missing conteudo property');
+    if (!data) {
+      console.error('Data is null or undefined');
       return this.getFallbackData();
     }
 
+    if (!data.conteudo) {
+      console.error('Invalid data structure - missing conteudo property');
+      console.log('Available top-level keys:', Object.keys(data));
+      return this.getFallbackData();
+    }
+
+    console.log('Conteudo keys:', Object.keys(data.conteudo));
     const results: SearchResult[] = [];
     let idCounter = 1;
 
     // Process podcasts
     if (data.conteudo.podcasts && Array.isArray(data.conteudo.podcasts)) {
-      console.log('Processing podcasts:', data.conteudo.podcasts.length);
-      data.conteudo.podcasts.forEach((item: any) => {
+      console.log('Processing podcasts, count:', data.conteudo.podcasts.length);
+      data.conteudo.podcasts.forEach((item: any, index: number) => {
         try {
           const transformed = this.transformPodcast(item, idCounter++);
-          if (transformed) results.push(transformed);
+          if (transformed) {
+            results.push(transformed);
+            console.log(`Podcast ${index + 1} transformed:`, transformed.title);
+          }
         } catch (error) {
-          console.warn('Error transforming podcast item:', error, item);
+          console.warn(`Error transforming podcast item ${index}:`, error, item);
         }
       });
+    } else {
+      console.log('No podcasts found or not an array');
     }
 
-    // Process aulas (videos) - corrected from 'videos' to 'aulas'
+    // Process aulas (videos)
     if (data.conteudo.aulas && Array.isArray(data.conteudo.aulas)) {
-      console.log('Processing aulas (videos):', data.conteudo.aulas.length);
-      data.conteudo.aulas.forEach((item: any) => {
+      console.log('Processing aulas (videos), count:', data.conteudo.aulas.length);
+      data.conteudo.aulas.forEach((item: any, index: number) => {
         try {
           const transformed = this.transformVideo(item, idCounter++);
-          if (transformed) results.push(transformed);
+          if (transformed) {
+            results.push(transformed);
+            console.log(`Video ${index + 1} transformed:`, transformed.title);
+          }
         } catch (error) {
-          console.warn('Error transforming video item:', error, item);
+          console.warn(`Error transforming video item ${index}:`, error, item);
         }
       });
+    } else {
+      console.log('No aulas found or not an array');
     }
 
     // Process livros (books)
     if (data.conteudo.livros && Array.isArray(data.conteudo.livros)) {
-      console.log('Processing livros:', data.conteudo.livros.length);
-      data.conteudo.livros.forEach((item: any) => {
+      console.log('Processing livros, count:', data.conteudo.livros.length);
+      data.conteudo.livros.forEach((item: any, index: number) => {
         try {
           const transformed = this.transformBook(item, idCounter++);
-          if (transformed) results.push(transformed);
+          if (transformed) {
+            results.push(transformed);
+            console.log(`Book ${index + 1} transformed:`, transformed.title);
+          }
         } catch (error) {
-          console.warn('Error transforming livro item:', error, item);
+          console.warn(`Error transforming livro item ${index}:`, error, item);
         }
       });
+    } else {
+      console.log('No livros found or not an array');
     }
 
     console.log('Total transformed results:', results.length);
+    
+    if (results.length === 0) {
+      console.warn('No items were successfully transformed, using fallback data');
+      return this.getFallbackData();
+    }
+    
     return results;
   }
 
@@ -236,6 +307,8 @@ export class DataService {
   }
 
   private getFallbackData(): SearchResult[] {
+    console.warn('🚨 USING FALLBACK MOCK DATA - Real JSON data failed to load');
+    
     // Minimal fallback data with Portuguese content
     return [
       {
@@ -273,6 +346,7 @@ export class DataService {
 
   // Clear cache method for manual refresh
   clearCache(): void {
+    console.log('Clearing DataService cache...');
     this.cachedData = null;
     this.loadingPromise = null;
   }

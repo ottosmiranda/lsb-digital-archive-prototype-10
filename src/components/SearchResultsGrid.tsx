@@ -1,4 +1,3 @@
-
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +44,12 @@ const SearchResultsGrid = ({ results, loading }: SearchResultsGridProps) => {
   };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    e.currentTarget.style.display = 'none';
+    const target = e.currentTarget;
+    target.style.display = 'none';
+    const placeholder = target.nextElementSibling as HTMLElement;
+    if (placeholder) {
+      placeholder.style.display = 'flex';
+    }
   };
 
   if (loading) {
@@ -79,15 +83,19 @@ const SearchResultsGrid = ({ results, loading }: SearchResultsGridProps) => {
               <div className="space-y-4">
                 {/* Thumbnail */}
                 <div className="relative h-32 bg-gray-100 rounded-t-lg overflow-hidden">
-                  {result.thumbnail ? (
+                  {result.thumbnail && (
                     <img 
                       src={result.thumbnail} 
                       alt={result.title}
                       className="w-full h-full object-cover"
                       onError={handleImageError}
                     />
-                  ) : null}
-                  <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+                  )}
+                  {/* Placeholder - only shown when no image or image fails */}
+                  <div 
+                    className="absolute inset-0 bg-gray-100 flex items-center justify-center"
+                    style={{ display: result.thumbnail ? 'none' : 'flex' }}
+                  >
                     {getTypeIcon(result.type)}
                   </div>
                   <div className="absolute top-2 left-2">

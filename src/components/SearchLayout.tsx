@@ -9,6 +9,7 @@ import EmptySearchState from '@/components/EmptySearchState';
 import SearchWelcomeState from '@/components/SearchWelcomeState';
 import SearchPagination from '@/components/SearchPagination';
 import FilterChips from '@/components/FilterChips';
+import DataRefreshButton from '@/components/DataRefreshButton';
 import Footer from '@/components/Footer';
 import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
 
@@ -22,11 +23,13 @@ interface SearchLayoutProps {
   currentPage: number;
   loading: boolean;
   hasActiveFilters: boolean;
+  usingFallback?: boolean;
   onFiltersChange: (filters: SearchFiltersType) => void;
   onSortChange: (sort: string) => void;
   onPageChange: (page: number) => void;
   onClearFilters: () => void;
   onQuickSearch?: (query: string) => void;
+  onRefreshData?: () => Promise<void>;
 }
 
 const SearchLayout = ({
@@ -39,11 +42,13 @@ const SearchLayout = ({
   currentPage,
   loading,
   hasActiveFilters,
+  usingFallback = false,
   onFiltersChange,
   onSortChange,
   onPageChange,
   onClearFilters,
-  onQuickSearch
+  onQuickSearch,
+  onRefreshData
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   
@@ -80,6 +85,14 @@ const SearchLayout = ({
       <Navigation />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {onRefreshData && (
+          <DataRefreshButton
+            onRefresh={onRefreshData}
+            loading={loading}
+            usingFallback={usingFallback}
+          />
+        )}
+
         {!showWelcomeState && (
           <SearchHeader 
             query={query}

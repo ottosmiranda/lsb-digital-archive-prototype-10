@@ -13,11 +13,13 @@ const SearchResults = () => {
     currentPage,
     loading,
     hasActiveFilters,
+    usingFallback,
     handleFilterChange,
     handleSortChange,
     handlePageChange,
     setFilters,
-    setQuery
+    setQuery,
+    forceRefresh
   } = useSearchResults();
 
   const handleClearFilters = () => {
@@ -45,11 +47,13 @@ const SearchResults = () => {
       currentPage={currentPage}
       loading={loading}
       hasActiveFilters={hasActiveFilters}
+      usingFallback={usingFallback}
       onFiltersChange={handleFilterChange}
       onSortChange={handleSortChange}
       onPageChange={handlePageChange}
       onClearFilters={handleClearFilters}
       onQuickSearch={handleQuickSearch}
+      onRefreshData={forceRefresh}
     />
   );
 };

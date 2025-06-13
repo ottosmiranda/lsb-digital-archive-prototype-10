@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { SearchFilters } from '@/types/searchTypes';
 import { useDataLoader } from '@/hooks/useDataLoader';
@@ -10,7 +9,7 @@ export const useSearchResults = () => {
   const resultsPerPage = 9;
   
   // Load initial data
-  const { allData, loading, dataLoaded, setLoading } = useDataLoader();
+  const { allData, loading, dataLoaded, usingFallback, setLoading, forceRefresh } = useDataLoader();
   
   // Manage search state and URL params
   const {
@@ -73,10 +72,12 @@ export const useSearchResults = () => {
     currentPage,
     loading,
     hasActiveFilters,
+    usingFallback,
     handleFilterChange,
     handleSortChange,
     handlePageChange,
     setFilters,
-    setQuery
+    setQuery,
+    forceRefresh
   };
 };

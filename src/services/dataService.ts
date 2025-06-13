@@ -5,6 +5,8 @@ export class DataService {
   private static instance: DataService;
   private cachedData: SearchResult[] | null = null;
   private loadingPromise: Promise<SearchResult[]> | null = null;
+  private lastLoadTime: number = 0;
+  private maxCacheAge: number = 5 * 60 * 1000; // 5 minutes in milliseconds
 
   private constructor() {}
 
@@ -15,29 +17,48 @@ export class DataService {
     return DataService.instance;
   }
 
-  async loadData(): Promise<SearchResult[]> {
-    // Return cached data if available
-    if (this.cachedData) {
-      console.log('Returning cached data, length:', this.cachedData.length);
+  async loadData(forceRefresh: boolean = false): Promise<SearchResult[]> {
+    console.log('🔄 DataService.loadData called with forceRefresh:', forceRefresh);
+    
+    // Check if we should force refresh or if cache is stale
+    const now = Date.now();
+    const cacheIsStale = (now - this.lastLoadTime) > this.maxCacheAge;
+    
+    if (forceRefresh || cacheIsStale) {
+      console.log('🔄 Force refreshing data cache...');
+      this.clearCache();
+    }
+
+    // Return cached data if available and not forcing refresh
+    if (this.cachedData && !forceRefresh && !cacheIsStale) {
+      console.log('✅ Returning cached data, length:', this.cachedData.length);
       return this.cachedData;
     }
 
     // Return existing loading promise if already loading
     if (this.loadingPromise) {
-      console.log('Returning existing loading promise');
+      console.log('⏳ Returning existing loading promise');
       return this.loadingPromise;
     }
 
     // Start loading data
-    console.log('Starting fresh data load...');
+    console.log('🚀 Starting fresh data load...');
     this.loadingPromise = this.fetchData();
     
     try {
       this.cachedData = await this.loadingPromise;
-      console.log('Data loaded successfully, total items:', this.cachedData.length);
+      this.lastLoadTime = Date.now();
+      console.log('✅ Data loaded successfully, total items:', this.cachedData.length);
+      
+      // Check if we're still getting fallback data after refresh
+      const usingFallback = this.cachedData.length === 3 && this.cachedData.some(item => item.title === 'Introdução à Libras');
+      if (usingFallback && forceRefresh) {
+        console.error('❌ Still getting fallback data even after force refresh!');
+      }
+      
       return this.cachedData;
     } catch (error) {
-      console.error('Failed to load data, clearing loading promise:', error);
+      console.error('❌ Failed to load data, clearing loading promise:', error);
       this.loadingPromise = null;
       throw error;
     }
@@ -45,56 +66,63 @@ export class DataService {
 
   private async fetchData(): Promise<SearchResult[]> {
     try {
-      console.log('Fetching /lsb-data.json...');
+      console.log('📡 Fetching /lsb-data.json...');
       
-      // Add cache-busting timestamp
+      // Add cache-busting timestamp and random parameter
       const timestamp = new Date().getTime();
-      const url = `/lsb-data.json?t=${timestamp}`;
-      console.log('Fetching URL:', url);
+      const random = Math.random().toString(36).substring(7);
+      const url = `/lsb-data.json?t=${timestamp}&r=${random}`;
+      console.log('🌐 Fetching URL:', url);
       
-      const response = await fetch(url);
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      console.log('📊 Response status:', response.status);
+      console.log('📋 Response headers:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
-        console.warn(`JSON file request failed with status ${response.status}, using fallback mock data`);
+        console.warn(`❌ JSON file request failed with status ${response.status}, using fallback mock data`);
         return this.getFallbackData();
       }
 
-      console.log('Response OK, parsing JSON...');
+      console.log('📖 Response OK, parsing JSON...');
       const rawText = await response.text();
-      console.log('Raw response length:', rawText.length);
-      console.log('Raw response preview (first 500 chars):', rawText.substring(0, 500));
+      console.log('📏 Raw response length:', rawText.length);
+      console.log('👀 Raw response preview (first 200 chars):', rawText.substring(0, 200));
       
       let data;
       try {
         data = JSON.parse(rawText);
-        console.log('JSON parsed successfully');
-        console.log('Parsed data keys:', Object.keys(data));
+        console.log('✅ JSON parsed successfully');
+        console.log('🔑 Parsed data keys:', Object.keys(data));
+        console.log('📊 Total items reported:', data.totalItens);
       } catch (parseError) {
-        console.error('JSON parse error:', parseError);
-        console.error('JSON parse error details:', {
-          message: parseError.message,
-          line: parseError.line,
-          column: parseError.column
-        });
-        console.warn('JSON parsing failed, using fallback mock data');
+        console.error('❌ JSON parse error:', parseError);
+        console.warn('⚠️ JSON parsing failed, using fallback mock data');
         return this.getFallbackData();
       }
       
       // Validate and transform data
-      console.log('Validating and transforming data...');
+      console.log('🔄 Validating and transforming data...');
       const transformedData = this.validateAndTransformData(data);
-      console.log('Data transformation complete, final count:', transformedData.length);
+      console.log('✅ Data transformation complete, final count:', transformedData.length);
+      
+      if (transformedData.length > 3) {
+        console.log('🎉 Successfully loaded real data with', transformedData.length, 'items!');
+      } else {
+        console.warn('⚠️ Only got', transformedData.length, 'items - this might still be fallback data');
+      }
+      
       return transformedData;
     } catch (error) {
-      console.error('Error in fetchData:', error);
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-      console.warn('Fetch failed, using fallback mock data');
+      console.error('❌ Error in fetchData:', error);
+      console.warn('⚠️ Fetch failed, using fallback mock data');
       return this.getFallbackData();
     }
   }
@@ -346,9 +374,22 @@ export class DataService {
 
   // Clear cache method for manual refresh
   clearCache(): void {
-    console.log('Clearing DataService cache...');
+    console.log('🧹 Clearing DataService cache...');
     this.cachedData = null;
     this.loadingPromise = null;
+    this.lastLoadTime = 0;
+  }
+
+  // Force refresh method
+  async forceRefresh(): Promise<SearchResult[]> {
+    console.log('🔄 Force refreshing data...');
+    return this.loadData(true);
+  }
+
+  // Check if using fallback data
+  isUsingFallbackData(): boolean {
+    if (!this.cachedData) return false;
+    return this.cachedData.length === 3 && this.cachedData.some(item => item.title === 'Introdução à Libras');
   }
 }
 

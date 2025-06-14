@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,9 @@ interface StreamlinedSearchFiltersProps {
 
 const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [] }: StreamlinedSearchFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [localAuthor, setLocalAuthor] = useState(filters.author);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+  
   const [openSections, setOpenSections] = useState({
     subject: true,
     itemType: true,
@@ -26,6 +30,30 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
     year: false,
     duration: false
   });
+
+  // Sync local author state with external filters
+  useEffect(() => {
+    setLocalAuthor(filters.author);
+  }, [filters.author]);
+
+  // Debounced author filter effect
+  useEffect(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    debounceTimeoutRef.current = setTimeout(() => {
+      if (localAuthor !== filters.author) {
+        onFiltersChange({ ...filters, author: localAuthor });
+      }
+    }, 500); // 500ms delay
+
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [localAuthor]);
 
   // Extract available document types from current results
   const availableDocumentTypes = useMemo(() => {
@@ -80,11 +108,24 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
     onFiltersChange({ ...filters, duration: durationValue });
   };
 
+  const handleAuthorChange = (value: string) => {
+    setLocalAuthor(value);
+  };
+
+  const handleAuthorBlur = () => {
+    // Immediately apply filter when user leaves the field
+    if (localAuthor !== filters.author) {
+      onFiltersChange({ ...filters, author: localAuthor });
+    }
+  };
+
   const clearAuthor = () => {
+    setLocalAuthor('');
     onFiltersChange({ ...filters, author: '' });
   };
 
   const clearFilters = () => {
+    setLocalAuthor('');
     onFiltersChange({
       resourceType: [], // Keep for backward compatibility
       subject: [],
@@ -212,11 +253,12 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
             <div className="relative">
               <Input
                 placeholder="Nome do autor"
-                value={filters.author}
-                onChange={(e) => onFiltersChange({ ...filters, author: e.target.value })}
+                value={localAuthor}
+                onChange={(e) => handleAuthorChange(e.target.value)}
+                onBlur={handleAuthorBlur}
                 className="pr-10"
               />
-              {filters.author && (
+              {localAuthor && (
                 <Button
                   variant="ghost"
                   size="sm"

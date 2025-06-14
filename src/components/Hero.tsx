@@ -42,21 +42,9 @@ const Hero = () => {
               <span className="block text-lsb-accent">conhecimento na LSB</span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-blue-100 mb-12 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl md:text-2xl text-blue-100 mb-16 max-w-3xl mx-auto leading-relaxed">
               Explore livros, artigos, vídeos e podcasts sem precisar fazer login.
             </p>
-
-            {/* CTA Button */}
-            <div className="mb-16">
-              <Button
-                size="lg"
-                className="bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary font-semibold px-8 py-4 text-lg rounded-full hover-lift transform transition-all duration-300"
-                onClick={() => window.location.href = '/buscar'}
-              >
-                Explorar Biblioteca
-                <Search className="ml-2 h-5 w-5" />
-              </Button>
-            </div>
           </div>
 
           {/* Enhanced Search */}

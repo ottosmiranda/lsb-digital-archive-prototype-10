@@ -47,12 +47,12 @@ const QuickAccess = () => {
               <a
                 key={type.label}
                 href={type.href}
-                className="group animate-fade-in hover-lift"
+                className="animate-fade-in"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className="text-center">
                   {/* Icon Circle */}
-                  <div className={`relative mx-auto w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br ${type.color} rounded-full flex items-center justify-center mb-4 shadow-lg group-hover:shadow-xl transition-all duration-300`}>
+                  <div className={`relative mx-auto w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br ${type.color} rounded-full flex items-center justify-center mb-4 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer`}>
                     <IconComponent className="h-10 w-10 md:h-12 md:w-12 text-white" />
                     
                     {/* Floating Badge */}
@@ -62,7 +62,7 @@ const QuickAccess = () => {
                   </div>
 
                   {/* Label */}
-                  <h3 className="text-lg md:text-xl font-semibold lsb-primary group-hover:text-blue-600 transition-colors duration-300">
+                  <h3 className="text-lg md:text-xl font-semibold lsb-primary transition-colors duration-300">
                     {type.label}
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">

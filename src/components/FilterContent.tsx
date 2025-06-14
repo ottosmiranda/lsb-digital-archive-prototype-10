@@ -1,21 +1,18 @@
+
 import React, { useMemo, useCallback } from 'react';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import AuthorInput from '@/components/AuthorInput';
 import AuthorList from '@/components/AuthorList';
+import SubjectFacetList from '@/components/SubjectFacetList';
+import LanguageFacetList from '@/components/LanguageFacetList';
 
 // Static data moved outside component to prevent re-creation
-const languages = ['Português', 'Inglês', 'Espanhol'];
-const subjects = [
-  'Educação', 'História', 'Linguística', 'Cultura Surda', 'Inclusão', 
-  'Tecnologia', 'Saúde', 'Direitos', 'Arte', 'Literatura'
-];
 const years = Array.from({ length: 10 }, (_, i) => (new Date().getFullYear() - i).toString());
 
 interface FilterContentProps {
@@ -75,18 +72,12 @@ const FilterContent = React.memo(({
     onFiltersChange({ ...filters, documentType: newDocumentTypes });
   }, [filters, onFiltersChange]);
 
-  const handleLanguageChange = useCallback((languageId: string, checked: boolean) => {
-    const newLanguages = checked
-      ? [...filters.language, languageId]
-      : filters.language.filter((lang: string) => lang !== languageId);
-    onFiltersChange({ ...filters, language: newLanguages });
+  const handleSubjectsChange = useCallback((subjects: string[]) => {
+    onFiltersChange({ ...filters, subject: subjects });
   }, [filters, onFiltersChange]);
 
-  const handleSubjectChange = useCallback((subjectId: string, checked: boolean) => {
-    const newSubjects = checked 
-      ? [...filters.subject, subjectId]
-      : filters.subject.filter((s: string) => s !== subjectId);
-    onFiltersChange({ ...filters, subject: newSubjects });
+  const handleLanguagesChange = useCallback((languages: string[]) => {
+    onFiltersChange({ ...filters, language: languages });
   }, [filters, onFiltersChange]);
 
   const handleYearChange = useCallback((value: string) => {
@@ -136,7 +127,7 @@ const FilterContent = React.memo(({
         </div>
       )}
 
-      {/* Subject Filter */}
+      {/* Subject Filter with Facet Counts */}
       <Collapsible open={openSections.subject} onOpenChange={() => onToggleSection('subject')}>
         <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">
@@ -150,17 +141,12 @@ const FilterContent = React.memo(({
           {openSections.subject ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
-          <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-            {subjects.map((subject) => (
-              <div key={subject} className="flex items-center space-x-2">
-                <Checkbox
-                  id={subject}
-                  checked={filters.subject.includes(subject)}
-                  onCheckedChange={(checked) => handleSubjectChange(subject, !!checked)}
-                />
-                <Label htmlFor={subject} className="text-sm cursor-pointer">{subject}</Label>
-              </div>
-            ))}
+          <div className="p-3 border border-gray-200 rounded-lg bg-white">
+            <SubjectFacetList
+              currentResults={currentResults}
+              selectedSubjects={filters.subject}
+              onSubjectsChange={handleSubjectsChange}
+            />
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -183,10 +169,11 @@ const FilterContent = React.memo(({
             <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
               {availableDocumentTypes.map((docType) => (
                 <div key={docType} className="flex items-center space-x-2">
-                  <Checkbox
+                  <input
+                    type="checkbox"
                     id={`docType-${docType}`}
                     checked={filters.documentType.includes(docType)}
-                    onCheckedChange={(checked) => handleDocumentTypeChange(docType, !!checked)}
+                    onChange={(e) => handleDocumentTypeChange(docType, e.target.checked)}
                   />
                   <Label htmlFor={`docType-${docType}`} className="text-sm cursor-pointer">{docType}</Label>
                 </div>
@@ -235,7 +222,7 @@ const FilterContent = React.memo(({
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Language Filter */}
+      {/* Language Filter with Facet Counts */}
       <Collapsible open={openSections.language} onOpenChange={() => onToggleSection('language')}>
         <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">
@@ -249,17 +236,12 @@ const FilterContent = React.memo(({
           {openSections.language ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
-          <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-            {languages.map((language) => (
-              <div key={language} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`language-${language}`}
-                  checked={filters.language.includes(language)}
-                  onCheckedChange={(checked) => handleLanguageChange(language, !!checked)}
-                />
-                <Label htmlFor={`language-${language}`} className="text-sm cursor-pointer">{language}</Label>
-              </div>
-            ))}
+          <div className="p-3 border border-gray-200 rounded-lg bg-white">
+            <LanguageFacetList
+              currentResults={currentResults}
+              selectedLanguages={filters.language}
+              onLanguagesChange={handleLanguagesChange}
+            />
           </div>
         </CollapsibleContent>
       </Collapsible>

@@ -24,6 +24,40 @@ export const extractAuthorsFromResults = (results: SearchResult[]): { name: stri
     .sort((a, b) => b.count - a.count);
 };
 
+// Extract unique subjects with counts from search results
+export const extractSubjectFacets = (results: SearchResult[]): { name: string; count: number }[] => {
+  const subjectCounts = new Map<string, number>();
+  
+  results.forEach(result => {
+    if (result.subject && result.subject.trim()) {
+      const subjectName = result.subject.trim();
+      subjectCounts.set(subjectName, (subjectCounts.get(subjectName) || 0) + 1);
+    }
+  });
+  
+  return Array.from(subjectCounts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+};
+
+// Extract unique languages with counts from search results
+export const extractLanguageFacets = (results: SearchResult[]): { name: string; count: number }[] => {
+  const languageCounts = new Map<string, number>();
+  
+  results.forEach(result => {
+    if (result.pais) {
+      const language = countryToLanguage[result.pais.toUpperCase()];
+      if (language) {
+        languageCounts.set(language, (languageCounts.get(language) || 0) + 1);
+      }
+    }
+  });
+  
+  return Array.from(languageCounts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+};
+
 // Mapping for pais (country code) to language.
 // This is a simplified example. A more comprehensive mapping might be needed.
 const countryToLanguage: Record<string, string> = {

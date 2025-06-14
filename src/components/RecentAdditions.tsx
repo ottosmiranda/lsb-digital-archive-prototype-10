@@ -1,83 +1,102 @@
 
-import { Book, FileText, Video, Headphones, Calendar } from 'lucide-react';
+import { Book, Video, Headphones, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import lsbData from '../../public/lsb-data.json';
 
-const RecentAdditions = () => {
-  // Transform and combine all content types
-  const allItems = [
-    // Transform podcasts
-    ...lsbData.conteudo.podcasts.map(podcast => ({
-      id: podcast.id,
-      title: podcast.titulo,
-      type: 'podcast' as const,
-      author: podcast.publicador,
-      description: podcast.descricao,
-      thumbnail: podcast.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
-      addedDate: podcast.ano || '2023'
-    })),
-    // Transform videos (aulas)
-    ...lsbData.conteudo.aulas.map(aula => ({
-      id: aula.id,
-      title: aula.titulo,
-      type: 'video' as const,
-      author: aula.canal,
-      description: aula.descricao,
-      thumbnail: aula.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
-      addedDate: aula.ano || '2023'
-    })),
-    // Transform books (livros)
-    ...lsbData.conteudo.livros.map(livro => ({
-      id: livro.id,
-      title: livro.titulo,
-      type: 'livro' as const,
-      author: livro.autor,
-      description: livro.descricao,
-      thumbnail: livro.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
-      addedDate: livro.ano || '2023'
-    }))
+// Fallback image for missing thumbnails
+const PLACEHOLDER_THUMB = '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png';
+
+// Transform each content type to a common format
+const podcastItems = lsbData.conteudo.podcasts.map(podcast => ({
+  id: podcast.id,
+  title: podcast.titulo,
+  type: 'podcast' as const,
+  author: podcast.publicador,
+  description: podcast.descricao,
+  thumbnail: podcast.imagem_url && podcast.imagem_url.length > 0 ? podcast.imagem_url : PLACEHOLDER_THUMB,
+  addedDate: podcast.ano || '2023',
+}));
+
+const videoItems = lsbData.conteudo.aulas.map(aula => ({
+  id: aula.id,
+  title: aula.titulo,
+  type: 'video' as const,
+  author: aula.canal,
+  description: aula.descricao,
+  thumbnail: aula.imagem_url && aula.imagem_url.length > 0 ? aula.imagem_url : PLACEHOLDER_THUMB,
+  addedDate: aula.ano || '2023',
+}));
+
+const livroItems = lsbData.conteudo.livros.map(livro => ({
+  id: livro.id,
+  title: livro.titulo,
+  type: 'livro' as const,
+  author: livro.autor,
+  description: livro.descricao,
+  thumbnail: livro.imagem_url && livro.imagem_url.length > 0 ? livro.imagem_url : PLACEHOLDER_THUMB,
+  addedDate: livro.ano || '2023',
+}));
+
+// Helper: take up to N items from an array
+const take = (arr: any[], n: number) => arr.slice(0, n);
+
+// Compose mixed recent items
+function getMixedRecentItems() {
+  // Take 2 of each type, in order of most recent (assumes data is sorted newest first)
+  const recents = [
+    ...take(podcastItems, 2),
+    ...take(videoItems, 2),
+    ...take(livroItems, 2),
   ];
+  // Shuffle for variety
+  for (let i = recents.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [recents[i], recents[j]] = [recents[j], recents[i]];
+  }
+  // Return max 6
+  return recents.slice(0, 6);
+}
 
-  // Get the 6 most recent items (simulating recent additions)
-  const recentItems = allItems.slice(-6).reverse();
+const recentItems = getMixedRecentItems();
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'livro': return Book;
-      case 'video': return Video;
-      case 'podcast': return Headphones;
-      default: return Book;
-    }
-  };
+const getIcon = (type: string) => {
+  switch (type) {
+    case 'livro': return Book;
+    case 'video': return Video;
+    case 'podcast': return Headphones;
+    default: return Book;
+  }
+};
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'livro': return 'bg-blue-100 text-blue-800';
-      case 'video': return 'bg-red-100 text-red-800';
-      case 'podcast': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+const getTypeColor = (type: string) => {
+  switch (type) {
+    case 'livro': return 'bg-blue-100 text-blue-800';
+    case 'video': return 'bg-red-100 text-red-800';
+    case 'podcast': return 'bg-purple-100 text-purple-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+};
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'livro': return 'Livro';
-      case 'video': return 'Vídeo';
-      case 'podcast': return 'Podcast';
-      default: return 'Conteúdo';
-    }
-  };
+const getTypeLabel = (type: string) => {
+  switch (type) {
+    case 'livro': return 'Livro';
+    case 'video': return 'Vídeo';
+    case 'podcast': return 'Podcast';
+    default: return 'Conteúdo';
+  }
+};
 
-  const formatDate = (year: string) => {
-    return new Date(parseInt(year), 0, 1).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit'
-    });
-  };
+const formatDate = (year: string) => {
+  return new Date(parseInt(year), 0, 1).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit'
+  });
+};
 
+const RecentAdditions = () => {
   return (
     <section className="py-16 md:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -94,7 +113,7 @@ const RecentAdditions = () => {
           {recentItems.map((item, index) => {
             const IconComponent = getIcon(item.type);
             return (
-              <Link key={item.id} to={`/recurso/${item.id}`}>
+              <Link key={item.type + '-' + item.id} to={`/recurso/${item.id}`}>
                 <Card
                   className="group hover-lift animate-fade-in cursor-pointer"
                   style={{ animationDelay: `${index * 0.1}s` }}
@@ -128,7 +147,6 @@ const RecentAdditions = () => {
                           {item.description}
                         </p>
                       </div>
-                      
                       {/* Right side: Thumbnail */}
                       <div className="flex-shrink-0">
                         <div className="w-20 h-20 bg-gray-200 rounded-lg overflow-hidden">

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import lsbData from '/lsb-data.json';
+import lsbData from '../../public/lsb-data.json';
 
 const FeaturedMedia = () => {
   // Get first 3 videos from JSON data

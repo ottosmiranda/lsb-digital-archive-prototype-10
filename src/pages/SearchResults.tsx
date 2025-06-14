@@ -37,6 +37,11 @@ const SearchResults = () => {
     handlePageChange(1); 
   };
 
+  // Scroll to top when the search results page is opened (only on mount)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, []);
+
   return (
     <SearchLayout
       query={query}

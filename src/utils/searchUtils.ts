@@ -58,6 +58,22 @@ export const extractLanguageFacets = (results: SearchResult[]): { name: string; 
     .sort((a, b) => b.count - a.count);
 };
 
+// Extract unique document types with counts from search results
+export const extractDocumentTypeFacets = (results: SearchResult[]): { name: string; count: number }[] => {
+  const documentTypeCounts = new Map<string, number>();
+  
+  results.forEach(result => {
+    if (result.type === 'titulo' && result.documentType && result.documentType.trim()) {
+      const documentTypeName = result.documentType.trim();
+      documentTypeCounts.set(documentTypeName, (documentTypeCounts.get(documentTypeName) || 0) + 1);
+    }
+  });
+  
+  return Array.from(documentTypeCounts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+};
+
 // Mapping for pais (country code) to language.
 // This is a simplified example. A more comprehensive mapping might be needed.
 const countryToLanguage: Record<string, string> = {
@@ -102,10 +118,14 @@ export const filterResults = (
       if (!currentFilters.subject.includes(item.subject)) return false;
     }
 
-    if (currentFilters.author) {
+    // Updated author filter to handle array of authors
+    if (currentFilters.author.length > 0) {
       const authorNormalized = normalizeText(item.author);
-      const filterAuthorNormalized = normalizeText(currentFilters.author);
-      if (!authorNormalized.includes(filterAuthorNormalized)) return false;
+      const matchesAnyAuthor = currentFilters.author.some(filterAuthor => {
+        const filterAuthorNormalized = normalizeText(filterAuthor);
+        return authorNormalized.includes(filterAuthorNormalized);
+      });
+      if (!matchesAnyAuthor) return false;
     }
 
     if (currentFilters.year) {
@@ -202,7 +222,7 @@ export const sortResults = (resultsToSort: SearchResult[], sortType: string, que
 export const checkHasActiveFilters = (filterObj: SearchFilters): boolean => {
   return filterObj.resourceType.length > 0 || 
          filterObj.subject.length > 0 || 
-         Boolean(filterObj.author) || 
+         filterObj.author.length > 0 || // Updated to check array length
          Boolean(filterObj.year) || 
          Boolean(filterObj.duration) ||
          filterObj.language.length > 0 ||

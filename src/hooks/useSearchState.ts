@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SearchFilters } from '@/types/searchTypes';
@@ -8,11 +9,11 @@ export const useSearchState = () => {
   const [filters, setFilters] = useState<SearchFilters>({
     resourceType: [],
     subject: [],
-    author: '',
+    author: [], // Changed from '' to [] for multi-selection
     year: '',
     duration: '',
     language: [],
-    documentType: [], // Initialize new document type filter
+    documentType: [],
   });
   
   const [sortBy, setSortBy] = useState('relevance');

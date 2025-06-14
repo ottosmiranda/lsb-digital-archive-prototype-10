@@ -1,3 +1,5 @@
+
+import { useEffect } from "react";
 import { useSearchResults } from '@/hooks/useSearchResults';
 import SearchLayout from '@/components/SearchLayout';
 

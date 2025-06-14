@@ -48,6 +48,9 @@ const ResourceDetail = () => {
   const [resource, setResource] = useState<Resource | null>(null);
   const [resourceLoading, setResourceLoading] = useState(true);
 
+  // ---- FIX: always call useRef at the top to respect the Rules of Hooks ----
+  const episodesListRef = useRef<any>(null);
+
   // Effect for fetching fallback resource data
   useEffect(() => {
     const fetchResource = () => {
@@ -169,17 +172,12 @@ const ResourceDetail = () => {
 
   // If podcast detected (type: podcast) and there is a matching podcast in the data
   if (podcast && podcast.type === 'podcast') {
-    // Add ref for the PodcastEpisodeList
-    const episodesListRef = useRef<any>(null);
-
-    // Handle scroll and invoke "play latest"
+    // Handler for scroll and play latest (can safely be inside conditional)
     const handlePlayLatest = () => {
-      // Find section by id
       const section = document.getElementById("all-episodes-list");
       if (section) {
         section.scrollIntoView({ behavior: "smooth", block: "start" });
       }
-      // Programmatically play latest
       if (episodesListRef.current && typeof episodesListRef.current.playLatest === "function") {
         episodesListRef.current.playLatest();
       }

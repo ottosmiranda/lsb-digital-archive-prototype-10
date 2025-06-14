@@ -1,12 +1,27 @@
-
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
 // Helper function to normalize text for better Portuguese search
-const normalizeText = (text: string): string => {
+export const normalizeText = (text: string): string => {
   return text
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, ''); // Remove accents
+};
+
+// Extract unique authors with counts from search results
+export const extractAuthorsFromResults = (results: SearchResult[]): { name: string; count: number }[] => {
+  const authorCounts = new Map<string, number>();
+  
+  results.forEach(result => {
+    if (result.author && result.author.trim()) {
+      const authorName = result.author.trim();
+      authorCounts.set(authorName, (authorCounts.get(authorName) || 0) + 1);
+    }
+  });
+  
+  return Array.from(authorCounts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
 };
 
 // Mapping for pais (country code) to language.

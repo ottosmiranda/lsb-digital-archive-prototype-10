@@ -1,4 +1,3 @@
-
 import React, { useMemo, useCallback } from 'react';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Badge } from '@/components/ui/badge';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import AuthorInput from '@/components/AuthorInput';
+import AuthorList from '@/components/AuthorList';
 
 // Static data moved outside component to prevent re-creation
 const languages = ['Português', 'Inglês', 'Espanhol'];
@@ -63,6 +63,11 @@ const FilterContent = React.memo(({
     [filters]
   );
 
+  // Convert single author string to array for compatibility
+  const selectedAuthors = useMemo(() => {
+    return filters.author ? [filters.author] : [];
+  }, [filters.author]);
+
   const handleDocumentTypeChange = useCallback((documentTypeId: string, checked: boolean) => {
     const newDocumentTypes = checked
       ? [...filters.documentType, documentTypeId]
@@ -96,6 +101,12 @@ const FilterContent = React.memo(({
 
   const handleAuthorChange = useCallback((value: string) => {
     onFiltersChange({ ...filters, author: value }, { authorTyping: true });
+  }, [filters, onFiltersChange]);
+
+  const handleAuthorsListChange = useCallback((authors: string[]) => {
+    // For now, we'll take the first selected author to maintain compatibility
+    const authorValue = authors.length > 0 ? authors[0] : '';
+    onFiltersChange({ ...filters, author: authorValue });
   }, [filters, onFiltersChange]);
 
   const clearFilters = useCallback(() => {
@@ -199,12 +210,27 @@ const FilterContent = React.memo(({
           {openSections.author ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
-          <div className="p-3 border border-gray-200 rounded-lg bg-white">
-            <AuthorInput
-              value={filters.author}
-              onChange={handleAuthorChange}
-              placeholder="Nome do autor"
-            />
+          <div className="space-y-4">
+            {/* Author Input */}
+            <div className="p-3 border border-gray-200 rounded-lg bg-white">
+              <Label className="text-xs text-gray-600 mb-2 block">Buscar por nome</Label>
+              <AuthorInput
+                value={filters.author}
+                onChange={handleAuthorChange}
+                placeholder="Nome do autor"
+                currentResults={currentResults}
+              />
+            </div>
+            
+            {/* Author List */}
+            <div className="p-3 border border-gray-200 rounded-lg bg-white">
+              <Label className="text-xs text-gray-600 mb-3 block">Autores nos resultados</Label>
+              <AuthorList
+                currentResults={currentResults}
+                selectedAuthors={selectedAuthors}
+                onAuthorsChange={handleAuthorsListChange}
+              />
+            </div>
           </div>
         </CollapsibleContent>
       </Collapsible>

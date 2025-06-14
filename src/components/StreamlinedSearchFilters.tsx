@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ interface StreamlinedSearchFiltersProps {
   currentResults?: SearchResult[];
 }
 
-const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [] }: StreamlinedSearchFiltersProps) => {
+const StreamlinedSearchFilters = React.memo(({ filters, onFiltersChange, currentResults = [] }: StreamlinedSearchFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [localAuthor, setLocalAuthor] = useState(filters.author);
   
@@ -57,50 +57,50 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
 
   const years = Array.from({ length: 10 }, (_, i) => (new Date().getFullYear() - i).toString());
 
-  const handleDocumentTypeChange = (documentTypeId: string, checked: boolean) => {
+  const handleDocumentTypeChange = useCallback((documentTypeId: string, checked: boolean) => {
     const newDocumentTypes = checked
       ? [...filters.documentType, documentTypeId]
       : filters.documentType.filter((dt: string) => dt !== documentTypeId);
     onFiltersChange({ ...filters, documentType: newDocumentTypes });
-  };
+  }, [filters, onFiltersChange]);
 
-  const handleLanguageChange = (languageId: string, checked: boolean) => {
+  const handleLanguageChange = useCallback((languageId: string, checked: boolean) => {
     const newLanguages = checked
       ? [...filters.language, languageId]
       : filters.language.filter((lang: string) => lang !== languageId);
     onFiltersChange({ ...filters, language: newLanguages });
-  };
+  }, [filters, onFiltersChange]);
 
-  const handleSubjectChange = (subjectId: string, checked: boolean) => {
+  const handleSubjectChange = useCallback((subjectId: string, checked: boolean) => {
     const newSubjects = checked 
       ? [...filters.subject, subjectId]
       : filters.subject.filter((s: string) => s !== subjectId);
     
     onFiltersChange({ ...filters, subject: newSubjects });
-  };
+  }, [filters, onFiltersChange]);
 
-  const handleYearChange = (value: string) => {
+  const handleYearChange = useCallback((value: string) => {
     const yearValue = value === 'all' ? '' : value;
     onFiltersChange({ ...filters, year: yearValue });
-  };
+  }, [filters, onFiltersChange]);
 
-  const handleDurationChange = (value: string) => {
+  const handleDurationChange = useCallback((value: string) => {
     const durationValue = value === 'all' ? '' : value;
     onFiltersChange({ ...filters, duration: durationValue });
-  };
+  }, [filters, onFiltersChange]);
 
-  const handleAuthorChange = (value: string) => {
+  const handleAuthorChange = useCallback((value: string) => {
     setLocalAuthor(value);
-    // Immediately update filters without debouncing - let useSearchOperations handle the timing
+    // Update filters immediately - useSearchOperations will handle debouncing
     onFiltersChange({ ...filters, author: value });
-  };
+  }, [filters, onFiltersChange]);
 
-  const clearAuthor = () => {
+  const clearAuthor = useCallback(() => {
     setLocalAuthor('');
     onFiltersChange({ ...filters, author: '' });
-  };
+  }, [filters, onFiltersChange]);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setLocalAuthor('');
     onFiltersChange({
       resourceType: [], // Keep for backward compatibility
@@ -111,7 +111,7 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
       language: [],
       documentType: []
     });
-  };
+  }, [onFiltersChange]);
 
   const hasActiveFilters = 
     filters.documentType.length > 0 ||
@@ -129,12 +129,12 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
     (filters.year ? 1 : 0) + 
     (filters.duration ? 1 : 0);
 
-  const toggleSection = (section: keyof typeof openSections) => {
+  const toggleSection = useCallback((section: keyof typeof openSections) => {
     setOpenSections(prev => ({
       ...prev,
       [section]: !prev[section]
     }));
-  };
+  }, []);
 
   const FilterContent = () => (
     <div className="space-y-4">
@@ -381,6 +381,8 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
       </div>
     </>
   );
-};
+});
+
+StreamlinedSearchFilters.displayName = 'StreamlinedSearchFilters';
 
 export default StreamlinedSearchFilters;

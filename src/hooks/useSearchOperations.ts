@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 import { filterResults, sortResults, checkHasActiveFilters } from '@/utils/searchUtils';
 
@@ -24,7 +24,7 @@ export const useSearchOperations = ({
   const previousFiltersRef = useRef<SearchFilters>(filters);
   const authorSearchTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const performSearch = async (searchQuery: string, currentFilters: SearchFilters) => {
+  const performSearch = useCallback(async (searchQuery: string, currentFilters: SearchFilters) => {
     setLoading(true);
     console.log('Performing search with:', { searchQuery, currentFilters });
     
@@ -43,9 +43,9 @@ export const useSearchOperations = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [allData, sortBy, setLoading]);
 
-  const shouldTriggerSearch = (newFilters: SearchFilters, previousFilters: SearchFilters) => {
+  const shouldTriggerSearch = useCallback((newFilters: SearchFilters, previousFilters: SearchFilters) => {
     // Check if only author changed - if so, we need special handling
     const onlyAuthorChanged = 
       newFilters.resourceType.length === previousFilters.resourceType.length &&
@@ -61,51 +61,51 @@ export const useSearchOperations = ({
       newFilters.author !== previousFilters.author;
 
     return !onlyAuthorChanged;
-  };
+  }, []);
 
   // Perform search when query changes or on initial load
   useEffect(() => {
-    if (dataLoaded) {
-      console.log('Search triggered with query:', query);
-      performSearch(query, filters);
-    }
-  }, [query, dataLoaded, allData]);
+    if (!dataLoaded) return;
+    
+    console.log('Search triggered with query:', query);
+    performSearch(query, filters);
+  }, [query, dataLoaded, performSearch, filters]);
 
   // Perform search when filters change (with special handling for author)
   useEffect(() => {
-    if (dataLoaded && (query || checkHasActiveFilters(filters))) {
-      const previousFilters = previousFiltersRef.current;
-      
-      // Clear any pending author search timeout
-      if (authorSearchTimeoutRef.current) {
-        clearTimeout(authorSearchTimeoutRef.current);
-      }
+    if (!dataLoaded || (!query && !checkHasActiveFilters(filters))) return;
+    
+    const previousFilters = previousFiltersRef.current;
+    
+    // Clear any pending author search timeout
+    if (authorSearchTimeoutRef.current) {
+      clearTimeout(authorSearchTimeoutRef.current);
+    }
 
-      // Check if this is an author-only change
-      if (!shouldTriggerSearch(filters, previousFilters)) {
-        console.log('Author typing detected, delaying search...');
-        // For author changes, add a longer delay to prevent search during typing
-        authorSearchTimeoutRef.current = setTimeout(() => {
-          console.log('Author search triggered after delay:', filters.author);
-          performSearch(query, filters);
-        }, 800); // Longer delay for author typing
-      } else {
-        console.log('Non-author filter search triggered:', filters);
+    // Check if this is an author-only change
+    if (!shouldTriggerSearch(filters, previousFilters)) {
+      console.log('Author typing detected, delaying search...');
+      // For author changes, add a longer delay to prevent search during typing
+      authorSearchTimeoutRef.current = setTimeout(() => {
+        console.log('Author search triggered after delay:', filters.author);
         performSearch(query, filters);
-      }
+      }, 800); // Longer delay for author typing
+    } else {
+      console.log('Non-author filter search triggered:', filters);
+      performSearch(query, filters);
     }
     
     previousFiltersRef.current = filters;
-  }, [filters, dataLoaded, allData]);
+  }, [filters, dataLoaded, query, performSearch, shouldTriggerSearch]);
 
   // Sort results when sortBy changes
   useEffect(() => {
-    if (searchResults.length > 0) {
-      console.log('Sorting results by:', sortBy);
-      const sortedResults = sortResults([...searchResults], sortBy, query);
-      setSearchResults(sortedResults);
-    }
-  }, [sortBy]);
+    if (searchResults.length === 0) return;
+    
+    console.log('Sorting results by:', sortBy);
+    const sortedResults = sortResults([...searchResults], sortBy, query);
+    setSearchResults(sortedResults);
+  }, [sortBy, query]);
 
   // Cleanup timeout on unmount
   useEffect(() => {

@@ -92,7 +92,7 @@ const SearchResultsGrid = ({
               }}>
                     {getTypeIcon(result.type)}
                     <span className="text-xs mt-2 font-medium">Miniatura</span>
-                    <span className="text-xs">Unavailable</span>
+                    <span className="text-xs">Indisponível</span>
                   </div>
                   <div className="absolute top-2 left-2">
                     <Badge className={`${typeBadge.color} flex items-center gap-1`}>

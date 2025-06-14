@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 import { filterResults, sortResults, checkHasActiveFilters } from '@/utils/searchUtils';
@@ -28,7 +29,6 @@ export const useSearchOperations = ({
 }: UseSearchOperationsProps) => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const previousFiltersRef = useRef<SearchFilters>(filters);
-  const authorSearchTimeoutRef = useRef<NodeJS.Timeout>();
 
   // The main performSearch function, can optionally skip loading for author typing
   const performSearch = useCallback(
@@ -56,24 +56,6 @@ export const useSearchOperations = ({
     [allData, sortBy, setLoading]
   );
 
-  const shouldTriggerSearch = useCallback((newFilters: SearchFilters, previousFilters: SearchFilters) => {
-    // Check if only author changed - if so, we need special handling
-    const onlyAuthorChanged = 
-      newFilters.resourceType.length === previousFilters.resourceType.length &&
-      newFilters.resourceType.every(item => previousFilters.resourceType.includes(item)) &&
-      newFilters.subject.length === previousFilters.subject.length &&
-      newFilters.subject.every(item => previousFilters.subject.includes(item)) &&
-      newFilters.language.length === previousFilters.language.length &&
-      newFilters.language.every(item => previousFilters.language.includes(item)) &&
-      newFilters.documentType.length === previousFilters.documentType.length &&
-      newFilters.documentType.every(item => previousFilters.documentType.includes(item)) &&
-      newFilters.year === previousFilters.year &&
-      newFilters.duration === previousFilters.duration &&
-      newFilters.author !== previousFilters.author;
-
-    return !onlyAuthorChanged;
-  }, []);
-
   // Initial search & query change trigger
   useEffect(() => {
     if (!dataLoaded) return;
@@ -81,46 +63,46 @@ export const useSearchOperations = ({
     // eslint-disable-next-line
   }, [query, dataLoaded]);
 
-  // Filter change trigger, with support for authorTyping
+  // Filter change trigger
   useEffect(() => {
-    if (!dataLoaded || (!query && !checkHasActiveFilters(filters))) return;
+    if (!dataLoaded) return;
+    
+    // Avoid running if filters are the same object reference
+    if (filters === previousFiltersRef.current) return;
 
     const previousFilters = previousFiltersRef.current;
-    // Clear any pending author search timeout
-    if (authorSearchTimeoutRef.current) {
-      clearTimeout(authorSearchTimeoutRef.current);
-    }
-    // If only author changed...
-    if (!shouldTriggerSearch(filters, previousFilters)) {
-      authorSearchTimeoutRef.current = setTimeout(() => {
-        performSearch(query, filters, { authorTyping: true });
-      }, 800);
-    } else {
-      performSearch(query, filters);
-    }
+    
+    const areArraysEqual = (a: string[] = [], b: string[] = []) => {
+      if (a.length !== b.length) return false;
+      return [...a].sort().join(',') === [...b].sort().join(',');
+    };
+
+    const onlyAuthorChanged = 
+      filters.author !== previousFilters.author &&
+      areArraysEqual(filters.resourceType, previousFilters.resourceType) &&
+      areArraysEqual(filters.subject, previousFilters.subject) &&
+      areArraysEqual(filters.language, previousFilters.language) &&
+      areArraysEqual(filters.documentType, previousFilters.documentType) &&
+      filters.year === previousFilters.year &&
+      filters.duration === previousFilters.duration;
+
+    // The component handles debouncing, so we just perform the search,
+    // telling it if it's an author-only change to avoid the loading spinner.
+    performSearch(query, filters, { authorTyping: onlyAuthorChanged });
 
     previousFiltersRef.current = filters;
     // eslint-disable-next-line
-  }, [filters, dataLoaded, query]);
+  }, [filters, performSearch, query, dataLoaded]);
 
   // Sort results when sortBy changes
   useEffect(() => {
     if (searchResults.length === 0) return;
     
-    console.log('Sorting results by:', sortBy);
     const sortedResults = sortResults([...searchResults], sortBy, query);
     setSearchResults(sortedResults);
+    // eslint-disable-next-line
   }, [sortBy, query]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (authorSearchTimeoutRef.current) {
-        clearTimeout(authorSearchTimeoutRef.current);
-      }
-    };
-  }, []);
-
+  
   return {
     searchResults
   };

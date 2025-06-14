@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import { SearchFilters } from '@/types/searchTypes';
 import { useDataLoader } from '@/hooks/useDataLoader';
@@ -45,10 +46,12 @@ export const useSearchResults = () => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
-  const handleFilterChange = (newFilters: SearchFilters) => {
-    console.log('Filters changed:', newFilters);
+  const handleFilterChange = (newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
     setFilters(newFilters);
-    setCurrentPage(1);
+    // Only reset pagination if it's a "major" filter change, not just typing in the author field.
+    if (!options?.authorTyping) {
+      setCurrentPage(1);
+    }
   };
 
   const handleSortChange = (newSort: string) => {

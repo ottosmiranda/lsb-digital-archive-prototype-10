@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -23,7 +24,7 @@ interface SearchLayoutProps {
   loading: boolean;
   hasActiveFilters: boolean;
   usingFallback?: boolean;
-  onFiltersChange: (filters: SearchFiltersType) => void;
+  onFiltersChange: (filters: SearchFiltersType, options?: { authorTyping?: boolean }) => void;
   onSortChange: (sort: string) => void;
   onPageChange: (page: number) => void;
   onClearFilters: () => void;

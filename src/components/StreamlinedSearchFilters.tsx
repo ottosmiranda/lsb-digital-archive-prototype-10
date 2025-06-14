@@ -1,5 +1,4 @@
-
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +19,6 @@ interface StreamlinedSearchFiltersProps {
 const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [] }: StreamlinedSearchFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [localAuthor, setLocalAuthor] = useState(filters.author);
-  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
   
   const [openSections, setOpenSections] = useState({
     subject: true,
@@ -31,29 +29,12 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
     duration: false
   });
 
-  // Sync local author state with external filters
+  // Sync local author state with external filters only when they change from outside
   useEffect(() => {
-    setLocalAuthor(filters.author);
-  }, [filters.author]);
-
-  // Debounced author filter effect
-  useEffect(() => {
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
+    if (filters.author !== localAuthor) {
+      setLocalAuthor(filters.author);
     }
-
-    debounceTimeoutRef.current = setTimeout(() => {
-      if (localAuthor !== filters.author) {
-        onFiltersChange({ ...filters, author: localAuthor });
-      }
-    }, 500); // 500ms delay
-
-    return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-    };
-  }, [localAuthor]);
+  }, [filters.author]);
 
   // Extract available document types from current results
   const availableDocumentTypes = useMemo(() => {
@@ -110,13 +91,8 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
 
   const handleAuthorChange = (value: string) => {
     setLocalAuthor(value);
-  };
-
-  const handleAuthorBlur = () => {
-    // Immediately apply filter when user leaves the field
-    if (localAuthor !== filters.author) {
-      onFiltersChange({ ...filters, author: localAuthor });
-    }
+    // Immediately update filters without debouncing - let useSearchOperations handle the timing
+    onFiltersChange({ ...filters, author: value });
   };
 
   const clearAuthor = () => {
@@ -255,7 +231,6 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
                 placeholder="Nome do autor"
                 value={localAuthor}
                 onChange={(e) => handleAuthorChange(e.target.value)}
-                onBlur={handleAuthorBlur}
                 className="pr-10"
               />
               {localAuthor && (

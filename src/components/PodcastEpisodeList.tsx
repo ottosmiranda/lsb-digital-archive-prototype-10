@@ -1,6 +1,7 @@
 
 import { Play, Calendar, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useSpotifyOEmbed } from "@/hooks/useSpotifyOEmbed";
 
 // Helper to generate human fake episode durations/titles/descriptions/dates
 function generateEpisodes(
@@ -47,6 +48,10 @@ interface PodcastEpisodeListProps {
 
 const PodcastEpisodeList = ({ total, podcastTitle, embedUrl }: PodcastEpisodeListProps) => {
   const episodes = generateEpisodes(total, podcastTitle);
+  const { oembedData, loading: oembedLoading, error: oembedError } = useSpotifyOEmbed(embedUrl);
+  
+  // Extract Spotify URL for oEmbed if we have an embed URL
+  const spotifyUrl = embedUrl ? embedUrl.replace('/embed/', '/').split('?')[0] : undefined;
   
   return (
     <section className="mt-10">
@@ -61,7 +66,9 @@ const PodcastEpisodeList = ({ total, podcastTitle, embedUrl }: PodcastEpisodeLis
           <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b">
               <div className="flex gap-2 items-center mb-2">
-                <h3 className="font-semibold">Episódio 1: {podcastTitle} - Episódio Mais Recente</h3>
+                <h3 className="font-semibold">
+                  {oembedData?.title || `Episódio 1: ${podcastTitle} - Episódio Mais Recente`}
+                </h3>
                 <Badge className="bg-green-600 text-white ml-1">NOVO</Badge>
               </div>
               <p className="text-sm text-gray-600 mb-3">
@@ -75,19 +82,55 @@ const PodcastEpisodeList = ({ total, podcastTitle, embedUrl }: PodcastEpisodeLis
               </div>
             </div>
             
-            {/* Spotify Iframe Player */}
+            {/* Enhanced Spotify Player */}
             <div className="p-4">
-              <iframe
-                src={embedUrl}
-                width="100%"
-                height="352"
-                frameBorder="0"
-                allowTransparency={true}
-                allow="encrypted-media"
-                className="rounded-lg"
-                title={`${podcastTitle} - Spotify Player`}
-              />
+              {oembedLoading && (
+                <div className="flex items-center justify-center h-[352px] bg-gray-50 rounded-lg">
+                  <div className="text-gray-500">Carregando player...</div>
+                </div>
+              )}
+              
+              {oembedError && (
+                <div className="flex items-center justify-center h-[352px] bg-gray-50 rounded-lg">
+                  <div className="text-red-500">Erro ao carregar o player do Spotify</div>
+                </div>
+              )}
+              
+              {oembedData && !oembedLoading && (
+                <div
+                  dangerouslySetInnerHTML={{ __html: oembedData.html }}
+                  className="spotify-embed"
+                />
+              )}
+              
+              {/* Fallback to original iframe if oEmbed fails */}
+              {!oembedData && !oembedLoading && embedUrl && (
+                <iframe
+                  src={embedUrl}
+                  width="100%"
+                  height="352"
+                  frameBorder="0"
+                  allowTransparency={true}
+                  allow="encrypted-media"
+                  className="rounded-lg"
+                  title={`${podcastTitle} - Spotify Player`}
+                />
+              )}
             </div>
+            
+            {/* Display oEmbed metadata if available */}
+            {oembedData?.thumbnail_url && (
+              <div className="px-4 pb-4">
+                <div className="flex items-center gap-3 text-xs text-gray-500">
+                  <img 
+                    src={oembedData.thumbnail_url} 
+                    alt="Episode thumbnail"
+                    className="w-8 h-8 rounded object-cover"
+                  />
+                  <span>Powered by {oembedData.provider_name}</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
         

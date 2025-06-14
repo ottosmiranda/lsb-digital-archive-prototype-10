@@ -1,9 +1,12 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SearchFilters } from '@/types/searchTypes';
+import { useSearchAnalytics } from '@/hooks/useSearchAnalytics';
 
 export const useSearchState = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { trackSearch } = useSearchAnalytics();
   
   const [filters, setFilters] = useState<SearchFilters>({
     resourceType: [],
@@ -44,6 +47,13 @@ export const useSearchState = () => {
       }));
     }
   }, []); // Removed searchParams from dependency array to ensure it runs only once for initial setup.
+
+  // Track searches when query changes (from URL navigation)
+  useEffect(() => {
+    if (query.trim()) {
+      trackSearch(query.trim());
+    }
+  }, [query, trackSearch]);
 
   const setQuery = (newQuery: string) => {
     const newSearchParams = new URLSearchParams(searchParams);

@@ -1,6 +1,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSearchAnalytics } from '@/hooks/useSearchAnalytics';
 
 export const useSearchForm = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -9,6 +10,7 @@ export const useSearchForm = () => {
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const { trackSearch } = useSearchAnalytics();
 
   // Click outside to close suggestions
   useEffect(() => {
@@ -46,6 +48,9 @@ export const useSearchForm = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      // Track the search
+      trackSearch(searchQuery.trim());
+      
       const queryParams = new URLSearchParams();
       queryParams.set('q', searchQuery);
       activeFilters.forEach(filter => {
@@ -58,6 +63,8 @@ export const useSearchForm = () => {
 
   const handleSuggestionClick = (suggestion: string) => {
     setSearchQuery(suggestion);
+    // Track the search
+    trackSearch(suggestion);
     navigate(`/buscar?q=${encodeURIComponent(suggestion)}`);
     setShowSuggestions(false);
   };

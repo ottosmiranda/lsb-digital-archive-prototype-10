@@ -1,8 +1,9 @@
 
 import { useState, useEffect } from 'react';
-import { Search, Clock, TrendingUp, Filter, Star } from 'lucide-react';
+import { Search, Clock, TrendingUp, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useSearchAnalytics } from '@/hooks/useSearchAnalytics';
 
 interface EnhancedSearchSuggestionsProps {
   query: string;
@@ -20,8 +21,9 @@ const EnhancedSearchSuggestions = ({
   className
 }: EnhancedSearchSuggestionsProps) => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [recentSearches] = useState(['Libras básico', 'Gramática', 'Alfabeto', 'Números']);
-  const [trendingSearches] = useState(['Educação inclusiva', 'Interpretação', 'Cultura surda']);
+  const { recentSearches, trendingSearches } = useSearchAnalytics();
+  
+  // Popular topics remain static as they're editorial content
   const [popularTopics] = useState(['Comunicação', 'Direitos', 'Literatura', 'História']);
 
   useEffect(() => {
@@ -94,7 +96,7 @@ const EnhancedSearchSuggestions = ({
             <Clock className="h-3 w-3" />
             Buscas Recentes
           </div>
-          {recentSearches.map((search, index) => (
+          {recentSearches.slice(0, 6).map((search, index) => (
             <button
               key={index}
               onClick={() => onSuggestionClick(search)}

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Clock, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSearchAnalytics } from '@/hooks/useSearchAnalytics';
 
 interface SearchSuggestionsProps {
   query: string;
@@ -19,8 +20,7 @@ const SearchSuggestions = ({
   className
 }: SearchSuggestionsProps) => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [recentSearches] = useState(['Libras básico', 'Gramática', 'Alfabeto', 'Números']);
-  const [trendingSearches] = useState(['Educação inclusiva', 'Interpretação', 'Cultura surda']);
+  const { recentSearches, trendingSearches } = useSearchAnalytics();
 
   useEffect(() => {
     if (query.length > 1) {
@@ -76,7 +76,7 @@ const SearchSuggestions = ({
       {showRecent && (
         <div className="p-2 border-t border-gray-100">
           <div className="text-xs text-gray-500 px-3 py-2 font-medium">Buscas Recentes</div>
-          {recentSearches.map((search, index) => (
+          {recentSearches.slice(0, 5).map((search, index) => (
             <button
               key={index}
               onClick={() => onSuggestionClick(search)}
@@ -93,7 +93,7 @@ const SearchSuggestions = ({
       {showTrending && (
         <div className="p-2 border-t border-gray-100">
           <div className="text-xs text-gray-500 px-3 py-2 font-medium">Em Alta</div>
-          {trendingSearches.map((search, index) => (
+          {trendingSearches.slice(0, 4).map((search, index) => (
             <button
               key={index}
               onClick={() => onSuggestionClick(search)}

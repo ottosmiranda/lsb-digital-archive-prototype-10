@@ -12,7 +12,7 @@ const FeaturedMedia = () => {
     id: aula.id,
     title: aula.titulo,
     duration: aula.duracao || '00:00',
-    thumbnail: aula.imagem_url || '/placeholder.svg',
+    thumbnail: aula.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
     author: aula.canal
   }));
 
@@ -21,7 +21,7 @@ const FeaturedMedia = () => {
     id: podcast.id,
     title: podcast.titulo,
     duration: `${podcast.total_episodes} episódios`,
-    thumbnail: podcast.imagem_url || '/placeholder.svg',
+    thumbnail: podcast.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
     author: podcast.publicador
   }));
 

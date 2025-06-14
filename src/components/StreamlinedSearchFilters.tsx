@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,20 +8,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
+import { SearchFilters } from '@/types/searchTypes'; // Import SearchFilters type
 
 interface StreamlinedSearchFiltersProps {
-  filters: any;
-  onFiltersChange: (filters: any) => void;
+  filters: SearchFilters; // Use the imported SearchFilters type
+  onFiltersChange: (filters: SearchFilters) => void; // Use the imported SearchFilters type
 }
 
 const StreamlinedSearchFilters = ({ filters, onFiltersChange }: StreamlinedSearchFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [openSections, setOpenSections] = useState({
+    itemType: true, // "Tipo de Item" - uses filters.resourceType
+    language: true, // "Idioma"
     subject: true,
     author: false,
     year: false,
     duration: false
   });
+
+  // Options for "Tipo de Item"
+  const itemTypes = [
+    { id: 'titulo', label: 'Livros/Artigos' },
+    { id: 'video', label: 'Vídeos' },
+    { id: 'podcast', label: 'Podcasts' }
+  ];
+
+  // Options for "Idioma"
+  const languages = ['Português', 'Inglês', 'Espanhol']; // Add more as needed
 
   const subjects = [
     'Educação', 'História', 'Linguística', 'Cultura Surda', 'Inclusão', 
@@ -30,6 +42,20 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange }: StreamlinedSearc
   ];
 
   const years = Array.from({ length: 10 }, (_, i) => (new Date().getFullYear() - i).toString());
+
+  const handleItemTypeChange = (itemTypeId: string, checked: boolean) => {
+    const newItemTypes = checked
+      ? [...filters.resourceType, itemTypeId]
+      : filters.resourceType.filter((it: string) => it !== itemTypeId);
+    onFiltersChange({ ...filters, resourceType: newItemTypes });
+  };
+
+  const handleLanguageChange = (languageId: string, checked: boolean) => {
+    const newLanguages = checked
+      ? [...filters.language, languageId]
+      : filters.language.filter((lang: string) => lang !== languageId);
+    onFiltersChange({ ...filters, language: newLanguages });
+  };
 
   const handleSubjectChange = (subjectId: string, checked: boolean) => {
     const newSubjects = checked 
@@ -51,30 +77,35 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange }: StreamlinedSearc
 
   const clearFilters = () => {
     onFiltersChange({
-      resourceType: [],
+      resourceType: [], // For "Tipo de Item"
       subject: [],
       author: '',
       year: '',
-      duration: ''
+      duration: '',
+      language: [] // Clear language filter
     });
   };
 
   const hasActiveFilters = 
+    filters.resourceType.length > 0 ||
+    filters.language.length > 0 ||
     filters.subject.length > 0 || 
     filters.author || 
     filters.year || 
     filters.duration;
 
   const activeFilterCount = 
+    filters.resourceType.length +
+    filters.language.length +
     filters.subject.length + 
     (filters.author ? 1 : 0) + 
     (filters.year ? 1 : 0) + 
     (filters.duration ? 1 : 0);
 
-  const toggleSection = (section: string) => {
+  const toggleSection = (section: keyof typeof openSections) => { // Use keyof typeof openSections
     setOpenSections(prev => ({
       ...prev,
-      [section]: !prev[section as keyof typeof prev]
+      [section]: !prev[section]
     }));
   };
 
@@ -92,6 +123,64 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange }: StreamlinedSearc
           </Button>
         </div>
       )}
+
+      {/* Item Type Filter */}
+      <Collapsible open={openSections.itemType} onOpenChange={() => toggleSection('itemType')}>
+        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">Tipo de Item</Label>
+            {filters.resourceType.length > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {filters.resourceType.length}
+              </Badge>
+            )}
+          </div>
+          {openSections.itemType ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
+            {itemTypes.map((itemType) => (
+              <div key={itemType.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`itemType-${itemType.id}`}
+                  checked={filters.resourceType.includes(itemType.id)}
+                  onCheckedChange={(checked) => handleItemTypeChange(itemType.id, !!checked)}
+                />
+                <Label htmlFor={`itemType-${itemType.id}`} className="text-sm cursor-pointer">{itemType.label}</Label>
+              </div>
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Language Filter */}
+      <Collapsible open={openSections.language} onOpenChange={() => toggleSection('language')}>
+        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">Idioma</Label>
+            {filters.language.length > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {filters.language.length}
+              </Badge>
+            )}
+          </div>
+          {openSections.language ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
+            {languages.map((language) => (
+              <div key={language} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`language-${language}`}
+                  checked={filters.language.includes(language)}
+                  onCheckedChange={(checked) => handleLanguageChange(language, !!checked)}
+                />
+                <Label htmlFor={`language-${language}`} className="text-sm cursor-pointer">{language}</Label>
+              </div>
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Subject Filter */}
       <Collapsible open={openSections.subject} onOpenChange={() => toggleSection('subject')}>
@@ -183,7 +272,7 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange }: StreamlinedSearc
             <Label className="text-sm font-medium">Duração</Label>
             {filters.duration && (
               <Badge variant="secondary" className="text-xs">
-                1
+                1 
               </Badge>
             )}
           </div>

@@ -1,4 +1,3 @@
-
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
 // Helper function to normalize text for better Portuguese search
@@ -7,6 +6,21 @@ const normalizeText = (text: string): string => {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, ''); // Remove accents
+};
+
+// Mapping for pais (country code) to language.
+// This is a simplified example. A more comprehensive mapping might be needed.
+const countryToLanguage: Record<string, string> = {
+  'BR': 'Português',
+  'PT': 'Português',
+  'US': 'Inglês',
+  'GB': 'Inglês',
+  'CA': 'Inglês', // Assuming English for Canada for simplicity
+  'AU': 'Inglês',
+  'ES': 'Espanhol',
+  'MX': 'Espanhol',
+  'AR': 'Espanhol',
+  // Add more mappings as needed
 };
 
 export const filterResults = (
@@ -29,6 +43,7 @@ export const filterResults = (
       if (!matchesQuery) return false;
     }
 
+    // "Tipo de Item" filter (uses resourceType)
     if (currentFilters.resourceType.length > 0) {
       if (!currentFilters.resourceType.includes(item.type)) return false;
     }
@@ -65,6 +80,15 @@ export const filterResults = (
       }
     }
 
+    // "Idioma" filter
+    if (currentFilters.language.length > 0) {
+      if (!item.pais) return false; // Item has no country information
+      const itemLanguage = countryToLanguage[item.pais.toUpperCase()];
+      if (!itemLanguage || !currentFilters.language.includes(itemLanguage)) {
+        return false;
+      }
+    }
+
     return true;
   });
 };
@@ -75,7 +99,8 @@ export const sortResults = (resultsToSort: SearchResult[], sortType: string, que
       return resultsToSort.sort((a, b) => b.year - a.year);
     
     case 'accessed':
-      return resultsToSort.sort(() => Math.random() - 0.5);
+      // Placeholder: Replace with actual access count if available
+      return resultsToSort.sort(() => Math.random() - 0.5); 
     
     case 'type':
       const typeOrder = { 'video': 0, 'podcast': 1, 'titulo': 2 };
@@ -88,18 +113,31 @@ export const sortResults = (resultsToSort: SearchResult[], sortType: string, que
     
     case 'relevance':
     default:
+      // Basic relevance: prioritize title matches, then factor in year.
+      // This could be made more sophisticated.
       return resultsToSort.sort((a, b) => {
         const queryNormalized = normalizeText(query);
         const aTitleNormalized = normalizeText(a.title);
         const bTitleNormalized = normalizeText(b.title);
         
-        const aRelevance = aTitleNormalized.includes(queryNormalized) ? 2 : 0;
-        const bRelevance = bTitleNormalized.includes(queryNormalized) ? 2 : 0;
+        // Score for title match
+        const aTitleMatchScore = aTitleNormalized.includes(queryNormalized) ? 2 : 0;
+        const bTitleMatchScore = bTitleNormalized.includes(queryNormalized) ? 2 : 0;
+
+        // Simple recency score (newer is slightly better)
+        // Normalize year to a small number to avoid overpowering title match
+        const currentYear = new Date().getFullYear();
+        const aRecencyScore = (a.year - (currentYear - 20)) / 20; // Score from 0 to 1 for last 20 years
+        const bRecencyScore = (b.year - (currentYear - 20)) / 20;
+
+        const aScore = aTitleMatchScore + Math.max(0, Math.min(1, aRecencyScore));
+        const bScore = bTitleMatchScore + Math.max(0, Math.min(1, bRecencyScore));
         
-        const aScore = aRelevance + (a.year / 1000);
-        const bScore = bRelevance + (b.year / 1000);
-        
-        return bScore - aScore;
+        if (bScore !== aScore) {
+          return bScore - aScore;
+        }
+        // Fallback to alphabetical by title if scores are equal
+        return a.title.localeCompare(b.title);
       });
   }
 };
@@ -109,5 +147,6 @@ export const checkHasActiveFilters = (filterObj: SearchFilters): boolean => {
          filterObj.subject.length > 0 || 
          Boolean(filterObj.author) || 
          Boolean(filterObj.year) || 
-         Boolean(filterObj.duration);
+         Boolean(filterObj.duration) ||
+         filterObj.language.length > 0; // Added language filter
 };

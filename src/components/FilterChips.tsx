@@ -2,48 +2,57 @@
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SearchFilters } from '@/types/searchTypes'; // Import SearchFilters
 
 interface FilterChipsProps {
-  filters: {
-    resourceType: string[];
-    subject: string[];
-    author: string;
-    year: string;
-    duration: string;
-  };
-  onRemoveFilter: (filterType: string, value?: string) => void;
+  filters: SearchFilters; // Use SearchFilters type
+  onRemoveFilter: (filterType: keyof SearchFilters, value?: string) => void; // Use keyof SearchFilters
   onClearAll: () => void;
 }
 
 const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) => {
-  const getFilterLabel = (type: string, value: string) => {
-    switch (type) {
-      case 'resourceType':
-        const typeLabels: { [key: string]: string } = {
-          'titulo': 'Livros',
-          'video': 'Vídeos',
-          'podcast': 'Podcasts'
-        };
-        return typeLabels[value] || value;
-      case 'duration':
-        const durationLabels: { [key: string]: string } = {
-          'short': 'Até 10 min',
-          'medium': '10-30 min',
-          'long': '30+ min'
-        };
-        return durationLabels[value] || value;
-      default:
-        return value;
-    }
+  const getItemTypeLabel = (value: string) => {
+    const labels: { [key: string]: string } = {
+      'titulo': 'Tipo: Livro/Artigo',
+      'video': 'Tipo: Vídeo',
+      'podcast': 'Tipo: Podcast'
+    };
+    return labels[value] || value;
   };
 
-  const activeFilters = [
-    ...filters.resourceType.map(type => ({ type: 'resourceType', value: type, label: getFilterLabel('resourceType', type) })),
-    ...filters.subject.map(subject => ({ type: 'subject', value: subject, label: subject })),
-    ...(filters.author ? [{ type: 'author', value: filters.author, label: `Autor: ${filters.author}` }] : []),
-    ...(filters.year ? [{ type: 'year', value: filters.year, label: `Ano: ${filters.year}` }] : []),
-    ...(filters.duration ? [{ type: 'duration', value: filters.duration, label: getFilterLabel('duration', filters.duration) }] : [])
-  ];
+  const getDurationLabel = (value: string) => {
+    const labels: { [key: string]: string } = {
+      'short': 'Duração: Até 10 min',
+      'medium': 'Duração: 10-30 min',
+      'long': 'Duração: 30+ min'
+    };
+    return labels[value] || value;
+  };
+
+  const getLanguageLabel = (value: string) => {
+    return `Idioma: ${value}`;
+  };
+
+  const activeFilters: { type: keyof SearchFilters; value: string; label: string }[] = [];
+
+  filters.resourceType.forEach(type => 
+    activeFilters.push({ type: 'resourceType', value: type, label: getItemTypeLabel(type) })
+  );
+  filters.subject.forEach(subject => 
+    activeFilters.push({ type: 'subject', value: subject, label: `Assunto: ${subject}` })
+  );
+  if (filters.author) {
+    activeFilters.push({ type: 'author', value: filters.author, label: `Autor: ${filters.author}` });
+  }
+  if (filters.year) {
+    activeFilters.push({ type: 'year', value: filters.year, label: `Ano: ${filters.year}` });
+  }
+  if (filters.duration) {
+    activeFilters.push({ type: 'duration', value: filters.duration, label: getDurationLabel(filters.duration) });
+  }
+  filters.language.forEach(lang => 
+    activeFilters.push({ type: 'language', value: lang, label: getLanguageLabel(lang) })
+  );
 
   if (activeFilters.length === 0) return null;
 

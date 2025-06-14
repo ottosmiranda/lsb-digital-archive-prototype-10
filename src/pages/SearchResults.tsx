@@ -1,4 +1,3 @@
-
 import { useSearchResults } from '@/hooks/useSearchResults';
 import SearchLayout from '@/components/SearchLayout';
 
@@ -17,23 +16,24 @@ const SearchResults = () => {
     handleFilterChange,
     handleSortChange,
     handlePageChange,
-    setFilters,
     setQuery,
     forceRefresh
   } = useSearchResults();
 
   const handleClearFilters = () => {
-    setFilters({
-      resourceType: [],
+    handleFilterChange({
+      resourceType: [], // For "Tipo de Item"
       subject: [],
       author: '',
       year: '',
-      duration: ''
+      duration: '',
+      language: [], // Clear language filter
     });
   };
 
   const handleQuickSearch = (searchQuery: string) => {
     setQuery(searchQuery);
+    handlePageChange(1); 
   };
 
   return (

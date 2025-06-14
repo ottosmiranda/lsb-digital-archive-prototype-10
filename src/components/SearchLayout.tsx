@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
 import StreamlinedSearchFilters from '@/components/StreamlinedSearchFilters';
@@ -51,17 +50,32 @@ const SearchLayout = ({
   onRefreshData
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  // activeContentType reflects the state of the resourceType filter driven by tabs
   const [activeContentType, setActiveContentType] = useState('all');
+
+  // Sync activeContentType with filters.resourceType
+  useEffect(() => {
+    if (filters.resourceType.length === 1 && ['titulo', 'video', 'podcast'].includes(filters.resourceType[0])) {
+      setActiveContentType(filters.resourceType[0]);
+    } else if (filters.resourceType.length === 0) {
+      setActiveContentType('all');
+    } else {
+      // Multiple resourceTypes selected, or an unknown one. Default to 'all'.
+      // This scenario might occur if filters are set externally or if `resourceType` can hold more complex states.
+      // For tab interaction, it's usually one type or 'all'.
+      setActiveContentType('all'); 
+    }
+  }, [filters.resourceType]);
   
   const hasResults = currentResults.length > 0;
   const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
   const showWelcomeState = !loading && !query && !hasActiveFilters && !hasResults;
 
-  const handleRemoveFilter = (filterType: string, value?: string) => {
+  const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
     const newFilters = { ...filters };
     
     switch (filterType) {
-      case 'resourceType':
+      case 'resourceType': // "Tipo de Item"
         newFilters.resourceType = newFilters.resourceType.filter(type => type !== value);
         break;
       case 'subject':
@@ -76,19 +90,26 @@ const SearchLayout = ({
       case 'duration':
         newFilters.duration = '';
         break;
+      case 'language': // Added language filter
+        newFilters.language = newFilters.language.filter(lang => lang !== value);
+        break;
     }
     
     onFiltersChange(newFilters);
   };
 
   const handleContentTypeChange = (type: string) => {
-    setActiveContentType(type);
+    // This function is called when a tab is clicked (Todos, Livros, Vídeos, Podcasts)
+    // It updates the `activeContentType` state for the tabs UI
+    // And it updates the `filters.resourceType` for actual filtering.
+    setActiveContentType(type); 
     const newFilters = { ...filters };
     
     if (type === 'all') {
       newFilters.resourceType = [];
     } else {
-      newFilters.resourceType = [type];
+      // Ensure only valid types are pushed. This assumes `type` is one of 'titulo', 'video', 'podcast'.
+      newFilters.resourceType = [type]; 
     }
     
     onFiltersChange(newFilters);
@@ -113,7 +134,7 @@ const SearchLayout = ({
             resultCount={totalResults}
             sortBy={sortBy}
             view={view}
-            activeContentType={activeContentType}
+            activeContentType={activeContentType} // Ensure this reflects current filter state
             onSortChange={onSortChange}
             onViewChange={setView}
             onContentTypeChange={handleContentTypeChange}

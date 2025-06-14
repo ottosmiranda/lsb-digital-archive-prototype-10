@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -79,6 +78,10 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
   const handleDurationChange = (value: string) => {
     const durationValue = value === 'all' ? '' : value;
     onFiltersChange({ ...filters, duration: durationValue });
+  };
+
+  const clearAuthor = () => {
+    onFiltersChange({ ...filters, author: '' });
   };
 
   const clearFilters = () => {
@@ -206,11 +209,24 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
           <div className="p-3 border border-gray-200 rounded-lg bg-white">
-            <Input
-              placeholder="Nome do autor"
-              value={filters.author}
-              onChange={(e) => onFiltersChange({ ...filters, author: e.target.value })}
-            />
+            <div className="relative">
+              <Input
+                placeholder="Nome do autor"
+                value={filters.author}
+                onChange={(e) => onFiltersChange({ ...filters, author: e.target.value })}
+                className="pr-10"
+              />
+              {filters.author && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
+                  onClick={clearAuthor}
+                >
+                  <X className="h-4 w-4 text-gray-500" />
+                </Button>
+              )}
+            </div>
           </div>
         </CollapsibleContent>
       </Collapsible>

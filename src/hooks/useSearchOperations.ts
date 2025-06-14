@@ -30,22 +30,27 @@ export const useSearchOperations = ({
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const previousFiltersRef = useRef<SearchFilters>(filters);
 
-  // The main performSearch function, can optionally skip loading for author typing
+  // The main performSearch function
   const performSearch = useCallback(
     async (
       searchQuery: string,
       currentFilters: SearchFilters,
+      effectiveSortBy: string,
       options: FilterChangeOptions = {}
     ) => {
-      // Skip loading if only typing author (prevents focus jump)
       if (!options.authorTyping) setLoading(true);
       try {
         const hasActiveFilters = checkHasActiveFilters(currentFilters);
-        const hasNonDefaultSorting = sortBy && sortBy !== 'relevance';
-        
+        const hasNonDefaultSorting = effectiveSortBy && effectiveSortBy !== 'relevance';
+
+        // Always apply sorting if specified, even if no query/filters
         if (searchQuery || hasActiveFilters || hasNonDefaultSorting) {
-          const filteredResults = filterResults(allData, searchQuery, currentFilters);
-          const sortedResults = sortResults(filteredResults, sortBy, searchQuery);
+          // If there's a query or filters, filter; otherwise, show all
+          const filteredResults = (searchQuery || hasActiveFilters)
+            ? filterResults(allData, searchQuery, currentFilters)
+            : allData;
+
+          const sortedResults = sortResults(filteredResults, effectiveSortBy, searchQuery);
           setSearchResults(sortedResults);
         } else {
           setSearchResults([]);
@@ -56,25 +61,24 @@ export const useSearchOperations = ({
         if (!options.authorTyping) setLoading(false);
       }
     },
-    [allData, sortBy, setLoading]
+    [allData, setLoading]
   );
 
-  // Initial search & query change trigger
+  // Always update results when query, filters, sortBy, or dataLoaded changes
   useEffect(() => {
     if (!dataLoaded) return;
-    performSearch(query, filters);
+    performSearch(query, filters, sortBy);
     // eslint-disable-next-line
-  }, [query, dataLoaded]);
+  }, [query, filters, sortBy, dataLoaded, performSearch]);
 
-  // Filter change trigger
+  // Filter change tracking (for authorTyping spinner-avoidance UX)
   useEffect(() => {
     if (!dataLoaded) return;
-    
+
     // Avoid running if filters are the same object reference
     if (filters === previousFiltersRef.current) return;
 
     const previousFilters = previousFiltersRef.current;
-    
     const areArraysEqual = (a: string[] = [], b: string[] = []) => {
       if (a.length !== b.length) return false;
       return [...a].sort().join(',') === [...b].sort().join(',');
@@ -89,23 +93,14 @@ export const useSearchOperations = ({
       filters.year === previousFilters.year &&
       filters.duration === previousFilters.duration;
 
-    // The component handles debouncing, so we just perform the search,
-    // telling it if it's an author-only change to avoid the loading spinner.
-    performSearch(query, filters, { authorTyping: onlyAuthorChanged });
+    performSearch(query, filters, sortBy, { authorTyping: onlyAuthorChanged });
 
     previousFiltersRef.current = filters;
     // eslint-disable-next-line
-  }, [filters, performSearch, query, dataLoaded]);
+  }, [filters, dataLoaded, query, sortBy, performSearch]);
 
-  // Sort results when sortBy changes
-  useEffect(() => {
-    if (searchResults.length === 0) return;
-    
-    const sortedResults = sortResults([...searchResults], sortBy, query);
-    setSearchResults(sortedResults);
-    // eslint-disable-next-line
-  }, [sortBy, query]);
-  
+  // -- REMOVED: the effect that only sorted existing state, which could cause stale/empty state
+
   return {
     searchResults
   };

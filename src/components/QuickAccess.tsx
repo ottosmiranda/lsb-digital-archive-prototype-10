@@ -1,26 +1,27 @@
 
 import { Book, Video, Headphones } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const QuickAccess = () => {
   const accessTypes = [
     {
       icon: Book,
       label: 'Livros',
-      href: '/buscar?tipo=livro',
+      href: '/buscar?filtros=titulo',
       color: 'from-blue-500 to-blue-600',
       count: '1,234'
     },
     {
       icon: Video,
       label: 'Vídeos',
-      href: '/buscar?tipo=video',
+      href: '/buscar?filtros=video',
       color: 'from-red-500 to-red-600',
       count: '342'
     },
     {
       icon: Headphones,
       label: 'Podcasts',
-      href: '/buscar?tipo=podcast',
+      href: '/buscar?filtros=podcast',
       color: 'from-purple-500 to-purple-600',
       count: '128'
     }
@@ -44,9 +45,9 @@ const QuickAccess = () => {
           {accessTypes.map((type, index) => {
             const IconComponent = type.icon;
             return (
-              <a
+              <Link
                 key={type.label}
-                href={type.href}
+                to={type.href}
                 className="animate-fade-in"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
@@ -69,7 +70,7 @@ const QuickAccess = () => {
                     {type.count} itens
                   </p>
                 </div>
-              </a>
+              </Link>
             );
           })}
         </div>

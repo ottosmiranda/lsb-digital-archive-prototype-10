@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 import { filterResults, sortResults, checkHasActiveFilters } from '@/utils/searchUtils';
@@ -10,6 +9,13 @@ interface UseSearchOperationsProps {
   sortBy: string;
   dataLoaded: boolean;
   setLoading: (loading: boolean) => void;
+}
+
+/**
+ * Additional options object for onFiltersChange; currently only authorTyping is supported.
+ */
+interface FilterChangeOptions {
+  authorTyping?: boolean;
 }
 
 export const useSearchOperations = ({
@@ -24,26 +30,31 @@ export const useSearchOperations = ({
   const previousFiltersRef = useRef<SearchFilters>(filters);
   const authorSearchTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const performSearch = useCallback(async (searchQuery: string, currentFilters: SearchFilters) => {
-    setLoading(true);
-    console.log('Performing search with:', { searchQuery, currentFilters });
-    
-    try {
-      if (searchQuery || checkHasActiveFilters(currentFilters)) {
-        const filteredResults = filterResults(allData, searchQuery, currentFilters);
-        const sortedResults = sortResults(filteredResults, sortBy, searchQuery);
-        console.log('Search results:', sortedResults);
-        setSearchResults(sortedResults);
-      } else {
+  // The main performSearch function, can optionally skip loading for author typing
+  const performSearch = useCallback(
+    async (
+      searchQuery: string,
+      currentFilters: SearchFilters,
+      options: FilterChangeOptions = {}
+    ) => {
+      // Skip loading if only typing author (prevents focus jump)
+      if (!options.authorTyping) setLoading(true);
+      try {
+        if (searchQuery || checkHasActiveFilters(currentFilters)) {
+          const filteredResults = filterResults(allData, searchQuery, currentFilters);
+          const sortedResults = sortResults(filteredResults, sortBy, searchQuery);
+          setSearchResults(sortedResults);
+        } else {
+          setSearchResults([]);
+        }
+      } catch (error) {
         setSearchResults([]);
+      } finally {
+        if (!options.authorTyping) setLoading(false);
       }
-    } catch (error) {
-      console.error('Error performing search:', error);
-      setSearchResults([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [allData, sortBy, setLoading]);
+    },
+    [allData, sortBy, setLoading]
+  );
 
   const shouldTriggerSearch = useCallback((newFilters: SearchFilters, previousFilters: SearchFilters) => {
     // Check if only author changed - if so, we need special handling
@@ -63,40 +74,34 @@ export const useSearchOperations = ({
     return !onlyAuthorChanged;
   }, []);
 
-  // Perform search when query changes or on initial load
+  // Initial search & query change trigger
   useEffect(() => {
     if (!dataLoaded) return;
-    
-    console.log('Search triggered with query:', query);
     performSearch(query, filters);
-  }, [query, dataLoaded, performSearch, filters]);
+    // eslint-disable-next-line
+  }, [query, dataLoaded]);
 
-  // Perform search when filters change (with special handling for author)
+  // Filter change trigger, with support for authorTyping
   useEffect(() => {
     if (!dataLoaded || (!query && !checkHasActiveFilters(filters))) return;
-    
+
     const previousFilters = previousFiltersRef.current;
-    
     // Clear any pending author search timeout
     if (authorSearchTimeoutRef.current) {
       clearTimeout(authorSearchTimeoutRef.current);
     }
-
-    // Check if this is an author-only change
+    // If only author changed...
     if (!shouldTriggerSearch(filters, previousFilters)) {
-      console.log('Author typing detected, delaying search...');
-      // For author changes, add a longer delay to prevent search during typing
       authorSearchTimeoutRef.current = setTimeout(() => {
-        console.log('Author search triggered after delay:', filters.author);
-        performSearch(query, filters);
-      }, 800); // Longer delay for author typing
+        performSearch(query, filters, { authorTyping: true });
+      }, 800);
     } else {
-      console.log('Non-author filter search triggered:', filters);
       performSearch(query, filters);
     }
-    
+
     previousFiltersRef.current = filters;
-  }, [filters, dataLoaded, query, performSearch, shouldTriggerSearch]);
+    // eslint-disable-next-line
+  }, [filters, dataLoaded, query]);
 
   // Sort results when sortBy changes
   useEffect(() => {

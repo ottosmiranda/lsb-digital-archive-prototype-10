@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,8 +18,12 @@ interface StreamlinedSearchFiltersProps {
 
 const StreamlinedSearchFilters = React.memo(({ filters, onFiltersChange, currentResults = [] }: StreamlinedSearchFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Isolated local state for author (do not propagate changes instantly)
   const [localAuthor, setLocalAuthor] = useState(filters.author);
-  
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Keep openSections as is
   const [openSections, setOpenSections] = useState({
     subject: true,
     itemType: true,
@@ -29,11 +33,33 @@ const StreamlinedSearchFilters = React.memo(({ filters, onFiltersChange, current
     duration: false
   });
 
-  // Sync local author state with external filters only when they change from outside
+  // Debounce author value and propagate to main filters only after pause in typing
+  useEffect(() => {
+    // Clear the previous timeout on every change
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    debounceTimeout.current = setTimeout(() => {
+      if (filters.author !== localAuthor) {
+        onFiltersChange({ ...filters, author: localAuthor });
+      }
+    }, 650); // 650ms debounce, adjust as desired
+
+    // Cleanup function
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localAuthor]); // Only trigger on localAuthor
+
+  // Sync localAuthor from external filter updates (e.g., clear filters)
   useEffect(() => {
     if (filters.author !== localAuthor) {
       setLocalAuthor(filters.author);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.author]);
 
   // Extract available document types from current results
@@ -89,14 +115,15 @@ const StreamlinedSearchFilters = React.memo(({ filters, onFiltersChange, current
     onFiltersChange({ ...filters, duration: durationValue });
   }, [filters, onFiltersChange]);
 
+  // For author: update only local state instantly
   const handleAuthorChange = useCallback((value: string) => {
     setLocalAuthor(value);
-    // Update filters immediately - useSearchOperations will handle debouncing
-    onFiltersChange({ ...filters, author: value });
-  }, [filters, onFiltersChange]);
+  }, []);
 
+  // For clear author, also clear local and propagate instantly
   const clearAuthor = useCallback(() => {
     setLocalAuthor('');
+    // Also clear in filters right away for responsiveness
     onFiltersChange({ ...filters, author: '' });
   }, [filters, onFiltersChange]);
 

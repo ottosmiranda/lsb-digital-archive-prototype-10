@@ -55,9 +55,12 @@ const Navigation = () => {
           <div className="flex-shrink-0">
             <Link to="/" className="flex items-center">
               <img 
-                src="/lovable-uploads/885ea189-9fea-4b1e-a7e4-0be751e7754c.png" 
+                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=80&fit=crop&crop=center" 
                 alt="Biblioteca Link" 
                 className="h-10 w-auto"
+                onError={(e) => {
+                  e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='80' viewBox='0 0 200 80'%3E%3Crect width='200' height='80' fill='%23003366'/%3E%3Ctext x='100' y='45' text-anchor='middle' fill='white' font-family='Arial, sans-serif' font-size='16' font-weight='bold'%3EBIBLIOTECA LINK%3C/text%3E%3C/svg%3E";
+                }}
               />
             </Link>
           </div>

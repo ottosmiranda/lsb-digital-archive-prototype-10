@@ -14,6 +14,9 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from '@/components/ui/breadcrumb';
+import PodcastDetailHero from "@/components/PodcastDetailHero";
+import PodcastEpisodeList from "@/components/PodcastEpisodeList";
+import { useDataLoader } from '@/hooks/useDataLoader';
 
 interface Resource {
   id: number;
@@ -38,6 +41,113 @@ interface Resource {
 }
 
 const ResourceDetail = () => {
+  const { id } = useParams<{ id: string }>();
+
+  // Use your real data loader here
+  const { allData, loading } = useDataLoader();
+
+  // Find podcast by id (use type and id for precise matching, use "id" from route)
+  const podcast =
+    allData.find(
+      (r) =>
+        (r.type === "podcast") &&
+        (r.id === Number(id) ||
+          r.id === id || // sometimes id might be string
+          // Could be strings in the JSON keys, so allow for "pod001" style too:
+          String(r.id) === id ||
+          String(r.id).toLowerCase() === id?.toLowerCase()
+        )
+    ) || null;
+
+  // If loading, show a skeleton as before
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Navigation />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+            <div className="aspect-video bg-gray-200 rounded"></div>
+            <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+            <div className="space-y-3">
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+              <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If podcast detected (type: podcast) and there is a matching podcast in the data
+  if (podcast && podcast.type === 'podcast') {
+    // Custom podcast details UI
+    // We'll need to get all available metadata from SearchResult, plus more from raw JSON if needed
+    // For now, we use what's in podcast
+    return (
+      <div className="min-h-screen bg-white">
+        <Navigation />
+        <div className="max-w-4xl mx-auto py-8 px-4 md:px-8">
+          {/* Breadcrumb */}
+          <Breadcrumb className="mb-4">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/">Início</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/buscar">Buscar</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{podcast.title}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
+          {/* Back link */}
+          <Link to="/buscar" className="inline-flex items-center text-lsb-primary mb-6 hover:text-lsb-primary/80">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar aos resultados
+          </Link>
+
+          {/* HERO */}
+          <PodcastDetailHero
+            cover={podcast.thumbnail}
+            title={podcast.title}
+            publisher={podcast.author}
+            episodeCount={
+              // fallback: try to parse episode count from duration, or set 1 if unknown
+              podcast.duration?.match(/(\d+)/) ? Number(podcast.duration.match(/(\d+)/)?.[1]) : 1
+            }
+            year={podcast.year}
+            categories={podcast.subject ? [podcast.subject] : []}
+            description={podcast.description}
+          />
+
+          {/* Episodes List */}
+          <PodcastEpisodeList
+            total={
+              podcast.duration?.match(/(\d+)/)
+                ? Number(podcast.duration.match(/(\d+)/)?.[1])
+                : 1
+            }
+            podcastTitle={podcast.title}
+          />
+
+          {/* TODO: "You might also like" or other related content section (future step) */}
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // fallback: old behavior for video/livro/other
   const { id } = useParams<{ id: string }>();
   const [resource, setResource] = useState<Resource | null>(null);
   const [loading, setLoading] = useState(true);

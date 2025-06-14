@@ -359,7 +359,8 @@ export class DataService {
         pages: 420,
         description: 'Guia completo para aprendizado da Língua Brasileira de Sinais.',
         year: 2023,
-        subject: 'Educação'
+        subject: 'Educação',
+        documentType: 'Livro' // Add document type for testing
       },
       {
         id: 3,

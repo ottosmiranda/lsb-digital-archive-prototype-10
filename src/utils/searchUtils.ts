@@ -1,3 +1,4 @@
+
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
 // Helper function to normalize text for better Portuguese search
@@ -82,9 +83,16 @@ export const filterResults = (
 
     // "Idioma" filter
     if (currentFilters.language.length > 0) {
-      if (!item.pais) return false; // Item has no country information
+      if (!item.pais) return false;
       const itemLanguage = countryToLanguage[item.pais.toUpperCase()];
       if (!itemLanguage || !currentFilters.language.includes(itemLanguage)) {
+        return false;
+      }
+    }
+
+    // "Tipo de Documento" filter (only applies to books/articles)
+    if (currentFilters.documentType.length > 0 && item.type === 'titulo') {
+      if (!item.documentType || !currentFilters.documentType.includes(item.documentType)) {
         return false;
       }
     }
@@ -148,5 +156,6 @@ export const checkHasActiveFilters = (filterObj: SearchFilters): boolean => {
          Boolean(filterObj.author) || 
          Boolean(filterObj.year) || 
          Boolean(filterObj.duration) ||
-         filterObj.language.length > 0; // Added language filter
+         filterObj.language.length > 0 ||
+         filterObj.documentType.length > 0; // Added document type filter
 };

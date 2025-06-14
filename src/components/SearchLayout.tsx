@@ -75,7 +75,7 @@ const SearchLayout = ({
     const newFilters = { ...filters };
     
     switch (filterType) {
-      case 'resourceType': // "Tipo de Item"
+      case 'resourceType':
         newFilters.resourceType = newFilters.resourceType.filter(type => type !== value);
         break;
       case 'subject':
@@ -90,8 +90,11 @@ const SearchLayout = ({
       case 'duration':
         newFilters.duration = '';
         break;
-      case 'language': // Added language filter
+      case 'language':
         newFilters.language = newFilters.language.filter(lang => lang !== value);
+        break;
+      case 'documentType':
+        newFilters.documentType = newFilters.documentType.filter(docType => docType !== value);
         break;
     }
     
@@ -146,6 +149,7 @@ const SearchLayout = ({
             <StreamlinedSearchFilters 
               filters={filters}
               onFiltersChange={onFiltersChange}
+              currentResults={currentResults} // Pass current results to check for books
             />
           )}
           

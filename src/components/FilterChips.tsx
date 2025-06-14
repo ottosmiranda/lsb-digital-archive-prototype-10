@@ -1,4 +1,3 @@
-
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +32,10 @@ const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) 
     return `Idioma: ${value}`;
   };
 
+  const getDocumentTypeLabel = (value: string) => {
+    return `Documento: ${value}`;
+  };
+
   const activeFilters: { type: keyof SearchFilters; value: string; label: string }[] = [];
 
   filters.resourceType.forEach(type => 
@@ -52,6 +55,9 @@ const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) 
   }
   filters.language.forEach(lang => 
     activeFilters.push({ type: 'language', value: lang, label: getLanguageLabel(lang) })
+  );
+  filters.documentType.forEach(docType => 
+    activeFilters.push({ type: 'documentType', value: docType, label: getDocumentTypeLabel(docType) })
   );
 
   if (activeFilters.length === 0) return null;

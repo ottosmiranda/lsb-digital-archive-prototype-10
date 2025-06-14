@@ -22,12 +22,13 @@ const SearchResults = () => {
 
   const handleClearFilters = () => {
     handleFilterChange({
-      resourceType: [], // For "Tipo de Item"
+      resourceType: [],
       subject: [],
       author: '',
       year: '',
       duration: '',
-      language: [], // Clear language filter
+      language: [],
+      documentType: [],
     });
   };
 

@@ -6,6 +6,7 @@ import QuickAccess from '@/components/QuickAccess';
 import FeaturedMedia from '@/components/FeaturedMedia';
 import RecentAdditions from '@/components/RecentAdditions';
 import MostAccessed from '@/components/MostAccessed';
+import ExternalResources from '@/components/ExternalResources';
 import Footer from '@/components/Footer';
 
 const Index = () => {
@@ -18,6 +19,7 @@ const Index = () => {
       <FeaturedMedia />
       <RecentAdditions />
       <MostAccessed />
+      <ExternalResources />
       <Footer />
     </div>
   );

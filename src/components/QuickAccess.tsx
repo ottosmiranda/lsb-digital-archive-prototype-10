@@ -1,5 +1,5 @@
 
-import { Book, FileText, Video, Headphones } from 'lucide-react';
+import { Book, Video, Headphones } from 'lucide-react';
 
 const QuickAccess = () => {
   const accessTypes = [
@@ -9,13 +9,6 @@ const QuickAccess = () => {
       href: '/buscar?tipo=livro',
       color: 'from-blue-500 to-blue-600',
       count: '1,234'
-    },
-    {
-      icon: FileText,
-      label: 'Artigos',
-      href: '/buscar?tipo=artigo',
-      color: 'from-green-500 to-green-600',
-      count: '856'
     },
     {
       icon: Video,
@@ -47,7 +40,7 @@ const QuickAccess = () => {
         </div>
 
         {/* Quick Access Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
           {accessTypes.map((type, index) => {
             const IconComponent = type.icon;
             return (

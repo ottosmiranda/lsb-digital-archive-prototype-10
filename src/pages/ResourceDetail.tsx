@@ -169,7 +169,22 @@ const ResourceDetail = () => {
 
   // If podcast detected (type: podcast) and there is a matching podcast in the data
   if (podcast && podcast.type === 'podcast') {
-    // Custom podcast details UI
+    // Add ref for the PodcastEpisodeList
+    const episodesListRef = React.useRef<any>(null);
+
+    // Handle scroll and invoke "play latest"
+    const handlePlayLatest = () => {
+      // Find section by id
+      const section = document.getElementById("all-episodes-list");
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      // Programmatically play latest
+      if (episodesListRef.current && typeof episodesListRef.current.playLatest === "function") {
+        episodesListRef.current.playLatest();
+      }
+    };
+
     return (
       <div className="min-h-screen bg-white">
         <Navigation />
@@ -210,10 +225,12 @@ const ResourceDetail = () => {
             year={podcast.year}
             categories={podcast.subject ? [podcast.subject] : []}
             description={podcast.description}
+            onPlayLatest={handlePlayLatest}
           />
 
           {/* Episodes List with Spotify Player */}
           <PodcastEpisodeList
+            ref={episodesListRef}
             total={parseInt(podcast.episodes || '0') || 1}
             podcastTitle={podcast.title}
             embedUrl={podcast.embedUrl}

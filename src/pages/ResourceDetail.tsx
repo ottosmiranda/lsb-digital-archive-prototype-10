@@ -52,9 +52,8 @@ const ResourceDetail = () => {
       (r) =>
         (r.type === "podcast") &&
         (r.id === Number(id) ||
-          r.id === id || // sometimes id might be string
+          String(r.id) === id || // sometimes id might be string
           // Could be strings in the JSON keys, so allow for "pod001" style too:
-          String(r.id) === id ||
           String(r.id).toLowerCase() === id?.toLowerCase()
         )
     ) || null;
@@ -148,9 +147,8 @@ const ResourceDetail = () => {
   }
 
   // fallback: old behavior for video/livro/other
-  const { id } = useParams<{ id: string }>();
   const [resource, setResource] = useState<Resource | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [resourceLoading, setResourceLoading] = useState(true);
 
   useEffect(() => {
     const fetchResource = () => {
@@ -220,14 +218,14 @@ const ResourceDetail = () => {
         }
 
         setResource(mockResource);
-        setLoading(false);
+        setResourceLoading(false);
       }, 500);
     };
 
     fetchResource();
   }, [id]);
 
-  if (loading) {
+  if (resourceLoading) {
     return (
       <div className="min-h-screen bg-white">
         <Navigation />

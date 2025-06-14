@@ -40,7 +40,6 @@ const Footer = () => {
               <div className="hidden w-10 h-10 bg-lsb-accent rounded-lg flex items-center justify-center">
                 <span className="text-lsb-primary font-bold text-xl">LSB</span>
               </div>
-              <span className="font-bold text-xl">Biblioteca Digital</span>
             </div>
             <p className="text-blue-200 leading-relaxed">
               Democratizando o acesso ao conhecimento através de uma plataforma digital 

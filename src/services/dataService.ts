@@ -317,6 +317,9 @@ export class DataService {
         subject = item.assunto;
       }
 
+      // Extract document type from the new field
+      const documentType = item.tipo_documento || 'Livro';
+
       const result: SearchResult = {
         id,
         title,
@@ -326,7 +329,8 @@ export class DataService {
         year,
         subject,
         pages: item.paginas,
-        thumbnail: item.imagem_url
+        thumbnail: item.imagem_url,
+        documentType
       };
 
       return result;
@@ -360,7 +364,7 @@ export class DataService {
         description: 'Guia completo para aprendizado da Língua Brasileira de Sinais.',
         year: 2023,
         subject: 'Educação',
-        documentType: 'Livro' // Add document type for testing
+        documentType: 'Livro'
       },
       {
         id: 3,

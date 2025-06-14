@@ -1,11 +1,12 @@
+
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { SearchFilters } from '@/types/searchTypes'; // Import SearchFilters
+import { SearchFilters } from '@/types/searchTypes';
 
 interface FilterChipsProps {
-  filters: SearchFilters; // Use SearchFilters type
-  onRemoveFilter: (filterType: keyof SearchFilters, value?: string) => void; // Use keyof SearchFilters
+  filters: SearchFilters;
+  onRemoveFilter: (filterType: keyof SearchFilters, value?: string) => void;
   onClearAll: () => void;
 }
 
@@ -33,7 +34,7 @@ const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) 
   };
 
   const getDocumentTypeLabel = (value: string) => {
-    return `Documento: ${value}`;
+    return `Tipo: ${value}`;
   };
 
   const activeFilters: { type: keyof SearchFilters; value: string; label: string }[] = [];

@@ -1,3 +1,4 @@
+
 export interface SearchResult {
   id: number;
   title: string;
@@ -14,13 +15,13 @@ export interface SearchResult {
 }
 
 export interface SearchFilters {
-  resourceType: string[];
+  resourceType: string[]; // Keep for backward compatibility with tabs
   subject: string[];
   author: string;
   year: string;
   duration: string;
   language: string[];
-  documentType: string[];
+  documentType: string[]; // Academic document types
 }
 
 export interface DataValidationError {

@@ -44,7 +44,7 @@ export const filterResults = (
       if (!matchesQuery) return false;
     }
 
-    // "Tipo de Item" filter (uses resourceType)
+    // "Tipo de Item" filter (uses resourceType for tabs compatibility)
     if (currentFilters.resourceType.length > 0) {
       if (!currentFilters.resourceType.includes(item.type)) return false;
     }
@@ -90,8 +90,8 @@ export const filterResults = (
       }
     }
 
-    // "Tipo de Documento" filter (only applies to books/articles)
-    if (currentFilters.documentType.length > 0 && item.type === 'titulo') {
+    // "Tipo de Documento" filter (academic document types for books/articles)
+    if (currentFilters.documentType.length > 0) {
       if (!item.documentType || !currentFilters.documentType.includes(item.documentType)) {
         return false;
       }
@@ -157,5 +157,5 @@ export const checkHasActiveFilters = (filterObj: SearchFilters): boolean => {
          Boolean(filterObj.year) || 
          Boolean(filterObj.duration) ||
          filterObj.language.length > 0 ||
-         filterObj.documentType.length > 0; // Added document type filter
+         filterObj.documentType.length > 0;
 };

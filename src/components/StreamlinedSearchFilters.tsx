@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useMemo } from 'react';
 import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,63 +9,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { SearchFilters, SearchResult } from '@/types/searchTypes'; // Import SearchFilters type
+import { SearchFilters, SearchResult } from '@/types/searchTypes';
 
 interface StreamlinedSearchFiltersProps {
-  filters: SearchFilters; // Use the imported SearchFilters type
-  onFiltersChange: (filters: SearchFilters) => void; // Use the imported SearchFilters type
-  currentResults?: SearchResult[]; // New prop to check available content types
+  filters: SearchFilters;
+  onFiltersChange: (filters: SearchFilters) => void;
+  currentResults?: SearchResult[];
 }
 
 const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [] }: StreamlinedSearchFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [openSections, setOpenSections] = useState({
-    itemType: true, // "Tipo de Item" - uses filters.resourceType
-    documentType: true, // New section for document types
-    language: true, // "Idioma"
+    itemType: true, // Academic document types
+    language: true,
     subject: true,
     author: false,
     year: false,
     duration: false
   });
 
-  // Check if there are any books/articles in current results
-  const hasBooksInResults = currentResults.some(result => result.type === 'titulo');
-
-  // Options for "Tipo de Item"
-  const itemTypes = [
-    { id: 'titulo', label: 'Livros/Artigos' },
-    { id: 'video', label: 'Vídeos' },
-    { id: 'podcast', label: 'Podcasts' }
-  ];
-
-  // Options for "Tipo de Documento" (academic document types)
-  const documentTypes = [
-    'Artigo',
-    'Dissertação de mestrado',
-    'Trabalho de conclusão de curso',
-    'Trabalho apresentado em evento',
-    'Dissertação de doutorado',
-    'Análise',
-    'Errata',
-    'Resumo',
-    'Relatório de pós-doutorado',
-    'Carta',
-    'Editorial',
-    'Capítulo de livro',
-    'Tese de habilitação',
-    'Tese de residência',
-    'Livro',
-    'Patente',
-    'Dados de pesquisa',
-    'Observação',
-    'Artigo de dados',
-    'Plano de gerenciamento de dados',
-    'Revista'
-  ];
+  // Extract available document types from current results
+  const availableDocumentTypes = useMemo(() => {
+    const types = new Set<string>();
+    currentResults.forEach(result => {
+      if (result.type === 'titulo' && result.documentType) {
+        types.add(result.documentType);
+      }
+    });
+    return Array.from(types).sort();
+  }, [currentResults]);
 
   // Options for "Idioma"
-  const languages = ['Português', 'Inglês', 'Espanhol']; // Add more as needed
+  const languages = ['Português', 'Inglês', 'Espanhol'];
 
   const subjects = [
     'Educação', 'História', 'Linguística', 'Cultura Surda', 'Inclusão', 
@@ -72,13 +48,6 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
   ];
 
   const years = Array.from({ length: 10 }, (_, i) => (new Date().getFullYear() - i).toString());
-
-  const handleItemTypeChange = (itemTypeId: string, checked: boolean) => {
-    const newItemTypes = checked
-      ? [...filters.resourceType, itemTypeId]
-      : filters.resourceType.filter((it: string) => it !== itemTypeId);
-    onFiltersChange({ ...filters, resourceType: newItemTypes });
-  };
 
   const handleDocumentTypeChange = (documentTypeId: string, checked: boolean) => {
     const newDocumentTypes = checked
@@ -114,35 +83,33 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
 
   const clearFilters = () => {
     onFiltersChange({
-      resourceType: [], // For "Tipo de Item"
+      resourceType: [], // Keep for backward compatibility
       subject: [],
       author: '',
       year: '',
       duration: '',
-      language: [], // Clear language filter
-      documentType: [] // Clear document type filter
+      language: [],
+      documentType: []
     });
   };
 
   const hasActiveFilters = 
-    filters.resourceType.length > 0 ||
-    filters.language.length > 0 ||
     filters.documentType.length > 0 ||
+    filters.language.length > 0 ||
     filters.subject.length > 0 || 
     filters.author || 
     filters.year || 
     filters.duration;
 
   const activeFilterCount = 
-    filters.resourceType.length +
-    filters.language.length +
     filters.documentType.length +
+    filters.language.length +
     filters.subject.length + 
     (filters.author ? 1 : 0) + 
     (filters.year ? 1 : 0) + 
     (filters.duration ? 1 : 0);
 
-  const toggleSection = (section: keyof typeof openSections) => { // Use keyof typeof openSections
+  const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -164,52 +131,23 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
         </div>
       )}
 
-      {/* Item Type Filter */}
-      <Collapsible open={openSections.itemType} onOpenChange={() => toggleSection('itemType')}>
-        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">Tipo de Item</Label>
-            {filters.resourceType.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {filters.resourceType.length}
-              </Badge>
-            )}
-          </div>
-          {openSections.itemType ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-            {itemTypes.map((itemType) => (
-              <div key={itemType.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`itemType-${itemType.id}`}
-                  checked={filters.resourceType.includes(itemType.id)}
-                  onCheckedChange={(checked) => handleItemTypeChange(itemType.id, !!checked)}
-                />
-                <Label htmlFor={`itemType-${itemType.id}`} className="text-sm cursor-pointer">{itemType.label}</Label>
-              </div>
-            ))}
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Document Type Filter - Only show when books are in results */}
-      {hasBooksInResults && (
-        <Collapsible open={openSections.documentType} onOpenChange={() => toggleSection('documentType')}>
+      {/* Document Type Filter - Only show when there are document types available */}
+      {availableDocumentTypes.length > 0 && (
+        <Collapsible open={openSections.itemType} onOpenChange={() => toggleSection('itemType')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium">Tipo de Documento</Label>
+              <Label className="text-sm font-medium">Tipo de Item</Label>
               {filters.documentType.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
                   {filters.documentType.length}
                 </Badge>
               )}
             </div>
-            {openSections.documentType ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {openSections.itemType ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2">
             <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-              {documentTypes.map((docType) => (
+              {availableDocumentTypes.map((docType) => (
                 <div key={docType} className="flex items-center space-x-2">
                   <Checkbox
                     id={`docType-${docType}`}

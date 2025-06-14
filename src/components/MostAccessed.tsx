@@ -1,97 +1,61 @@
 
 import { Eye, TrendingUp, Book, FileText, Video, Headphones } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useDataLoader } from '@/hooks/useDataLoader';
+import { useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
 
 const MostAccessed = () => {
-  const topItems = [
-    {
-      rank: 1,
-      title: 'Fundamentos de Gestão Estratégica',
-      type: 'livro',
-      author: 'Prof. Carlos Silva',
-      views: 15420,
-      trend: 'up'
-    },
-    {
-      rank: 2,
-      title: 'Marketing Digital na Era Moderna',
-      type: 'video',
-      author: 'Dra. Ana Costa',
-      views: 12340,
-      trend: 'up'
-    },
-    {
-      rank: 3,
-      title: 'Finanças Corporativas Aplicadas',
-      type: 'artigo',
-      author: 'Prof. Ricardo Lima',
-      views: 11280,
-      trend: 'down'
-    },
-    {
-      rank: 4,
-      title: 'Liderança e Motivação de Equipes',
-      type: 'podcast',
-      author: 'Business Leaders',
-      views: 10950,
-      trend: 'up'
-    },
-    {
-      rank: 5,
-      title: 'Inovação e Empreendedorismo',
-      type: 'livro',
-      author: 'Dr. Paulo Santos',
-      views: 9870,
-      trend: 'up'
-    },
-    {
-      rank: 6,
-      title: 'Gestão de Recursos Humanos',
-      type: 'video',
-      author: 'Prof. Marina Oliveira',
-      views: 8940,
-      trend: 'stable'
-    },
-    {
-      rank: 7,
-      title: 'Análise de Mercado e Competitividade',
-      type: 'artigo',
-      author: 'Dra. Fernanda Costa',
-      views: 8120,
-      trend: 'up'
-    },
-    {
-      rank: 8,
-      title: 'Sustentabilidade nos Negócios',
-      type: 'podcast',
-      author: 'Green Business',
-      views: 7650,
-      trend: 'up'
-    },
-    {
-      rank: 9,
-      title: 'Transformação Digital Empresarial',
-      type: 'livro',
-      author: 'Prof. João Almeida',
-      views: 7230,
-      trend: 'down'
-    },
-    {
-      rank: 10,
-      title: 'Comunicação Corporativa Eficaz',
-      type: 'video',
-      author: 'Dra. Lucia Santos',
-      views: 6890,
-      trend: 'stable'
-    }
-  ];
+  const { allData, loading } = useDataLoader();
+  const navigate = useNavigate();
+
+  // Generate consistent view counts and trends based on item properties
+  const generateViewData = (item: any, index: number) => {
+    // Use item ID and type to generate consistent pseudo-random numbers
+    const seed = (item.id || 1) * 17 + item.type.charCodeAt(0) * 31;
+    const baseViews = 5000 + (seed % 12000); // Random between 5k-17k
+    const views = Math.floor(baseViews - (index * 800)); // Decrease by rank
+    
+    // Generate trend based on content characteristics
+    const trendSeed = seed % 10;
+    let trend = 'stable';
+    if (trendSeed < 4) trend = 'up';
+    else if (trendSeed > 7) trend = 'down';
+    
+    return { views, trend };
+  };
+
+  // Create top 10 items from real data
+  const topItems = useMemo(() => {
+    if (!allData || allData.length === 0) return [];
+    
+    // Mix different content types and take top 10
+    const shuffled = [...allData].sort((a, b) => {
+      // Sort by a mix of ID and type for consistent but varied results
+      const aScore = (a.id || 1) * (a.type === 'podcast' ? 3 : a.type === 'video' ? 2 : 1);
+      const bScore = (b.id || 1) * (b.type === 'podcast' ? 3 : b.type === 'video' ? 2 : 1);
+      return bScore - aScore;
+    });
+
+    return shuffled.slice(0, 10).map((item, index) => {
+      const { views, trend } = generateViewData(item, index);
+      
+      return {
+        rank: index + 1,
+        id: item.id,
+        title: item.title,
+        type: item.type,
+        author: item.author,
+        views,
+        trend
+      };
+    });
+  }, [allData]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'livro': return <Book className="h-4 w-4" />;
-      case 'artigo': return <FileText className="h-4 w-4" />;
+      case 'titulo': return <Book className="h-4 w-4" />;
       case 'video': return <Video className="h-4 w-4" />;
       case 'podcast': return <Headphones className="h-4 w-4" />;
       default: return <Book className="h-4 w-4" />;
@@ -100,11 +64,19 @@ const MostAccessed = () => {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'livro': return 'bg-blue-100 text-blue-800';
-      case 'artigo': return 'bg-green-100 text-green-800';
+      case 'titulo': return 'bg-blue-100 text-blue-800';
       case 'video': return 'bg-red-100 text-red-800';
       case 'podcast': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'titulo': return 'Livro';
+      case 'video': return 'Vídeo';
+      case 'podcast': return 'Podcast';
+      default: return 'Conteúdo';
     }
   };
 
@@ -122,6 +94,50 @@ const MostAccessed = () => {
     }
     return views.toString();
   };
+
+  const handleItemClick = (id: number) => {
+    navigate(`/recurso/${id}`);
+  };
+
+  if (loading) {
+    return (
+      <section className="py-16 md:py-24 bg-lsb-section">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
+              Mais Acessados
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Os conteúdos mais populares da nossa biblioteca digital
+            </p>
+          </div>
+          <div className="text-center my-12 text-lg text-gray-400 animate-pulse">
+            Carregando ranking...
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (topItems.length === 0) {
+    return (
+      <section className="py-16 md:py-24 bg-lsb-section">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
+              Mais Acessados
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Os conteúdos mais populares da nossa biblioteca digital
+            </p>
+          </div>
+          <div className="text-center my-12 text-lg text-gray-400">
+            Nenhum conteúdo encontrado.
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-16 md:py-24 bg-lsb-section">
@@ -150,9 +166,9 @@ const MostAccessed = () => {
             <TableBody>
               {topItems.map((item) => (
                 <TableRow 
-                  key={item.rank}
+                  key={`${item.id}-${item.type}`}
                   className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => window.location.href = `/item/${item.rank}`}
+                  onClick={() => handleItemClick(item.id)}
                 >
                   <TableCell className="font-medium">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
@@ -169,7 +185,7 @@ const MostAccessed = () => {
                       <Badge className={`${getTypeColor(item.type)} mr-2`}>
                         <span className="flex items-center space-x-1">
                           {getTypeIcon(item.type)}
-                          <span>{item.type}</span>
+                          <span>{getTypeLabel(item.type)}</span>
                         </span>
                       </Badge>
                     </div>
@@ -178,7 +194,7 @@ const MostAccessed = () => {
                     <Badge className={getTypeColor(item.type)}>
                       <span className="flex items-center space-x-1">
                         {getTypeIcon(item.type)}
-                        <span>{item.type}</span>
+                        <span>{getTypeLabel(item.type)}</span>
                       </span>
                     </Badge>
                   </TableCell>
@@ -198,16 +214,6 @@ const MostAccessed = () => {
               ))}
             </TableBody>
           </Table>
-        </div>
-
-        <div className="text-center mt-8">
-          <Button
-            variant="outline"
-            className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
-            onClick={() => window.location.href = '/buscar?ordenar=mais-acessados'}
-          >
-            Ver Ranking Completo
-          </Button>
         </div>
       </div>
     </section>

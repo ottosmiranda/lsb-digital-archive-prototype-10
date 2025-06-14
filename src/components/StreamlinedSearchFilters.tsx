@@ -20,10 +20,10 @@ interface StreamlinedSearchFiltersProps {
 const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [] }: StreamlinedSearchFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [openSections, setOpenSections] = useState({
-    itemType: true, // Academic document types
-    language: true,
     subject: true,
+    itemType: true,
     author: false,
+    language: true,
     year: false,
     duration: false
   });
@@ -131,7 +131,36 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
         </div>
       )}
 
-      {/* Document Type Filter - Only show when there are document types available */}
+      {/* Subject Filter - First */}
+      <Collapsible open={openSections.subject} onOpenChange={() => toggleSection('subject')}>
+        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">Assunto</Label>
+            {filters.subject.length > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {filters.subject.length}
+              </Badge>
+            )}
+          </div>
+          {openSections.subject ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
+            {subjects.map((subject) => (
+              <div key={subject} className="flex items-center space-x-2">
+                <Checkbox
+                  id={subject}
+                  checked={filters.subject.includes(subject)}
+                  onCheckedChange={(checked) => handleSubjectChange(subject, !!checked)}
+                />
+                <Label htmlFor={subject} className="text-sm cursor-pointer">{subject}</Label>
+              </div>
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Document Type Filter - Second (only show when there are document types available) */}
       {availableDocumentTypes.length > 0 && (
         <Collapsible open={openSections.itemType} onOpenChange={() => toggleSection('itemType')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -162,7 +191,31 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
         </Collapsible>
       )}
 
-      {/* Language Filter */}
+      {/* Author Filter - Third */}
+      <Collapsible open={openSections.author} onOpenChange={() => toggleSection('author')}>
+        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">Autor</Label>
+            {filters.author && (
+              <Badge variant="secondary" className="text-xs">
+                1
+              </Badge>
+            )}
+          </div>
+          {openSections.author ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <div className="p-3 border border-gray-200 rounded-lg bg-white">
+            <Input
+              placeholder="Nome do autor"
+              value={filters.author}
+              onChange={(e) => onFiltersChange({ ...filters, author: e.target.value })}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Language Filter - Fourth */}
       <Collapsible open={openSections.language} onOpenChange={() => toggleSection('language')}>
         <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">
@@ -191,60 +244,7 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Subject Filter */}
-      <Collapsible open={openSections.subject} onOpenChange={() => toggleSection('subject')}>
-        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">Assunto</Label>
-            {filters.subject.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {filters.subject.length}
-              </Badge>
-            )}
-          </div>
-          {openSections.subject ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-            {subjects.map((subject) => (
-              <div key={subject} className="flex items-center space-x-2">
-                <Checkbox
-                  id={subject}
-                  checked={filters.subject.includes(subject)}
-                  onCheckedChange={(checked) => handleSubjectChange(subject, !!checked)}
-                />
-                <Label htmlFor={subject} className="text-sm cursor-pointer">{subject}</Label>
-              </div>
-            ))}
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Author Filter */}
-      <Collapsible open={openSections.author} onOpenChange={() => toggleSection('author')}>
-        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">Autor</Label>
-            {filters.author && (
-              <Badge variant="secondary" className="text-xs">
-                1
-              </Badge>
-            )}
-          </div>
-          {openSections.author ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <div className="p-3 border border-gray-200 rounded-lg bg-white">
-            <Input
-              placeholder="Nome do autor"
-              value={filters.author}
-              onChange={(e) => onFiltersChange({ ...filters, author: e.target.value })}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Year Filter */}
+      {/* Year Filter - Fifth */}
       <Collapsible open={openSections.year} onOpenChange={() => toggleSection('year')}>
         <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">
@@ -274,7 +274,7 @@ const StreamlinedSearchFilters = ({ filters, onFiltersChange, currentResults = [
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Duration Filter */}
+      {/* Duration Filter - Sixth */}
       <Collapsible open={openSections.duration} onOpenChange={() => toggleSection('duration')}>
         <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">

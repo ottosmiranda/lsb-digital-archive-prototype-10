@@ -1,4 +1,3 @@
-
 import { Play, Calendar, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useSpotifyOEmbed } from "@/hooks/useSpotifyOEmbed";
@@ -90,12 +89,6 @@ const PodcastEpisodeList = ({ total, podcastTitle, embedUrl }: PodcastEpisodeLis
                 </div>
               )}
               
-              {oembedError && (
-                <div className="flex items-center justify-center h-[352px] bg-gray-50 rounded-lg">
-                  <div className="text-red-500">Erro ao carregar o player do Spotify</div>
-                </div>
-              )}
-              
               {oembedData && !oembedLoading && (
                 <div
                   dangerouslySetInnerHTML={{ __html: oembedData.html }}
@@ -103,8 +96,8 @@ const PodcastEpisodeList = ({ total, podcastTitle, embedUrl }: PodcastEpisodeLis
                 />
               )}
               
-              {/* Fallback to original iframe if oEmbed fails */}
-              {!oembedData && !oembedLoading && embedUrl && (
+              {/* Fallback to original iframe if oEmbed fails or is loading */}
+              {(!oembedData || oembedError) && !oembedLoading && embedUrl && (
                 <iframe
                   src={embedUrl}
                   width="100%"

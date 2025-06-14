@@ -1,4 +1,3 @@
-
 import { SearchResult } from '@/types/searchTypes';
 
 export class DataService {
@@ -234,8 +233,9 @@ export class DataService {
         description,
         year,
         subject,
-        duration: item.total_episodes ? `${item.total_episodes} episódios` : undefined,
-        thumbnail: item.imagem_url
+        episodes: item.total_episodes ? `${item.total_episodes} episódios` : undefined,
+        thumbnail: item.imagem_url,
+        embedUrl: item.embed_url // Map embed_url to embedUrl
       };
 
       return result;

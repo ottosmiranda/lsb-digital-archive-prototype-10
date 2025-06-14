@@ -19,13 +19,13 @@ interface UseSpotifyOEmbedResult {
   error: string | null;
 }
 
-export const useSpotifyOEmbed = (spotifyUrl?: string): UseSpotifyOEmbedResult => {
+export const useSpotifyOEmbed = (embedUrl?: string): UseSpotifyOEmbedResult => {
   const [oembedData, setOembedData] = useState<SpotifyOEmbedData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!spotifyUrl) {
+    if (!embedUrl) {
       setOembedData(null);
       setLoading(false);
       setError(null);
@@ -37,32 +37,34 @@ export const useSpotifyOEmbed = (spotifyUrl?: string): UseSpotifyOEmbedResult =>
       setError(null);
 
       try {
-        // Extract the Spotify URL from embed URL if needed
-        let cleanUrl = spotifyUrl;
-        if (spotifyUrl.includes('embed/')) {
-          // Convert embed URL back to regular Spotify URL
-          cleanUrl = spotifyUrl.replace('/embed/', '/').split('?')[0];
-        }
-
-        const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(cleanUrl)}`;
-        const response = await fetch(oembedUrl);
+        // Convert embed URL to regular Spotify URL for oEmbed API
+        const spotifyUrl = embedUrl.replace('/embed/', '/').split('?')[0];
+        
+        console.log('🎵 Fetching oEmbed for Spotify URL:', spotifyUrl);
+        
+        const oembedApiUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyUrl)}`;
+        console.log('🌐 oEmbed API URL:', oembedApiUrl);
+        
+        const response = await fetch(oembedApiUrl);
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch oEmbed data: ${response.status}`);
+          throw new Error(`oEmbed API returned ${response.status}`);
         }
 
         const data = await response.json();
+        console.log('✅ oEmbed data received:', data);
         setOembedData(data);
       } catch (err) {
-        console.error('Error fetching Spotify oEmbed data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch oEmbed data');
+        console.warn('⚠️ oEmbed fetch failed (likely CORS):', err);
+        // Don't set this as an error since we have a fallback
+        setError('oEmbed fetch failed - using fallback');
       } finally {
         setLoading(false);
       }
     };
 
     fetchOEmbedData();
-  }, [spotifyUrl]);
+  }, [embedUrl]);
 
   return { oembedData, loading, error };
 };

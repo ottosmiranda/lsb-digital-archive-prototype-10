@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
 import Navigation from '@/components/Navigation';
@@ -170,7 +170,7 @@ const ResourceDetail = () => {
   // If podcast detected (type: podcast) and there is a matching podcast in the data
   if (podcast && podcast.type === 'podcast') {
     // Add ref for the PodcastEpisodeList
-    const episodesListRef = React.useRef<any>(null);
+    const episodesListRef = useRef<any>(null);
 
     // Handle scroll and invoke "play latest"
     const handlePlayLatest = () => {

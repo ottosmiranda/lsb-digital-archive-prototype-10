@@ -2,12 +2,10 @@
 import Navigation from '@/components/Navigation';
 import Hero from '@/components/Hero';
 import FeaturedHighlights from '@/components/FeaturedHighlights';
-import FeaturedCollections from '@/components/FeaturedCollections';
 import QuickAccess from '@/components/QuickAccess';
 import FeaturedMedia from '@/components/FeaturedMedia';
 import RecentAdditions from '@/components/RecentAdditions';
 import MostAccessed from '@/components/MostAccessed';
-import ExternalResources from '@/components/ExternalResources';
 import Footer from '@/components/Footer';
 
 const Index = () => {
@@ -16,12 +14,10 @@ const Index = () => {
       <Navigation />
       <Hero />
       <FeaturedHighlights />
-      <FeaturedCollections />
       <QuickAccess />
       <FeaturedMedia />
       <RecentAdditions />
       <MostAccessed />
-      <ExternalResources />
       <Footer />
     </div>
   );

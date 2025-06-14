@@ -1,8 +1,8 @@
 
 import { useState } from 'react';
 import Navigation from '@/components/Navigation';
-import SearchHeader from '@/components/SearchHeader';
-import SearchFilters from '@/components/SearchFilters';
+import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
+import StreamlinedSearchFilters from '@/components/StreamlinedSearchFilters';
 import SearchResultsGrid from '@/components/SearchResultsGrid';
 import SearchResultsList from '@/components/SearchResultsList';
 import EmptySearchState from '@/components/EmptySearchState';
@@ -51,6 +51,7 @@ const SearchLayout = ({
   onRefreshData
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [activeContentType, setActiveContentType] = useState('all');
   
   const hasResults = currentResults.length > 0;
   const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
@@ -80,6 +81,19 @@ const SearchLayout = ({
     onFiltersChange(newFilters);
   };
 
+  const handleContentTypeChange = (type: string) => {
+    setActiveContentType(type);
+    const newFilters = { ...filters };
+    
+    if (type === 'all') {
+      newFilters.resourceType = [];
+    } else {
+      newFilters.resourceType = [type];
+    }
+    
+    onFiltersChange(newFilters);
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
@@ -94,19 +108,21 @@ const SearchLayout = ({
         )}
 
         {!showWelcomeState && (
-          <SearchHeader 
+          <SearchHeaderWithTabs 
             query={query}
             resultCount={totalResults}
             sortBy={sortBy}
             view={view}
+            activeContentType={activeContentType}
             onSortChange={onSortChange}
             onViewChange={setView}
+            onContentTypeChange={handleContentTypeChange}
           />
         )}
         
         <div className="flex flex-col lg:flex-row gap-8 mt-8">
           {!showWelcomeState && (
-            <SearchFilters 
+            <StreamlinedSearchFilters 
               filters={filters}
               onFiltersChange={onFiltersChange}
             />

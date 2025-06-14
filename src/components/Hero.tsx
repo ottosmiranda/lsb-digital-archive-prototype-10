@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useSearchForm } from '@/hooks/useSearchForm';
-import SearchSuggestions from '@/components/SearchSuggestions';
+import EnhancedSearchSuggestions from '@/components/EnhancedSearchSuggestions';
 
 const Hero = () => {
   const {
@@ -59,10 +59,10 @@ const Hero = () => {
             </div>
           </div>
 
-          {/* Advanced Search */}
+          {/* Enhanced Search */}
           <div className="animate-slide-up max-w-2xl mx-auto">
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
-              <h3 className="text-white font-semibold mb-4 text-lg">Busca Avançada</h3>
+              <h3 className="text-white font-semibold mb-4 text-lg">Busca Inteligente</h3>
               
               <form onSubmit={handleSearch} className="space-y-4">
                 {/* Search Input */}
@@ -74,7 +74,7 @@ const Hero = () => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={handleSearchFocus}
-                    className="w-full pl-4 pr-20 py-3 bg-white/90 border-0 rounded-xl text-gray-900 placeholder-gray-600 focus:ring-2 focus:ring-lsb-accent"
+                    className="w-full pl-4 pr-20 py-4 bg-white/95 border-0 rounded-xl text-gray-900 placeholder-gray-600 focus:ring-2 focus:ring-lsb-accent text-lg"
                   />
                   <div className="absolute right-2 top-2 bottom-2 flex items-center gap-1">
                     <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
@@ -84,13 +84,13 @@ const Hero = () => {
                     <Button
                       type="submit"
                       size="sm"
-                      className="px-3 bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary rounded-lg"
+                      className="px-4 py-2 bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary rounded-lg"
                     >
                       <Search className="h-4 w-4" />
                     </Button>
                   </div>
 
-                  <SearchSuggestions
+                  <EnhancedSearchSuggestions
                     query={searchQuery}
                     onSuggestionClick={handleSuggestionClick}
                     onClose={() => {}}
@@ -105,7 +105,7 @@ const Hero = () => {
                     <Badge
                       key={filter.id}
                       variant={activeFilters.includes(filter.id) ? "default" : "outline"}
-                      className={`cursor-pointer transition-all duration-200 ${
+                      className={`cursor-pointer transition-all duration-200 px-4 py-2 ${
                         activeFilters.includes(filter.id)
                           ? 'bg-lsb-accent text-lsb-primary hover:bg-lsb-accent/90'
                           : 'bg-white/20 text-white border-white/30 hover:bg-white/30'

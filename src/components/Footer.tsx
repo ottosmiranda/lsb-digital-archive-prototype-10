@@ -29,7 +29,7 @@ const Footer = () => {
           <div className="lg:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
               <img 
-                src="/lovable-uploads/a3b0d514-f114-4afd-98b1-d72b06be18fc.png" 
+                src="/lovable-uploads/71002455-3c64-4df7-8cad-1b228571014d.png" 
                 alt="Biblioteca Link" 
                 className="h-10 w-auto"
                 onError={(e) => {

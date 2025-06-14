@@ -28,7 +28,16 @@ const Footer = () => {
           {/* Logo and Description */}
           <div className="lg:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-lsb-accent rounded-lg flex items-center justify-center">
+              <img 
+                src="/lovable-uploads/a3b0d514-f114-4afd-98b1-d72b06be18fc.png" 
+                alt="Biblioteca Link" 
+                className="h-10 w-auto"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+              <div className="hidden w-10 h-10 bg-lsb-accent rounded-lg flex items-center justify-center">
                 <span className="text-lsb-primary font-bold text-xl">LSB</span>
               </div>
               <span className="font-bold text-xl">Biblioteca Digital</span>

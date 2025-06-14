@@ -126,17 +126,25 @@ const ResourceDetail = () => {
 
   // NOW WE CAN DO CONDITIONAL LOGIC AFTER ALL HOOKS ARE CALLED
   
-  // Find podcast by id (use type and id for precise matching, use "id" from route)
-  const podcast =
-    allData.find(
-      (r) =>
-        (r.type === "podcast") &&
-        (r.id === Number(id) ||
-          String(r.id) === id || // sometimes id might be string
-          // Could be strings in the JSON keys, so allow for "pod001" style too:
-          String(r.id).toLowerCase() === id?.toLowerCase()
-        )
-    ) || null;
+  // Find podcast by id - improved mapping to handle both string and numeric IDs
+  const podcast = allData.find((r) => {
+    if (r.type !== "podcast") return false;
+    
+    // Direct ID match
+    if (String(r.id) === id) return true;
+    
+    // For route /recurso/8, try to find the 8th podcast in the list
+    const routeId = parseInt(id || '0');
+    if (routeId > 0) {
+      const podcastsOnly = allData.filter(item => item.type === "podcast");
+      const podcastIndex = routeId - 1; // Convert to 0-based index
+      if (podcastIndex >= 0 && podcastIndex < podcastsOnly.length) {
+        return r === podcastsOnly[podcastIndex];
+      }
+    }
+    
+    return false;
+  }) || null;
 
   // If loading, show a skeleton as before
   if (loading) {
@@ -198,23 +206,17 @@ const ResourceDetail = () => {
             cover={podcast.thumbnail}
             title={podcast.title}
             publisher={podcast.author}
-            episodeCount={
-              // fallback: try to parse episode count from duration, or set 1 if unknown
-              podcast.duration?.match(/(\d+)/) ? Number(podcast.duration.match(/(\d+)/)?.[1]) : 1
-            }
+            episodeCount={parseInt(podcast.episodes || '0') || 1}
             year={podcast.year}
             categories={podcast.subject ? [podcast.subject] : []}
             description={podcast.description}
           />
 
-          {/* Episodes List */}
+          {/* Episodes List with Spotify Player */}
           <PodcastEpisodeList
-            total={
-              podcast.duration?.match(/(\d+)/)
-                ? Number(podcast.duration.match(/(\d+)/)?.[1])
-                : 1
-            }
+            total={parseInt(podcast.episodes || '0') || 1}
             podcastTitle={podcast.title}
+            embedUrl={podcast.embedUrl}
           />
         </div>
         <Footer />

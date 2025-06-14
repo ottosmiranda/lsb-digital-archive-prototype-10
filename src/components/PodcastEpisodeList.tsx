@@ -18,7 +18,8 @@ function generateEpisodes(
     "Neste episódio, discutimos temas atuais de inovação, gestão e tecnologia no contexto empresarial.";
   const today = new Date();
   const episodes = [];
-  for (let i = total; i > 0; i--) {
+  // Start from episode 2 since episode 1 is now the Spotify player
+  for (let i = total; i > 1; i--) {
     // Episodes are weekly, count back by 1 week each
     const date = new Date(today);
     date.setDate(today.getDate() - (total - i) * 7);
@@ -41,17 +42,56 @@ function generateEpisodes(
 interface PodcastEpisodeListProps {
   total: number;
   podcastTitle: string;
+  embedUrl?: string;
 }
 
-const PodcastEpisodeList = ({ total, podcastTitle }: PodcastEpisodeListProps) => {
+const PodcastEpisodeList = ({ total, podcastTitle, embedUrl }: PodcastEpisodeListProps) => {
   const episodes = generateEpisodes(total, podcastTitle);
+  
   return (
     <section className="mt-10">
       <div className="flex justify-between items-center mb-5">
         <h2 className="font-semibold text-xl">Todos os Episódios</h2>
         <Badge className="bg-lsb-primary/90 text-white">{total} episódios</Badge>
       </div>
+      
       <div className="flex flex-col gap-5">
+        {/* Spotify Player - First Episode */}
+        {embedUrl && (
+          <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+            <div className="p-4 border-b">
+              <div className="flex gap-2 items-center mb-2">
+                <h3 className="font-semibold">Episódio 1: {podcastTitle} - Episódio Mais Recente</h3>
+                <Badge className="bg-green-600 text-white ml-1">NOVO</Badge>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Ouça o episódio mais recente diretamente no Spotify
+              </p>
+              <div className="flex gap-4 text-xs text-gray-500 items-center">
+                <Calendar className="h-3 w-3 mr-1" />
+                <span>{new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).replace(/\./g, "")}</span>
+                <Clock className="h-3 w-3 ml-3 mr-1" />
+                <span>45:00</span>
+              </div>
+            </div>
+            
+            {/* Spotify Iframe Player */}
+            <div className="p-4">
+              <iframe
+                src={embedUrl}
+                width="100%"
+                height="352"
+                frameBorder="0"
+                allowtransparency="true"
+                allow="encrypted-media"
+                className="rounded-lg"
+                title={`${podcastTitle} - Spotify Player`}
+              />
+            </div>
+          </div>
+        )}
+        
+        {/* Generated Episodes List */}
         {episodes.map((ep) => (
           <div
             key={ep.id}

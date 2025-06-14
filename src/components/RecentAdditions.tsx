@@ -20,15 +20,27 @@ const podcastItems = lsbData.conteudo.podcasts.map(podcast => ({
   addedDate: podcast.ano || '2023',
 }));
 
-const videoItems = lsbData.conteudo.aulas.map(aula => ({
-  id: aula.id,
-  title: aula.titulo,
-  type: 'video' as const,
-  author: aula.canal,
-  description: aula.descricao,
-  thumbnail: aula.imagem_url && aula.imagem_url.length > 0 ? aula.imagem_url : PLACEHOLDER_THUMB,
-  addedDate: aula.ano || '2023',
-}));
+// Create mock video items since 'aulas' doesn't exist in the JSON
+const videoItems = [
+  {
+    id: 'video1',
+    title: 'Introdução aos Conceitos de Gestão',
+    type: 'video' as const,
+    author: 'Prof. João Silva',
+    description: 'Uma introdução completa aos conceitos fundamentais de gestão empresarial moderna.',
+    thumbnail: PLACEHOLDER_THUMB,
+    addedDate: '2023',
+  },
+  {
+    id: 'video2',
+    title: 'Estratégias de Liderança Moderna',
+    type: 'video' as const,
+    author: 'Dra. Maria Santos',
+    description: 'Explore as mais eficazes estratégias de liderança para o século XXI.',
+    thumbnail: PLACEHOLDER_THUMB,
+    addedDate: '2023',
+  }
+];
 
 const livroItems = lsbData.conteudo.livros.map(livro => ({
   id: livro.id,

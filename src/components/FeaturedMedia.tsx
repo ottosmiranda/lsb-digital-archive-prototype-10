@@ -7,14 +7,30 @@ import { Link } from 'react-router-dom';
 import lsbData from '../../public/lsb-data.json';
 
 const FeaturedMedia = () => {
-  // Get first 3 videos from JSON data
-  const videos = lsbData.conteudo.aulas.slice(0, 3).map(aula => ({
-    id: aula.id,
-    title: aula.titulo,
-    duration: aula.duracao || '00:00',
-    thumbnail: aula.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
-    author: aula.canal
-  }));
+  // Create mock videos since 'aulas' doesn't exist in the JSON
+  const videos = [
+    {
+      id: 1,
+      title: "Introdução aos Conceitos de Gestão",
+      duration: "25:30",
+      thumbnail: "/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png",
+      author: "Prof. João Silva"
+    },
+    {
+      id: 2,
+      title: "Estratégias de Liderança Moderna",
+      duration: "32:15",
+      thumbnail: "/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png",
+      author: "Dra. Maria Santos"
+    },
+    {
+      id: 3,
+      title: "Marketing Digital Avançado",
+      duration: "28:45",
+      thumbnail: "/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png",
+      author: "Prof. Carlos Mendes"
+    }
+  ];
 
   // Get first 3 podcasts from JSON data
   const podcasts = lsbData.conteudo.podcasts.slice(0, 3).map(podcast => ({

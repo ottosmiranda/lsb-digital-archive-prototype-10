@@ -6,12 +6,14 @@ export interface SearchResult {
   author: string;
   duration?: string;
   pages?: number;
+  episodes?: string; // Add episodes property for podcasts
   thumbnail?: string;
   description: string;
   year: number;
   subject: string;
   pais?: string;
   documentType?: string;
+  embedUrl?: string; // Add embedUrl property for podcasts
 }
 
 export interface SearchFilters {

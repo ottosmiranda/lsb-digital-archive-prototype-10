@@ -1,0 +1,53 @@
+
+import { Badge } from "@/components/ui/badge";
+import { Play, BookOpen, Headphones } from "lucide-react";
+import { getTypeLabel, getTypeBadgeColor } from "@/utils/resourceUtils";
+import { Resource } from "@/types/resourceTypes";
+
+const ResourceContent = ({ resource }: { resource: Resource }) => (
+  <div className="space-y-4">
+    <div>
+      <Badge className={`${getTypeBadgeColor(resource.type)} mb-2`}>
+        {resource.type === 'video' && <Play className="h-3 w-3 mr-1" />}
+        {resource.type === 'titulo' && <BookOpen className="h-3 w-3 mr-1" />}
+        {resource.type === 'podcast' && <Headphones className="h-3 w-3 mr-1" />}
+        {getTypeLabel(resource.type)}
+      </Badge>
+      <h1 className="text-3xl font-bold text-gray-900 mb-2">{resource.title}</h1>
+      <p className="text-lg text-gray-600">{resource.description}</p>
+    </div>
+
+    {resource.fullDescription && (
+      <div>
+        <h2 className="text-xl font-semibold mb-3">Descrição Completa</h2>
+        <p className="text-gray-700 leading-relaxed">{resource.fullDescription}</p>
+      </div>
+    )}
+
+    {resource.type === 'titulo' && resource.tableOfContents && (
+      <div>
+        <h3 className="text-lg font-semibold mb-2">Sumário</h3>
+        <ul className="list-disc list-inside space-y-1 text-gray-700">
+          {resource.tableOfContents.map((chapter, index) => (
+            <li key={index}>{chapter}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    {resource.tags && (
+      <div>
+        <h3 className="text-lg font-semibold mb-2">Tags</h3>
+        <div className="flex flex-wrap gap-2">
+          {resource.tags.map((tag, index) => (
+            <Badge key={index} variant="outline">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+export default ResourceContent;

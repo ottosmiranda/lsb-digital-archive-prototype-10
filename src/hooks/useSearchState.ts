@@ -18,7 +18,7 @@ export const useSearchState = () => {
     documentType: [], // Initialize new document type filter
   });
   
-  const [sortBy, setSortBy] = useState('relevance');
+  const [sortBy, setSortByState] = useState('relevance');
   const [currentPage, setCurrentPage] = useState(1);
 
   const query = searchParams.get('q') || '';
@@ -31,7 +31,7 @@ export const useSearchState = () => {
     return searchParams.getAll('filtros') || [];
   }, [searchParams]);
 
-  // Initialize filters from URL params only once
+  // Initialize filters and sorting from URL params only once
   useEffect(() => {
     // This useEffect populates filters.resourceType from the 'filtros' URL search parameter.
     // This is related to how the tabs might set the URL.
@@ -45,6 +45,13 @@ export const useSearchState = () => {
         ...prev,
         resourceType: resourceTypesFromUrl
       }));
+    }
+
+    const sortParam = searchParams.get('ordenar');
+    if (sortParam === 'recentes') {
+      setSortByState('recent');
+    } else if (sortParam === 'mais-acessados') {
+      setSortByState('accessed');
     }
   }, []); // Removed searchParams from dependency array to ensure it runs only once for initial setup.
 
@@ -65,6 +72,19 @@ export const useSearchState = () => {
     // Reset page to 1 when query changes
     // newSearchParams.delete('pagina'); // Or set to 1, depending on desired behavior.
     // setCurrentPage(1); // This hook does not set searchParams for page, SearchResults.tsx does.
+    setSearchParams(newSearchParams);
+  };
+
+  const setSortBy = (newSort: string) => {
+    setSortByState(newSort);
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (newSort === 'recent') {
+      newSearchParams.set('ordenar', 'recentes');
+    } else if (newSort === 'accessed') {
+      newSearchParams.set('ordenar', 'mais-acessados');
+    } else {
+      newSearchParams.delete('ordenar');
+    }
     setSearchParams(newSearchParams);
   };
 

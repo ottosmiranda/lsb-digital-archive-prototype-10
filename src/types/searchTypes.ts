@@ -17,7 +17,7 @@ export interface SearchResult {
 export interface SearchFilters {
   resourceType: string[]; // Keep for backward compatibility with tabs
   subject: string[];
-  author: string[]; // Changed from string to string[] for multi-selection
+  author: string;
   year: string;
   duration: string;
   language: string[];

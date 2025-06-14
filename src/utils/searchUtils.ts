@@ -24,56 +24,6 @@ export const extractAuthorsFromResults = (results: SearchResult[]): { name: stri
     .sort((a, b) => b.count - a.count);
 };
 
-// Extract unique subjects with counts from search results
-export const extractSubjectFacets = (results: SearchResult[]): { name: string; count: number }[] => {
-  const subjectCounts = new Map<string, number>();
-  
-  results.forEach(result => {
-    if (result.subject && result.subject.trim()) {
-      const subjectName = result.subject.trim();
-      subjectCounts.set(subjectName, (subjectCounts.get(subjectName) || 0) + 1);
-    }
-  });
-  
-  return Array.from(subjectCounts.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
-};
-
-// Extract unique languages with counts from search results
-export const extractLanguageFacets = (results: SearchResult[]): { name: string; count: number }[] => {
-  const languageCounts = new Map<string, number>();
-  
-  results.forEach(result => {
-    if (result.pais) {
-      const language = countryToLanguage[result.pais.toUpperCase()];
-      if (language) {
-        languageCounts.set(language, (languageCounts.get(language) || 0) + 1);
-      }
-    }
-  });
-  
-  return Array.from(languageCounts.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
-};
-
-// Extract unique document types with counts from search results
-export const extractDocumentTypeFacets = (results: SearchResult[]): { name: string; count: number }[] => {
-  const documentTypeCounts = new Map<string, number>();
-  
-  results.forEach(result => {
-    if (result.type === 'titulo' && result.documentType && result.documentType.trim()) {
-      const documentTypeName = result.documentType.trim();
-      documentTypeCounts.set(documentTypeName, (documentTypeCounts.get(documentTypeName) || 0) + 1);
-    }
-  });
-  
-  return Array.from(documentTypeCounts.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
-};
-
 // Mapping for pais (country code) to language.
 // This is a simplified example. A more comprehensive mapping might be needed.
 const countryToLanguage: Record<string, string> = {
@@ -118,14 +68,10 @@ export const filterResults = (
       if (!currentFilters.subject.includes(item.subject)) return false;
     }
 
-    // Updated author filter to handle array of authors
-    if (currentFilters.author.length > 0) {
+    if (currentFilters.author) {
       const authorNormalized = normalizeText(item.author);
-      const matchesAnyAuthor = currentFilters.author.some(filterAuthor => {
-        const filterAuthorNormalized = normalizeText(filterAuthor);
-        return authorNormalized.includes(filterAuthorNormalized);
-      });
-      if (!matchesAnyAuthor) return false;
+      const filterAuthorNormalized = normalizeText(currentFilters.author);
+      if (!authorNormalized.includes(filterAuthorNormalized)) return false;
     }
 
     if (currentFilters.year) {
@@ -222,7 +168,7 @@ export const sortResults = (resultsToSort: SearchResult[], sortType: string, que
 export const checkHasActiveFilters = (filterObj: SearchFilters): boolean => {
   return filterObj.resourceType.length > 0 || 
          filterObj.subject.length > 0 || 
-         filterObj.author.length > 0 || // Updated to check array length
+         Boolean(filterObj.author) || 
          Boolean(filterObj.year) || 
          Boolean(filterObj.duration) ||
          filterObj.language.length > 0 ||

@@ -55,7 +55,7 @@ const Navigation = () => {
           <div className="flex-shrink-0">
             <Link to="/" className="flex items-center">
               <img 
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=80&fit=crop&crop=center" 
+                src="/lovable-uploads/c5513a35-18e1-4801-b43b-9ac995c8979e.png" 
                 alt="Biblioteca Link" 
                 className="h-10 w-auto"
                 onError={(e) => {

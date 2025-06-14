@@ -1,3 +1,4 @@
+
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -59,7 +60,7 @@ const SearchResultsGrid = ({ results, loading }: SearchResultsGridProps) => {
           <Card key={index} className="animate-pulse">
             <CardContent className="p-6">
               <div className="space-y-3">
-                <div className="h-32 bg-gray-200 rounded"></div>
+                <div className="h-40 bg-gray-200 rounded"></div>
                 <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                 <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                 <div className="h-16 bg-gray-200 rounded"></div>
@@ -82,21 +83,23 @@ const SearchResultsGrid = ({ results, loading }: SearchResultsGridProps) => {
             <CardContent className="p-0">
               <div className="space-y-4">
                 {/* Thumbnail */}
-                <div className="relative h-32 bg-gray-100 rounded-t-lg overflow-hidden">
-                  {result.thumbnail && (
+                <div className="relative h-40 bg-gray-100 rounded-t-lg overflow-hidden">
+                  {result.thumbnail ? (
                     <img 
                       src={result.thumbnail} 
                       alt={result.title}
                       className="w-full h-full object-cover"
                       onError={handleImageError}
                     />
-                  )}
-                  {/* Placeholder - only shown when no image or image fails */}
+                  ) : null}
+                  {/* Placeholder - shown when no image or image fails */}
                   <div 
-                    className="absolute inset-0 bg-gray-100 flex items-center justify-center"
+                    className="absolute inset-0 bg-gray-50 flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-gray-200"
                     style={{ display: result.thumbnail ? 'none' : 'flex' }}
                   >
                     {getTypeIcon(result.type)}
+                    <span className="text-xs mt-2 font-medium">Thumbnail</span>
+                    <span className="text-xs">Unavailable</span>
                   </div>
                   <div className="absolute top-2 left-2">
                     <Badge className={`${typeBadge.color} flex items-center gap-1`}>

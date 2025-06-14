@@ -1,3 +1,4 @@
+
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -59,7 +60,7 @@ const SearchResultsList = ({ results, loading }: SearchResultsListProps) => {
           <Card key={index} className="animate-pulse">
             <CardContent className="p-6">
               <div className="flex gap-4">
-                <div className="w-24 h-24 bg-gray-200 rounded flex-shrink-0"></div>
+                <div className="w-28 h-28 bg-gray-200 rounded flex-shrink-0"></div>
                 <div className="flex-1 space-y-3">
                   <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                   <div className="h-3 bg-gray-200 rounded w-1/2"></div>
@@ -83,21 +84,23 @@ const SearchResultsList = ({ results, loading }: SearchResultsListProps) => {
             <CardContent className="p-6">
               <div className="flex gap-4">
                 {/* Thumbnail */}
-                <div className="relative w-24 h-24 bg-gray-100 rounded flex-shrink-0 overflow-hidden">
-                  {result.thumbnail && (
+                <div className="relative w-28 h-28 bg-gray-100 rounded flex-shrink-0 overflow-hidden">
+                  {result.thumbnail ? (
                     <img 
                       src={result.thumbnail} 
                       alt={result.title}
                       className="w-full h-full object-cover"
                       onError={handleImageError}
                     />
-                  )}
-                  {/* Placeholder - only shown when no image or image fails */}
+                  ) : null}
+                  {/* Placeholder - shown when no image or image fails */}
                   <div 
-                    className="absolute inset-0 bg-gray-100 flex items-center justify-center"
+                    className="absolute inset-0 bg-gray-50 flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-gray-200"
                     style={{ display: result.thumbnail ? 'none' : 'flex' }}
                   >
                     {getTypeIcon(result.type)}
+                    <span className="text-xs mt-1 font-medium text-center">Thumbnail</span>
+                    <span className="text-xs text-center">Unavailable</span>
                   </div>
                 </div>
 

@@ -1,3 +1,4 @@
+
 {
   "totalItens": 45,
   "conteudo": {
@@ -19,8 +20,7 @@
         "publicador": "Tech Talk",
         "ano": "2023",
         "categorias": ["Tecnologia", "Inovação"],
-        "total_episodes": 8,
-        "imagem_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=300&fit=crop"
+        "total_episodes": 8
       },
       {
         "id": "pod003",
@@ -43,13 +43,12 @@
         "categorias": ["Criatividade"],
         "duracao": "15:30",
         "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        "pais": "BR",
-        "imagem_url": "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=400&h=300&fit=crop"
+        "pais": "BR"
       },
       {
         "id": "aula002",
         "titulo": "Estratégias de Negócios Digitais",
-        "descricao": "Como desenvolver estratégias eficazes para negócios online",
+        "descricao": "Como desenvolver estratégias eficavas para negócios online",
         "canal": "Digital Business",
         "ano": "2023",
         "categorias": ["Negócios"],
@@ -79,8 +78,7 @@
         "categorias": ["Liderança"],
         "duracao": "25:10",
         "url": "https://www.youtube.com/watch?v=ScMzIvxBSi4",
-        "pais": "BR",
-        "imagem_url": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=300&fit=crop"
+        "pais": "BR"
       },
       {
         "id": "aula005",
@@ -103,8 +101,7 @@
         "categorias": ["Marketing"],
         "duracao": "28:30",
         "url": "https://www.youtube.com/watch?v=BaW_jenozKc",
-        "pais": "BR",
-        "imagem_url": "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?w=400&h=300&fit=crop"
+        "pais": "BR"
       },
       {
         "id": "aula007",
@@ -127,8 +124,7 @@
         "categorias": ["Inovação"],
         "duracao": "32:20",
         "url": "https://www.youtube.com/watch?v=me2H7Ja93Wg",
-        "pais": "BR",
-        "imagem_url": "https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?w=400&h=300&fit=crop"
+        "pais": "BR"
       },
       {
         "id": "aula009",
@@ -163,8 +159,7 @@
         "categorias": ["Tecnologia"],
         "duracao": "29:40",
         "url": "https://www.youtube.com/watch?v=vg4lk8r0MZs",
-        "pais": "BR",
-        "imagem_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=300&fit=crop"
+        "pais": "BR"
       },
       {
         "id": "aula012",
@@ -187,8 +182,7 @@
         "categorias": ["E-commerce"],
         "duracao": "35:20",
         "url": "https://www.youtube.com/watch?v=4YfmFgGklRw",
-        "pais": "BR",
-        "imagem_url": "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=300&fit=crop"
+        "pais": "BR"
       },
       {
         "id": "aula014",
@@ -211,8 +205,7 @@
         "categorias": ["Gestão de Projetos"],
         "duracao": "31:45",
         "url": "https://www.youtube.com/watch?v=fhBr8dNs4Ig",
-        "pais": "BR",
-        "imagem_url": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=300&fit=crop"
+        "pais": "BR"
       },
       {
         "id": "aula016",
@@ -235,8 +228,7 @@
         "categorias": ["Sustentabilidade"],
         "duracao": "26:40",
         "url": "https://www.youtube.com/watch?v=QPnmfyBM0wg",
-        "pais": "BR",
-        "imagem_url": "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?w=400&h=300&fit=crop"
+        "pais": "BR"
       },
       {
         "id": "aula018",
@@ -259,8 +251,7 @@
         "categorias": ["Gestão"],
         "duracao": "22:10",
         "url": "https://www.youtube.com/watch?v=IO9XlQrEt2Y",
-        "pais": "BR",
-        "imagem_url": "https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=400&h=300&fit=crop"
+        "pais": "BR"
       },
       {
         "id": "aula020",
@@ -297,7 +288,6 @@
         "descricao": "Estratégias comprovadas para o sucesso no marketing digital",
         "paginas": 280,
         "arquivo": "/assets/estrategias-marketing-digital.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?w=400&h=300&fit=crop",
         "tipo_documento": "Artigo"
       },
       {
@@ -321,7 +311,6 @@
         "descricao": "Técnicas para fomentar a inovação nas organizações",
         "paginas": 290,
         "arquivo": "/assets/inovacao-criatividade.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=400&h=300&fit=crop",
         "tipo_documento": "Trabalho de conclusão de curso"
       },
       {
@@ -345,7 +334,6 @@
         "descricao": "Guia prático para implementar a transformação digital",
         "paginas": 310,
         "arquivo": "/assets/transformacao-digital.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=300&fit=crop",
         "tipo_documento": "Dissertação de doutorado"
       },
       {
@@ -369,7 +357,6 @@
         "descricao": "Estratégias modernas para gestão de pessoas",
         "paginas": 330,
         "arquivo": "/assets/gestao-pessoas-digital.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop",
         "tipo_documento": "Resumo"
       },
       {
@@ -393,7 +380,6 @@
         "descricao": "Estratégias para uma comunicação empresarial de sucesso",
         "paginas": 220,
         "arquivo": "/assets/comunicacao-empresarial.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop",
         "tipo_documento": "Editorial"
       },
       {
@@ -417,7 +403,6 @@
         "descricao": "Estratégias para o sucesso no comércio eletrônico",
         "paginas": 300,
         "arquivo": "/assets/ecommerce-estrategico.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=300&fit=crop",
         "tipo_documento": "Revista"
       }
     ]

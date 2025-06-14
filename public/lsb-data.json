@@ -3,35 +3,148 @@
   "totalItens": 45,
   "conteudo": {
     "podcasts": [
-      {
-        "id": "pod001",
-        "titulo": "Gestão de Equipes Remotas",
-        "descricao": "Como liderar e motivar equipes que trabalham à distância",
-        "publicador": "Business Insights",
-        "ano": "2023",
-        "categorias": ["Gestão", "Liderança"],
-        "total_episodes": 12,
-        "imagem_url": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=300&fit=crop"
-      },
-      {
-        "id": "pod002",
-        "titulo": "Inovação e Tecnologia",
-        "descricao": "Tendências tecnológicas que estão transformando os negócios",
-        "publicador": "Tech Talk",
-        "ano": "2023",
-        "categorias": ["Tecnologia", "Inovação"],
-        "total_episodes": 8
-      },
-      {
-        "id": "pod003",
-        "titulo": "Sustentabilidade Empresarial",
-        "descricao": "Práticas sustentáveis no mundo corporativo",
-        "publicador": "Green Business",
-        "ano": "2023",
-        "categorias": ["Sustentabilidade", "ESG"],
-        "total_episodes": 15,
-        "imagem_url": "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?w=400&h=300&fit=crop"
-      }
+[
+  {
+    "id": "4nCHpl7GXuMu41Jn4xDLtH",
+    "tipo": "podcast",
+    "titulo": "Business English Pod :: Learn Business English Online",
+    "descricao": "Learn Business English Online free with Business English Lessons, English Video, Business English PDF, ESL Podcast, Business English Courses & Business English App.",
+    "publicador": "www.BusinessEnglishPod.com",
+    "url": "https://open.spotify.com/show/4nCHpl7GXuMu41Jn4xDLtH",
+    "ano": "2021",
+    "categorias": ["negócios"],
+    "total_episodes": "50",
+    "imagem_url": "https://i.scdn.co/image/ab6765630000ba8a068bd97dfc66bbc5eff12108",
+    "pais": "BR",
+    "embed_url": "https://open.spotify.com/embed/show/4nCHpl7GXuMu41Jn4xDLtH"
+  },
+  {
+    "id": "7jH8d4gr97lDBLDBTDxyRU",
+    "tipo": "podcast",
+    "titulo": "The Business of Life by Brazil Journal",
+    "descricao": "The Business Of Life, por Nilton Bonder  Qual o propósito que nos leva a trajetórias marcantes? Em \"The Business Of Life”, o rabino e escritor Nilton Bonder conversa com personalidades de sucesso para abordar suas histórias em sete dimensões. Convidamos você para, através do propósito de grandes convidados, encontrar o seu.  Siga o podcast The Business Of Life na sua plataforma de podcasts e saiba tudo no site: http://braziljournal.com",
+    "publicador": "The Business of Life by Brazil Journal",
+    "url": "https://open.spotify.com/show/7jH8d4gr97lDBLDBTDxyRU",
+    "ano": "2019",
+    "categorias": ["negócios"],
+    "total_episodes": "49",
+    "imagem_url": "https://i.scdn.co/image/ab6765630000ba8adb4567a23118625e092c18cd",
+    "pais": "BR",
+    "embed_url": "https://open.spotify.com/embed/show/7jH8d4gr97lDBLDBTDxyRU"
+  },
+  {
+    "id": "0uNjUO4oP1UDaV0JHRAhXJ",
+    "tipo": "podcast",
+    "titulo": "G4 Podcasts: Gestão e Alta Performance",
+    "descricao": "O maior grupo de Podcasts de Negócios do Brasil. Conteúdos voltados para empresários, empreendedores, founders e profissionais Nossos podcasts: - Papo de Gestão: Bruno Nardon entrevista grandes gestores e traz aprendizados para você aplicar na sua empresa. - Extremos: Alfredo Soares e Bruno Nardon conversam com empresários e influenciadores para apresentar os EXTREMOS de suas jornadas - Vox Luminis: Tallis Gomes e Matt Montenegro recebem personalidades influentes e inspiradoras para conversas profundas, que vão iluminar a sua jornada para a evolução.  Nos acompanhe no Instagram: @g4podcasts",
+    "publicador": "G4 Educação",
+    "url": "https://open.spotify.com/show/0uNjUO4oP1UDaV0JHRAhXJ",
+    "ano": "2022",
+    "categorias": ["negócios"],
+    "total_episodes": "408",
+    "imagem_url": "https://i.scdn.co/image/ab6765630000ba8a4c3eba84e431a987705a952c",
+    "pais": "BR",
+    "embed_url": "https://open.spotify.com/embed/show/0uNjUO4oP1UDaV0JHRAhXJ"
+  },
+  {
+    "id": "1hAE2QpiA1yOBJ6QyVFqpI",
+    "tipo": "podcast",
+    "titulo": "TED Business",
+    "descricao": "Whatever your business conundrum, there’s a TED Talk for that—whether you want to learn how to land that promotion, set smart goals, undo injustice at work, or unlock the next big innovation. Every Monday, host Modupe Akinola of Columbia Business School presents the most powerful and surprising ideas that illuminate the business world. After the talk, you'll get a mini-lesson from Modupe on how to apply the ideas in your own life. Because business evolves every day, and our ideas about it should, too.Follow Modupe on Instagram @mnakinola and LinkedIn @mnakinola Hosted on Acast. See acast.com/privacy for more information.",
+    "publicador": "TED",
+    "url": "https://open.spotify.com/show/1hAE2QpiA1yOBJ6QyVFqpI",
+    "ano": "2023",
+    "categorias": ["negócios"],
+    "total_episodes": "265",
+    "imagem_url": "https://i.scdn.co/image/ab6765630000ba8ae54637b167e97ba8f40a4ba4",
+    "pais": "US",
+    "embed_url": "https://open.spotify.com/embed/show/1hAE2QpiA1yOBJ6QyVFqpI"
+  },
+  {
+    "id": "0LvIvCZfntBuZOpOEhTU0K",
+    "tipo": "podcast",
+    "titulo": "Braincast",
+    "descricao": "Braincast é um podcast semanal onde informação e descontração se encontram. Um papo solto, sem perder o fio. Com senso crítico e leveza, criamos conversas autênticas sobre cultura digital, comportamento, inovação e negócios, sempre refletindo quais faíscas vão impulsionar nosso presente e futuro.",
+    "publicador": "B9",
+    "url": "https://open.spotify.com/show/0LvIvCZfntBuZOpOEhTU0K",
+    "ano": "2018",
+    "categorias": ["negócios"],
+    "total_episodes": "588",
+    "imagem_url": "https://i.scdn.co/image/ab6765630000ba8a1e1b682a1d0c08d05f29d3ea",
+    "pais": "BR",
+    "embed_url": "https://open.spotify.com/embed/show/0LvIvCZfntBuZOpOEhTU0K"
+  },
+  {
+    "id": "417NPBWqtMbDU0FlWZTRDC",
+    "tipo": "podcast",
+    "titulo": "Business Breakdowns",
+    "descricao": "Learn how companies work from the people who know them best. Each episode dissects a single business - from its origins and model to its financials and competitive edge. We uncover the lessons behind every success story. Learn more at www.joincolossus.com.",
+    "publicador": "Colossus | Investing & Business Podcasts",
+    "url": "https://open.spotify.com/show/417NPBWqtMbDU0FlWZTRDC",
+    "ano": "2020",
+    "categorias": ["negócios"],
+    "total_episodes": "228",
+    "imagem_url": "https://i.scdn.co/image/ab6765630000ba8acc2f439d01744fdd144a33de",
+    "pais": "US",
+    "embed_url": "https://open.spotify.com/embed/show/417NPBWqtMbDU0FlWZTRDC"
+  },
+  {
+    "id": "5HFUjaqFFXUiHC5SA6uVEz",
+    "tipo": "podcast",
+    "titulo": "Business English from All Ears English",
+    "descricao": "Want to feel more confident with your business English? Lindsay and Michelle show you real, business English vocabulary for the global economy in this podcast from All Ears English.  Learn spoken English for business with native speakers. Get advanced skills for English meetings, presentations, small talk and socializing at work, job interviews, telephone English and more. Write more clear and concise business emails in English to sound professional. Be respected when you speak to colleagues, bosses, partners, suppliers, and stakeholders.  Increase your self-esteem at work to participate, facilitate, persuade, and respond quickly in English. Learn formal, informal, and semi-formal English for different workplace situations Increase your salary and get a promotion.  This podcast is perfect for you if you are at the mid-career or middle management stage, early career, senior-level or C-suite, entrepreneur, self-employed freelancer, or a small business owner.  The English level for this podcast is intermediate to advanced English  CEFR B1 Intermediate English, CEFR B2 Upper-Intermediate English, CEFR C1 Advanced English, CEFR C2 Proficiency English   This podcast is great for software engineers, senior executives, MBA students, marketing managers, doctors, lawyers, accountants, project managers, HR professionals, customer service professionals, IT, financial planners, import/export businesses, biotech professionals, sales reps, and any career that involves international business or using English.  With every episode, we show you how to organize and deliver your message clearly. You’ll be able to understand phone calls and conference calls by improving your listening skills. Use the right English grammar and the right English tenses in every situation.  We also cover: Assigning tasks to the team, global leadership and management, English pronunciation and accent, American culture and business, cross-cultural communication skills for business, negotiation idioms, vocabulary, slang, and business proverbs and sayings.  Learn how to tell stories that convince people to take action in business. Speak with customers and resolve client issues. Be polite with the right English vocabulary when you speak with your colleagues.   This podcast is a collection of episodes that were originally published on All Ears English Podcast and new Business English episodes. ",
+    "publicador": "Lindsay McMahon",
+    "url": "https://open.spotify.com/show/5HFUjaqFFXUiHC5SA6uVEz",
+    "ano": "2022",
+    "categorias": ["negócios"],
+    "total_episodes": "449",
+    "imagem_url": "https://i.scdn.co/image/ab6765630000ba8ae8f713a9a4c7a5689b976d02",
+    "pais": "BR",
+    "embed_url": "https://open.spotify.com/embed/show/5HFUjaqFFXUiHC5SA6uVEz"
+  },
+  {
+    "id": "1D7bjrRfAjZIl5MDGcw7cD",
+    "tipo": "podcast",
+    "titulo": "Morning Call - BTG Pactual",
+    "descricao": "Morning Call é o podcast para quem quer saber sobre o mercado financeiro, com notícias de qualidade logo pela manhã. Fique por dentro de tudo o que acontece no exterior, Brasil, empresas e como isso pode impactar os seus investimentos.   O melhor ativo é sempre a boa informação.  Quer receber as informações do Morning Call diretamente no seu e-mail? Acesse: https://l.btgpactual.com/3XveQTn",
+    "publicador": "BTG Pactual",
+    "url": "https://open.spotify.com/show/1D7bjrRfAjZIl5MDGcw7cD",
+    "ano": "2024",
+    "categorias": ["negócios"],
+    "total_episodes": "1021",
+    "imagem_url": "https://i.scdn.co/image/ab6765630000ba8a3b3e36fbd19f487ace9cdd9f",
+    "pais": "BR",
+    "embed_url": "https://open.spotify.com/embed/show/1D7bjrRfAjZIl5MDGcw7cD"
+  },
+  {
+    "id": "3wSLMyngTcRLDyI5PKLdmx",
+    "tipo": "podcast",
+    "titulo": "Learning English For Work",
+    "descricao": "Short podcasts to improve your English at work. Find more at bbclearningenglish.comFollow us at  bbc.co.uk/learningenglish/followus",
+    "publicador": "BBC News",
+    "url": "https://open.spotify.com/show/3wSLMyngTcRLDyI5PKLdmx",
+    "ano": "2017",
+    "categorias": ["negócios"],
+    "total_episodes": "61",
+    "imagem_url": "https://i.scdn.co/image/ab6765630000ba8ae8e98a0e3dab3e32d2a3d500",
+    "pais": "BR",
+    "embed_url": "https://open.spotify.com/embed/show/3wSLMyngTcRLDyI5PKLdmx"
+  },
+  {
+    "id": "48ljM9qIbODhemJ7lLGjeR",
+    "tipo": "podcast",
+    "titulo": "Do Zero ao Topo",
+    "descricao": "A história dos empreendedores e empresários por trás das maiores empresas do país e do mundo. Cada episódio mergulha na história de homens e mulheres que enfrentaram os desafios, as incertezas e passaram por momentos decisivos ao longo dos anos para chegar ao topo.",
+    "publicador": "InfoMoney",
+    "url": "https://open.spotify.com/show/48ljM9qIbODhemJ7lLGjeR",
+    "ano": "2016",
+    "categorias": ["negócios"],
+    "total_episodes": "289",
+    "imagem_url": "https://i.scdn.co/image/ab6765630000ba8a3eba574320644416ded2a1d3",
+    "pais": "BR",
+    "embed_url": "https://open.spotify.com/embed/show/48ljM9qIbODhemJ7lLGjeR"
+  }
+      
     ],
     "aulas": [
       {

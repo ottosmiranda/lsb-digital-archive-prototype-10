@@ -40,7 +40,10 @@ export const useSearchOperations = ({
       // Skip loading if only typing author (prevents focus jump)
       if (!options.authorTyping) setLoading(true);
       try {
-        if (searchQuery || checkHasActiveFilters(currentFilters)) {
+        const hasActiveFilters = checkHasActiveFilters(currentFilters);
+        const hasNonDefaultSorting = sortBy && sortBy !== 'relevance';
+        
+        if (searchQuery || hasActiveFilters || hasNonDefaultSorting) {
           const filteredResults = filterResults(allData, searchQuery, currentFilters);
           const sortedResults = sortResults(filteredResults, sortBy, searchQuery);
           setSearchResults(sortedResults);

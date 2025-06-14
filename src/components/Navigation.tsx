@@ -53,13 +53,12 @@ const Navigation = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-lsb-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">LSB</span>
-              </div>
-              <span className="hidden sm:block font-bold text-xl lsb-primary">
-                Biblioteca Digital
-              </span>
+            <Link to="/" className="flex items-center">
+              <img 
+                src="/lovable-uploads/885ea189-9fea-4b1e-a7e4-0be751e7754c.png" 
+                alt="Biblioteca Link" 
+                className="h-10 w-auto"
+              />
             </Link>
           </div>
 

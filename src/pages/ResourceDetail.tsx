@@ -110,8 +110,8 @@ const ResourceDetail = () => {
     fetchResource();
   }, [id]);
 
-  // Find podcast by id
-  const podcast = allData.find((r) => {
+  // Find podcast by id (fix to cast episodes as number)
+  const podcastResult = allData.find((r) => {
     if (r.type !== "podcast") return false;
     if (String(r.id) === id) return true;
     const routeId = parseInt(id || '0');
@@ -124,6 +124,20 @@ const ResourceDetail = () => {
     }
     return false;
   }) || null;
+
+  // Convert podcastResult to Resource if needed
+  const podcast: Resource | null = podcastResult
+    ? {
+        ...podcastResult,
+        episodes: podcastResult.episodes
+          ? Number(
+              typeof podcastResult.episodes === "string"
+                ? podcastResult.episodes.replace(/\D/g, "") // extract only numbers
+                : podcastResult.episodes
+            ) || undefined
+          : undefined,
+      }
+    : null;
 
   // Loading skeletons
   if (loading) return <><Navigation /><LoadingSkeleton /></>;

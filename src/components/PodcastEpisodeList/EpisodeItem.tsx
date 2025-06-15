@@ -1,5 +1,5 @@
 
-import { Play, Calendar, Clock, ExternalLink } from "lucide-react";
+import { Play, Calendar, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -100,31 +100,17 @@ const EpisodeItem = ({
             <span>{formatDuration(spotifyEpisode.duration_ms)}</span>
           </div>
         </div>
-        <div className="flex gap-2">
-          {spotifyEpisode.audio_preview_url && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                window.open(spotifyEpisode.audio_preview_url, '_blank');
-              }}
-            >
-              Preview
-            </Button>
-          )}
-          <Button
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open(spotifyEpisode.external_urls.spotify, '_blank');
-            }}
-            className="bg-purple-600 hover:bg-purple-700"
-          >
-            <ExternalLink className="h-4 w-4 mr-1" />
-            Spotify
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEpisodeSelect?.();
+          }}
+          className="bg-purple-600 hover:bg-purple-700"
+        >
+          <Play className="h-4 w-4 mr-1" />
+          Ouça este episódio
+        </Button>
       </div>
     );
   }
@@ -160,20 +146,17 @@ const EpisodeItem = ({
           <span>{generatedEpisode.duration}</span>
         </div>
       </div>
-      <button
-        className={`ml-2 p-2 rounded-full transition ${
-          isSelected 
-            ? "bg-blue-600 hover:bg-blue-700" 
-            : "bg-purple-600 hover:bg-purple-700"
-        } text-white`}
-        aria-label="Selecionar episódio"
+      <Button
+        size="sm"
         onClick={(e) => {
           e.stopPropagation();
           onEpisodeSelect?.();
         }}
+        className="bg-purple-600 hover:bg-purple-700"
       >
-        <Play className="h-5 w-5" />
-      </button>
+        <Play className="h-4 w-4 mr-1" />
+        Ouça este episódio
+      </Button>
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import { Calendar, Clock, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import React, { useEffect, useRef, useState } from "react";
@@ -46,13 +45,49 @@ const SpotifyPlayerSection = ({
   const [iframeLoading, setIframeLoading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
+  // --- Autoplay fallback detection ---
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [dismissedAutoplayMsg, setDismissedAutoplayMsg] = useState(false);
+  const autoplayTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Start loading when embedUrl changes
   useEffect(() => {
-    // Only trigger when selected a new episode which is a Spotify episode
     if (selectedEpisode?.isSpotifyEpisode && selectedEpisode.embedUrl) {
       setIframeLoading(true);
+      setAutoplayBlocked(false);
+      setDismissedAutoplayMsg(false);
+    } else {
+      setAutoplayBlocked(false);
+      setDismissedAutoplayMsg(false);
     }
   }, [selectedEpisode?.embedUrl]);
-  // --- End new
+
+  // When the iframe loads, start a timer to detect autoplay block
+  const handleIframeLoad = () => {
+    setIframeLoading(false);
+    setAutoplayBlocked(false);
+    setDismissedAutoplayMsg(false);
+
+    // Only do autoplay detection for Spotify embed
+    if (selectedEpisode?.isSpotifyEpisode && iframeRef.current) {
+      if (autoplayTimer.current) clearTimeout(autoplayTimer.current);
+      autoplayTimer.current = setTimeout(() => {
+        setAutoplayBlocked(true);
+      }, 4000); // 4 seconds: if not playing, show message
+    }
+  };
+
+  // If the user dismisses the autoplay warning
+  const handleDismissAutoplayMsg = () => {
+    setDismissedAutoplayMsg(true);
+  };
+
+  // Clean up timer if component unmounts or URL changes
+  useEffect(() => {
+    return () => {
+      if (autoplayTimer.current) clearTimeout(autoplayTimer.current);
+    };
+  }, [selectedEpisode?.embedUrl]);
 
   const displayTitle = selectedEpisode 
     ? selectedEpisode.title 
@@ -118,7 +153,26 @@ const SpotifyPlayerSection = ({
             </div>
           </div>
         )}
-        
+
+        {/* --- Autoplay blocked overlay --- */}
+        {autoplayBlocked && !dismissedAutoplayMsg && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/90 p-4 rounded-lg border border-green-200">
+            <div className="text-green-700 text-base font-semibold mb-2 flex items-center gap-2">
+              <Play className="h-5 w-5" /> Reprodução automática bloqueada
+            </div>
+            <div className="text-gray-700 text-sm mb-4 text-center max-w-xs">
+              Seu navegador não permite reprodução automática.<br />
+              Clique no botão <span className="font-bold">▶️</span> no player do Spotify para iniciar o episódio manualmente.
+            </div>
+            <button
+              onClick={handleDismissAutoplayMsg}
+              className="px-4 py-2 bg-green-600 text-white font-medium rounded hover:bg-green-700 transition-colors focus:outline-none"
+            >
+              Entendi
+            </button>
+          </div>
+        )}
+
         {oembedData && !oembedLoading && !selectedEpisode && (
           <div
             dangerouslySetInnerHTML={{ __html: oembedData.html }}
@@ -139,7 +193,7 @@ const SpotifyPlayerSection = ({
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
             className="rounded-lg"
             title={`${displayTitle} - Spotify Player`}
-            onLoad={() => setIframeLoading(false)}
+            onLoad={handleIframeLoad}
             style={{ minHeight: 352 }}
           />
         )}

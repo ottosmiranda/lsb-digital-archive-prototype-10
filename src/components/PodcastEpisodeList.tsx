@@ -1,8 +1,11 @@
 
-import React, { useImperativeHandle, useRef, useState, forwardRef } from "react";
-import { Play, Calendar, Clock } from "lucide-react";
+import React, { useImperativeHandle, useState, forwardRef } from "react";
+import { Play, Calendar, Clock, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useSpotifyOEmbed } from "@/hooks/useSpotifyOEmbed";
+import { useSpotifyEpisodes } from "@/hooks/useSpotifyEpisodes";
+import SpotifyConfig from "@/components/SpotifyConfig";
 
 // Helper to generate human fake episode durations/titles/descriptions/dates
 function generateEpisodes(
@@ -53,8 +56,12 @@ interface PodcastEpisodeListProps {
 
 const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeListProps>(
   ({ total, podcastTitle, embedUrl }, ref) => {
-    const episodes = generateEpisodes(total, podcastTitle);
     const { oembedData, loading: oembedLoading, error: oembedError } = useSpotifyOEmbed(embedUrl);
+    const { episodes: spotifyEpisodes, loading: episodesLoading, hasRealData } = useSpotifyEpisodes(embedUrl);
+    
+    // Use real Spotify episodes if available, otherwise fall back to generated ones
+    const fallbackEpisodes = generateEpisodes(total, podcastTitle);
+    const displayEpisodes = hasRealData ? spotifyEpisodes : fallbackEpisodes;
 
     // "Play" state management, allowing parent to set to playing
     const [playingFirst, setPlayingFirst] = useState(false);
@@ -63,19 +70,46 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
     useImperativeHandle(ref, () => ({
       playLatest: () => {
         setPlayingFirst(true);
-        // Optionally focus / animate to the player
       },
     }));
 
-    // Extract Spotify URL for oEmbed if we have an embed URL
-    const spotifyUrl = embedUrl ? embedUrl.replace('/embed/', '/').split('?')[0] : undefined;
+    const formatDuration = (durationMs?: number) => {
+      if (!durationMs) return "45:00";
+      const minutes = Math.floor(durationMs / 60000);
+      const seconds = Math.floor((durationMs % 60000) / 1000);
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const formatDate = (dateString: string) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("pt-BR", { 
+        day: "2-digit", 
+        month: "short", 
+        year: "numeric" 
+      }).replace(/\./g, "");
+    };
 
     return (
       <section className="mt-10" id="all-episodes-list">
+        <SpotifyConfig />
+        
         <div className="flex justify-between items-center mb-5">
           <h2 className="font-semibold text-xl">Todos os Episódios</h2>
-          <Badge className="bg-lsb-primary/90 text-white">{total} episódios</Badge>
+          <div className="flex items-center gap-2">
+            {hasRealData && (
+              <Badge className="bg-green-600 text-white">Dados Reais</Badge>
+            )}
+            <Badge className="bg-lsb-primary/90 text-white">
+              {hasRealData ? spotifyEpisodes.length : total} episódios
+            </Badge>
+          </div>
         </div>
+
+        {episodesLoading && (
+          <div className="text-center py-8 text-gray-500">
+            Carregando episódios do Spotify...
+          </div>
+        )}
         
         <div className="flex flex-col gap-5">
           {/* Spotify Player - First Episode */}
@@ -150,41 +184,99 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
             </div>
           )}
           
-          {/* Generated Episodes List */}
-          {episodes.map((ep) => (
-            <div
-              key={ep.id}
-              className="flex items-center gap-4 px-4 py-3 bg-white border rounded-xl shadow-sm"
-            >
-              <div className="flex-shrink-0">
-                <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <Play className="h-7 w-7 text-purple-600" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex gap-2 items-center">
-                  <h3 className="font-semibold truncate">{ep.title}</h3>
-                  {ep.isNew && (
-                    <Badge className="bg-green-600 text-white ml-1">NOVO</Badge>
+          {/* Episodes List - Real or Generated */}
+          {hasRealData ? (
+            // Real Spotify Episodes
+            spotifyEpisodes.map((episode, index) => (
+              <div
+                key={episode.id}
+                className="flex items-center gap-4 px-4 py-3 bg-white border rounded-xl shadow-sm"
+              >
+                <div className="flex-shrink-0">
+                  {episode.images.length > 0 ? (
+                    <img 
+                      src={episode.images[0].url} 
+                      alt={episode.name}
+                      className="w-14 h-14 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <Play className="h-7 w-7 text-purple-600" />
+                    </div>
                   )}
                 </div>
-                <p className="text-sm line-clamp-2 text-gray-600">{ep.desc}</p>
-                <div className="flex gap-4 mt-1 text-xs text-gray-500 items-center">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  <span>{ep.date}</span>
-                  <Clock className="h-3 w-3 ml-3 mr-1" />
-                  <span>{ep.duration}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex gap-2 items-center">
+                    <h3 className="font-semibold truncate">{episode.name}</h3>
+                    {index < 2 && (
+                      <Badge className="bg-green-600 text-white ml-1">NOVO</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm line-clamp-2 text-gray-600">{episode.description}</p>
+                  <div className="flex gap-4 mt-1 text-xs text-gray-500 items-center">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    <span>{formatDate(episode.release_date)}</span>
+                    <Clock className="h-3 w-3 ml-3 mr-1" />
+                    <span>{formatDuration(episode.duration_ms)}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {episode.audio_preview_url && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(episode.audio_preview_url, '_blank')}
+                    >
+                      Preview
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={() => window.open(episode.external_urls.spotify, '_blank')}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    Spotify
+                  </Button>
                 </div>
               </div>
-              <button
-                className="ml-2 p-2 rounded-full bg-purple-600 hover:bg-purple-700 transition text-white"
-                aria-label="Ouvir episódio"
-                // Could add handler for play per-episode if desired
+            ))
+          ) : (
+            // Generated Episodes List (Fallback)
+            fallbackEpisodes.map((ep) => (
+              <div
+                key={ep.id}
+                className="flex items-center gap-4 px-4 py-3 bg-white border rounded-xl shadow-sm"
               >
-                <Play className="h-5 w-5" />
-              </button>
-            </div>
-          ))}
+                <div className="flex-shrink-0">
+                  <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Play className="h-7 w-7 text-purple-600" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex gap-2 items-center">
+                    <h3 className="font-semibold truncate">{ep.title}</h3>
+                    {ep.isNew && (
+                      <Badge className="bg-green-600 text-white ml-1">NOVO</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm line-clamp-2 text-gray-600">{ep.desc}</p>
+                  <div className="flex gap-4 mt-1 text-xs text-gray-500 items-center">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    <span>{ep.date}</span>
+                    <Clock className="h-3 w-3 ml-3 mr-1" />
+                    <span>{ep.duration}</span>
+                  </div>
+                </div>
+                <button
+                  className="ml-2 p-2 rounded-full bg-purple-600 hover:bg-purple-700 transition text-white"
+                  aria-label="Ouvir episódio"
+                >
+                  <Play className="h-5 w-5" />
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </section>
     );

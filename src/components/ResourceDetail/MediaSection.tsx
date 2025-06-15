@@ -1,6 +1,6 @@
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Play, Clock, BookOpen, Volume2 } from "lucide-react";
+import { Play, Clock, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Resource } from "@/types/resourceTypes";
 
@@ -55,38 +55,9 @@ const MediaSection = ({ resource }: { resource: Resource }) => {
     );
   }
 
+  // For podcasts, return null - the unified player is handled in PodcastDetailView
   if (resource.type === 'podcast') {
-    return (
-      <Card className="mb-6">
-        <CardContent className="p-6">
-          <div className="flex items-center space-x-4">
-            <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-              <img
-                src={resource.thumbnail}
-                alt={resource.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center space-x-4 mb-4">
-                <Button size="lg" className="bg-purple-600 hover:bg-purple-700">
-                  <Play className="h-5 w-5 mr-2" />
-                  Ouvir Agora
-                </Button>
-                <div className="text-sm text-gray-600">
-                  <Volume2 className="inline h-3 w-3 mr-1" />
-                  {resource.episodes} episódios
-                </div>
-              </div>
-              <div className="bg-gray-100 rounded-full h-2 mb-2">
-                <div className="bg-purple-600 h-2 rounded-full w-1/3"></div>
-              </div>
-              <div className="text-sm text-gray-600">15:23 / {resource.duration}</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
   return null;

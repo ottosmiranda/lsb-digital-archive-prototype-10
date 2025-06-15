@@ -1,22 +1,9 @@
-
-import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { Play, Clock, BookOpen } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from '@/components/ui/breadcrumb';
-import PodcastDetailHero from "@/components/PodcastDetailHero";
-import PodcastEpisodeList from "@/components/PodcastEpisodeList";
+import PodcastDetailView from '@/components/ResourceDetail/PodcastDetailView';
 import { useDataLoader } from '@/hooks/useDataLoader';
 import LoadingSkeleton from '@/components/ResourceDetail/LoadingSkeleton';
 import ResourceNotFound from '@/components/ResourceDetail/ResourceNotFound';
@@ -26,22 +13,67 @@ import MediaSection from '@/components/ResourceDetail/MediaSection';
 import ActionButtons from '@/components/ResourceDetail/ActionButtons';
 import ResourceInfo from '@/components/ResourceDetail/ResourceInfo';
 import ResourceContent from '@/components/ResourceDetail/ResourceContent';
-import PodcastDetailView from '@/components/ResourceDetail/PodcastDetailView';
 import { Resource } from '@/types/resourceTypes';
+import { SearchResult } from '@/types/searchTypes';
+
+// Helper to convert a SearchResult into the more detailed Resource type used on this page
+const toResource = (data: SearchResult): Resource => {
+  return {
+    ...data,
+    episodes: data.episodes
+      ? Number(
+          typeof data.episodes === "string"
+            ? data.episodes.replace(/\D/g, "")
+            : data.episodes
+        ) || undefined
+      : undefined,
+  };
+};
 
 const ResourceDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { allData, loading } = useDataLoader();
+  const { allData, loading: dataLoading } = useDataLoader();
   const [resource, setResource] = useState<Resource | null>(null);
-  const [resourceLoading, setResourceLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Effect for fetching fallback resource data
   useEffect(() => {
-    const fetchResource = () => {
+    setIsLoading(true);
+
+    // Wait until the main data from useDataLoader is available
+    if (dataLoading) {
+      return;
+    }
+
+    let foundResource: SearchResult | null = null;
+
+    // 1. Try to find any resource by its string ID. This works for all types,
+    // including podcasts that have string-based IDs from Spotify.
+    foundResource = allData.find(item => String(item.id) === id) || null;
+
+    // 2. If not found, and the ID from the URL is a number, it might be an
+    // index-based lookup for a podcast (e.g., /recurso/10 means the 10th podcast).
+    if (!foundResource) {
+      const routeId = parseInt(id || '0', 10);
+      if (!isNaN(routeId) && routeId > 0) {
+        const podcastsOnly = allData.filter(item => item.type === "podcast");
+        const podcastIndex = routeId - 1; // 0-based index for arrays
+        if (podcastIndex >= 0 && podcastIndex < podcastsOnly.length) {
+          foundResource = podcastsOnly[podcastIndex];
+        }
+      }
+    }
+
+    if (foundResource) {
+      // If we found the resource in our real data, set it and stop loading.
+      setResource(toResource(foundResource));
+      setIsLoading(false);
+    } else {
+      // If not found in real data, fall back to generating mock data.
+      console.warn(`Resource with id '${id}' not found. Falling back to mock generation.`);
       setTimeout(() => {
         const resourceId = parseInt(id || '1');
         const resourceType = resourceId % 3 === 0 ? 'podcast' : resourceId % 2 === 0 ? 'titulo' : 'video';
-        
+
         let mockResource: Resource;
 
         if (resourceType === 'video') {
@@ -104,53 +136,25 @@ const ResourceDetail = () => {
         }
 
         setResource(mockResource);
-        setResourceLoading(false);
-      }, 500);
-    };
-
-    fetchResource();
-  }, [id]);
-
-  // Find podcast by id (fix to cast episodes as number)
-  const podcastResult = allData.find((r) => {
-    if (r.type !== "podcast") return false;
-    if (String(r.id) === id) return true;
-    const routeId = parseInt(id || '0');
-    if (routeId > 0) {
-      const podcastsOnly = allData.filter(item => item.type === "podcast");
-      const podcastIndex = routeId - 1;
-      if (podcastIndex >= 0 && podcastIndex < podcastsOnly.length) {
-        return r === podcastsOnly[podcastIndex];
-      }
+        setIsLoading(false);
+      }, 300); // A small delay to simulate a fetch
     }
-    return false;
-  }) || null;
+  }, [id, allData, dataLoading]);
 
-  // Convert podcastResult to Resource if needed
-  const podcast: Resource | null = podcastResult
-    ? {
-        ...podcastResult,
-        episodes: podcastResult.episodes
-          ? Number(
-              typeof podcastResult.episodes === "string"
-                ? podcastResult.episodes.replace(/\D/g, "") // extract only numbers
-                : podcastResult.episodes
-            ) || undefined
-          : undefined,
-      }
-    : null;
-
-  // Loading skeletons
-  if (loading) return <><Navigation /><LoadingSkeleton /></>;
-  if (resourceLoading) return <><Navigation /><LoadingSkeleton /></>;
-  if (!resource) return <><Navigation /><ResourceNotFound /></>;
-
-  // If podcast detected (either from real data OR mock data with type 'podcast')
-  if ((podcast && podcast.type === 'podcast') || resource.type === 'podcast') {
-    const podcastToRender = podcast || resource;
-    return <PodcastDetailView podcast={podcastToRender} />;
+  if (isLoading) {
+    return <><Navigation /><LoadingSkeleton /></>;
   }
 
+  if (!resource) {
+    return <><Navigation /><ResourceNotFound /></>;
+  }
+
+  // If the determined resource is a podcast, show the dedicated podcast view.
+  if (resource.type === 'podcast') {
+    return <PodcastDetailView podcast={resource} />;
+  }
+
+  // Otherwise, show the standard detail view for videos and books.
   return (
     <div className="min-h-screen bg-white">
       <Navigation />

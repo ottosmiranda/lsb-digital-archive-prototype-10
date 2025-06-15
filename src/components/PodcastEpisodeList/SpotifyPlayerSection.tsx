@@ -101,7 +101,6 @@ const SpotifyPlayerSection = ({
             {displayTitle}
           </h3>
           {(!selectedEpisode || selectedEpisode.id === "1") && <Badge className="bg-green-600 text-white ml-1">NOVO</Badge>}
-          {selectedEpisode}
         </div>
         <p className="text-sm text-gray-600 mb-3 line-clamp-2">
           {displayDescription}

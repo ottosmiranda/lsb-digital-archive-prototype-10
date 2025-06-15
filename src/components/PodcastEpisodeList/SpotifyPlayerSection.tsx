@@ -1,6 +1,7 @@
 
 import { Calendar, Clock, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import React, { useEffect, useRef, useState } from "react";
 
 interface SelectedEpisode {
   id: string;
@@ -40,6 +41,18 @@ const SpotifyPlayerSection = ({
       year: "numeric" 
     }).replace(/\./g, "");
   };
+
+  // -- Start new: loading state for iframe --
+  const [iframeLoading, setIframeLoading] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  useEffect(() => {
+    // Only trigger when selected a new episode which is a Spotify episode
+    if (selectedEpisode?.isSpotifyEpisode && selectedEpisode.embedUrl) {
+      setIframeLoading(true);
+    }
+  }, [selectedEpisode?.embedUrl]);
+  // --- End new
 
   const displayTitle = selectedEpisode 
     ? selectedEpisode.title 
@@ -90,10 +103,19 @@ const SpotifyPlayerSection = ({
       </div>
       
       {/* Spotify Player */}
-      <div className="p-4">
+      <div className="p-4 relative">
         {oembedLoading && (
           <div className="flex items-center justify-center h-[352px] bg-gray-50 rounded-lg">
             <div className="text-gray-500">Carregando player...</div>
+          </div>
+        )}
+
+        {/* Overlay for loading new episode */}
+        {iframeLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 pointer-events-none">
+            <div className="text-green-700 animate-pulse font-medium">
+              Iniciando reprodução...
+            </div>
           </div>
         )}
         
@@ -107,14 +129,18 @@ const SpotifyPlayerSection = ({
         {/* Use selected episode embed URL or fallback to original iframe */}
         {(selectedEpisode?.embedUrl || (!oembedData || oembedError) && !oembedLoading) && currentEmbedUrl && (
           <iframe
+            ref={iframeRef}
+            key={currentEmbedUrl} // forces a reload on embedUrl change
             src={currentEmbedUrl}
             width="100%"
             height="352"
             frameBorder="0"
             allowTransparency={true}
-            allow="encrypted-media"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
             className="rounded-lg"
             title={`${displayTitle} - Spotify Player`}
+            onLoad={() => setIframeLoading(false)}
+            style={{ minHeight: 352 }}
           />
         )}
         

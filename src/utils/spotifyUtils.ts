@@ -16,6 +16,7 @@ export const extractEpisodeId = (spotifyUrl: string): string | null => {
 export const generateEpisodeEmbedUrl = (spotifyUrl: string): string | null => {
   const episodeId = extractEpisodeId(spotifyUrl);
   if (!episodeId) return null;
-  
-  return `https://open.spotify.com/embed/episode/${episodeId}?utm_source=generator&theme=0`;
+
+  // Add autoplay parameter
+  return `https://open.spotify.com/embed/episode/${episodeId}?utm_source=generator&theme=0&autoplay=1`;
 };

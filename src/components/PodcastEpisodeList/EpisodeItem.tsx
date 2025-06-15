@@ -33,9 +33,17 @@ interface EpisodeItemProps {
   episode: SpotifyEpisode | GeneratedEpisode;
   isSpotifyEpisode: boolean;
   index?: number;
+  isSelected?: boolean;
+  onEpisodeSelect?: () => void;
 }
 
-const EpisodeItem = ({ episode, isSpotifyEpisode, index = 0 }: EpisodeItemProps) => {
+const EpisodeItem = ({ 
+  episode, 
+  isSpotifyEpisode, 
+  index = 0, 
+  isSelected = false,
+  onEpisodeSelect 
+}: EpisodeItemProps) => {
   const formatDuration = (durationMs?: number) => {
     if (!durationMs) return "45:00";
     const minutes = Math.floor(durationMs / 60000);
@@ -55,7 +63,12 @@ const EpisodeItem = ({ episode, isSpotifyEpisode, index = 0 }: EpisodeItemProps)
   if (isSpotifyEpisode) {
     const spotifyEpisode = episode as SpotifyEpisode;
     return (
-      <div className="flex items-center gap-4 px-4 py-3 bg-white border rounded-xl shadow-sm">
+      <div 
+        className={`flex items-center gap-4 px-4 py-3 bg-white border rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md ${
+          isSelected ? "ring-2 ring-blue-500 bg-blue-50" : ""
+        }`}
+        onClick={onEpisodeSelect}
+      >
         <div className="flex-shrink-0">
           {spotifyEpisode.images.length > 0 ? (
             <img 
@@ -75,6 +88,9 @@ const EpisodeItem = ({ episode, isSpotifyEpisode, index = 0 }: EpisodeItemProps)
             {index < 2 && (
               <Badge className="bg-green-600 text-white ml-1">NOVO</Badge>
             )}
+            {isSelected && (
+              <Badge className="bg-blue-600 text-white ml-1">TOCANDO</Badge>
+            )}
           </div>
           <p className="text-sm line-clamp-2 text-gray-600">{spotifyEpisode.description}</p>
           <div className="flex gap-4 mt-1 text-xs text-gray-500 items-center">
@@ -89,14 +105,20 @@ const EpisodeItem = ({ episode, isSpotifyEpisode, index = 0 }: EpisodeItemProps)
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(spotifyEpisode.audio_preview_url, '_blank')}
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(spotifyEpisode.audio_preview_url, '_blank');
+              }}
             >
               Preview
             </Button>
           )}
           <Button
             size="sm"
-            onClick={() => window.open(spotifyEpisode.external_urls.spotify, '_blank')}
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(spotifyEpisode.external_urls.spotify, '_blank');
+            }}
             className="bg-purple-600 hover:bg-purple-700"
           >
             <ExternalLink className="h-4 w-4 mr-1" />
@@ -109,7 +131,12 @@ const EpisodeItem = ({ episode, isSpotifyEpisode, index = 0 }: EpisodeItemProps)
 
   const generatedEpisode = episode as GeneratedEpisode;
   return (
-    <div className="flex items-center gap-4 px-4 py-3 bg-white border rounded-xl shadow-sm">
+    <div 
+      className={`flex items-center gap-4 px-4 py-3 bg-white border rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md ${
+        isSelected ? "ring-2 ring-blue-500 bg-blue-50" : ""
+      }`}
+      onClick={onEpisodeSelect}
+    >
       <div className="flex-shrink-0">
         <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center">
           <Play className="h-7 w-7 text-purple-600" />
@@ -121,6 +148,9 @@ const EpisodeItem = ({ episode, isSpotifyEpisode, index = 0 }: EpisodeItemProps)
           {generatedEpisode.isNew && (
             <Badge className="bg-green-600 text-white ml-1">NOVO</Badge>
           )}
+          {isSelected && (
+            <Badge className="bg-blue-600 text-white ml-1">TOCANDO</Badge>
+          )}
         </div>
         <p className="text-sm line-clamp-2 text-gray-600">{generatedEpisode.desc}</p>
         <div className="flex gap-4 mt-1 text-xs text-gray-500 items-center">
@@ -131,8 +161,16 @@ const EpisodeItem = ({ episode, isSpotifyEpisode, index = 0 }: EpisodeItemProps)
         </div>
       </div>
       <button
-        className="ml-2 p-2 rounded-full bg-purple-600 hover:bg-purple-700 transition text-white"
-        aria-label="Ouvir episódio"
+        className={`ml-2 p-2 rounded-full transition ${
+          isSelected 
+            ? "bg-blue-600 hover:bg-blue-700" 
+            : "bg-purple-600 hover:bg-purple-700"
+        } text-white`}
+        aria-label="Selecionar episódio"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEpisodeSelect?.();
+        }}
       >
         <Play className="h-5 w-5" />
       </button>

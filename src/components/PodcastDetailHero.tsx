@@ -1,8 +1,9 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Headphones, User, Calendar, Tag, Play } from "lucide-react";
+import { Headphones, User, Calendar, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SpotifyPlayerSection from "@/components/PodcastEpisodeList/SpotifyPlayerSection";
 import React from "react";
 
 const fallbackImg =
@@ -16,7 +17,15 @@ interface PodcastDetailHeroProps {
   year: number;
   categories: string[];
   description: string;
-  onPlayLatest?: () => void;
+  // These props enable integrated player:
+  embedUrl?: string;
+  podcastTitle?: string;
+  selectedEpisode?: any;
+  onEpisodeChange?: (ep: any | null) => void;
+  playingFirst?: boolean;
+  oembedData?: any;
+  oembedLoading?: boolean;
+  oembedError?: string | null;
 }
 
 const PodcastDetailHero = ({
@@ -27,11 +36,18 @@ const PodcastDetailHero = ({
   year,
   categories,
   description,
-  onPlayLatest,
+  // new
+  embedUrl,
+  podcastTitle,
+  selectedEpisode,
+  onEpisodeChange,
+  playingFirst,
+  oembedData,
+  oembedLoading,
+  oembedError
 }: PodcastDetailHeroProps) => {
   return (
     <section className="relative mb-8">
-      {/* Hero: Cover, Spotify Player Button, metadata */}
       <div className="flex flex-col gap-6 md:flex-row md:gap-10">
         <div className="flex-shrink-0">
           <img
@@ -65,18 +81,22 @@ const PodcastDetailHero = ({
             <Calendar className="h-4 w-4 ml-4 mr-1" />
             <span>Desde {year}</span>
           </div>
-          {/* Spotify Player Button */}
-          <div className="flex items-center justify-center h-16 mt-2">
-            <Button
-              data-testid="play-last-episode"
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg shadow transition"
-              onClick={onPlayLatest}
-              aria-label="Ouça o último episódio"
-            >
-              <Play className="h-5 w-5 mr-2" />
-              Ouça o último episódio
-            </Button>
-          </div>
+
+          {/* New: Main podcast player */}
+          {embedUrl && podcastTitle && (
+            <div className="mt-6">
+              <SpotifyPlayerSection
+                embedUrl={selectedEpisode?.embedUrl || embedUrl}
+                playingFirst={playingFirst || false}
+                podcastTitle={podcastTitle}
+                selectedEpisode={selectedEpisode}
+                oembedData={oembedData}
+                oembedLoading={!!oembedLoading}
+                oembedError={oembedError || null}
+                onEpisodeChange={onEpisodeChange}
+              />
+            </div>
+          )}
         </div>
       </div>
       {/* Description */}

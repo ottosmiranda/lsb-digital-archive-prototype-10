@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
@@ -144,9 +145,10 @@ const ResourceDetail = () => {
   if (resourceLoading) return <><Navigation /><LoadingSkeleton /></>;
   if (!resource) return <><Navigation /><ResourceNotFound /></>;
 
-  // If podcast detected (type: podcast) and there is a matching podcast in the data
-  if (podcast && podcast.type === 'podcast') {
-    return <PodcastDetailView podcast={podcast} />;
+  // If podcast detected (either from real data OR mock data with type 'podcast')
+  if ((podcast && podcast.type === 'podcast') || resource.type === 'podcast') {
+    const podcastToRender = podcast || resource;
+    return <PodcastDetailView podcast={podcastToRender} />;
   }
 
   return (

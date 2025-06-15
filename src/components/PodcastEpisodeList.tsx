@@ -1,11 +1,9 @@
-
 import React, { useImperativeHandle, useState, forwardRef } from "react";
 import { Play, Calendar, Clock, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSpotifyOEmbed } from "@/hooks/useSpotifyOEmbed";
 import { useSpotifyEpisodes } from "@/hooks/useSpotifyEpisodes";
-import SpotifyConfig from "@/components/SpotifyConfig";
 
 // Helper to generate human fake episode durations/titles/descriptions/dates
 function generateEpisodes(
@@ -91,8 +89,6 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
 
     return (
       <section className="mt-10" id="all-episodes-list">
-        <SpotifyConfig />
-        
         <div className="flex justify-between items-center mb-5">
           <h2 className="font-semibold text-xl">Todos os Episódios</h2>
           <div className="flex items-center gap-2">

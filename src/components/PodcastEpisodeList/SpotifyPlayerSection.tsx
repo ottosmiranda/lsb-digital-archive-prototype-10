@@ -1,7 +1,6 @@
 import { Calendar, Clock, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import React, { useEffect, useRef, useState } from "react";
-
 interface SelectedEpisode {
   id: string;
   title: string;
@@ -11,7 +10,6 @@ interface SelectedEpisode {
   embedUrl?: string;
   isSpotifyEpisode: boolean;
 }
-
 interface SpotifyPlayerSectionProps {
   embedUrl: string;
   playingFirst: boolean;
@@ -20,9 +18,7 @@ interface SpotifyPlayerSectionProps {
   oembedData: any;
   oembedLoading: boolean;
   oembedError: string | null;
-  onEpisodeChange?: (ep: any) => void; // add: to allow updating from here if ever needed, not required for this task
 }
-
 const SpotifyPlayerSection = ({
   embedUrl,
   playingFirst,
@@ -30,8 +26,7 @@ const SpotifyPlayerSection = ({
   selectedEpisode,
   oembedData,
   oembedLoading,
-  oembedError,
-  // onEpisodeChange,
+  oembedError
 }: SpotifyPlayerSectionProps) => {
   const formatDate = (dateString: string) => {
     if (!selectedEpisode?.isSpotifyEpisode) return dateString;
@@ -177,5 +172,4 @@ const SpotifyPlayerSection = ({
         </div>}
     </div>;
 };
-
 export default SpotifyPlayerSection;

@@ -3,20 +3,21 @@ import React, { useImperativeHandle, useState, forwardRef } from "react";
 import { useSpotifyOEmbed } from "@/hooks/useSpotifyOEmbed";
 import { useSpotifyEpisodes } from "@/hooks/useSpotifyEpisodes";
 import { generateEpisodes } from "@/utils/episodeGenerator";
-// Removed: import SpotifyPlayerSection from "./PodcastEpisodeList/SpotifyPlayerSection";
-import EpisodeItem from "./PodcastEpisodeList/EpisodeItem";
+import { generateEpisodeEmbedUrl } from "@/utils/spotifyUtils";
 import EpisodesHeader from "./PodcastEpisodeList/EpisodesHeader";
+import SpotifyPlayerSection from "./PodcastEpisodeList/SpotifyPlayerSection";
+import EpisodeItem from "./PodcastEpisodeList/EpisodeItem";
 
 export interface PodcastEpisodeListHandles {
   playLatest: () => void;
 }
+
 interface PodcastEpisodeListProps {
   total: number;
   podcastTitle: string;
   embedUrl?: string;
-  // new:
-  onEpisodeSelect?: (ep: any) => void;
 }
+
 interface SelectedEpisode {
   id: string;
   title: string;
@@ -28,25 +29,26 @@ interface SelectedEpisode {
 }
 
 const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeListProps>(
-  ({ total, podcastTitle, embedUrl, onEpisodeSelect }, ref) => {
+  ({ total, podcastTitle, embedUrl }, ref) => {
     const { oembedData, loading: oembedLoading, error: oembedError } = useSpotifyOEmbed(embedUrl);
     const { episodes: spotifyEpisodes, loading: episodesLoading, hasRealData } = useSpotifyEpisodes(embedUrl);
-
+    
+    // Use real Spotify episodes if available, otherwise fall back to generated ones
     const fallbackEpisodes = generateEpisodes(total, podcastTitle);
     const displayEpisodes = hasRealData ? spotifyEpisodes : fallbackEpisodes;
 
-    // Remove own player state; operate stateless, notify parent
-    // const [selectedEpisode, setSelectedEpisode] = useState<SelectedEpisode | null>(null);
-    // const [playingFirst, setPlayingFirst] = useState(false);
+    // Selected episode state
+    const [selectedEpisode, setSelectedEpisode] = useState<SelectedEpisode | null>(null);
+    const [playingFirst, setPlayingFirst] = useState(false);
 
-    // Notify parent of episode selection
+    // Handle episode selection
     const handleEpisodeSelect = (episode: any, isSpotifyEpisode: boolean) => {
       let episodeEmbedUrl = null;
+      
       if (isSpotifyEpisode && episode.external_urls?.spotify) {
-        // @ts-ignore: need embedUrl
-        const { generateEpisodeEmbedUrl } = require("@/utils/spotifyUtils");
         episodeEmbedUrl = generateEpisodeEmbedUrl(episode.external_urls.spotify);
       }
+
       const selectedEpisodeData: SelectedEpisode = {
         id: isSpotifyEpisode ? episode.id : episode.id.toString(),
         title: isSpotifyEpisode ? episode.name : episode.title,
@@ -56,7 +58,15 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
         embedUrl: episodeEmbedUrl || undefined,
         isSpotifyEpisode
       };
-      onEpisodeSelect?.(selectedEpisodeData);
+
+      setSelectedEpisode(selectedEpisodeData);
+      setPlayingFirst(true);
+
+      // Scroll to main player
+      const section = document.getElementById("all-episodes-list");
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     };
 
     const formatDuration = (durationMs?: number) => {
@@ -69,7 +79,8 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
     // Expose "playLatest" method to parent
     useImperativeHandle(ref, () => ({
       playLatest: () => {
-        onEpisodeSelect?.(null);
+        setPlayingFirst(true);
+        setSelectedEpisode(null); // Reset to show original player
       },
     }));
 
@@ -81,9 +92,22 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
           total={total}
           episodesLoading={episodesLoading}
         />
+        
         <div className="flex flex-col gap-5">
-          {/* --- Player removed; unified player is above --- */}
-          {/* --- Only show episode selection list now --- */}
+          {/* Spotify Player - First Episode or Selected Episode */}
+          {embedUrl && (
+            <SpotifyPlayerSection
+              embedUrl={selectedEpisode?.embedUrl || embedUrl}
+              playingFirst={playingFirst}
+              podcastTitle={podcastTitle}
+              selectedEpisode={selectedEpisode}
+              oembedData={oembedData}
+              oembedLoading={oembedLoading}
+              oembedError={oembedError}
+            />
+          )}
+          
+          {/* Episodes List - Real or Generated */}
           {hasRealData ? (
             // Real Spotify Episodes
             spotifyEpisodes.map((episode, index) => (
@@ -92,7 +116,7 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
                 episode={episode}
                 isSpotifyEpisode={true}
                 index={index}
-                // Remove isSelected: selection now handled by parent/player in Hero
+                isSelected={selectedEpisode?.id === episode.id}
                 onEpisodeSelect={() => handleEpisodeSelect(episode, true)}
               />
             ))
@@ -103,6 +127,7 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
                 key={ep.id}
                 episode={ep}
                 isSpotifyEpisode={false}
+                isSelected={selectedEpisode?.id === ep.id.toString()}
                 onEpisodeSelect={() => handleEpisodeSelect(ep, false)}
               />
             ))

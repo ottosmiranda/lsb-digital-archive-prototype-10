@@ -14,7 +14,9 @@ const EpisodesHeader = ({
   total,
   episodesLoading
 }: EpisodesHeaderProps) => {
-  const displayCount = hasRealData ? episodeCount : total;
+  // For real data, use episodeCount (which is now totalEpisodes from Spotify)
+  // For generated data, use total prop
+  const displayCount = episodeCount;
   
   return (
     <>

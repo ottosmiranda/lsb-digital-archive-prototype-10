@@ -37,6 +37,7 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
       episodes: spotifyEpisodes, 
       loading: episodesLoading, 
       loadingMore: spotifyLoadingMore,
+      totalEpisodes,
       hasRealData, 
       hasMore: spotifyHasMore,
       loadMoreEpisodes: loadMoreSpotifyEpisodes
@@ -137,7 +138,7 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
       <section className="mt-10" id="all-episodes-list">
         <EpisodesHeader
           hasRealData={hasRealData}
-          episodeCount={spotifyEpisodes.length}
+          episodeCount={hasRealData ? totalEpisodes : total}
           total={total}
           episodesLoading={episodesLoading}
         />

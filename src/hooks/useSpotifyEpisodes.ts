@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSpotifyAuth } from './useSpotifyAuth';
 
 interface SpotifyEpisode {
@@ -27,18 +27,20 @@ interface SpotifyEpisodesResponse {
   next: string | null;
 }
 
-export const useSpotifyEpisodes = (embedUrl?: string) => {
+export const useSpotifyEpisodes = (embedUrl?: string, initialLimit = 10) => {
   const { token, isConfigured } = useSpotifyAuth();
   const [episodes, setEpisodes] = useState<SpotifyEpisode[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalEpisodes, setTotalEpisodes] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
 
   const extractShowId = (url: string): string | null => {
-    // Extract show ID from various Spotify URL formats
     const patterns = [
-      /\/show\/([a-zA-Z0-9]+)/,  // /show/ID
-      /\/embed\/show\/([a-zA-Z0-9]+)/, // /embed/show/ID
+      /\/show\/([a-zA-Z0-9]+)/,
+      /\/embed\/show\/([a-zA-Z0-9]+)/,
     ];
     
     for (const pattern of patterns) {
@@ -48,12 +50,12 @@ export const useSpotifyEpisodes = (embedUrl?: string) => {
     return null;
   };
 
-  const fetchEpisodes = async (showId: string, limit = 20, offset = 0) => {
+  const fetchEpisodes = async (showId: string, limit = 10, offsetParam = 0) => {
     if (!token) return null;
 
     try {
       const response = await fetch(
-        `https://api.spotify.com/v1/shows/${showId}/episodes?limit=${limit}&offset=${offset}&market=BR`,
+        `https://api.spotify.com/v1/shows/${showId}/episodes?limit=${limit}&offset=${offsetParam}&market=BR`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -67,13 +69,36 @@ export const useSpotifyEpisodes = (embedUrl?: string) => {
       }
 
       const data: SpotifyEpisodesResponse = await response.json();
-      console.log('✅ Spotify episodes fetched:', data.items.length);
+      console.log(`✅ Spotify episodes fetched: ${data.items.length} (offset: ${offsetParam})`);
       return data;
     } catch (err) {
       console.error('❌ Failed to fetch Spotify episodes:', err);
       throw err;
     }
   };
+
+  const loadMoreEpisodes = useCallback(async () => {
+    if (!embedUrl || !token || !isConfigured || !hasMore || loadingMore) return;
+
+    const showId = extractShowId(embedUrl);
+    if (!showId) return;
+
+    setLoadingMore(true);
+    setError(null);
+
+    try {
+      const data = await fetchEpisodes(showId, initialLimit, offset);
+      if (data) {
+        setEpisodes(prev => [...prev, ...data.items]);
+        setOffset(prev => prev + data.items.length);
+        setHasMore(data.next !== null && episodes.length + data.items.length < data.total);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load more episodes');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [embedUrl, token, isConfigured, hasMore, loadingMore, offset, initialLimit, episodes.length]);
 
   useEffect(() => {
     if (!embedUrl || !token || !isConfigured) return;
@@ -84,15 +109,19 @@ export const useSpotifyEpisodes = (embedUrl?: string) => {
       return;
     }
 
-    const loadEpisodes = async () => {
+    const loadInitialEpisodes = async () => {
       setLoading(true);
       setError(null);
+      setEpisodes([]);
+      setOffset(0);
 
       try {
-        const data = await fetchEpisodes(showId, 50); // Get more episodes
+        const data = await fetchEpisodes(showId, initialLimit, 0);
         if (data) {
           setEpisodes(data.items);
           setTotalEpisodes(data.total);
+          setOffset(data.items.length);
+          setHasMore(data.next !== null && data.items.length < data.total);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load episodes');
@@ -101,14 +130,17 @@ export const useSpotifyEpisodes = (embedUrl?: string) => {
       }
     };
 
-    loadEpisodes();
-  }, [embedUrl, token, isConfigured]);
+    loadInitialEpisodes();
+  }, [embedUrl, token, isConfigured, initialLimit]);
 
   return {
     episodes,
     loading,
+    loadingMore,
     error,
     totalEpisodes,
-    hasRealData: episodes.length > 0 && isConfigured
+    hasMore,
+    hasRealData: episodes.length > 0 && isConfigured,
+    loadMoreEpisodes
   };
 };

@@ -10,21 +10,29 @@ export interface GeneratedEpisode {
 
 export function generateEpisodes(
   total: number,
-  podcastTitle: string
+  podcastTitle: string,
+  limit = 10,
+  offset = 0
 ): GeneratedEpisode[] {
   const baseDesc =
     "Neste episódio, discutimos temas atuais de inovação, gestão e tecnologia no contexto empresarial.";
   const today = new Date();
   const episodes = [];
-  // Start from episode 2 since episode 1 is now the Spotify player
-  for (let i = total; i > 1; i--) {
-    // Episodes are weekly, count back by 1 week each
+  
+  const startEpisode = Math.max(1, total - offset);
+  const endEpisode = Math.max(1, total - offset - limit + 1);
+  
+  for (let i = startEpisode; i >= endEpisode; i--) {
+    const episodeIndex = total - i;
     const date = new Date(today);
-    date.setDate(today.getDate() - (total - i) * 7);
+    date.setDate(today.getDate() - episodeIndex * 7);
+    
     const formattedDate = date
       .toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
       .replace(/\./g, "");
-    const isNew = (total - i) < 2; // Last 2 are "NEW"
+    
+    const isNew = episodeIndex < 2;
+    
     episodes.push({
       id: i,
       title: `Episódio ${i}: ${podcastTitle} ${i}`,
@@ -34,5 +42,16 @@ export function generateEpisodes(
       isNew,
     });
   }
+  
   return episodes;
+}
+
+export function generateMoreEpisodes(
+  total: number,
+  podcastTitle: string,
+  currentEpisodes: GeneratedEpisode[],
+  limit = 10
+): GeneratedEpisode[] {
+  const offset = currentEpisodes.length;
+  return generateEpisodes(total, podcastTitle, limit, offset);
 }

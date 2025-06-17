@@ -5,9 +5,7 @@ import { useSpotifyEpisodes } from "@/hooks/useSpotifyEpisodes";
 import { useEpisodeManagement } from "@/hooks/useEpisodeManagement";
 import { useEpisodeSelector } from "./PodcastEpisodeList/EpisodeSelector";
 import EpisodesHeader from "./PodcastEpisodeList/EpisodesHeader";
-import SpotifyPlayerSection from "./PodcastEpisodeList/SpotifyPlayerSection";
-import EpisodesList from "./PodcastEpisodeList/EpisodesList";
-import LoadMoreSection from "./PodcastEpisodeList/LoadMoreSection";
+import PodcastContent from "./PodcastEpisodeList/PodcastContent";
 
 export interface PodcastEpisodeListHandles {
   playLatest: () => void;
@@ -93,39 +91,25 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
           episodesLoading={episodesLoading}
         />
         
-        <div className="flex flex-col gap-5">
-          {/* Enhanced Spotify Player with auth status */}
-          {embedUrl && (
-            <SpotifyPlayerSection
-              embedUrl={selectedEpisode?.embedUrl || embedUrl}
-              playingFirst={playingFirst}
-              podcastTitle={podcastTitle}
-              selectedEpisode={selectedEpisode}
-              oembedData={oembedData}
-              oembedLoading={oembedLoading}
-              oembedError={oembedError}
-              authStatus={authStatus}
-              apiError={apiError}
-            />
-          )}
-          
-          {/* Episodes List */}
-          <EpisodesList
-            hasRealData={hasRealData}
-            spotifyEpisodes={spotifyEpisodes}
-            generatedEpisodes={generatedEpisodes}
-            selectedEpisode={selectedEpisode}
-            onEpisodeSelect={handleEpisodeSelect}
-          />
-
-          {/* Loading indicator and Load More button */}
-          <LoadMoreSection
-            hasMore={hasMore}
-            loadingMore={loadingMore}
-            onLoadMore={loadMore}
-            episodeCount={displayEpisodes.length}
-          />
-        </div>
+        <PodcastContent
+          embedUrl={embedUrl}
+          selectedEpisode={selectedEpisode}
+          playingFirst={playingFirst}
+          podcastTitle={podcastTitle}
+          oembedData={oembedData}
+          oembedLoading={oembedLoading}
+          oembedError={oembedError}
+          authStatus={authStatus}
+          apiError={apiError}
+          hasRealData={hasRealData}
+          spotifyEpisodes={spotifyEpisodes}
+          generatedEpisodes={generatedEpisodes}
+          onEpisodeSelect={handleEpisodeSelect}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          onLoadMore={loadMore}
+          displayEpisodes={displayEpisodes}
+        />
       </section>
     );
   }

@@ -115,7 +115,7 @@ const SpotifyConfig = () => {
         {error && (
           <div className="flex items-center gap-2 text-red-600 text-sm">
             <AlertCircle className="h-4 w-4" />
-            {error}
+            {error.userMessage}
           </div>
         )}
 

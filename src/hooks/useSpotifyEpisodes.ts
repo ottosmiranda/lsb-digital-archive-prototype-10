@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useSpotifyAuth } from './useSpotifyAuth';
 import { classifySpotifyError, SpotifyError } from '@/utils/errorHandling';
@@ -102,11 +103,12 @@ export const useSpotifyEpisodes = (embedUrl?: string, initialLimit = 10) => {
         setHasMore(data.next !== null && episodes.length + data.items.length < data.total);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load more episodes');
+      const spotifyError = classifySpotifyError(err, browserCapabilities.browserName);
+      setError(spotifyError);
     } finally {
       setLoadingMore(false);
     }
-  }, [embedUrl, token, isConfigured, hasMore, loadingMore, offset, initialLimit, episodes.length]);
+  }, [embedUrl, token, isConfigured, hasMore, loadingMore, offset, initialLimit, episodes.length, browserCapabilities.browserName]);
 
   useEffect(() => {
     if (!embedUrl || !token || !isConfigured) {

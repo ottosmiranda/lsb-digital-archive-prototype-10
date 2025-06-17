@@ -1,3 +1,4 @@
+
 import { Calendar, Clock, Play, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import React, { useEffect, useRef, useState } from "react";
@@ -83,6 +84,15 @@ const SpotifyPlayerSection = ({
         setAutoplayBlocked(true);
       }, 4000); // 4 seconds: if not playing, show message
     }
+  };
+
+  // Handle iframe loading errors
+  const handleIframeError = () => {
+    console.error('❌ Spotify iframe failed to load');
+    setIframeLoading(false);
+    setEmbedError(true);
+    setAutoplayBlocked(false);
+    setDismissedAutoplayMsg(false);
   };
 
   // If the user dismisses the autoplay warning

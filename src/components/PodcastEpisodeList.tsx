@@ -28,6 +28,7 @@ interface SelectedEpisode {
   duration: string;
   embedUrl?: string;
   isSpotifyEpisode: boolean;
+  spotifyUrl?: string;
 }
 
 const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeListProps>(
@@ -40,6 +41,8 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
       totalEpisodes,
       hasRealData, 
       hasMore: spotifyHasMore,
+      authStatus,
+      apiError,
       loadMoreEpisodes: loadMoreSpotifyEpisodes
     } = useSpotifyEpisodes(embedUrl, 10);
     
@@ -91,12 +94,14 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
       threshold: 200
     });
 
-    // Handle episode selection
+    // Handle episode selection - enhanced with Spotify URL
     const handleEpisodeSelect = (episode: any, isSpotifyEpisode: boolean) => {
       let episodeEmbedUrl = null;
+      let spotifyUrl = null;
       
       if (isSpotifyEpisode && episode.external_urls?.spotify) {
         episodeEmbedUrl = generateEpisodeEmbedUrl(episode.external_urls.spotify);
+        spotifyUrl = episode.external_urls.spotify;
       }
 
       const selectedEpisodeData: SelectedEpisode = {
@@ -106,7 +111,8 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
         date: isSpotifyEpisode ? episode.release_date : episode.date,
         duration: isSpotifyEpisode ? formatDuration(episode.duration_ms) : episode.duration,
         embedUrl: episodeEmbedUrl || undefined,
-        isSpotifyEpisode
+        isSpotifyEpisode,
+        spotifyUrl
       };
 
       setSelectedEpisode(selectedEpisodeData);
@@ -144,7 +150,7 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
         />
         
         <div className="flex flex-col gap-5">
-          {/* Spotify Player - First Episode or Selected Episode */}
+          {/* Enhanced Spotify Player with auth status */}
           {embedUrl && (
             <SpotifyPlayerSection
               embedUrl={selectedEpisode?.embedUrl || embedUrl}
@@ -154,6 +160,8 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
               oembedData={oembedData}
               oembedLoading={oembedLoading}
               oembedError={oembedError}
+              authStatus={authStatus}
+              apiError={apiError}
             />
           )}
           

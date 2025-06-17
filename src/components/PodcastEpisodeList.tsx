@@ -1,6 +1,7 @@
 import React, { useImperativeHandle, useState, forwardRef, useCallback } from "react";
 import { useSpotifyOEmbed } from "@/hooks/useSpotifyOEmbed";
 import { useSpotifyEpisodes } from "@/hooks/useSpotifyEpisodes";
+import { useSpotifyAuth } from "@/hooks/useSpotifyAuth";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { generateEpisodes, generateMoreEpisodes } from "@/utils/episodeGenerator";
 import { generateEpisodeEmbedUrl } from "@/utils/spotifyUtils";
@@ -9,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import EpisodesHeader from "./PodcastEpisodeList/EpisodesHeader";
 import SpotifyPlayerSection from "./PodcastEpisodeList/SpotifyPlayerSection";
 import EpisodeItem from "./PodcastEpisodeList/EpisodeItem";
+import SpotifyErrorDisplay from "./PodcastEpisodeList/SpotifyErrorDisplay";
 
 export interface PodcastEpisodeListHandles {
   playLatest: () => void;
@@ -34,9 +36,19 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
   ({ total, podcastTitle, embedUrl }, ref) => {
     const { oembedData, loading: oembedLoading, error: oembedError } = useSpotifyOEmbed(embedUrl);
     const { 
+      token,
+      error: authError,
+      authStatus,
+      browserCapabilities,
+      isConfigured,
+      retryAuthentication
+    } = useSpotifyAuth();
+    
+    const { 
       episodes: spotifyEpisodes, 
       loading: episodesLoading, 
       loadingMore: spotifyLoadingMore,
+      error: episodesError,
       totalEpisodes,
       hasRealData, 
       hasMore: spotifyHasMore,
@@ -126,6 +138,24 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
       return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
+    // Determine which error to show
+    const displayError = episodesError || authError;
+    
+    // Enhanced error retry function
+    const handleErrorRetry = () => {
+      if (authError) {
+        retryAuthentication();
+      } else if (episodesError) {
+        // Trigger re-fetch by calling loadMore
+        loadMore();
+      }
+    };
+
+    const handleConfigure = () => {
+      // Navigate to settings or show config modal
+      window.location.href = '/settings';
+    };
+
     // Expose "playLatest" method to parent
     useImperativeHandle(ref, () => ({
       playLatest: () => {
@@ -144,6 +174,18 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
         />
         
         <div className="flex flex-col gap-5">
+          {/* Show error if authentication or episodes failed */}
+          {displayError && (
+            <SpotifyErrorDisplay
+              error={displayError}
+              onRetry={displayError.retryable ? handleErrorRetry : undefined}
+              onConfigure={!isConfigured ? handleConfigure : undefined}
+              authStatus={authStatus}
+              browserName={browserCapabilities.browserName}
+              isConfigured={isConfigured}
+            />
+          )}
+          
           {/* Spotify Player - First Episode or Selected Episode */}
           {embedUrl && (
             <SpotifyPlayerSection

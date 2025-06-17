@@ -1,5 +1,7 @@
 
 import { useState, useEffect } from 'react';
+import { detectBrowserCapabilities } from '@/utils/browserUtils';
+import { classifySpotifyError, SpotifyError } from '@/utils/errorHandling';
 
 interface SpotifyToken {
   access_token: string;
@@ -8,50 +10,94 @@ interface SpotifyToken {
   expires_at: number;
 }
 
+interface AuthState {
+  token: string | null;
+  loading: boolean;
+  error: SpotifyError | null;
+  isConfigured: boolean;
+  authStatus: 'idle' | 'authenticating' | 'success' | 'failed';
+  retryCount: number;
+  browserCapabilities: ReturnType<typeof detectBrowserCapabilities>;
+}
+
 export const useSpotifyAuth = () => {
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<AuthState>({
+    token: null,
+    loading: false,
+    error: null,
+    isConfigured: false,
+    authStatus: 'idle',
+    retryCount: 0,
+    browserCapabilities: detectBrowserCapabilities()
+  });
 
   const getStoredCredentials = () => {
+    if (!state.browserCapabilities.supportsLocalStorage) {
+      return { clientId: null, clientSecret: null };
+    }
+    
     return {
       clientId: localStorage.getItem('spotify_client_id'),
       clientSecret: localStorage.getItem('spotify_client_secret')
     };
   };
 
-  const authenticate = async () => {
+  const authenticate = async (isRetry = false): Promise<boolean> => {
     const { clientId, clientSecret } = getStoredCredentials();
     
     if (!clientId || !clientSecret) {
-      setError('Credenciais do Spotify não configuradas');
+      const error = classifySpotifyError(
+        new Error('Credentials not configured'), 
+        state.browserCapabilities.browserName
+      );
+      setState(prev => ({
+        ...prev,
+        error: { ...error, userMessage: 'Credenciais do Spotify não configuradas' },
+        authStatus: 'failed'
+      }));
       return false;
     }
 
-    setLoading(true);
-    setError(null);
+    setState(prev => ({
+      ...prev,
+      loading: true,
+      error: null,
+      authStatus: 'authenticating',
+      retryCount: isRetry ? prev.retryCount + 1 : 0
+    }));
 
     try {
-      // Check if we have a valid cached token
+      // Check cached token first
       const cachedToken = localStorage.getItem('spotify_token');
       if (cachedToken) {
         const tokenData: SpotifyToken = JSON.parse(cachedToken);
         if (Date.now() < tokenData.expires_at) {
-          setToken(tokenData.access_token);
-          setLoading(false);
+          setState(prev => ({
+            ...prev,
+            token: tokenData.access_token,
+            loading: false,
+            authStatus: 'success'
+          }));
+          console.log('✅ Using cached Spotify token');
           return true;
         }
       }
 
-      // Get new token
+      // Get new token with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
       const response = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`
         },
-        body: 'grant_type=client_credentials'
+        body: 'grant_type=client_credentials',
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Spotify auth failed: ${response.status}`);
@@ -66,15 +112,38 @@ export const useSpotifyAuth = () => {
       };
 
       localStorage.setItem('spotify_token', JSON.stringify(tokenWithExpiry));
-      setToken(tokenData.access_token);
+      
+      setState(prev => ({
+        ...prev,
+        token: tokenData.access_token,
+        loading: false,
+        authStatus: 'success',
+        error: null
+      }));
+      
       console.log('✅ Spotify authentication successful');
       return true;
     } catch (err) {
       console.error('❌ Spotify authentication failed:', err);
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      
+      const spotifyError = classifySpotifyError(err, state.browserCapabilities.browserName);
+      
+      setState(prev => ({
+        ...prev,
+        error: spotifyError,
+        loading: false,
+        authStatus: 'failed'
+      }));
+      
       return false;
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const retryAuthentication = async () => {
+    if (state.retryCount < 3) {
+      // Exponential backoff
+      const delay = Math.pow(2, state.retryCount) * 1000;
+      setTimeout(() => authenticate(true), delay);
     }
   };
 
@@ -84,16 +153,23 @@ export const useSpotifyAuth = () => {
   };
 
   useEffect(() => {
-    if (isConfigured()) {
+    const configured = isConfigured();
+    setState(prev => ({ ...prev, isConfigured: configured }));
+    
+    if (configured) {
       authenticate();
     }
   }, []);
 
   return {
-    token,
-    loading,
-    error,
-    authenticate,
-    isConfigured: isConfigured()
+    token: state.token,
+    loading: state.loading,
+    error: state.error,
+    isConfigured: state.isConfigured,
+    authStatus: state.authStatus,
+    retryCount: state.retryCount,
+    browserCapabilities: state.browserCapabilities,
+    authenticate: () => authenticate(),
+    retryAuthentication
   };
 };

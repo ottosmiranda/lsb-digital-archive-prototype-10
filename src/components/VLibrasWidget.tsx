@@ -13,6 +13,7 @@ declare global {
 const VLibrasWidget = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isEnabled, setIsEnabled] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     // Load settings from localStorage
@@ -23,30 +24,98 @@ const VLibrasWidget = () => {
   }, []);
 
   useEffect(() => {
-    // Check if VLibras is already loaded
-    if (window.VLibras) {
-      setIsLoaded(true);
-      return;
-    }
+    const loadVLibras = () => {
+      if (!isEnabled) {
+        // Remove VLibras if disabled
+        removeVLibras();
+        return;
+      }
 
-    // Listen for VLibras script load
-    const checkVLibras = () => {
+      // Check if already loaded
       if (window.VLibras) {
         setIsLoaded(true);
-      } else {
-        setTimeout(checkVLibras, 100);
+        setHasError(false);
+        return;
+      }
+
+      try {
+        // Create the VLibras widget container
+        if (!document.querySelector('[vw]')) {
+          const vwDiv = document.createElement('div');
+          vwDiv.setAttribute('vw', '');
+          vwDiv.className = 'enabled';
+          
+          const accessButton = document.createElement('div');
+          accessButton.setAttribute('vw-access-button', '');
+          accessButton.className = 'active';
+          
+          const pluginWrapper = document.createElement('div');
+          pluginWrapper.setAttribute('vw-plugin-wrapper', '');
+          
+          const topWrapper = document.createElement('div');
+          topWrapper.className = 'vw-plugin-top-wrapper';
+          
+          pluginWrapper.appendChild(topWrapper);
+          vwDiv.appendChild(accessButton);
+          vwDiv.appendChild(pluginWrapper);
+          document.body.appendChild(vwDiv);
+        }
+
+        // Load VLibras script if not already loaded
+        if (!document.querySelector('script[src*="vlibras-plugin.js"]')) {
+          const script = document.createElement('script');
+          script.src = 'https://vlibras.gov.br/app/vlibras-plugin.js';
+          script.onload = () => {
+            setTimeout(() => {
+              if (window.VLibras) {
+                try {
+                  new window.VLibras.Widget('https://vlibras.gov.br/app');
+                  setIsLoaded(true);
+                  setHasError(false);
+                } catch (error) {
+                  console.warn('VLibras widget initialization error:', error);
+                  setHasError(true);
+                }
+              }
+            }, 100);
+          };
+          script.onerror = () => {
+            console.warn('Failed to load VLibras script');
+            setHasError(true);
+          };
+          document.head.appendChild(script);
+        }
+      } catch (error) {
+        console.warn('VLibras setup error:', error);
+        setHasError(true);
       }
     };
 
-    checkVLibras();
-  }, []);
+    const removeVLibras = () => {
+      // Remove VLibras elements
+      const vwElement = document.querySelector('[vw]');
+      if (vwElement) {
+        vwElement.remove();
+      }
+      
+      // Remove script
+      const script = document.querySelector('script[src*="vlibras-plugin.js"]');
+      if (script) {
+        script.remove();
+      }
+      
+      setIsLoaded(false);
+      setHasError(false);
+    };
 
-  useEffect(() => {
-    // Control widget visibility based on settings
-    const vwElement = document.querySelector('[vw]') as HTMLElement;
-    if (vwElement) {
-      vwElement.style.display = isEnabled ? 'block' : 'none';
-    }
+    loadVLibras();
+
+    // Cleanup on unmount
+    return () => {
+      if (!isEnabled) {
+        removeVLibras();
+      }
+    };
   }, [isEnabled]);
 
   // Listen for settings changes
@@ -62,18 +131,21 @@ const VLibrasWidget = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Only show status indicator, let VLibras handle its own UI
-  if (!isEnabled || !isLoaded) {
+  // Only show status when enabled and loaded
+  if (!isEnabled) {
     return null;
   }
 
   return (
     <div className="fixed bottom-20 left-4 z-40 pointer-events-none">
-      {/* Status indicator only */}
       <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-3 py-2 shadow-lg border">
         <Accessibility className="h-4 w-4 text-lsb-primary" />
-        <span className="text-xs text-gray-700 font-medium">VLibras Ativo</span>
-        <div className="w-2 h-2 bg-green-500 rounded-full" />
+        <span className="text-xs text-gray-700 font-medium">
+          {hasError ? 'VLibras com erro' : isLoaded ? 'VLibras Ativo' : 'Carregando VLibras...'}
+        </span>
+        <div className={`w-2 h-2 rounded-full ${
+          hasError ? 'bg-red-500' : isLoaded ? 'bg-green-500' : 'bg-yellow-500'
+        }`} />
       </div>
     </div>
   );

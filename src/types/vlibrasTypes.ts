@@ -26,18 +26,8 @@ export interface VLibrasContextType {
   };
 }
 
-export interface VLibrasWidget {
-  show: () => void;
-  hide: () => void;
-  destroy: () => void;
-}
-
 declare global {
   interface Window {
-    VLibras?: {
-      Widget: {
-        new (config: any): VLibrasWidget;
-      };
-    };
+    VLibras?: any;
   }
 }

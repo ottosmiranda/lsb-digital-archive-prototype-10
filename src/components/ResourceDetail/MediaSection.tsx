@@ -30,7 +30,7 @@ const MediaSection = ({ resource }: { resource: Resource }) => {
     return (
       <Card className="mb-6">
         <CardContent className="p-0">
-          <AspectRatio ratio={16 / 9} className="bg-gray-900 rounded-lg overflow-hidden">
+          <AspectRatio ratio={16 / 9} className="bg-gray-900 rounded-lg overflow-hidden relative">
             <img
               src={resource.thumbnail}
               alt={resource.title}
@@ -50,8 +50,8 @@ const MediaSection = ({ resource }: { resource: Resource }) => {
             )}
           </AspectRatio>
         </CardContent>
-      );
-    }
+      </Card>
+    );
   }
 
   if (resource.type === 'titulo') {

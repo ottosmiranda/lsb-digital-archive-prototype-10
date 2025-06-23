@@ -116,7 +116,7 @@ const FeaturedHighlights = () => {
             >
               <CarouselContent className="-ml-4">
                 {highlights.map((item, index) => (
-                  <CarouselItem key={`${item.type}-${item.id}`} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/6">
+                  <CarouselItem key={`${item.type}-${item.id}`} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
                     <Card
                       className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
                       style={{ animationDelay: `${index * 0.1}s` }}

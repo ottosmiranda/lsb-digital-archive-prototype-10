@@ -1,6 +1,5 @@
-
 {
-  "totalItens": 45,
+  "totalItens": 13,
   "conteudo": {
     "podcasts": [
       {
@@ -21,7 +20,7 @@
     "id": "7jH8d4gr97lDBLDBTDxyRU",
     "tipo": "podcast",
     "titulo": "The Business of Life by Brazil Journal",
-    "descricao": "The Business Of Life, por Nilton Bonder  Qual o propósito que nos leva a trajetórias marcantes? Em \"The Business Of Life”, o rabino e escritor Nilton Bonder conversa com personalidades de sucesso para abordar suas histórias em sete dimensões. Convidamos você para, através do propósito de grandes convidados, encontrar o seu.  Siga o podcast The Business Of Life na sua plataforma de podcasts e saiba tudo no site: http://braziljournal.com",
+    "descricao": "The Business Of Life, por Nilton Bonder  Qual o propósito que nos leva a trajetórias marcantes? Em \"The Business Of Life", o rabino e escritor Nilton Bonder conversa com personalidades de sucesso para abordar suas histórias em sete dimensões. Convidamos você para, através do propósito de grandes convidados, encontrar o seu.  Siga o podcast The Business Of Life na sua plataforma de podcasts e saiba tudo no site: http://braziljournal.com",
     "publicador": "The Business of Life by Brazil Journal",
     "url": "https://open.spotify.com/show/7jH8d4gr97lDBLDBTDxyRU",
     "ano": "2019",
@@ -49,7 +48,7 @@
     "id": "1hAE2QpiA1yOBJ6QyVFqpI",
     "tipo": "podcast",
     "titulo": "TED Business",
-    "descricao": "Whatever your business conundrum, there’s a TED Talk for that—whether you want to learn how to land that promotion, set smart goals, undo injustice at work, or unlock the next big innovation. Every Monday, host Modupe Akinola of Columbia Business School presents the most powerful and surprising ideas that illuminate the business world. After the talk, you'll get a mini-lesson from Modupe on how to apply the ideas in your own life. Because business evolves every day, and our ideas about it should, too.Follow Modupe on Instagram @mnakinola and LinkedIn @mnakinola Hosted on Acast. See acast.com/privacy for more information.",
+    "descricao": "Whatever your business conundrum, there's a TED Talk for that—whether you want to learn how to land that promotion, set smart goals, undo injustice at work, or unlock the next big innovation. Every Monday, host Modupe Akinola of Columbia Business School presents the most powerful and surprising ideas that illuminate the business world. After the talk, you'll get a mini-lesson from Modupe on how to apply the ideas in your own life. Because business evolves every day, and our ideas about it should, too.Follow Modupe on Instagram @mnakinola and LinkedIn @mnakinola Hosted on Acast. See acast.com/privacy for more information.",
     "publicador": "TED",
     "url": "https://open.spotify.com/show/1hAE2QpiA1yOBJ6QyVFqpI",
     "ano": "2023",
@@ -91,7 +90,7 @@
     "id": "5HFUjaqFFXUiHC5SA6uVEz",
     "tipo": "podcast",
     "titulo": "Business English from All Ears English",
-    "descricao": "Want to feel more confident with your business English? Lindsay and Michelle show you real, business English vocabulary for the global economy in this podcast from All Ears English.  Learn spoken English for business with native speakers. Get advanced skills for English meetings, presentations, small talk and socializing at work, job interviews, telephone English and more. Write more clear and concise business emails in English to sound professional. Be respected when you speak to colleagues, bosses, partners, suppliers, and stakeholders.  Increase your self-esteem at work to participate, facilitate, persuade, and respond quickly in English. Learn formal, informal, and semi-formal English for different workplace situations Increase your salary and get a promotion.  This podcast is perfect for you if you are at the mid-career or middle management stage, early career, senior-level or C-suite, entrepreneur, self-employed freelancer, or a small business owner.  The English level for this podcast is intermediate to advanced English  CEFR B1 Intermediate English, CEFR B2 Upper-Intermediate English, CEFR C1 Advanced English, CEFR C2 Proficiency English   This podcast is great for software engineers, senior executives, MBA students, marketing managers, doctors, lawyers, accountants, project managers, HR professionals, customer service professionals, IT, financial planners, import/export businesses, biotech professionals, sales reps, and any career that involves international business or using English.  With every episode, we show you how to organize and deliver your message clearly. You’ll be able to understand phone calls and conference calls by improving your listening skills. Use the right English grammar and the right English tenses in every situation.  We also cover: Assigning tasks to the team, global leadership and management, English pronunciation and accent, American culture and business, cross-cultural communication skills for business, negotiation idioms, vocabulary, slang, and business proverbs and sayings.  Learn how to tell stories that convince people to take action in business. Speak with customers and resolve client issues. Be polite with the right English vocabulary when you speak with your colleagues.   This podcast is a collection of episodes that were originally published on All Ears English Podcast and new Business English episodes. ",
+    "descricao": "Want to feel more confident with your business English? Lindsay and Michelle show you real, business English vocabulary for the global economy in this podcast from All Ears English.  Learn spoken English for business with native speakers. Get advanced skills for English meetings, presentations, small talk and socializing at work, job interviews, telephone English and more. Write more clear and concise business emails in English to sound professional. Be respected when you speak to colleagues, bosses, partners, suppliers, and stakeholders.  Increase your self-esteem at work to participate, facilitate, persuade, and respond quickly in English. Learn formal, informal, and semi-formal English for different workplace situations Increase your salary and get a promotion.  This podcast is perfect for you if you are at the mid-career or middle management stage, early career, senior-level or C-suite, entrepreneur, self-employed freelancer, or a small business owner.  The English level for this podcast is intermediate to advanced English  CEFR B1 Intermediate English, CEFR B2 Upper-Intermediate English, CEFR C1 Advanced English, CEFR C2 Proficiency English   This podcast is great for software engineers, senior executives, MBA students, marketing managers, doctors, lawyers, accountants, project managers, HR professionals, customer service professionals, IT, financial planners, import/export businesses, biotech professionals, sales reps, and any career that involves international business or using English.  With every episode, we show you how to organize and deliver your message clearly. You'll be able to understand phone calls and conference calls by improving your listening skills. Use the right English grammar and the right English tenses in every situation.  We also cover: Assigning tasks to the team, global leadership and management, English pronunciation and accent, American culture and business, cross-cultural communication skills for business, negotiation idioms, vocabulary, slang, and business proverbs and sayings.  Learn how to tell stories that convince people to take action in business. Speak with customers and resolve client issues. Be polite with the right English vocabulary when you speak with your colleagues.   This podcast is a collection of episodes that were originally published on All Ears English Podcast and new Business English episodes. ",
     "publicador": "Lindsay McMahon",
     "url": "https://open.spotify.com/show/5HFUjaqFFXUiHC5SA6uVEz",
     "ano": "2022",
@@ -146,142 +145,43 @@
     ],
     "livros": [
       {
-        "id": "livro001",
-        "titulo": "Fundamentos da Gestão Moderna",
-        "autor": "Dr. João Silva",
-        "ano": "2023",
-        "categorias": ["Gestão"],
-        "descricao": "Um guia completo sobre as práticas modernas de gestão empresarial",
-        "paginas": 320,
-        "arquivo": "/assets/fundamentos-gestao-moderna.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=300&fit=crop",
-        "tipo_documento": "Livro"
+        "id": "estrategia-multimarcas-inovacao-revenda-veiculos-novos",
+        "titulo": "A estratégia multimarcas como um fator de inovação em revenda de veículos novos.",
+        "autor": "Carlos Renato Meinert",
+        "ano": "2007",
+        "categorias": [
+          "Administração"
+        ],
+        "descricao": "",
+        "paginas": 25,
+        "arquivo": "/static/books/estrategia-multimarcas-inovacao-revenda-veiculos-novos.pdf",
+        "tipo_documento": ""
       },
       {
-        "id": "livro002",
-        "titulo": "Estratégias de Marketing Digital",
-        "autor": "Prof. Maria Santos",
-        "ano": "2023",
-        "categorias": ["Marketing"],
-        "descricao": "Estratégias comprovadas para o sucesso no marketing digital",
-        "paginas": 280,
-        "arquivo": "/assets/estrategias-marketing-digital.pdf",
-        "tipo_documento": "Artigo"
+        "id": "engenharia-gestao-inovacao",
+        "titulo": "Engenharia, Gestão e Inovação – Volume 5.",
+        "autor": "Osvaldo Sena Guimarães",
+        "ano": "2022",
+        "categorias": [
+          "Administração"
+        ],
+        "descricao": "",
+        "paginas": 164,
+        "arquivo": "/static/books/engenharia-gestao-inovacao.pdf",
+        "tipo_documento": ""
       },
       {
-        "id": "livro003",
-        "titulo": "Liderança no Século XXI",
-        "autor": "Dr. Carlos Mendes",
-        "ano": "2023",
-        "categorias": ["Liderança"],
-        "descricao": "Novas abordagens de liderança para o mundo moderno",
-        "paginas": 350,
-        "arquivo": "/assets/lideranca-seculo-xxi.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=300&fit=crop",
-        "tipo_documento": "Dissertação de mestrado"
-      },
-      {
-        "id": "livro004",
-        "titulo": "Inovação e Criatividade Empresarial",
-        "autor": "Dra. Ana Costa",
-        "ano": "2023",
-        "categorias": ["Inovação"],
-        "descricao": "Técnicas para fomentar a inovação nas organizações",
-        "paginas": 290,
-        "arquivo": "/assets/inovacao-criatividade.pdf",
-        "tipo_documento": "Trabalho de conclusão de curso"
-      },
-      {
-        "id": "livro005",
-        "titulo": "Finanças para Não Financeiros",
-        "autor": "Prof. Roberto Lima",
-        "ano": "2023",
-        "categorias": ["Finanças"],
-        "descricao": "Conceitos financeiros essenciais para gestores",
-        "paginas": 240,
-        "arquivo": "/assets/financas-nao-financeiros.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=300&fit=crop",
-        "tipo_documento": "Trabalho apresentado em evento"
-      },
-      {
-        "id": "livro006",
-        "titulo": "Transformação Digital na Prática",
-        "autor": "Dr. Paulo Rodrigues",
-        "ano": "2023",
-        "categorias": ["Tecnologia"],
-        "descricao": "Guia prático para implementar a transformação digital",
-        "paginas": 310,
-        "arquivo": "/assets/transformacao-digital.pdf",
-        "tipo_documento": "Dissertação de doutorado"
-      },
-      {
-        "id": "livro007",
-        "titulo": "Vendas de Alta Performance",
-        "autor": "Especialista Sandra Oliveira",
-        "ano": "2023",
-        "categorias": ["Vendas"],
-        "descricao": "Técnicas avançadas para vendedores de alto desempenho",
-        "paginas": 260,
-        "arquivo": "/assets/vendas-alta-performance.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1483058712412-4245e9b90334?w=400&h=300&fit=crop",
-        "tipo_documento": "Análise"
-      },
-      {
-        "id": "livro008",
-        "titulo": "Gestão de Pessoas na Era Digital",
-        "autor": "Dra. Fernanda Alves",
-        "ano": "2023",
-        "categorias": ["Recursos Humanos"],
-        "descricao": "Estratégias modernas para gestão de pessoas",
-        "paginas": 330,
-        "arquivo": "/assets/gestao-pessoas-digital.pdf",
-        "tipo_documento": "Resumo"
-      },
-      {
-        "id": "livro009",
-        "titulo": "Sustentabilidade e ESG",
-        "autor": "Prof. Ricardo Gomes",
-        "ano": "2023",
-        "categorias": ["Sustentabilidade"],
-        "descricao": "Práticas de sustentabilidade e governança empresarial",
-        "paginas": 270,
-        "arquivo": "/assets/sustentabilidade-esg.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?w=400&h=300&fit=crop",
-        "tipo_documento": "Relatório de pós-doutorado"
-      },
-      {
-        "id": "livro010",
-        "titulo": "Comunicação Empresarial Eficaz",
-        "autor": "Dra. Luciana Barbosa",
-        "ano": "2023",
-        "categorias": ["Comunicação"],
-        "descricao": "Estratégias para uma comunicação empresarial de sucesso",
-        "paginas": 220,
-        "arquivo": "/assets/comunicacao-empresarial.pdf",
-        "tipo_documento": "Editorial"
-      },
-      {
-        "id": "livro011",
-        "titulo": "Análise de Dados para Gestores",
-        "autor": "Dr. Marcos Ferreira",
-        "ano": "2023",
-        "categorias": ["Análise de Dados"],
-        "descricao": "Como usar dados para tomar melhores decisões",
-        "paginas": 340,
-        "arquivo": "/assets/analise-dados-gestores.pdf",
-        "imagem_url": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=300&fit=crop",
-        "tipo_documento": "Capítulo de livro"
-      },
-      {
-        "id": "livro012",
-        "titulo": "E-commerce Estratégico",
-        "autor": "Especialista Carla Nascimento",
-        "ano": "2023",
-        "categorias": ["E-commerce"],
-        "descricao": "Estratégias para o sucesso no comércio eletrônico",
-        "paginas": 300,
-        "arquivo": "/assets/ecommerce-estrategico.pdf",
-        "tipo_documento": "Revista"
+        "id": "da-organização-vertical-para-a-organização-horizontal-aspectos-da-transição-empresarial-tendo-um-sistema-ERP-como-elemento-facilitador",
+        "titulo": "Da organização vertical para a organização horizontal: aspectos da transição empresarial, tendo um sistema ERP como elemento facilitador",
+        "autor": "Jamir Mendes Monteiro",
+        "ano": "2006",
+        "categorias": [
+          "Administração"
+        ],
+        "descricao": "",
+        "paginas": 121,
+        "arquivo": "/static/books/da-organização-vertical-para-a-organização-horizontal-aspectos-da-transição-empresarial-tendo-um-sistema-ERP-como-elemento-facilitador.pdf",
+        "tipo_documento": ""
       }
     ]
   }

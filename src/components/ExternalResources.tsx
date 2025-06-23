@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { ExternalLink, Database, BookOpen, Users, Globe, FileText, Microscope, TrendingUp, GraduationCap, Leaf, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 interface ExternalResource {
   Nome: string;
@@ -159,62 +159,73 @@ const ExternalResources = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {resources.map((resource, index) => {
-            const config = getResourceConfig(resource.Nome);
-            const IconComponent = config.icon;
-            
-            return (
-              <Card
-                key={resource.Nome}
-                className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-                style={{ animationDelay: `${index * 0.1}s` }}
-                onClick={() => handleResourceClick(resource.Link, resource.Nome)}
-              >
-                <CardContent className="p-6 h-full flex flex-col">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`w-14 h-14 bg-gradient-to-br ${config.color} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                      <IconComponent className="h-7 w-7 text-white" />
-                    </div>
-                    <Badge className="text-xs bg-green-100 text-green-800 border-0">
-                      Gratuito
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div className="mb-2">
-                      <Badge variant="outline" className="text-xs mb-2 border-gray-300">
-                        {config.category}
-                      </Badge>
-                    </div>
-                    
-                    <h3 className="font-semibold text-lg mb-2 group-hover:text-lsb-primary transition-colors line-clamp-2">
-                      {resource.Nome}
-                    </h3>
-                    
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2 flex-1">
-                      {resource.Descricao}
-                    </p>
-                    
-                    <div className="mb-4">
-                      <p className="text-xs font-medium text-lsb-primary">
-                        {config.highlight}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <Button
-                    size="sm"
-                    className="w-full bg-lsb-primary hover:bg-lsb-primary/90 text-white border-0 group-hover:shadow-md transition-all"
+        <Carousel
+          opts={{
+            align: "start",
+            loop: false,
+          }}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-2 md:-ml-4">
+            {resources.map((resource, index) => {
+              const config = getResourceConfig(resource.Nome);
+              const IconComponent = config.icon;
+              
+              return (
+                <CarouselItem key={resource.Nome} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                  <Card
+                    className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                    onClick={() => handleResourceClick(resource.Link, resource.Nome)}
                   >
-                    Acessar Recurso
-                    <ExternalLink className="ml-2 h-3 w-3" />
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                    <CardContent className="p-4 h-full flex flex-col">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className={`w-10 h-10 bg-gradient-to-br ${config.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                          <IconComponent className="h-5 w-5 text-white" />
+                        </div>
+                        <Badge className="text-xs bg-green-100 text-green-800 border-0">
+                          Gratuito
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <div className="mb-2">
+                          <Badge variant="outline" className="text-xs mb-2 border-gray-300">
+                            {config.category}
+                          </Badge>
+                        </div>
+                        
+                        <h3 className="font-semibold text-sm mb-2 group-hover:text-lsb-primary transition-colors line-clamp-2">
+                          {resource.Nome}
+                        </h3>
+                        
+                        <p className="text-xs text-gray-600 mb-2 line-clamp-1 flex-1">
+                          {resource.Descricao}
+                        </p>
+                        
+                        <div className="mb-3">
+                          <p className="text-xs font-medium text-lsb-primary">
+                            {config.highlight}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        size="sm"
+                        className="w-full bg-lsb-primary hover:bg-lsb-primary/90 text-white border-0 group-hover:shadow-md transition-all text-xs"
+                      >
+                        Acessar
+                        <ExternalLink className="ml-1 h-3 w-3" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+              );
+            })}
+          </CarouselContent>
+          <CarouselPrevious className="hidden md:flex" />
+          <CarouselNext className="hidden md:flex" />
+        </Carousel>
 
         <div className="text-center mt-12 space-y-4">
           <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 max-w-4xl mx-auto border border-gray-200">

@@ -56,7 +56,7 @@ export const useSearchForm = () => {
       activeFilters.forEach(filter => {
         queryParams.append('filtros', filter);
       });
-      navigate(`/buscar?${queryParams.toString()}`);
+      navigate(`/?${queryParams.toString()}`);
       setShowSuggestions(false);
     }
   };
@@ -65,7 +65,7 @@ export const useSearchForm = () => {
     setSearchQuery(suggestion);
     // Track the search
     trackSearch(suggestion);
-    navigate(`/buscar?q=${encodeURIComponent(suggestion)}`);
+    navigate(`/?q=${encodeURIComponent(suggestion)}`);
     setShowSuggestions(false);
   };
 

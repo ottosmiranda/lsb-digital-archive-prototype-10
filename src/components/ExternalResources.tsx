@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Database, BookOpen, Users, Globe, FileText, Microscope, TrendingUp, GraduationCap, Leaf, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,12 +27,12 @@ const ExternalResources = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Create a stable autoplay plugin instance
+  // Create a stable autoplay plugin instance with updated configuration
   const autoplayPlugin = useRef(
     Autoplay({
       delay: 4000,
-      stopOnInteraction: true,
-      stopOnMouseEnter: true,
+      stopOnInteraction: false,
+      stopOnMouseEnter: false,
     })
   );
 
@@ -180,13 +181,13 @@ const ExternalResources = () => {
             }}
             className="w-full"
           >
-            <CarouselContent className="-ml-2 md:-ml-4 py-4">
+            <CarouselContent className="py-4" style={{ marginLeft: '-1rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
               {resources.map((resource, index) => {
                 const config = getResourceConfig(resource.Nome);
                 const IconComponent = config.icon;
                 
                 return (
-                  <CarouselItem key={resource.Nome} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                  <CarouselItem key={resource.Nome} className="basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4" style={{ paddingLeft: '1rem' }}>
                     <Card
                       className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full mx-2"
                       style={{ animationDelay: `${index * 0.1}s` }}

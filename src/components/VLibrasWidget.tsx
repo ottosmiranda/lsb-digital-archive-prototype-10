@@ -1,7 +1,6 @@
 
 import { useEffect, useState } from 'react';
 import { Accessibility } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 declare global {
   interface Window {
@@ -13,7 +12,15 @@ declare global {
 
 const VLibrasWidget = () => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
+  const [isEnabled, setIsEnabled] = useState(true);
+
+  useEffect(() => {
+    // Load settings from localStorage
+    const savedEnabled = localStorage.getItem('vlibras-enabled');
+    if (savedEnabled !== null) {
+      setIsEnabled(JSON.parse(savedEnabled));
+    }
+  }, []);
 
   useEffect(() => {
     // Check if VLibras is already loaded
@@ -34,36 +41,40 @@ const VLibrasWidget = () => {
     checkVLibras();
   }, []);
 
-  const toggleWidget = () => {
+  useEffect(() => {
+    // Control widget visibility based on settings
     const vwElement = document.querySelector('[vw]') as HTMLElement;
     if (vwElement) {
-      if (isVisible) {
-        vwElement.style.display = 'none';
-      } else {
-        vwElement.style.display = 'block';
-      }
-      setIsVisible(!isVisible);
+      vwElement.style.display = isEnabled ? 'block' : 'none';
     }
-  };
+  }, [isEnabled]);
 
-  // Custom button for better integration with LSB design
+  // Listen for settings changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedEnabled = localStorage.getItem('vlibras-enabled');
+      if (savedEnabled !== null) {
+        setIsEnabled(JSON.parse(savedEnabled));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Only show status indicator, let VLibras handle its own UI
+  if (!isEnabled || !isLoaded) {
+    return null;
+  }
+
   return (
-    <div className="fixed bottom-4 left-4 z-50">
-      <Button
-        onClick={toggleWidget}
-        className="w-12 h-12 rounded-full bg-lsb-primary hover:bg-lsb-primary/90 text-white shadow-lg hover-lift"
-        size="sm"
-        title={isVisible ? 'Ocultar VLibras' : 'Mostrar VLibras'}
-        aria-label={isVisible ? 'Ocultar widget de acessibilidade VLibras' : 'Mostrar widget de acessibilidade VLibras'}
-      >
-        <Accessibility className="h-5 w-5" />
-      </Button>
-      
-      {/* Status indicator */}
-      {isLoaded && (
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" 
-             title="VLibras carregado" />
-      )}
+    <div className="fixed bottom-20 left-4 z-40 pointer-events-none">
+      {/* Status indicator only */}
+      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-3 py-2 shadow-lg border">
+        <Accessibility className="h-4 w-4 text-lsb-primary" />
+        <span className="text-xs text-gray-700 font-medium">VLibras Ativo</span>
+        <div className="w-2 h-2 bg-green-500 rounded-full" />
+      </div>
     </div>
   );
 };

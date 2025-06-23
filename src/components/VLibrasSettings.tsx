@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Accessibility, Info } from 'lucide-react';
+import { Accessibility, Info, AlertTriangle } from 'lucide-react';
 
 const VLibrasSettings = () => {
   const [isEnabled, setIsEnabled] = useState(true);
@@ -26,11 +26,14 @@ const VLibrasSettings = () => {
     setIsEnabled(enabled);
     localStorage.setItem('vlibras-enabled', JSON.stringify(enabled));
     
-    // Toggle VLibras widget visibility
+    // Control VLibras widget visibility
     const vwElement = document.querySelector('[vw]') as HTMLElement;
     if (vwElement) {
       vwElement.style.display = enabled ? 'block' : 'none';
     }
+
+    // Trigger storage event for other components
+    window.dispatchEvent(new Event('storage'));
   };
 
   const handleAutoStartChange = (enabled: boolean) => {
@@ -77,6 +80,19 @@ const VLibrasSettings = () => {
             onCheckedChange={handleAutoStartChange}
             disabled={!isEnabled}
           />
+        </div>
+
+        <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
+          <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-amber-900">
+              Importante
+            </p>
+            <p className="text-sm text-amber-700">
+              Use os controles nativos do VLibras para abrir, fechar e minimizar o widget. 
+              Evite forçar o fechamento para prevenir erros de compatibilidade.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border">

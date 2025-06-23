@@ -34,19 +34,6 @@ const ResourceContent = ({ resource }: { resource: Resource }) => (
         </ul>
       </div>
     )}
-
-    {resource.tags && (
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Tags</h3>
-        <div className="flex flex-wrap gap-2">
-          {resource.tags.map((tag, index) => (
-            <Badge key={index} variant="outline">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      </div>
-    )}
   </div>
 );
 

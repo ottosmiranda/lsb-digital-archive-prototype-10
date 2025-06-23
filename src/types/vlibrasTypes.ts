@@ -9,6 +9,7 @@ export interface VLibrasConfig {
 }
 
 export interface VLibrasState {
+  isLoading: boolean;
   isLoaded: boolean;
   isEnabled: boolean;
   config: VLibrasConfig;

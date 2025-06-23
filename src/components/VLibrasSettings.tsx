@@ -6,12 +6,12 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Accessibility, CheckCircle, AlertCircle, Settings } from 'lucide-react';
+import { Accessibility, CheckCircle, AlertCircle, Settings, Loader2 } from 'lucide-react';
 import { useVLibras } from '@/contexts/VLibrasContext';
 
 const VLibrasSettings: React.FC = () => {
   const { state, actions } = useVLibras();
-  const { isLoaded, isEnabled, config, error } = state;
+  const { isLoading, isLoaded, isEnabled, config, error } = state;
 
   const handleToggle = async () => {
     if (isEnabled) {
@@ -29,6 +29,37 @@ const VLibrasSettings: React.FC = () => {
 
   const handleAvatarChange = (avatar: string) => {
     actions.updateConfig({ avatar });
+  };
+
+  const getStatusBadge = () => {
+    if (isLoading) {
+      return (
+        <Badge className="bg-blue-100 text-blue-800">
+          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+          Carregando
+        </Badge>
+      );
+    }
+    
+    if (error) {
+      return (
+        <Badge variant="destructive">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Erro
+        </Badge>
+      );
+    }
+    
+    if (isLoaded && isEnabled) {
+      return (
+        <Badge className="bg-green-100 text-green-800">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Ativo
+        </Badge>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -53,34 +84,40 @@ const VLibrasSettings: React.FC = () => {
             <Label htmlFor="vlibras-toggle" className="font-medium">
               Habilitar VLibras
             </Label>
-            {isLoaded && isEnabled && (
-              <Badge className="bg-green-100 text-green-800">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Ativo
-              </Badge>
-            )}
-            {error && (
-              <Badge variant="destructive">
-                <AlertCircle className="h-3 w-3 mr-1" />
-                Erro
-              </Badge>
-            )}
+            {getStatusBadge()}
           </div>
           <Switch
             id="vlibras-toggle"
             checked={isEnabled}
             onCheckedChange={handleToggle}
+            disabled={isLoading}
           />
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 text-red-600 text-sm">
-            <AlertCircle className="h-4 w-4" />
-            {error}
+          <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{error}</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => actions.loadWidget()}
+              disabled={isLoading}
+              className="ml-auto"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  Tentando...
+                </>
+              ) : (
+                'Tentar Novamente'
+              )}
+            </Button>
           </div>
         )}
 
-        {isEnabled && (
+        {isEnabled && !error && (
           <div className="space-y-4 border-t pt-4">
             <h4 className="font-medium flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -90,7 +127,7 @@ const VLibrasSettings: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="position">Posição na Tela</Label>
-                <Select value={config.position} onValueChange={handlePositionChange}>
+                <Select value={config.position} onValueChange={handlePositionChange} disabled={isLoading}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -105,7 +142,7 @@ const VLibrasSettings: React.FC = () => {
 
               <div>
                 <Label htmlFor="avatar">Avatar</Label>
-                <Select value={config.avatar} onValueChange={handleAvatarChange}>
+                <Select value={config.avatar} onValueChange={handleAvatarChange} disabled={isLoading}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

@@ -4,6 +4,7 @@ import { VLibrasContextType, VLibrasState, VLibrasConfig } from '@/types/vlibras
 import { vlibrasService } from '@/services/vlibrasService';
 
 type VLibrasAction =
+  | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_LOADED'; payload: boolean }
   | { type: 'SET_ENABLED'; payload: boolean }
   | { type: 'SET_CONFIG'; payload: Partial<VLibrasConfig> }
@@ -11,6 +12,7 @@ type VLibrasAction =
   | { type: 'INITIALIZE'; payload: VLibrasConfig };
 
 const initialState: VLibrasState = {
+  isLoading: false,
   isLoaded: false,
   isEnabled: false,
   config: vlibrasService.getDefaultConfig(),
@@ -19,16 +21,18 @@ const initialState: VLibrasState = {
 
 function vlibrasReducer(state: VLibrasState, action: VLibrasAction): VLibrasState {
   switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload };
     case 'SET_LOADED':
-      return { ...state, isLoaded: action.payload };
+      return { ...state, isLoaded: action.payload, isLoading: false };
     case 'SET_ENABLED':
       return { ...state, isEnabled: action.payload };
     case 'SET_CONFIG':
       return { ...state, config: { ...state.config, ...action.payload } };
     case 'SET_ERROR':
-      return { ...state, error: action.payload };
+      return { ...state, error: action.payload, isLoading: false };
     case 'INITIALIZE':
-      return { ...state, config: action.payload };
+      return { ...state, config: action.payload, isEnabled: action.payload.enabled };
     default:
       return state;
   }
@@ -50,7 +54,9 @@ export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const loadWidget = async () => {
     try {
+      dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
+      
       await vlibrasService.initializeWidget(state.config);
       dispatch({ type: 'SET_LOADED', payload: true });
       
@@ -59,41 +65,67 @@ export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ child
         dispatch({ type: 'SET_ENABLED', payload: true });
       }
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao carregar o VLibras' });
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar o VLibras';
+      dispatch({ type: 'SET_ERROR', payload: errorMessage });
       console.error('VLibras load error:', error);
     }
   };
 
   const enable = async () => {
-    if (!state.isLoaded) {
-      await loadWidget();
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      dispatch({ type: 'SET_ERROR', payload: null });
+      
+      if (!state.isLoaded) {
+        await vlibrasService.initializeWidget(state.config);
+        dispatch({ type: 'SET_LOADED', payload: true });
+      }
+      
+      vlibrasService.showWidget();
+      dispatch({ type: 'SET_ENABLED', payload: true });
+      
+      const newConfig = { ...state.config, enabled: true };
+      vlibrasService.saveConfig(newConfig);
+      dispatch({ type: 'SET_CONFIG', payload: { enabled: true } });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao habilitar o VLibras';
+      dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      console.error('VLibras enable error:', error);
     }
-    vlibrasService.showWidget();
-    dispatch({ type: 'SET_ENABLED', payload: true });
-    
-    const newConfig = { ...state.config, enabled: true };
-    vlibrasService.saveConfig(newConfig);
-    dispatch({ type: 'SET_CONFIG', payload: { enabled: true } });
   };
 
   const disable = () => {
-    vlibrasService.hideWidget();
-    dispatch({ type: 'SET_ENABLED', payload: false });
-    
-    const newConfig = { ...state.config, enabled: false };
-    vlibrasService.saveConfig(newConfig);
-    dispatch({ type: 'SET_CONFIG', payload: { enabled: false } });
+    try {
+      vlibrasService.hideWidget();
+      dispatch({ type: 'SET_ENABLED', payload: false });
+      
+      const newConfig = { ...state.config, enabled: false };
+      vlibrasService.saveConfig(newConfig);
+      dispatch({ type: 'SET_CONFIG', payload: { enabled: false } });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao desabilitar o VLibras';
+      dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      console.error('VLibras disable error:', error);
+    }
   };
 
   const updateConfig = async (configUpdate: Partial<VLibrasConfig>) => {
-    const newConfig = { ...state.config, ...configUpdate };
-    dispatch({ type: 'SET_CONFIG', payload: configUpdate });
-    vlibrasService.saveConfig(newConfig);
-    
-    if (state.isEnabled) {
-      vlibrasService.destroyWidget();
-      await vlibrasService.initializeWidget(newConfig);
-      vlibrasService.showWidget();
+    try {
+      const newConfig = { ...state.config, ...configUpdate };
+      dispatch({ type: 'SET_CONFIG', payload: configUpdate });
+      vlibrasService.saveConfig(newConfig);
+      
+      if (state.isEnabled) {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        vlibrasService.destroyWidget();
+        await vlibrasService.initializeWidget(newConfig);
+        vlibrasService.showWidget();
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao atualizar configuração';
+      dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      console.error('VLibras config update error:', error);
     }
   };
 

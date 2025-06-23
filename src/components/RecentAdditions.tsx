@@ -48,7 +48,7 @@ const livroItems = lsbData.conteudo.livros.map(livro => ({
   type: 'livro' as const,
   author: livro.autor,
   description: livro.descricao,
-  thumbnail: livro.imagem_url && livro.imagem_url.length > 0 ? livro.imagem_url : PLACEHOLDER_THUMB,
+  thumbnail: PLACEHOLDER_THUMB, // Books don't have thumbnail images in the JSON
   addedDate: livro.ano || '2023',
 }));
 

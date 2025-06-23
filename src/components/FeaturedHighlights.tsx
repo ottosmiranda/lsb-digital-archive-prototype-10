@@ -8,6 +8,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import Autoplay from 'embla-carousel-autoplay';
 import { useDataLoader } from '@/hooks/useDataLoader';
 import { useNavigate } from 'react-router-dom';
+import { SearchResult } from '@/types/searchTypes';
 
 // Helper fallback for missing thumbnails
 const FallbackThumb = ({ label = "Miniatura Indisponível" }) => (
@@ -18,44 +19,45 @@ const FallbackThumb = ({ label = "Miniatura Indisponível" }) => (
 );
 
 // Picks up to 6 items, mixing podcasts, videos, and books with image where possible
-function getFeaturedHighlights(allData) {
+function getFeaturedHighlights(allData: SearchResult[]): SearchResult[] {
   if (!allData || allData.length === 0) return [];
-  // Separate into types
+  
+  // Separate into types using the correct SearchResult structure
   const podcasts = allData.filter(item => item.type === "podcast");
   const videos = allData.filter(item => item.type === "video");
-  const livros = allData.filter(item => item.type === "titulo" || item.type === "livro");
+  const livros = allData.filter(item => item.type === "titulo");
+  
   // Try to ensure at least 2 of each type
-  let picks = [];
+  let picks: SearchResult[] = [];
   if (podcasts[0]) picks.push(podcasts[0]);
   if (podcasts[1]) picks.push(podcasts[1]);
   if (videos[0]) picks.push(videos[0]);
   if (videos[1]) picks.push(videos[1]);
   if (livros[0]) picks.push(livros[0]);
   if (livros[1]) picks.push(livros[1]);
+  
   // Fill up to 6 with next-most-recent of any type
-  const all = [...podcasts.slice(2), ...videos.slice(2), ...livros.slice(2)];
-  for (const item of all) {
+  const remaining = [...podcasts.slice(2), ...videos.slice(2), ...livros.slice(2)];
+  for (const item of remaining) {
     if (picks.length >= 6) break;
     // Don't duplicate
     if (!picks.find(h => h.id === item.id && h.type === item.type)) picks.push(item);
   }
+  
   return picks.slice(0, 6);
 }
 
-const typeBadge = (type) => {
+const typeBadge = (type: string) => {
   switch (type) {
     case "podcast": return "Podcast";
     case "video": return "Vídeo";
-    case "titulo":
-    case "livro":
-      return "Livro";
+    case "titulo": return "Livro";
     default: return "Conteúdo";
   }
 };
 
-const typeBadgeColor = (type) => {
+const typeBadgeColor = (type: string) => {
   switch (type) {
-    case "livro":
     case "titulo": return "bg-blue-100 text-blue-800";
     case "video": return "bg-red-100 text-red-800";
     case "podcast": return "bg-purple-100 text-purple-800";
@@ -79,6 +81,10 @@ const FeaturedHighlights = () => {
   // Memoize highlights so we pick new ones only when data changes
   const highlights = useMemo(() => getFeaturedHighlights(allData), [allData]);
 
+  console.log('FeaturedHighlights - allData count:', allData.length);
+  console.log('FeaturedHighlights - highlights count:', highlights.length);
+  console.log('FeaturedHighlights - highlights:', highlights);
+
   // UI
   return (
     <section className="py-16 md:py-24 bg-white">
@@ -97,7 +103,7 @@ const FeaturedHighlights = () => {
         ) : highlights.length === 0 ? (
           <div className="text-center my-12 text-lg text-gray-400">Nenhum destaque encontrado.</div>
         ) : (
-          <div className="px-4">
+          <div className="relative">
             <Carousel
               plugins={[autoplayPlugin.current]}
               opts={{
@@ -108,19 +114,19 @@ const FeaturedHighlights = () => {
               }}
               className="w-full"
             >
-              <CarouselContent className="py-4" style={{ marginLeft: '-1rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
+              <CarouselContent className="-ml-4">
                 {highlights.map((item, index) => (
-                  <CarouselItem key={item.id + '-' + item.type} className="basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/6" style={{ paddingLeft: '1rem' }}>
+                  <CarouselItem key={`${item.type}-${item.id}`} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/6">
                     <Card
-                      className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full mx-2"
+                      className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
                       style={{ animationDelay: `${index * 0.1}s` }}
                       onClick={() => navigate(`/recurso/${item.id}`)}
                     >
                       <CardContent className="p-0 h-full flex flex-col">
                         <div className="relative overflow-hidden rounded-t-lg">
-                          {item.thumbnail || item.imagem_url ? (
+                          {item.thumbnail ? (
                             <img 
-                              src={item.thumbnail || item.imagem_url}
+                              src={item.thumbnail}
                               alt={item.title}
                               className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
                             />

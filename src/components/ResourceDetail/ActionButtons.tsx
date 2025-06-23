@@ -38,7 +38,7 @@ const ActionButtons = ({ resource }: { resource: Resource }) => {
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-gray-700">Compartilhar</h3>
             <div className="flex gap-2 flex-wrap">
-              <FacebookShareButton url={shareUrl} quote={shareTitle}>
+              <FacebookShareButton url={shareUrl}>
                 <FacebookIcon size={32} round />
               </FacebookShareButton>
               <TwitterShareButton url={shareUrl} title={shareTitle}>

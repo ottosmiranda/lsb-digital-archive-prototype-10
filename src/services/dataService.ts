@@ -278,7 +278,8 @@ export class DataService {
         year,
         subject,
         duration,
-        thumbnail: item.imagem_url
+        thumbnail: item.imagem_url,
+        embedUrl: item.embed_url // Map embed_url to embedUrl
       };
 
       return result;

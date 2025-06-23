@@ -3,13 +3,34 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Play, Clock, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Resource } from "@/types/resourceTypes";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 const MediaSection = ({ resource }: { resource: Resource }) => {
   if (resource.type === 'video') {
+    // Check if we have an embed URL
+    if (resource.embedUrl) {
+      return (
+        <Card className="mb-6">
+          <CardContent className="p-0">
+            <AspectRatio ratio={16 / 9} className="bg-gray-900 rounded-lg overflow-hidden">
+              <iframe
+                src={resource.embedUrl}
+                title={resource.title}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </AspectRatio>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Fallback to thumbnail with play button if no embed URL
     return (
       <Card className="mb-6">
         <CardContent className="p-0">
-          <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden">
+          <AspectRatio ratio={16 / 9} className="bg-gray-900 rounded-lg overflow-hidden">
             <img
               src={resource.thumbnail}
               alt={resource.title}
@@ -27,10 +48,10 @@ const MediaSection = ({ resource }: { resource: Resource }) => {
                 {resource.duration}
               </div>
             )}
-          </div>
+          </AspectRatio>
         </CardContent>
-      </Card>
-    );
+      );
+    }
   }
 
   if (resource.type === 'titulo') {

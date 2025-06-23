@@ -35,120 +35,86 @@ const ResourceDetail = () => {
   const [resource, setResource] = useState<Resource | null>(null);
   const [resourceLoading, setResourceLoading] = useState(true);
 
-  // Effect for fetching fallback resource data
   useEffect(() => {
-    const fetchResource = () => {
-      setTimeout(() => {
-        const resourceId = parseInt(id || '1');
-        const resourceType = resourceId % 3 === 0 ? 'podcast' : resourceId % 2 === 0 ? 'titulo' : 'video';
-        
-        let mockResource: Resource;
-
-        if (resourceType === 'video') {
-          mockResource = {
-            id: resourceId,
-            title: 'Introdução à Libras - Curso Completo',
-            type: 'video',
-            author: 'Prof. Maria Silva',
-            duration: '25:30',
-            thumbnail: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=800&q=80',
-            description: 'Curso básico de Língua Brasileira de Sinais para iniciantes.',
-            fullDescription: 'Este curso completo de Língua Brasileira de Sinais (Libras) foi desenvolvido especialmente para iniciantes que desejam aprender a se comunicar com a comunidade surda. O curso aborda desde os conceitos básicos até conversações mais complexas, incluindo vocabulário essencial, gramática e aspectos culturais da comunidade surda brasileira.',
-            year: 2023,
-            subject: 'Educação',
-            language: 'Português',
-            tags: ['Libras', 'Educação Inclusiva', 'Comunicação', 'Acessibilidade']
-          };
-        } else if (resourceType === 'titulo') {
-          mockResource = {
-            id: resourceId,
-            title: 'Fundamentos da Educação Inclusiva',
-            type: 'titulo',
-            author: 'Dr. João Santos',
-            pages: 280,
-            thumbnail: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=600&q=80',
-            description: 'Guia completo sobre práticas de educação inclusiva no Brasil.',
-            fullDescription: 'Este livro oferece uma visão abrangente sobre os fundamentos da educação inclusiva, apresentando teorias, práticas e metodologias para criar ambientes educacionais acessíveis e inclusivos. Aborda desde a legislação brasileira até estratégias práticas para professores e gestores educacionais.',
-            year: 2022,
-            subject: 'Educação',
-            language: 'Português',
-            isbn: '978-85-7522-123-4',
-            publisher: 'Editora Educação',
-            edition: '2ª edição',
-            tableOfContents: [
-              'Capítulo 1: História da Educação Inclusiva',
-              'Capítulo 2: Marco Legal e Normativo',
-              'Capítulo 3: Metodologias Inclusivas',
-              'Capítulo 4: Tecnologias Assistivas',
-              'Capítulo 5: Formação de Professores'
-            ],
-            tags: ['Educação Inclusiva', 'Metodologia', 'Acessibilidade', 'Formação']
-          };
-        } else {
-          mockResource = {
-            id: resourceId,
-            title: 'Podcast Inclusão e Tecnologia',
-            type: 'podcast',
-            author: 'Ana Costa',
-            duration: '45:00',
-            episodes: 24,
-            thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80',
-            description: 'Discussões sobre tecnologia assistiva e inclusão digital.',
-            fullDescription: 'Um podcast semanal que explora as intersecções entre tecnologia e inclusão, apresentando entrevistas com especialistas, discussões sobre inovações em tecnologia assistiva e histórias inspiradoras de pessoas que usam tecnologia para superar barreiras.',
-            year: 2023,
-            subject: 'Tecnologia',
-            language: 'Português',
-            transcript: true,
-            tags: ['Tecnologia Assistiva', 'Inclusão Digital', 'Inovação', 'Entrevistas']
-          };
-        }
-
-        setResource(mockResource);
+    const findResource = () => {
+      if (!allData || allData.length === 0) {
         setResourceLoading(false);
-      }, 500);
+        return;
+      }
+
+      console.log('Looking for resource with ID:', id);
+      console.log('Available data:', allData.length, 'items');
+
+      // First try to find by exact ID match
+      let foundResource = allData.find(item => String(item.id) === id);
+
+      // If not found by exact ID, try route-based mapping
+      if (!foundResource) {
+        const routeId = parseInt(id || '0');
+        console.log('Trying route-based mapping for ID:', routeId);
+
+        if (routeId >= 11 && routeId <= 20) {
+          // Route IDs 11-20 should map to videos (aulas)
+          const videos = allData.filter(item => item.type === 'video');
+          console.log('Found videos:', videos.length);
+          const videoIndex = routeId - 11; // 11 maps to index 0, 12 to index 1, etc.
+          if (videoIndex >= 0 && videoIndex < videos.length) {
+            foundResource = videos[videoIndex];
+            console.log('Found video by route mapping:', foundResource.title);
+          }
+        } else if (routeId >= 1 && routeId <= 10) {
+          // Route IDs 1-10 should map to podcasts
+          const podcasts = allData.filter(item => item.type === 'podcast');
+          const podcastIndex = routeId - 1;
+          if (podcastIndex >= 0 && podcastIndex < podcasts.length) {
+            foundResource = podcasts[podcastIndex];
+          }
+        }
+      }
+
+      if (foundResource) {
+        // Convert SearchResult to Resource format
+        const convertedResource: Resource = {
+          id: typeof foundResource.id === 'string' ? parseInt(id || '0') : foundResource.id,
+          title: foundResource.title,
+          type: foundResource.type,
+          author: foundResource.author,
+          duration: foundResource.duration,
+          pages: foundResource.pages,
+          episodes: foundResource.episodes ? 
+            (typeof foundResource.episodes === 'string' ? 
+              parseInt(foundResource.episodes.replace(/\D/g, '')) : foundResource.episodes) : undefined,
+          thumbnail: foundResource.thumbnail,
+          description: foundResource.description,
+          year: foundResource.year,
+          subject: foundResource.subject,
+          embedUrl: foundResource.embedUrl,
+          fullDescription: foundResource.description, // Use description as fullDescription for now
+          tags: foundResource.subject ? [foundResource.subject] : undefined
+        };
+
+        console.log('Setting converted resource:', convertedResource);
+        setResource(convertedResource);
+      } else {
+        console.log('Resource not found');
+        setResource(null);
+      }
+      
+      setResourceLoading(false);
     };
 
-    fetchResource();
-  }, [id]);
-
-  // Find podcast by id (fix to cast episodes as number)
-  const podcastResult = allData.find((r) => {
-    if (r.type !== "podcast") return false;
-    if (String(r.id) === id) return true;
-    const routeId = parseInt(id || '0');
-    if (routeId > 0) {
-      const podcastsOnly = allData.filter(item => item.type === "podcast");
-      const podcastIndex = routeId - 1;
-      if (podcastIndex >= 0 && podcastIndex < podcastsOnly.length) {
-        return r === podcastsOnly[podcastIndex];
-      }
+    if (!loading) {
+      findResource();
     }
-    return false;
-  }) || null;
-
-  // Convert podcastResult to Resource if needed
-  const podcast: Resource | null = podcastResult
-    ? {
-        ...podcastResult,
-        episodes: podcastResult.episodes
-          ? Number(
-              typeof podcastResult.episodes === "string"
-                ? podcastResult.episodes.replace(/\D/g, "") // extract only numbers
-                : podcastResult.episodes
-            ) || undefined
-          : undefined,
-      }
-    : null;
+  }, [id, allData, loading]);
 
   // Loading skeletons
-  if (loading) return <><Navigation /><LoadingSkeleton /></>;
-  if (resourceLoading) return <><Navigation /><LoadingSkeleton /></>;
+  if (loading || resourceLoading) return <><Navigation /><LoadingSkeleton /></>;
   if (!resource) return <><Navigation /><ResourceNotFound /></>;
 
-  // If podcast detected (either from real data OR mock data with type 'podcast')
-  if ((podcast && podcast.type === 'podcast') || resource.type === 'podcast') {
-    const podcastToRender = podcast || resource;
-    return <PodcastDetailView podcast={podcastToRender} />;
+  // If podcast detected
+  if (resource.type === 'podcast') {
+    return <PodcastDetailView podcast={resource} />;
   }
 
   return (

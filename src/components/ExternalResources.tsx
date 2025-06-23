@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import Autoplay from 'embla-carousel-autoplay';
 
 interface ExternalResource {
   Nome: string;
@@ -160,9 +161,18 @@ const ExternalResources = () => {
         </div>
 
         <Carousel
+          plugins={[
+            Autoplay({
+              delay: 4000,
+              stopOnInteraction: true,
+              stopOnMouseEnter: true,
+            }),
+          ]}
           opts={{
             align: "start",
-            loop: false,
+            loop: true,
+            dragFree: false,
+            containScroll: "trimSnaps",
           }}
           className="w-full"
         >

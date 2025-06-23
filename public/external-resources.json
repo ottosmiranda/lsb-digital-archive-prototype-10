@@ -1,0 +1,60 @@
+
+{
+    "tipo": "biblioteca",
+    "page": 1,
+    "limit": 10,
+    "total": 30,
+    "totalPages": 3,
+    "conteudo": [
+        {
+            "Nome": "SciELO Brasil",
+            "Descricao": "Uma base de dados que oferece acesso a periódicos científicos de diversas áreas, incluindo administração e finanças.",
+            "Link": "https://www.scielo.br/"
+        },
+        {
+            "Nome": "Portal de Periódicos da CAPES",
+            "Descricao": "Acesso a uma vasta coleção de periódicos acadêmicos, incluindo áreas de negócios e ciências sociais.",
+            "Link": "https://www.periodicos.capes.gov.br/"
+        },
+        {
+            "Nome": "BVS - Biblioteca Virtual em Saúde",
+            "Descricao": "Embora focada em saúde, possui seções que abordam gestão e administração em contextos de saúde.",
+            "Link": "https://bvsalud.org/"
+        },
+        {
+            "Nome": "IBGE",
+            "Descricao": "O Instituto Brasileiro de Geografia e Estatística oferece dados e estatísticas que podem ser úteis para análises de mercado e finanças.",
+            "Link": "https://www.ibge.gov.br/"
+        },
+        {
+            "Nome": "Associação Brasileira de Normas Técnicas – ABNT",
+            "Descricao": "Oferece informações sobre normas técnicas, serviços de elaboração, revisão e consultoria para empresas, além de disponibilizar as normas oficiais brasileiras em diversas áreas. Também oferece cursos e eventos relacionados à normalização.",
+            "Link": "http://www.abnt.org.br/normalizacao/abnt-catalogo"
+        },
+        {
+            "Nome": "Análises Macroeconômicas | Itaú BBA",
+            "Descricao": "Oferece relatórios e insights sobre a economia brasileira e global, com foco em tendências macroeconômicas, políticas fiscais e monetárias, previsões e análises detalhadas.",
+            "Link": "https://www.itau.com.br/itaubba-pt/analises-economicas"
+        },
+        {
+            "Nome": "Institute of Education Sciences",
+            "Descricao": "Fornece dados, pesquisas e relatórios sobre a educação nos Estados Unidos, incluindo avaliação educacional, políticas públicas e práticas pedagógicas.",
+            "Link": "https://eric.ed.gov/"
+        },
+        {
+            "Nome": "IPA Instituto de Pesquisas Ambientais",
+            "Descricao": "Oferece publicações científicas, relatórios técnicos e boletins informativos disponíveis gratuitamente.",
+            "Link": "https://www.infraestruturameioambiente.sp.gov.br/ipa/"
+        },
+        {
+            "Nome": "ICE (Instituto de Cidadania Empresarial)",
+            "Descricao": "Disponibiliza publicações e relatórios sobre investimentos e negócios de impacto social gratuitamente.",
+            "Link": "https://ice.org.br/"
+        },
+        {
+            "Nome": "IPEA Instituto de Pesquisa Econômica Aplicada",
+            "Descricao": "Realiza estudos e análises sobre economia, políticas públicas e desenvolvimento no Brasil.",
+            "Link": "https://www.ipea.gov.br/"
+        }
+    ]
+}

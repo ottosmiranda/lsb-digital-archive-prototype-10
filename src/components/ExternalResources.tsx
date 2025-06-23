@@ -1,96 +1,150 @@
 
-import { ExternalLink, Database, BookOpen, Users, Globe, FileText, Microscope } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ExternalLink, Database, BookOpen, Users, Globe, FileText, Microscope, TrendingUp, GraduationCap, Leaf, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
+interface ExternalResource {
+  Nome: string;
+  Descricao: string;
+  Link: string;
+}
+
+interface ExternalResourcesData {
+  tipo: string;
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  conteudo: ExternalResource[];
+}
+
 const ExternalResources = () => {
-  const resources = [
-    {
-      name: 'Biblioteca Digital Brasileira',
-      description: 'Acervo digital de teses, dissertações e livros brasileiros',
-      url: 'https://bdtd.ibict.br',
-      category: 'Repositório Nacional',
-      type: 'free',
-      icon: BookOpen,
-      color: 'from-emerald-500 to-emerald-600',
-      highlight: 'Mais de 600.000 documentos'
-    },
-    {
-      name: 'Portal CAPES',
-      description: 'Periódicos científicos nacionais e internacionais',
-      url: 'https://periodicos.capes.gov.br',
-      category: 'Base de Dados',
-      type: 'institutional',
-      icon: Database,
-      color: 'from-blue-500 to-blue-600',
-      highlight: 'Acesso via instituição'
-    },
-    {
-      name: 'SciELO Brasil',
-      description: 'Biblioteca científica eletrônica online brasileira',
-      url: 'https://scielo.br',
-      category: 'Biblioteca Digital',
-      type: 'free',
-      icon: Microscope,
-      color: 'from-orange-500 to-orange-600',
-      highlight: 'Acesso aberto'
-    },
-    {
-      name: 'Repositório Institucional UNESP',
-      description: 'Produção científica da Universidade Estadual Paulista',
-      url: 'https://repositorio.unesp.br',
-      category: 'Repositório Institucional',
-      type: 'free',
-      icon: FileText,
-      color: 'from-purple-500 to-purple-600',
-      highlight: 'Especializado em educação'
-    },
-    {
-      name: 'Domínio Público',
-      description: 'Biblioteca digital do governo brasileiro',
-      url: 'http://domíniopublico.gov.br',
-      category: 'Biblioteca Pública',
-      type: 'free',
+  const [resources, setResources] = useState<ExternalResource[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadResources = async () => {
+      try {
+        const response = await fetch('/external-resources.json');
+        if (!response.ok) {
+          throw new Error('Failed to load external resources');
+        }
+        const data: ExternalResourcesData = await response.json();
+        setResources(data.conteudo);
+      } catch (err) {
+        console.error('Error loading external resources:', err);
+        setError('Erro ao carregar recursos externos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadResources();
+  }, []);
+
+  const getResourceConfig = (nome: string) => {
+    const configs = {
+      'SciELO Brasil': {
+        icon: Microscope,
+        category: 'Biblioteca Digital',
+        color: 'from-orange-500 to-orange-600',
+        highlight: 'Acesso aberto'
+      },
+      'Portal de Periódicos da CAPES': {
+        icon: Database,
+        category: 'Base de Dados',
+        color: 'from-blue-500 to-blue-600',
+        highlight: 'Acesso via instituição'
+      },
+      'BVS - Biblioteca Virtual em Saúde': {
+        icon: BookOpen,
+        category: 'Biblioteca Virtual',
+        color: 'from-green-500 to-green-600',
+        highlight: 'Foco em saúde'
+      },
+      'IBGE': {
+        icon: Globe,
+        category: 'Instituto Oficial',
+        color: 'from-purple-500 to-purple-600',
+        highlight: 'Dados estatísticos'
+      },
+      'Associação Brasileira de Normas Técnicas – ABNT': {
+        icon: FileText,
+        category: 'Normas Técnicas',
+        color: 'from-indigo-500 to-indigo-600',
+        highlight: 'Normas oficiais'
+      },
+      'Análises Macroeconômicas | Itaú BBA': {
+        icon: TrendingUp,
+        category: 'Análises Econômicas',
+        color: 'from-red-500 to-red-600',
+        highlight: 'Insights econômicos'
+      },
+      'Institute of Education Sciences': {
+        icon: GraduationCap,
+        category: 'Pesquisa Educacional',
+        color: 'from-yellow-500 to-yellow-600',
+        highlight: 'Dados educacionais'
+      },
+      'IPA Instituto de Pesquisas Ambientais': {
+        icon: Leaf,
+        category: 'Pesquisa Ambiental',
+        color: 'from-emerald-500 to-emerald-600',
+        highlight: 'Publicações gratuitas'
+      },
+      'ICE (Instituto de Cidadania Empresarial)': {
+        icon: Users,
+        category: 'Impacto Social',
+        color: 'from-cyan-500 to-cyan-600',
+        highlight: 'Negócios de impacto'
+      },
+      'IPEA Instituto de Pesquisa Econômica Aplicada': {
+        icon: BarChart,
+        category: 'Pesquisa Econômica',
+        color: 'from-violet-500 to-violet-600',
+        highlight: 'Políticas públicas'
+      }
+    };
+
+    return configs[nome as keyof typeof configs] || {
       icon: Globe,
-      color: 'from-green-500 to-green-600',
-      highlight: 'Conteúdo livre'
-    },
-    {
-      name: 'Academia.edu Brasil',
-      description: 'Rede social acadêmica com foco em pesquisadores brasileiros',
-      url: 'https://usp.academia.edu',
-      category: 'Rede Acadêmica',
-      type: 'freemium',
-      icon: Users,
-      color: 'from-indigo-500 to-indigo-600',
-      highlight: 'Networking acadêmico'
-    }
-  ];
+      category: 'Recurso Externo',
+      color: 'from-gray-500 to-gray-600',
+      highlight: 'Conteúdo especializado'
+    };
+  };
 
   const handleResourceClick = (url: string, name: string) => {
-    // Analytics tracking would go here
     console.log(`Accessing external resource: ${name}`);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'free': return 'bg-green-100 text-green-800';
-      case 'institutional': return 'bg-blue-100 text-blue-800';
-      case 'freemium': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  if (loading) {
+    return (
+      <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <p className="text-gray-600">Carregando recursos externos...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'free': return 'Gratuito';
-      case 'institutional': return 'Institucional';
-      case 'freemium': return 'Básico gratuito';
-      default: return type;
-    }
-  };
+  if (error) {
+    return (
+      <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <p className="text-red-600">{error}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
@@ -107,42 +161,44 @@ const ExternalResources = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {resources.map((resource, index) => {
-            const IconComponent = resource.icon;
+            const config = getResourceConfig(resource.Nome);
+            const IconComponent = config.icon;
+            
             return (
               <Card
-                key={resource.name}
+                key={resource.Nome}
                 className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300"
                 style={{ animationDelay: `${index * 0.1}s` }}
-                onClick={() => handleResourceClick(resource.url, resource.name)}
+                onClick={() => handleResourceClick(resource.Link, resource.Nome)}
               >
                 <CardContent className="p-6 h-full flex flex-col">
                   <div className="flex items-start justify-between mb-4">
-                    <div className={`w-14 h-14 bg-gradient-to-br ${resource.color} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                    <div className={`w-14 h-14 bg-gradient-to-br ${config.color} rounded-xl flex items-center justify-center flex-shrink-0`}>
                       <IconComponent className="h-7 w-7 text-white" />
                     </div>
-                    <Badge className={`text-xs ${getTypeColor(resource.type)} border-0`}>
-                      {getTypeLabel(resource.type)}
+                    <Badge className="text-xs bg-green-100 text-green-800 border-0">
+                      Gratuito
                     </Badge>
                   </div>
                   
                   <div className="flex-1">
                     <div className="mb-2">
                       <Badge variant="outline" className="text-xs mb-2 border-gray-300">
-                        {resource.category}
+                        {config.category}
                       </Badge>
                     </div>
                     
                     <h3 className="font-semibold text-lg mb-2 group-hover:text-lsb-primary transition-colors line-clamp-2">
-                      {resource.name}
+                      {resource.Nome}
                     </h3>
                     
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2 flex-1">
-                      {resource.description}
+                      {resource.Descricao}
                     </p>
                     
                     <div className="mb-4">
                       <p className="text-xs font-medium text-lsb-primary">
-                        {resource.highlight}
+                        {config.highlight}
                       </p>
                     </div>
                   </div>

@@ -1,6 +1,5 @@
 
 import { useEffect, useState } from 'react';
-import { Accessibility } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -11,16 +10,20 @@ declare global {
 }
 
 const VLibrasWidget = () => {
-  const [isEnabled, setIsEnabled] = useState(false); // Start with false to avoid race conditions
-  const [status, setStatus] = useState<'loading' | 'active' | 'error' | 'disabled'>('disabled');
+  const [isEnabled, setIsEnabled] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     // Load settings from localStorage with proper default
     const savedEnabled = localStorage.getItem('vlibras-enabled');
-    const shouldEnable = savedEnabled ? JSON.parse(savedEnabled) : true; // Default to true if not set
+    const shouldEnable = savedEnabled ? JSON.parse(savedEnabled) : true;
     console.log('VLibras Widget - Loading from localStorage:', shouldEnable);
     setIsEnabled(shouldEnable);
+
+    // If no setting exists, save the default
+    if (savedEnabled === null) {
+      localStorage.setItem('vlibras-enabled', JSON.stringify(true));
+    }
   }, []);
 
   useEffect(() => {
@@ -42,7 +45,6 @@ const VLibrasWidget = () => {
     
     if (!isEnabled) {
       cleanup();
-      setStatus('disabled');
       setIsInitialized(false);
       return;
     }
@@ -56,7 +58,7 @@ const VLibrasWidget = () => {
   const cleanup = () => {
     console.log('VLibras Widget - Cleaning up');
     
-    // Remove VLibras elements with more specific selectors
+    // Remove VLibras elements
     const vwElements = document.querySelectorAll('[vw], [vw-access-button], [vw-plugin-wrapper], .vpw-access-button, .vw-plugin-wrapper');
     console.log('VLibras Widget - Found elements to remove:', vwElements.length);
     vwElements.forEach(el => {
@@ -80,7 +82,6 @@ const VLibrasWidget = () => {
 
   const initializeVLibras = () => {
     console.log('VLibras Widget - Starting initialization');
-    setStatus('loading');
 
     // Clean up any existing instances first
     cleanup();
@@ -109,18 +110,17 @@ const VLibrasWidget = () => {
         vwDiv.appendChild(accessButton);
         vwDiv.appendChild(pluginWrapper);
         
-        // Make sure it's visible
+        // Position the VLibras button in the middle-right of the page
         vwDiv.style.position = 'fixed';
-        vwDiv.style.zIndex = '9999';
+        vwDiv.style.right = '20px';
+        vwDiv.style.top = '50%';
+        vwDiv.style.transform = 'translateY(-50%)';
+        vwDiv.style.zIndex = '9998'; // Lower than footer button to avoid conflicts
         vwDiv.style.pointerEvents = 'auto';
         
         document.body.appendChild(vwDiv);
 
-        console.log('VLibras Widget - DOM structure created, elements:', {
-          vwDiv: vwDiv.className,
-          accessButton: accessButton.className,
-          pluginWrapper: pluginWrapper.className
-        });
+        console.log('VLibras Widget - DOM structure created and positioned in middle-right');
 
         // Load the script
         const script = document.createElement('script');
@@ -135,71 +135,32 @@ const VLibrasWidget = () => {
               try {
                 console.log('VLibras Widget - Creating widget instance');
                 new window.VLibras.Widget('https://vlibras.gov.br/app');
-                setStatus('active');
                 setIsInitialized(true);
-                console.log('VLibras Widget - Successfully initialized');
-                
-                // Add debugging info about rendered elements
-                setTimeout(() => {
-                  const renderedElements = document.querySelectorAll('[vw], [vw-access-button], [vw-plugin-wrapper], .vpw-access-button, .vw-plugin-wrapper');
-                  console.log('VLibras Widget - Elements after initialization:', renderedElements.length);
-                  renderedElements.forEach((el, index) => {
-                    console.log(`Element ${index}:`, {
-                      tagName: el.tagName,
-                      className: el.className,
-                      id: el.id,
-                      style: el.getAttribute('style'),
-                      visible: window.getComputedStyle(el).display !== 'none'
-                    });
-                  });
-                }, 1000);
+                console.log('VLibras Widget - Successfully initialized in middle-right position');
                 
               } catch (error) {
                 console.error('VLibras Widget - Initialization error:', error);
-                setStatus('error');
               }
             } else {
-              console.warn('VLibras Widget - VLibras not available on window, available:', Object.keys(window.VLibras || {}));
-              setStatus('error');
+              console.warn('VLibras Widget - VLibras not available on window');
             }
-          }, 1000); // Increased wait time
+          }, 1000);
         };
         
         script.onerror = (error) => {
           console.error('VLibras Widget - Failed to load script:', error);
-          setStatus('error');
         };
         
         document.head.appendChild(script);
         
       } catch (error) {
         console.error('VLibras Widget - Setup error:', error);
-        setStatus('error');
       }
-    }, 200); // Increased initial wait time
+    }, 200);
   };
 
-  // Show status indicator when enabled
-  if (!isEnabled) {
-    return null;
-  }
-
-  return (
-    <div className="fixed bottom-4 left-4 z-30 pointer-events-none">
-      <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-full px-3 py-2 shadow-lg border border-blue-200">
-        <Accessibility className="h-4 w-4 text-blue-600" />
-        <span className="text-xs text-gray-700 font-medium">
-          {status === 'loading' && 'Carregando VLibras...'}
-          {status === 'active' && 'VLibras Ativo'}
-          {status === 'error' && 'VLibras com erro'}
-        </span>
-        <div className={`w-2 h-2 rounded-full ${
-          status === 'loading' ? 'bg-yellow-500 animate-pulse' :
-          status === 'active' ? 'bg-green-500' : 'bg-red-500'
-        }`} />
-      </div>
-    </div>
-  );
+  // Return null - no custom status indicator needed
+  return null;
 };
 
 export default VLibrasWidget;

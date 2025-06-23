@@ -1,0 +1,64 @@
+
+/* VLibras Widget Styles */
+.vlibras-widget {
+  z-index: 999999 !important;
+  position: fixed !important;
+}
+
+.vlibras-widget.top-left {
+  top: 20px !important;
+  left: 20px !important;
+}
+
+.vlibras-widget.top-right {
+  top: 20px !important;
+  right: 20px !important;
+}
+
+.vlibras-widget.bottom-left {
+  bottom: 20px !important;
+  left: 20px !important;
+}
+
+.vlibras-widget.bottom-right {
+  bottom: 20px !important;
+  right: 20px !important;
+}
+
+/* Ensure VLibras doesn't interfere with page layout */
+.vlibras-widget iframe {
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 8px !important;
+}
+
+/* Hide VLibras when disabled */
+.vlibras-widget.vlibras-hidden {
+  display: none !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .vlibras-widget {
+    transform: scale(0.8) !important;
+    transform-origin: bottom right !important;
+  }
+  
+  .vlibras-widget.top-left {
+    transform-origin: top left !important;
+  }
+  
+  .vlibras-widget.top-right {
+    transform-origin: top right !important;
+  }
+  
+  .vlibras-widget.bottom-left {
+    transform-origin: bottom left !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .vlibras-widget {
+    transform: scale(0.7) !important;
+  }
+}

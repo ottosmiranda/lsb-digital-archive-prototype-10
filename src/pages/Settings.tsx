@@ -2,6 +2,7 @@
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import SpotifyConfig from "@/components/SpotifyConfig";
+import VLibrasSettings from "@/components/VLibrasSettings";
 import { Settings as SettingsIcon } from "lucide-react";
 
 const Settings = () => {
@@ -20,6 +21,13 @@ const Settings = () => {
         </div>
 
         <div className="space-y-6">
+          <section>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              Acessibilidade
+            </h2>
+            <VLibrasSettings />
+          </section>
+
           <section>
             <h2 className="text-xl font-semibold text-gray-800 mb-4">
               Integração com Spotify

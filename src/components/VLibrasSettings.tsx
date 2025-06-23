@@ -9,10 +9,15 @@ const VLibrasSettings = () => {
   const [isEnabled, setIsEnabled] = useState(true);
 
   useEffect(() => {
-    // Load settings from localStorage
+    // Load settings from localStorage with proper default
     const savedEnabled = localStorage.getItem('vlibras-enabled');
-    if (savedEnabled !== null) {
-      setIsEnabled(JSON.parse(savedEnabled));
+    const shouldEnable = savedEnabled ? JSON.parse(savedEnabled) : true; // Default to true
+    console.log('VLibras Settings - Loading from localStorage:', shouldEnable);
+    setIsEnabled(shouldEnable);
+    
+    // If no setting exists, save the default
+    if (savedEnabled === null) {
+      localStorage.setItem('vlibras-enabled', JSON.stringify(true));
     }
   }, []);
 
@@ -71,9 +76,9 @@ const VLibrasSettings = () => {
               Como usar
             </p>
             <p className="text-sm text-blue-700">
-              Quando habilitado, um botão azul aparecerá no canto inferior direito da tela. 
-              Clique nele para abrir o tradutor de Libras. Use os controles nativos do VLibras 
-              para navegar pelo widget.
+              Quando habilitado, um botão azul do VLibras aparecerá no canto inferior direito da tela. 
+              O indicador no canto inferior esquerdo mostra o status do carregamento. 
+              Clique no botão azul oficial para abrir o tradutor de Libras.
             </p>
           </div>
         </div>

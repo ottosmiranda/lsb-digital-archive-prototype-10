@@ -8,12 +8,18 @@ class VLibrasService {
   private readonly SCRIPT_TIMEOUT = 10000;
 
   async loadScript(): Promise<void> {
-    if (this.isScriptLoaded) return;
+    if (this.isScriptLoaded) {
+      console.log('VLibras: Script already loaded');
+      return;
+    }
+
+    console.log('VLibras: Loading script from', this.VLIBRAS_SCRIPT_URL);
 
     return new Promise((resolve, reject) => {
       // Check if script already exists
       const existingScript = document.querySelector(`script[src="${this.VLIBRAS_SCRIPT_URL}"]`);
       if (existingScript) {
+        console.log('VLibras: Script element already exists in DOM');
         this.isScriptLoaded = true;
         resolve();
         return;
@@ -24,16 +30,19 @@ class VLibrasService {
       script.async = true;
       
       const timeout = setTimeout(() => {
+        console.error('VLibras: Script loading timeout');
         reject(new Error('Timeout ao carregar script do VLibras'));
       }, this.SCRIPT_TIMEOUT);
 
       script.onload = () => {
+        console.log('VLibras: Script loaded successfully');
         clearTimeout(timeout);
         this.isScriptLoaded = true;
         resolve();
       };
 
       script.onerror = () => {
+        console.error('VLibras: Script loading failed');
         clearTimeout(timeout);
         reject(new Error('Falha ao carregar script do VLibras'));
       };
@@ -44,14 +53,19 @@ class VLibrasService {
 
   async initializeWidget(config: VLibrasConfig): Promise<void> {
     try {
+      console.log('VLibras: Initializing widget with config:', config);
       await this.loadScript();
       this.createWidgetElement(config);
+      console.log('VLibras: Widget initialization complete');
     } catch (error) {
+      console.error('VLibras: Widget initialization failed:', error);
       throw error;
     }
   }
 
   private createWidgetElement(config: VLibrasConfig): void {
+    console.log('VLibras: Creating widget element');
+    
     // Remove existing widget
     this.destroyWidget();
 
@@ -84,17 +98,25 @@ class VLibrasService {
     document.body.appendChild(widget);
     this.widgetElement = widget;
     
+    console.log('VLibras: Widget element created and added to DOM');
+    
     // Initialize VLibras if available
     if (window.VLibras && typeof window.VLibras.Widget === 'function') {
       try {
+        console.log('VLibras: Initializing VLibras.Widget');
         new window.VLibras.Widget('https://vlibras.gov.br/app');
+        console.log('VLibras: VLibras.Widget initialized successfully');
       } catch (error) {
-        console.warn('VLibras initialization warning:', error);
+        console.warn('VLibras: VLibras.Widget initialization warning:', error);
       }
+    } else {
+      console.warn('VLibras: window.VLibras.Widget not available');
     }
   }
 
   private applyWidgetConfiguration(element: HTMLElement, config: VLibrasConfig): void {
+    console.log('VLibras: Applying widget configuration:', config);
+    
     // Apply position styles
     element.style.position = 'fixed';
     element.style.zIndex = '999999';
@@ -125,18 +147,25 @@ class VLibrasService {
 
   showWidget(): void {
     if (this.widgetElement) {
+      console.log('VLibras: Showing widget');
       this.widgetElement.style.display = 'block';
+    } else {
+      console.warn('VLibras: Cannot show widget - element not found');
     }
   }
 
   hideWidget(): void {
     if (this.widgetElement) {
+      console.log('VLibras: Hiding widget');
       this.widgetElement.style.display = 'none';
+    } else {
+      console.warn('VLibras: Cannot hide widget - element not found');
     }
   }
 
   destroyWidget(): void {
     if (this.widgetElement) {
+      console.log('VLibras: Destroying widget');
       this.widgetElement.remove();
       this.widgetElement = null;
     }

@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { authService, AuthState, AuthUser } from '@/services/authService';
-import { userSettingsService } from '@/services/userSettingsService';
 import type { Session } from '@supabase/supabase-js';
 
 type AuthAction =
@@ -61,13 +60,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       async (event, session) => {
         const user = authService.transformUser(session?.user || null);
         dispatch({ type: 'SET_SESSION', payload: { session, user } });
-        
-        // Migrate localStorage data when user first logs in
-        if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-          setTimeout(() => {
-            userSettingsService.migrateLocalStorageToDatabase(session.user.id);
-          }, 0);
-        }
       }
     );
 

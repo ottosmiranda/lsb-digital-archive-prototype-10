@@ -72,7 +72,7 @@ class VLibrasService {
     // Create VLibras widget container
     const widget = document.createElement('div');
     widget.setAttribute('vw', '');
-    widget.className = 'enabled';
+    widget.className = 'enabled vlibras-widget';
     
     // Create the accessibility plugin div
     const accessibilityDiv = document.createElement('div');
@@ -91,7 +91,7 @@ class VLibrasService {
     widget.appendChild(accessibilityDiv);
     widget.appendChild(pluginWrapper);
     
-    // Apply configuration
+    // Apply configuration and debugging styles
     this.applyWidgetConfiguration(widget, config);
     
     // Add to DOM
@@ -99,6 +99,8 @@ class VLibrasService {
     this.widgetElement = widget;
     
     console.log('VLibras: Widget element created and added to DOM');
+    console.log('VLibras: Widget element styles:', widget.style.cssText);
+    console.log('VLibras: Widget element classes:', widget.className);
     
     // Initialize VLibras if available
     if (window.VLibras && typeof window.VLibras.Widget === 'function') {
@@ -117,9 +119,15 @@ class VLibrasService {
   private applyWidgetConfiguration(element: HTMLElement, config: VLibrasConfig): void {
     console.log('VLibras: Applying widget configuration:', config);
     
-    // Apply position styles
+    // Apply position styles with maximum z-index and debugging
     element.style.position = 'fixed';
-    element.style.zIndex = '999999';
+    element.style.zIndex = '2147483647'; // Maximum z-index
+    element.style.pointerEvents = 'auto';
+    element.style.visibility = 'visible';
+    element.style.display = 'block';
+    
+    // Add position class for CSS targeting
+    element.classList.add(config.position);
     
     switch (config.position) {
       case 'top-left':
@@ -143,12 +151,23 @@ class VLibrasService {
     
     // Apply opacity
     element.style.opacity = config.opacity.toString();
+    
+    // Add debugging background (temporary)
+    element.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+    element.style.border = '2px solid red';
+    element.style.minWidth = '60px';
+    element.style.minHeight = '60px';
+    
+    console.log('VLibras: Applied final styles:', element.style.cssText);
   }
 
   showWidget(): void {
     if (this.widgetElement) {
       console.log('VLibras: Showing widget');
       this.widgetElement.style.display = 'block';
+      this.widgetElement.style.visibility = 'visible';
+      this.widgetElement.classList.remove('vlibras-hidden');
+      console.log('VLibras: Widget visibility after show:', this.widgetElement.style.cssText);
     } else {
       console.warn('VLibras: Cannot show widget - element not found');
     }
@@ -158,6 +177,7 @@ class VLibrasService {
     if (this.widgetElement) {
       console.log('VLibras: Hiding widget');
       this.widgetElement.style.display = 'none';
+      this.widgetElement.classList.add('vlibras-hidden');
     } else {
       console.warn('VLibras: Cannot hide widget - element not found');
     }

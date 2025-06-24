@@ -22,8 +22,8 @@ const App = () => (
       <VLibrasProvider>
         <Toaster />
         <Sonner />
-        <VLibrasWidget />
         <BrowserRouter>
+          <VLibrasWidget />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/buscar" element={<SearchResults />} />

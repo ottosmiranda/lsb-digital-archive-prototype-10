@@ -1,64 +1,113 @@
 
 /* VLibras Widget Styles */
 .vlibras-widget {
-  z-index: 999999 !important;
+  z-index: 2147483647 !important;
   position: fixed !important;
+  display: block !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
-.vlibras-widget.top-left {
+/* VLibras positioning classes */
+.vlibras-widget.top-left,
+[vw].top-left {
   top: 20px !important;
   left: 20px !important;
 }
 
-.vlibras-widget.top-right {
+.vlibras-widget.top-right,
+[vw].top-right {
   top: 20px !important;
   right: 20px !important;
 }
 
-.vlibras-widget.bottom-left {
+.vlibras-widget.bottom-left,
+[vw].bottom-left {
   bottom: 20px !important;
   left: 20px !important;
 }
 
-.vlibras-widget.bottom-right {
+.vlibras-widget.bottom-right,
+[vw].bottom-right {
   bottom: 20px !important;
   right: 20px !important;
+}
+
+/* Target the actual VLibras elements */
+[vw] {
+  z-index: 2147483647 !important;
+  position: fixed !important;
+  display: block !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+[vw-access-button] {
+  z-index: 2147483647 !important;
+  position: relative !important;
+  display: block !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+[vw-plugin-wrapper] {
+  z-index: 2147483647 !important;
+  position: relative !important;
+  display: block !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
 /* Ensure VLibras doesn't interfere with page layout */
-.vlibras-widget iframe {
+.vlibras-widget iframe,
+[vw] iframe {
   border: none !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   border-radius: 8px !important;
+  z-index: 2147483647 !important;
 }
 
 /* Hide VLibras when disabled */
-.vlibras-widget.vlibras-hidden {
+.vlibras-widget.vlibras-hidden,
+[vw].vlibras-hidden {
   display: none !important;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .vlibras-widget {
+  .vlibras-widget,
+  [vw] {
     transform: scale(0.8) !important;
     transform-origin: bottom right !important;
   }
   
-  .vlibras-widget.top-left {
+  .vlibras-widget.top-left,
+  [vw].top-left {
     transform-origin: top left !important;
   }
   
-  .vlibras-widget.top-right {
+  .vlibras-widget.top-right,
+  [vw].top-right {
     transform-origin: top right !important;
   }
   
-  .vlibras-widget.bottom-left {
+  .vlibras-widget.bottom-left,
+  [vw].bottom-left {
     transform-origin: bottom left !important;
   }
 }
 
 @media (max-width: 480px) {
-  .vlibras-widget {
+  .vlibras-widget,
+  [vw] {
     transform: scale(0.7) !important;
   }
+}
+
+/* Debug styles - temporary red background to see if widget is there */
+[vw] {
+  background-color: rgba(255, 0, 0, 0.2) !important;
+  border: 2px solid red !important;
+  min-width: 60px !important;
+  min-height: 60px !important;
 }

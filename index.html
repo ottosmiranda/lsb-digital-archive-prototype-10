@@ -25,105 +25,218 @@
   <body>
     <div id="root"></div>
     
-    <!-- VLibras Widget - Protected Implementation -->
-    <div vw class="enabled">
-      <div vw-access-button class="active"></div>
-      <div vw-plugin-wrapper>
-        <div class="vw-plugin-top-wrapper"></div>
-      </div>
+    <!-- VLibras Widget - CORS-Safe Iframe Implementation -->
+    <div id="vlibras-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
+      <!-- Accessibility button that will show/hide VLibras -->
+      <button 
+        id="vlibras-toggle" 
+        aria-label="Ativar tradução em Libras"
+        title="Tradução em Libras"
+        style="
+          background: #1351b4;
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 64px;
+          height: 64px;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: bold;
+          transition: all 0.3s ease;
+        "
+      >
+        LIBRAS
+      </button>
+      
+      <!-- Hidden iframe that will load VLibras -->
+      <iframe 
+        id="vlibras-iframe"
+        src="about:blank"
+        style="
+          display: none;
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 400px;
+          height: 300px;
+          border: 2px solid #1351b4;
+          border-radius: 8px;
+          background: white;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+          z-index: 10000;
+        "
+        title="VLibras - Tradução em Libras"
+        allow="camera; microphone"
+      >
+      </iframe>
+      
+      <!-- Close button for iframe -->
+      <button 
+        id="vlibras-close"
+        aria-label="Fechar tradução em Libras"
+        style="
+          display: none;
+          position: fixed;
+          top: calc(50% - 170px);
+          right: calc(50% - 220px);
+          background: #dc3545;
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
+          cursor: pointer;
+          font-size: 18px;
+          font-weight: bold;
+          z-index: 10001;
+        "
+      >
+        ×
+      </button>
     </div>
     
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- VLibras with Recursion Protection -->
-    <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+    <!-- VLibras CORS-Safe Implementation -->
     <script>
-      (function initializeVLibrasProtected() {
-        console.log('VLibras: Starting protected initialization...');
+      (function initializeVLibrasCORSSafe() {
+        console.log('VLibras: Starting CORS-safe initialization...');
         
-        // Global state to prevent multiple initializations
-        if (window.vLibrasInitialized) {
-          console.log('VLibras: Already initialized, skipping...');
+        const toggleBtn = document.getElementById('vlibras-toggle');
+        const iframe = document.getElementById('vlibras-iframe');
+        const closeBtn = document.getElementById('vlibras-close');
+        const container = document.getElementById('vlibras-container');
+        
+        // Check if we're on a production domain
+        const currentDomain = window.location.hostname;
+        const isProduction = !currentDomain.includes('lovable.app');
+        
+        if (!toggleBtn || !iframe || !closeBtn) {
+          console.error('VLibras: Required elements not found');
           return;
         }
         
-        let initAttempts = 0;
-        const maxAttempts = 3;
-        const initTimeout = 10000; // 10 seconds max
+        // VLibras iframe content - this HTML will be loaded in the iframe
+        const vLibrasHTML = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>VLibras</title>
+            <style>
+              body { 
+                margin: 0; 
+                padding: 20px; 
+                font-family: Arial, sans-serif;
+                background: #f8f9fa;
+              }
+              .status { 
+                text-align: center; 
+                padding: 20px;
+                color: #666;
+              }
+              .loading {
+                display: inline-block;
+                width: 20px;
+                height: 20px;
+                border: 3px solid #f3f3f3;
+                border-top: 3px solid #1351b4;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+              }
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+              .error { color: #dc3545; }
+              .info { color: #1351b4; }
+            </style>
+          </head>
+          <body>
+            <div class="status">
+              ${isProduction ? 
+                '<div class="loading"></div><p>Carregando VLibras...</p>' : 
+                '<div class="info"><h3>VLibras Indisponível</h3><p>O widget VLibras não está disponível no ambiente de desenvolvimento devido a restrições CORS.</p><p>O serviço funcionará normalmente quando o site estiver no domínio final.</p></div>'
+              }
+            </div>
+            
+            ${isProduction ? `
+            <div vw class="enabled">
+              <div vw-access-button class="active"></div>
+              <div vw-plugin-wrapper>
+                <div class="vw-plugin-top-wrapper"></div>
+              </div>
+            </div>
+            
+            <script src="https://vlibras.gov.br/app/vlibras-plugin.js"><\/script>
+            <script>
+              try {
+                console.log('VLibras iframe: Initializing widget...');
+                new window.VLibras.Widget('https://vlibras.gov.br/app');
+                console.log('VLibras iframe: Widget initialized successfully');
+                
+                // Update status
+                document.querySelector('.status').innerHTML = 
+                  '<div class="info"><p>VLibras carregado com sucesso!</p></div>';
+              } catch (error) {
+                console.error('VLibras iframe: Error initializing widget:', error);
+                document.querySelector('.status').innerHTML = 
+                  '<div class="error"><p>Erro ao carregar VLibras. Tente novamente.</p></div>';
+              }
+            <\/script>
+            ` : ''}
+          </body>
+          </html>
+        `;
         
-        function safeInitialize() {
-          initAttempts++;
-          console.log(`VLibras: Initialization attempt ${initAttempts}/${maxAttempts}`);
+        // Toggle iframe visibility
+        function toggleVLibras() {
+          const isVisible = iframe.style.display !== 'none';
           
-          if (initAttempts > maxAttempts) {
-            console.warn('VLibras: Max initialization attempts reached, aborting');
-            return;
-          }
-          
-          try {
-            // Check if VLibras is available
-            if (typeof window.VLibras === 'undefined' || !window.VLibras.Widget) {
-              console.log('VLibras: Widget not ready, retrying in 1 second...');
-              setTimeout(safeInitialize, 1000);
-              return;
-            }
+          if (isVisible) {
+            iframe.style.display = 'none';
+            closeBtn.style.display = 'none';
+            toggleBtn.setAttribute('aria-label', 'Ativar tradução em Libras');
+          } else {
+            // Load VLibras content in iframe
+            iframe.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(vLibrasHTML);
+            iframe.style.display = 'block';
+            closeBtn.style.display = 'block';
+            toggleBtn.setAttribute('aria-label', 'VLibras ativo - clique para fechar');
             
-            // Check for existing instances and clean up
-            const existingWidgets = document.querySelectorAll('[data-vlibras-widget]');
-            if (existingWidgets.length > 0) {
-              console.log('VLibras: Cleaning up existing instances...');
-              existingWidgets.forEach(widget => widget.remove());
-            }
-            
-            // Initialize with timeout protection
-            const initTimer = setTimeout(() => {
-              console.error('VLibras: Initialization timeout after 10 seconds');
-              window.vLibrasInitialized = false;
-            }, initTimeout);
-            
-            console.log('VLibras: Creating widget instance...');
-            const widget = new window.VLibras.Widget('https://vlibras.gov.br/app');
-            
-            // Mark as initialized
-            window.vLibrasInitialized = true;
-            clearTimeout(initTimer);
-            
-            console.log('VLibras: Widget initialized successfully');
-            
-            // Add error handler for widget runtime errors
-            if (widget && typeof widget.on === 'function') {
-              widget.on('error', function(error) {
-                console.error('VLibras: Runtime error:', error);
-                // Reset initialization flag to allow retry
-                window.vLibrasInitialized = false;
-              });
-            }
-            
-          } catch (error) {
-            console.error('VLibras: Initialization error:', error);
-            window.vLibrasInitialized = false;
-            
-            // Check if it's a recursion error
-            if (error.message && error.message.includes('Maximum call stack')) {
-              console.error('VLibras: Detected infinite recursion, not retrying');
-              return;
-            }
-            
-            // Retry for other errors
-            if (initAttempts < maxAttempts) {
-              console.log('VLibras: Retrying initialization in 2 seconds...');
-              setTimeout(safeInitialize, 2000);
-            }
+            console.log('VLibras: Iframe opened');
           }
         }
         
-        // Start initialization when DOM is ready
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', safeInitialize);
-        } else {
-          // DOM already loaded, start immediately
-          safeInitialize();
-        }
+        // Event listeners
+        toggleBtn.addEventListener('click', toggleVLibras);
+        closeBtn.addEventListener('click', toggleVLibras);
+        
+        // Close on escape key
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && iframe.style.display !== 'none') {
+            toggleVLibras();
+          }
+        });
+        
+        // Add hover effects
+        toggleBtn.addEventListener('mouseenter', function() {
+          this.style.transform = 'scale(1.1)';
+          this.style.background = '#0f4394';
+        });
+        
+        toggleBtn.addEventListener('mouseleave', function() {
+          this.style.transform = 'scale(1)';
+          this.style.background = '#1351b4';
+        });
+        
+        console.log('VLibras: CORS-safe implementation initialized');
+        console.log(`VLibras: Running on ${isProduction ? 'production' : 'development'} domain`);
       })();
     </script>
   </body>

@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { VLibrasConfig } from '@/types/vlibrasTypes';
 
 export interface SpotifyConfig {
   enabled: boolean;
@@ -17,7 +16,6 @@ export interface PlatformSetting {
 }
 
 class PlatformSettingsService {
-  private readonly VLIBRAS_SETTING_KEY = 'vlibras_config';
   private readonly SPOTIFY_SETTING_KEY = 'spotify_config';
 
   async getPlatformSetting(key: string): Promise<{ data: PlatformSetting | null; error: any }> {
@@ -56,21 +54,6 @@ class PlatformSettingsService {
       console.error('Error saving platform setting:', error);
       return { error };
     }
-  }
-
-  async getVLibrasConfig(): Promise<{ data: VLibrasConfig | null; error: any }> {
-    const { data, error } = await this.getPlatformSetting(this.VLIBRAS_SETTING_KEY);
-    
-    if (error) return { data: null, error };
-    
-    return { 
-      data: data ? data.setting_value as VLibrasConfig : null, 
-      error: null 
-    };
-  }
-
-  async saveVLibrasConfig(config: VLibrasConfig): Promise<{ error: any }> {
-    return this.savePlatformSetting(this.VLIBRAS_SETTING_KEY, config);
   }
 
   async getSpotifyConfig(): Promise<{ data: SpotifyConfig | null; error: any }> {

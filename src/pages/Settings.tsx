@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import SpotifyConfig from "@/components/SpotifyConfig";
-import VLibrasSettings from "@/components/VLibrasSettings";
 import { Settings as SettingsIcon, Shield, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -72,14 +71,6 @@ const Settings = () => {
         </div>
 
         <div className="space-y-6">
-          <section>
-            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <SettingsIcon className="h-5 w-5" />
-              Acessibilidade Global
-            </h2>
-            <VLibrasSettings />
-          </section>
-
           <section>
             <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <SettingsIcon className="h-5 w-5" />

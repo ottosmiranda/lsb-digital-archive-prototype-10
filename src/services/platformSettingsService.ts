@@ -43,8 +43,14 @@ class PlatformSettingsService {
           setting_key: key,
           setting_value: value,
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'setting_key'
         });
 
+      if (error) {
+        console.error('Error saving platform setting:', error);
+      }
+      
       return { error };
     } catch (error) {
       console.error('Error saving platform setting:', error);

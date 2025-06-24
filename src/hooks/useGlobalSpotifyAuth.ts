@@ -48,8 +48,37 @@ export const useGlobalSpotifyAuth = () => {
     }
   };
 
-  const authenticate = async (isRetry = false): Promise<boolean> => {
-    const config = await loadPlatformConfig();
+  const authenticate = async (clientId?: string, clientSecret?: string): Promise<boolean> => {
+    let config = state.config;
+    
+    // If clientId and clientSecret are provided, save them first
+    if (clientId && clientSecret) {
+      const newConfig: SpotifyConfig = {
+        enabled: true,
+        client_id: clientId,
+        client_secret: clientSecret
+      };
+      
+      const { error } = await platformSettingsService.saveSpotifyConfig(newConfig);
+      if (error) {
+        console.error('Error saving Spotify config:', error);
+        setState(prev => ({
+          ...prev,
+          error: classifySpotifyError(
+            new Error('Failed to save Spotify configuration'), 
+            state.browserCapabilities.browserName
+          ),
+          authStatus: 'failed'
+        }));
+        return false;
+      }
+      
+      config = newConfig;
+      setState(prev => ({ ...prev, config }));
+    } else {
+      // Load existing config
+      config = await loadPlatformConfig();
+    }
     
     if (!config || !config.enabled || !config.client_id || !config.client_secret) {
       const error = classifySpotifyError(
@@ -69,7 +98,6 @@ export const useGlobalSpotifyAuth = () => {
       loading: true,
       error: null,
       authStatus: 'authenticating',
-      retryCount: isRetry ? prev.retryCount + 1 : 0,
       config
     }));
 
@@ -146,10 +174,34 @@ export const useGlobalSpotifyAuth = () => {
     }
   };
 
+  const clearConfig = async (): Promise<void> => {
+    try {
+      const emptyConfig: SpotifyConfig = {
+        enabled: false,
+        client_id: '',
+        client_secret: ''
+      };
+      
+      await platformSettingsService.saveSpotifyConfig(emptyConfig);
+      localStorage.removeItem('platform_spotify_token');
+      
+      setState(prev => ({
+        ...prev,
+        token: null,
+        config: null,
+        isConfigured: false,
+        authStatus: 'idle',
+        error: null
+      }));
+    } catch (error) {
+      console.error('Error clearing Spotify config:', error);
+    }
+  };
+
   const retryAuthentication = async () => {
     if (state.retryCount < 3) {
       const delay = Math.pow(2, state.retryCount) * 1000;
-      setTimeout(() => authenticate(true), delay);
+      setTimeout(() => authenticate(), delay);
     }
   };
 
@@ -174,13 +226,15 @@ export const useGlobalSpotifyAuth = () => {
   return {
     token: state.token,
     loading: state.loading,
+    isLoading: state.loading, // Add alias for compatibility
     error: state.error,
     isConfigured: state.isConfigured,
     authStatus: state.authStatus,
     retryCount: state.retryCount,
     browserCapabilities: state.browserCapabilities,
     config: state.config,
-    authenticate: () => authenticate(),
+    authenticate,
+    clearConfig,
     retryAuthentication,
     refreshConfig: checkConfiguration
   };

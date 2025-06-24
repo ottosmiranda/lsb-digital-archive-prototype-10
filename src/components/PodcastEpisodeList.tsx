@@ -38,7 +38,7 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
     const { oembedData, loading: oembedLoading, error: oembedError } = useSpotifyOEmbed(embedUrl);
     const { 
       isConfigured,
-      isLoading: globalAuthLoading,
+      loading: globalAuthLoading,
       error: authError,
       token
     } = useGlobalSpotifyAuth();

@@ -1,74 +1,107 @@
 
-import React, { useState, useCallback } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, Maximize2, Minimize2 } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, Maximize2, Minimize2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
-
-// Configure PDF.js worker to use the installed version
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.js',
-  import.meta.url,
-).toString();
+import { Badge } from '@/components/ui/badge';
 
 interface PDFViewerProps {
   pdfUrl: string;
   title: string;
 }
 
+type ViewerStrategy = 'iframe' | 'pdfjs' | 'download';
+
 const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
-  const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.0);
+  const [strategy, setStrategy] = useState<ViewerStrategy>('iframe');
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [iframeLoaded, setIframeLoaded] = useState<boolean>(false);
 
-  // Create proxied PDF URL using our Edge Function
-  const getProxiedPdfUrl = useCallback(() => {
-    const baseUrl = `https://acnympbxfptajtxvmkqn.supabase.co/functions/v1/proxy-pdf`;
-    const encodedUrl = encodeURIComponent(pdfUrl);
-    return `${baseUrl}?url=${encodedUrl}`;
+  // Check browser PDF support
+  const checkPDFSupport = useCallback(() => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isChrome = userAgent.includes('chrome');
+    const isFirefox = userAgent.includes('firefox');
+    const isSafari = userAgent.includes('safari') && !userAgent.includes('chrome');
+    const isEdge = userAgent.includes('edge');
+    
+    return isChrome || isFirefox || isSafari || isEdge;
+  }, []);
+
+  // Enhanced PDF URL with viewer parameters
+  const getEnhancedPdfUrl = useCallback(() => {
+    const baseUrl = pdfUrl;
+    const params = new URLSearchParams();
+    
+    // Add PDF viewer parameters for better display
+    params.set('toolbar', '1');
+    params.set('navpanes', '1');
+    params.set('scrollbar', '1');
+    params.set('view', 'FitH');
+    
+    return `${baseUrl}#${params.toString()}`;
   }, [pdfUrl]);
 
-  const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
-    console.log('✅ PDF loaded successfully with', numPages, 'pages');
-    setNumPages(numPages);
+  // Handle iframe load success
+  const handleIframeLoad = useCallback(() => {
+    console.log('✅ PDF iframe loaded successfully');
+    setIframeLoaded(true);
     setLoading(false);
     setError(null);
   }, []);
 
-  const onDocumentLoadError = useCallback((error: Error) => {
-    console.error('❌ PDF load error:', error);
-    console.log('📄 Original PDF URL:', pdfUrl);
-    console.log('🔄 Proxied PDF URL:', getProxiedPdfUrl());
-    setError('Erro ao carregar o PDF. O arquivo pode não estar disponível no momento.');
-    setLoading(false);
-  }, [pdfUrl, getProxiedPdfUrl]);
+  // Handle iframe load error
+  const handleIframeError = useCallback(() => {
+    console.error('❌ PDF iframe failed to load, trying PDF.js fallback');
+    setError('Erro ao carregar PDF via iframe');
+    
+    if (strategy === 'iframe') {
+      console.log('🔄 Switching to PDF.js strategy');
+      setStrategy('pdfjs');
+      setLoading(true);
+    } else if (strategy === 'pdfjs') {
+      console.log('🔄 All strategies failed, showing download option');
+      setStrategy('download');
+      setLoading(false);
+    }
+  }, [strategy]);
 
-  const goToPrevPage = () => {
-    setPageNumber(prev => Math.max(1, prev - 1));
-  };
+  // Initialize viewer
+  useEffect(() => {
+    console.log('🔄 Initializing PDF viewer with strategy:', strategy);
+    console.log('📄 PDF URL:', pdfUrl);
+    
+    setLoading(true);
+    setError(null);
+    setIframeLoaded(false);
 
-  const goToNextPage = () => {
-    setPageNumber(prev => Math.min(numPages, prev + 1));
-  };
+    // Check if browser supports PDF viewing
+    if (!checkPDFSupport() && strategy === 'iframe') {
+      console.warn('⚠️ Browser may not support PDF viewing, switching to download');
+      setStrategy('download');
+      setLoading(false);
+      return;
+    }
 
-  const zoomIn = () => {
-    setScale(prev => Math.min(2.0, prev + 0.2));
-  };
+    // Set timeout for loading state
+    const timeout = setTimeout(() => {
+      if (loading && strategy === 'iframe') {
+        console.warn('⚠️ PDF taking too long to load, trying fallback');
+        handleIframeError();
+      }
+    }, 10000); // 10 seconds timeout
 
-  const zoomOut = () => {
-    setScale(prev => Math.max(0.5, prev - 0.2));
-  };
+    return () => clearTimeout(timeout);
+  }, [strategy, pdfUrl, loading, checkPDFSupport, handleIframeError]);
 
   const toggleFullscreen = () => {
     setIsFullscreen(prev => !prev);
   };
 
   const downloadPDF = () => {
-    // Use the original URL for download
+    console.log('📥 Downloading PDF:', pdfUrl);
     const link = document.createElement('a');
     link.href = pdfUrl;
     link.download = `${title}.pdf`;
@@ -76,73 +109,116 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
     link.click();
   };
 
-  if (error) {
-    return (
-      <Card className="mb-6">
-        <CardContent className="p-6 text-center">
-          <div className="text-red-600 mb-4">
-            <p className="font-semibold">Erro ao carregar PDF</p>
-            <p className="text-sm">{error}</p>
-            <p className="text-xs text-gray-500 mt-2">
-              URL: {pdfUrl}
-            </p>
-          </div>
-          <div className="space-x-2">
-            <Button onClick={downloadPDF} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Baixar PDF
-            </Button>
-            <Button 
-              onClick={() => window.open(pdfUrl, '_blank')} 
-              variant="outline"
-            >
-              Abrir em nova aba
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const openInNewTab = () => {
+    console.log('🔗 Opening PDF in new tab:', pdfUrl);
+    window.open(pdfUrl, '_blank');
+  };
 
-  const proxiedUrl = getProxiedPdfUrl();
+  // Render based on current strategy
+  const renderViewer = () => {
+    switch (strategy) {
+      case 'iframe':
+        return (
+          <div className={`overflow-hidden ${isFullscreen ? 'h-screen' : 'h-96'} bg-gray-100 relative`}>
+            {loading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-600">Carregando PDF...</p>
+                  <p className="text-xs text-gray-500 mt-1">Estratégia: Iframe nativo</p>
+                </div>
+              </div>
+            )}
+            <iframe
+              src={getEnhancedPdfUrl()}
+              title={title}
+              className="w-full h-full border-0"
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              style={{ display: iframeLoaded ? 'block' : 'none' }}
+            />
+          </div>
+        );
+
+      case 'pdfjs':
+        return (
+          <div className={`overflow-hidden ${isFullscreen ? 'h-screen' : 'h-96'} bg-gray-100 relative`}>
+            {loading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-600">Carregando PDF...</p>
+                  <p className="text-xs text-gray-500 mt-1">Estratégia: PDF.js via CDN</p>
+                </div>
+              </div>
+            )}
+            <iframe
+              src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(pdfUrl)}`}
+              title={title}
+              className="w-full h-full border-0"
+              onLoad={() => {
+                console.log('✅ PDF.js viewer loaded successfully');
+                setLoading(false);
+                setError(null);
+              }}
+              onError={handleIframeError}
+            />
+          </div>
+        );
+
+      case 'download':
+        return (
+          <div className={`${isFullscreen ? 'h-screen' : 'h-96'} flex items-center justify-center bg-gray-50`}>
+            <div className="text-center p-8">
+              <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Visualização não disponível
+              </h3>
+              <p className="text-gray-600 mb-6">
+                O PDF não pôde ser carregado no navegador. Use as opções abaixo para acessar o arquivo.
+              </p>
+              <div className="space-x-3">
+                <Button onClick={downloadPDF} variant="default">
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar PDF
+                </Button>
+                <Button onClick={openInNewTab} variant="outline">
+                  Abrir em nova aba
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <Card className={`mb-6 ${isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''}`}>
       <CardContent className="p-0">
         {/* Controls */}
         <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-          <div className="flex items-center space-x-2">
-            <Button
-              onClick={goToPrevPage}
-              disabled={pageNumber <= 1 || loading}
-              size="sm"
-              variant="outline"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-medium">
-              {loading ? '...' : `${pageNumber} de ${numPages}`}
-            </span>
-            <Button
-              onClick={goToNextPage}
-              disabled={pageNumber >= numPages || loading}
-              size="sm"
-              variant="outline"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center space-x-3">
+            <Badge variant="outline" className="text-xs">
+              {strategy === 'iframe' && 'Visualizador Nativo'}
+              {strategy === 'pdfjs' && 'PDF.js'}
+              {strategy === 'download' && 'Download Apenas'}
+            </Badge>
+            {error && (
+              <Badge variant="destructive" className="text-xs">
+                Erro de Carregamento
+              </Badge>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
-            <Button onClick={zoomOut} size="sm" variant="outline" disabled={loading}>
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-medium">{Math.round(scale * 100)}%</span>
-            <Button onClick={zoomIn} size="sm" variant="outline" disabled={loading}>
-              <ZoomIn className="h-4 w-4" />
-            </Button>
             <Button onClick={downloadPDF} size="sm" variant="outline">
               <Download className="h-4 w-4" />
+            </Button>
+            <Button onClick={openInNewTab} size="sm" variant="outline">
+              Abrir em nova aba
             </Button>
             <Button onClick={toggleFullscreen} size="sm" variant="outline">
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -151,39 +227,7 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
         </div>
 
         {/* PDF Display */}
-        <div className={`overflow-auto ${isFullscreen ? 'h-screen' : 'max-h-96'} flex justify-center bg-gray-100`}>
-          {loading && (
-            <div className="flex items-center justify-center p-8">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                <p className="text-sm text-gray-600">Carregando PDF...</p>
-              </div>
-            </div>
-          )}
-          
-          <Document
-            file={proxiedUrl}
-            onLoadSuccess={onDocumentLoadSuccess}
-            onLoadError={onDocumentLoadError}
-            loading=""
-            error=""
-            className="flex justify-center"
-            options={{
-              cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-              cMapPacked: true,
-            }}
-          >
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-              className="shadow-lg"
-              loading=""
-              error=""
-            />
-          </Document>
-        </div>
+        {renderViewer()}
       </CardContent>
     </Card>
   );

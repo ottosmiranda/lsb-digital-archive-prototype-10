@@ -120,13 +120,13 @@ const Auth = () => {
           </Button>
           <h2 className="text-3xl font-bold text-gray-900">LSB</h2>
           <p className="mt-2 text-sm text-gray-600">
-            Acesse sua conta ou crie uma nova para sincronizar suas configurações
+            Acesse sua conta de administrador para configurar a plataforma
           </p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Autenticação</CardTitle>
+            <CardTitle>Autenticação de Administrador</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin" className="w-full">
@@ -174,7 +174,7 @@ const Auth = () => {
                     ) : (
                       <>
                         <LogIn className="h-4 w-4 mr-2" />
-                        Entrar
+                        Entrar como Admin
                       </>
                     )}
                   </Button>
@@ -233,7 +233,7 @@ const Auth = () => {
                     ) : (
                       <>
                         <UserPlus className="h-4 w-4 mr-2" />
-                        Criar conta
+                        Criar Conta Admin
                       </>
                     )}
                   </Button>
@@ -252,6 +252,12 @@ const Auth = () => {
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
+
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-blue-800 text-xs">
+                💡 Apenas administradores podem acessar as configurações globais da plataforma
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

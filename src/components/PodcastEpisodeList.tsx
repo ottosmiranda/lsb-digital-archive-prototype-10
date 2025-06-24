@@ -1,7 +1,8 @@
+
 import React, { useImperativeHandle, useState, forwardRef, useCallback } from "react";
 import { useSpotifyOEmbed } from "@/hooks/useSpotifyOEmbed";
 import { useSpotifyEpisodes } from "@/hooks/useSpotifyEpisodes";
-import { useSpotifyAuth } from "@/hooks/useSpotifyAuth";
+import { useGlobalSpotifyAuth } from "@/hooks/useGlobalSpotifyAuth";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { generateEpisodes, generateMoreEpisodes } from "@/utils/episodeGenerator";
 import { generateEpisodeEmbedUrl } from "@/utils/spotifyUtils";
@@ -36,13 +37,11 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
   ({ total, podcastTitle, embedUrl }, ref) => {
     const { oembedData, loading: oembedLoading, error: oembedError } = useSpotifyOEmbed(embedUrl);
     const { 
-      token,
-      error: authError,
-      authStatus,
-      browserCapabilities,
       isConfigured,
-      retryAuthentication
-    } = useSpotifyAuth();
+      isLoading: globalAuthLoading,
+      error: authError,
+      token
+    } = useGlobalSpotifyAuth();
     
     const { 
       episodes: spotifyEpisodes, 
@@ -143,8 +142,9 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
     
     // Enhanced error retry function
     const handleErrorRetry = () => {
-      if (authError) {
-        retryAuthentication();
+      // For global auth errors, redirect to settings
+      if (authError || !isConfigured) {
+        window.location.href = '/settings';
       } else if (episodesError) {
         // Trigger re-fetch by calling loadMore
         loadMore();
@@ -152,7 +152,7 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
     };
 
     const handleConfigure = () => {
-      // Navigate to settings or show config modal
+      // Navigate to settings for admin configuration
       window.location.href = '/settings';
     };
 
@@ -180,8 +180,8 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
               error={displayError}
               onRetry={displayError.retryable ? handleErrorRetry : undefined}
               onConfigure={!isConfigured ? handleConfigure : undefined}
-              authStatus={authStatus}
-              browserName={browserCapabilities.browserName}
+              authStatus={isConfigured ? 'success' : 'not_configured'}
+              browserName="Browser"
               isConfigured={isConfigured}
             />
           )}

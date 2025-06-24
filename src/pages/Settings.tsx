@@ -5,27 +5,41 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import SpotifyConfig from "@/components/SpotifyConfig";
 import VLibrasSettings from "@/components/VLibrasSettings";
-import { Settings as SettingsIcon, Shield } from "lucide-react";
+import { Settings as SettingsIcon, Shield, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { state, actions } = useAuth();
 
   useEffect(() => {
-    if (!state.isAuthenticated) {
+    if (!state.isLoading && !state.isAuthenticated) {
       navigate('/auth');
     }
-  }, [state.isAuthenticated, navigate]);
+  }, [state.isAuthenticated, state.isLoading, navigate]);
 
   const handleSignOut = async () => {
     await actions.signOut();
     navigate('/auth');
   };
 
+  // Show loading while checking authentication
+  if (state.isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center gap-2 text-gray-600">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Verificando autenticação...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render anything if not authenticated (will redirect)
   if (!state.isAuthenticated) {
-    return null; // Will redirect to auth
+    return null;
   }
 
   return (
@@ -45,6 +59,13 @@ const Settings = () => {
               Sair
             </Button>
           </div>
+          <Alert className="mb-6">
+            <Shield className="h-4 w-4" />
+            <AlertDescription>
+              Você está acessando as configurações globais da plataforma. 
+              Essas configurações se aplicam a todos os usuários do sistema.
+            </AlertDescription>
+          </Alert>
           <p className="text-gray-600">
             Configure as integrações globais da plataforma. Essas configurações se aplicam a todos os usuários.
           </p>

@@ -66,18 +66,22 @@ export class DataService {
 
   private async fetchData(): Promise<SearchResult[]> {
     try {
-      console.log('📡 Starting hybrid data fetch (API + JSON)...');
+      console.log('📡 Starting hybrid data fetch (Videos API + Books API + Podcasts JSON)...');
       
       // Fetch videos from API
       const apiVideos = await this.fetchVideosFromAPI();
       console.log('🎬 API videos fetched:', apiVideos.length);
 
-      // Fetch other content from JSON
-      const jsonData = await this.fetchJSONData();
-      console.log('📄 JSON data fetched');
+      // Fetch books from API
+      const apiBooks = await this.fetchBooksFromAPI();
+      console.log('📚 API books fetched:', apiBooks.length);
+
+      // Fetch podcasts from JSON
+      const jsonPodcasts = await this.fetchPodcastsFromJSON();
+      console.log('🎧 JSON podcasts fetched:', jsonPodcasts.length);
 
       // Combine all data
-      const allResults = [...apiVideos, ...jsonData];
+      const allResults = [...apiVideos, ...apiBooks, ...jsonPodcasts];
       console.log('🔄 Combined data, total items:', allResults.length);
 
       return allResults;
@@ -110,6 +114,140 @@ export class DataService {
       console.error('❌ Failed to fetch videos from API:', error);
       console.warn('⚠️ Falling back to mock video data');
       return this.getMockVideoData();
+    }
+  }
+
+  private async fetchBooksFromAPI(): Promise<SearchResult[]> {
+    try {
+      console.log('📚 Fetching books from API...');
+      
+      const { data, error } = await supabase.functions.invoke('fetch-books');
+      
+      if (error) {
+        console.error('❌ Books edge function error:', error);
+        throw error;
+      }
+
+      if (!data.success) {
+        console.error('❌ Books API returned error:', data.error);
+        throw new Error(data.error);
+      }
+
+      console.log('✅ Books from API:', data.count);
+      return data.books;
+    } catch (error) {
+      console.error('❌ Failed to fetch books from API:', error);
+      console.warn('⚠️ Falling back to JSON books data');
+      return this.getBooksFromJSON();
+    }
+  }
+
+  private async fetchPodcastsFromJSON(): Promise<SearchResult[]> {
+    try {
+      console.log('🎧 Fetching podcasts from JSON...');
+      
+      // Add cache-busting timestamp and random parameter
+      const timestamp = new Date().getTime();
+      const random = Math.random().toString(36).substring(7);
+      const url = `/lsb-data.json?t=${timestamp}&r=${random}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      if (!response.ok) {
+        console.warn(`❌ JSON file request failed with status ${response.status}, using fallback data`);
+        return [];
+      }
+
+      const rawText = await response.text();
+      const data = JSON.parse(rawText);
+      
+      if (!data || !data.conteudo || !data.conteudo.podcasts) {
+        console.error('Invalid JSON data structure - missing podcasts');
+        return [];
+      }
+
+      console.log('Processing podcasts from JSON, count:', data.conteudo.podcasts.length);
+      const results: SearchResult[] = [];
+      let idCounter = 2000; // Start from 2000 for podcasts
+
+      data.conteudo.podcasts.forEach((item: any, index: number) => {
+        try {
+          const transformed = this.transformPodcast(item, idCounter++);
+          if (transformed) {
+            results.push(transformed);
+            console.log(`Podcast ${index + 1} transformed:`, transformed.title);
+          }
+        } catch (error) {
+          console.warn(`Error transforming podcast item ${index}:`, error, item);
+        }
+      });
+
+      console.log('Total podcasts transformed:', results.length);
+      return results;
+    } catch (error) {
+      console.error('❌ Error in fetchPodcastsFromJSON:', error);
+      return [];
+    }
+  }
+
+  private async getBooksFromJSON(): Promise<SearchResult[]> {
+    try {
+      console.log('📚 Fetching books from JSON as fallback...');
+      
+      const timestamp = new Date().getTime();
+      const random = Math.random().toString(36).substring(7);
+      const url = `/lsb-data.json?t=${timestamp}&r=${random}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      if (!response.ok) {
+        console.warn(`❌ JSON file request failed, returning empty books array`);
+        return [];
+      }
+
+      const rawText = await response.text();
+      const data = JSON.parse(rawText);
+      
+      if (!data || !data.conteudo || !data.conteudo.livros) {
+        console.error('Invalid JSON data structure - missing books');
+        return [];
+      }
+
+      console.log('Processing books from JSON, count:', data.conteudo.livros.length);
+      const results: SearchResult[] = [];
+      let idCounter = 3000; // Start from 3000 for books from JSON
+
+      data.conteudo.livros.forEach((item: any, index: number) => {
+        try {
+          const transformed = this.transformBook(item, idCounter++);
+          if (transformed) {
+            results.push(transformed);
+            console.log(`Book ${index + 1} transformed:`, transformed.title);
+          }
+        } catch (error) {
+          console.warn(`Error transforming book item ${index}:`, error, item);
+        }
+      });
+
+      console.log('Total books from JSON transformed:', results.length);
+      return results;
+    } catch (error) {
+      console.error('❌ Error in getBooksFromJSON:', error);
+      return [];
     }
   }
 
@@ -176,7 +314,7 @@ export class DataService {
     const results: SearchResult[] = [];
     let idCounter = 2000; // Start from 2000 to avoid conflicts with API videos
 
-    // Process podcasts only (videos now come from API)
+    // Process podcasts only (videos and books now come from API)
     if (data.conteudo.podcasts && Array.isArray(data.conteudo.podcasts)) {
       console.log('Processing podcasts from JSON, count:', data.conteudo.podcasts.length);
       data.conteudo.podcasts.forEach((item: any, index: number) => {
@@ -188,22 +326,6 @@ export class DataService {
           }
         } catch (error) {
           console.warn(`Error transforming podcast item ${index}:`, error, item);
-        }
-      });
-    }
-
-    // Process livros (books)
-    if (data.conteudo.livros && Array.isArray(data.conteudo.livros)) {
-      console.log('Processing livros from JSON, count:', data.conteudo.livros.length);
-      data.conteudo.livros.forEach((item: any, index: number) => {
-        try {
-          const transformed = this.transformBook(item, idCounter++);
-          if (transformed) {
-            results.push(transformed);
-            console.log(`Book ${index + 1} transformed:`, transformed.title);
-          }
-        } catch (error) {
-          console.warn(`Error transforming livro item ${index}:`, error, item);
         }
       });
     }

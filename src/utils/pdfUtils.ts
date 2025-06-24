@@ -4,7 +4,7 @@ export interface PDFViewerCapabilities {
   supportsPDFJS: boolean;
   browserName: string;
   isMobile: boolean;
-  recommendedStrategy: 'iframe' | 'pdfjs' | 'download';
+  recommendedStrategy: 'proxy' | 'pdfjs' | 'download';
 }
 
 export const detectPDFCapabilities = (): PDFViewerCapabilities => {
@@ -27,14 +27,12 @@ export const detectPDFCapabilities = (): PDFViewerCapabilities => {
   const supportsNativePDF = isChrome || isFirefox || isSafari || isEdge;
   const supportsPDFJS = true; // PDF.js works in all modern browsers
   
-  // Recommended strategy based on browser and device
-  let recommendedStrategy: 'iframe' | 'pdfjs' | 'download' = 'iframe';
+  // Use proxy strategy as primary approach
+  let recommendedStrategy: 'proxy' | 'pdfjs' | 'download' = 'proxy';
   
   if (isMobile && isSafari) {
-    // Safari mobile has issues with PDF iframes
-    recommendedStrategy = 'pdfjs';
-  } else if (!supportsNativePDF) {
-    recommendedStrategy = 'pdfjs';
+    // Safari mobile sometimes has issues, but try proxy first
+    recommendedStrategy = 'proxy';
   }
 
   return {
@@ -46,24 +44,14 @@ export const detectPDFCapabilities = (): PDFViewerCapabilities => {
   };
 };
 
-export const buildPDFViewerUrl = (pdfUrl: string, strategy: 'iframe' | 'pdfjs'): string => {
-  switch (strategy) {
-    case 'iframe':
-      // Enhanced PDF URL with viewer parameters
-      const params = new URLSearchParams();
-      params.set('toolbar', '1');
-      params.set('navpanes', '1');
-      params.set('scrollbar', '1');
-      params.set('view', 'FitH');
-      return `${pdfUrl}#${params.toString()}`;
-      
-    case 'pdfjs':
-      // PDF.js viewer with the PDF URL
-      return `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(pdfUrl)}`;
-      
-    default:
-      return pdfUrl;
-  }
+export const buildProxyPDFUrl = (originalPdfUrl: string): string => {
+  const supabaseUrl = 'https://acnympbxfptajtxvmkqn.supabase.co';
+  const proxyUrl = `${supabaseUrl}/functions/v1/proxy-pdf`;
+  return `${proxyUrl}?url=${encodeURIComponent(originalPdfUrl)}`;
+};
+
+export const buildPDFJSUrl = (pdfUrl: string): string => {
+  return `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(pdfUrl)}`;
 };
 
 export const logPDFEvent = (event: string, details?: any) => {

@@ -35,5 +35,30 @@
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Initialize VLibras when DOM is ready
+      document.addEventListener('DOMContentLoaded', function() {
+        try {
+          console.log('🎯 Initializing VLibras widget...');
+          if (typeof VLibras !== 'undefined') {
+            new VLibras.Widget('https://vlibras.gov.br/app');
+            console.log('✅ VLibras widget initialized successfully');
+          } else {
+            console.warn('⚠️ VLibras not loaded yet, retrying...');
+            // Retry after a short delay if VLibras hasn't loaded yet
+            setTimeout(function() {
+              if (typeof VLibras !== 'undefined') {
+                new VLibras.Widget('https://vlibras.gov.br/app');
+                console.log('✅ VLibras widget initialized on retry');
+              } else {
+                console.error('❌ VLibras failed to load');
+              }
+            }, 1000);
+          }
+        } catch (error) {
+          console.error('❌ Error initializing VLibras:', error);
+        }
+      });
+    </script>
   </body>
 </html>

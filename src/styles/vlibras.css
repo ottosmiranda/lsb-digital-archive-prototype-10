@@ -1,14 +1,17 @@
 
-/* VLibras Widget Styles */
+/* VLibras Widget Positioning */
 [vw] {
-  z-index: 2147483647 !important;
   position: fixed !important;
-  display: block !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
+  z-index: 2147483647 !important;
 }
 
-/* VLibras positioning classes */
+/* Default position - bottom right */
+[vw]:not(.vlibras-top-left):not(.vlibras-top-right):not(.vlibras-bottom-left),
+[vw].vlibras-bottom-right {
+  bottom: 20px !important;
+  right: 20px !important;
+}
+
 [vw].vlibras-top-left {
   top: 20px !important;
   left: 20px !important;
@@ -24,38 +27,7 @@
   left: 20px !important;
 }
 
-[vw].vlibras-bottom-right {
-  bottom: 20px !important;
-  right: 20px !important;
-}
-
-/* Target the actual VLibras elements that get injected */
-[vw-access-button] {
-  z-index: 2147483647 !important;
-  position: relative !important;
-  display: block !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-}
-
-[vw-plugin-wrapper] {
-  z-index: 2147483647 !important;
-  position: relative !important;
-  display: block !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-}
-
-/* Ensure VLibras content is styled properly */
-[vw] iframe,
-[vw-plugin-wrapper] iframe {
-  border: none !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-  border-radius: 8px !important;
-  z-index: 2147483647 !important;
-}
-
-/* Hide VLibras when disabled */
+/* Hide widget when disabled */
 [vw].vlibras-hidden {
   display: none !important;
 }
@@ -63,35 +35,12 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
   [vw] {
-    transform: scale(0.8) !important;
-    transform-origin: bottom right !important;
-  }
-  
-  [vw].vlibras-top-left {
-    transform-origin: top left !important;
-  }
-  
-  [vw].vlibras-top-right {
-    transform-origin: top right !important;
-  }
-  
-  [vw].vlibras-bottom-left {
-    transform-origin: bottom left !important;
+    transform: scale(0.9) !important;
   }
 }
 
 @media (max-width: 480px) {
   [vw] {
-    transform: scale(0.7) !important;
+    transform: scale(0.8) !important;
   }
-}
-
-/* Force visibility for all VLibras elements */
-[vw],
-[vw] *,
-[vw-access-button],
-[vw-plugin-wrapper] {
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: block !important;
 }

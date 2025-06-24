@@ -6,7 +6,6 @@ import { platformSettingsService } from '@/services/platformSettingsService';
 
 type VLibrasAction =
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_LOADED'; payload: boolean }
   | { type: 'SET_ENABLED'; payload: boolean }
   | { type: 'SET_CONFIG'; payload: Partial<VLibrasConfig> }
   | { type: 'SET_ERROR'; payload: string | null }
@@ -14,7 +13,7 @@ type VLibrasAction =
 
 const initialState: VLibrasState = {
   isLoading: false,
-  isLoaded: false,
+  isLoaded: true, // Always true since widget is in HTML
   isEnabled: false,
   config: vlibrasService.getDefaultConfig(),
   error: null
@@ -24,8 +23,6 @@ function vlibrasReducer(state: VLibrasState, action: VLibrasAction): VLibrasStat
   switch (action.type) {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
-    case 'SET_LOADED':
-      return { ...state, isLoaded: action.payload, isLoading: false };
     case 'SET_ENABLED':
       return { ...state, isEnabled: action.payload };
     case 'SET_CONFIG':
@@ -52,7 +49,6 @@ export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       console.log('VLibras: Loading configuration...');
       
-      // Always try to load from platform settings first
       const { data, error } = await platformSettingsService.getVLibrasConfig();
       
       let config: VLibrasConfig;
@@ -67,11 +63,14 @@ export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       dispatch({ type: 'INITIALIZE', payload: config });
       
+      // Apply the configuration
       if (config.enabled) {
-        console.log('VLibras: Config shows enabled, initializing widget...');
-        await loadWidget(config);
+        console.log('VLibras: Config shows enabled, showing widget...');
+        vlibrasService.showWidget();
+        vlibrasService.updatePosition(config.position);
       } else {
-        console.log('VLibras: Config shows disabled, skipping widget initialization');
+        console.log('VLibras: Config shows disabled, hiding widget');
+        vlibrasService.hideWidget();
       }
     } catch (error) {
       console.error('VLibras: Error loading config:', error);
@@ -95,42 +94,12 @@ export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const loadWidget = async (configToUse?: VLibrasConfig) => {
-    try {
-      const config = configToUse || state.config;
-      console.log('VLibras: Starting widget initialization with config:', config);
-      
-      dispatch({ type: 'SET_LOADING', payload: true });
-      dispatch({ type: 'SET_ERROR', payload: null });
-      
-      await vlibrasService.initializeWidget(config);
-      console.log('VLibras: Widget initialized successfully');
-      dispatch({ type: 'SET_LOADED', payload: true });
-      
-      if (config.enabled) {
-        vlibrasService.showWidget();
-        dispatch({ type: 'SET_ENABLED', payload: true });
-        console.log('VLibras: Widget shown successfully');
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar o VLibras';
-      console.error('VLibras: Widget load error:', error);
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-    }
-  };
-
   const enable = async () => {
     try {
       console.log('VLibras: Enabling widget...');
-      dispatch({ type: 'SET_LOADING', payload: true });
-      dispatch({ type: 'SET_ERROR', payload: null });
-      
-      if (!state.isLoaded) {
-        await vlibrasService.initializeWidget(state.config);
-        dispatch({ type: 'SET_LOADED', payload: true });
-      }
       
       vlibrasService.showWidget();
+      vlibrasService.updatePosition(state.config.position);
       dispatch({ type: 'SET_ENABLED', payload: true });
       
       const newConfig = { ...state.config, enabled: true };
@@ -170,12 +139,9 @@ export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ child
       dispatch({ type: 'SET_CONFIG', payload: configUpdate });
       await saveConfig(newConfig);
       
-      if (state.isEnabled) {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        vlibrasService.destroyWidget();
-        await vlibrasService.initializeWidget(newConfig);
-        vlibrasService.showWidget();
-        dispatch({ type: 'SET_LOADING', payload: false });
+      // Apply position changes immediately if widget is enabled
+      if (state.isEnabled && configUpdate.position) {
+        vlibrasService.updatePosition(configUpdate.position);
       }
       
       console.log('VLibras: Config updated successfully');
@@ -186,13 +152,21 @@ export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const loadWidget = async () => {
+    // Widget is always loaded since it's in HTML, just show it
+    if (state.config.enabled) {
+      vlibrasService.showWidget();
+      vlibrasService.updatePosition(state.config.position);
+    }
+  };
+
   const value: VLibrasContextType = {
     state,
     actions: {
       enable,
       disable,
       updateConfig,
-      loadWidget: () => loadWidget()
+      loadWidget
     }
   };
 

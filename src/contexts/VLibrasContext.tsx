@@ -1,6 +1,9 @@
+
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { VLibrasContextType, VLibrasState, VLibrasConfig } from '@/types/vlibrasTypes';
 import { vlibrasService } from '@/services/vlibrasService';
+import { userSettingsService } from '@/services/userSettingsService';
+import { useAuth } from '@/contexts/AuthContext';
 
 type VLibrasAction =
   | { type: 'SET_LOADING'; payload: boolean }
@@ -41,15 +44,62 @@ const VLibrasContext = createContext<VLibrasContextType | undefined>(undefined);
 
 export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(vlibrasReducer, initialState);
+  const { state: authState } = useAuth();
 
   useEffect(() => {
-    const savedConfig = vlibrasService.loadConfig();
-    dispatch({ type: 'INITIALIZE', payload: savedConfig });
-    
-    if (savedConfig.enabled) {
-      loadWidget();
+    loadConfig();
+  }, [authState.isAuthenticated, authState.user]);
+
+  const loadConfig = async () => {
+    try {
+      let config: VLibrasConfig;
+      
+      if (authState.isAuthenticated && authState.user) {
+        // Load from database for authenticated users
+        const { data, error } = await userSettingsService.getVLibrasConfig(authState.user.id);
+        
+        if (error) {
+          console.warn('Error loading config from database, using localStorage fallback:', error);
+          config = vlibrasService.loadConfig();
+        } else {
+          config = data || vlibrasService.getDefaultConfig();
+        }
+      } else {
+        // Load from localStorage for unauthenticated users
+        config = vlibrasService.loadConfig();
+      }
+      
+      dispatch({ type: 'INITIALIZE', payload: config });
+      
+      if (config.enabled) {
+        loadWidget();
+      }
+    } catch (error) {
+      console.error('Error loading VLibras config:', error);
+      const fallbackConfig = vlibrasService.getDefaultConfig();
+      dispatch({ type: 'INITIALIZE', payload: fallbackConfig });
     }
-  }, []);
+  };
+
+  const saveConfig = async (newConfig: VLibrasConfig) => {
+    try {
+      if (authState.isAuthenticated && authState.user) {
+        // Save to database for authenticated users
+        const { error } = await userSettingsService.saveVLibrasConfig(authState.user.id, newConfig);
+        if (error) {
+          console.error('Error saving config to database:', error);
+          // Fallback to localStorage
+          vlibrasService.saveConfig(newConfig);
+        }
+      } else {
+        // Save to localStorage for unauthenticated users
+        vlibrasService.saveConfig(newConfig);
+      }
+    } catch (error) {
+      console.error('Error saving VLibras config:', error);
+      vlibrasService.saveConfig(newConfig);
+    }
+  };
 
   const loadWidget = async () => {
     try {
@@ -84,7 +134,7 @@ export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ child
       dispatch({ type: 'SET_ENABLED', payload: true });
       
       const newConfig = { ...state.config, enabled: true };
-      vlibrasService.saveConfig(newConfig);
+      await saveConfig(newConfig);
       dispatch({ type: 'SET_CONFIG', payload: { enabled: true } });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao habilitar o VLibras';
@@ -93,13 +143,13 @@ export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const disable = () => {
+  const disable = async () => {
     try {
       vlibrasService.hideWidget();
       dispatch({ type: 'SET_ENABLED', payload: false });
       
       const newConfig = { ...state.config, enabled: false };
-      vlibrasService.saveConfig(newConfig);
+      await saveConfig(newConfig);
       dispatch({ type: 'SET_CONFIG', payload: { enabled: false } });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao desabilitar o VLibras';
@@ -112,7 +162,7 @@ export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const newConfig = { ...state.config, ...configUpdate };
       dispatch({ type: 'SET_CONFIG', payload: configUpdate });
-      vlibrasService.saveConfig(newConfig);
+      await saveConfig(newConfig);
       
       if (state.isEnabled) {
         dispatch({ type: 'SET_LOADING', payload: true });

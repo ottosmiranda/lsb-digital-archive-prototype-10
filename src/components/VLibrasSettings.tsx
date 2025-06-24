@@ -6,11 +6,15 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Accessibility, CheckCircle, AlertCircle, Settings, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Accessibility, CheckCircle, AlertCircle, Settings, Loader2, User, Cloud, HardDrive } from 'lucide-react';
 import { useVLibras } from '@/contexts/VLibrasContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 const VLibrasSettings: React.FC = () => {
   const { state, actions } = useVLibras();
+  const { state: authState } = useAuth();
   const { isLoading, isLoaded, isEnabled, config, error } = state;
 
   const handleToggle = async () => {
@@ -62,12 +66,34 @@ const VLibrasSettings: React.FC = () => {
     return null;
   };
 
+  const getSyncStatusBadge = () => {
+    if (authState.isAuthenticated) {
+      return (
+        <Badge className="bg-blue-100 text-blue-800">
+          <Cloud className="h-3 w-3 mr-1" />
+          Sincronizado
+        </Badge>
+      );
+    }
+    
+    return (
+      <Badge variant="outline">
+        <HardDrive className="h-3 w-3 mr-1" />
+        Local
+      </Badge>
+    );
+  };
+
   return (
     <Card className="mb-4">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Accessibility className="h-5 w-5" />
           VLibras - Tradutor de Libras
+          <div className="flex gap-2 ml-auto">
+            {getStatusBadge()}
+            {getSyncStatusBadge()}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -79,12 +105,27 @@ const VLibrasSettings: React.FC = () => {
           </p>
         </div>
 
+        {!authState.isAuthenticated && (
+          <Alert>
+            <User className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex items-center justify-between">
+                <span>Faça login para sincronizar suas configurações entre dispositivos.</span>
+                <Link to="/auth">
+                  <Button variant="outline" size="sm">
+                    Entrar
+                  </Button>
+                </Link>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Label htmlFor="vlibras-toggle" className="font-medium">
               Habilitar VLibras
             </Label>
-            {getStatusBadge()}
           </div>
           <Switch
             id="vlibras-toggle"
@@ -160,6 +201,11 @@ const VLibrasSettings: React.FC = () => {
         <div className="text-xs text-gray-500">
           O VLibras é uma tecnologia desenvolvida pelo governo brasileiro em parceria com universidades, 
           disponibilizada gratuitamente para promover a acessibilidade digital.
+          {authState.isAuthenticated && (
+            <span className="block mt-1 text-blue-600">
+              ✓ Suas configurações estão sendo sincronizadas automaticamente.
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -35,7 +35,24 @@
     
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Official VLibras CDN Script - Auto-initializes -->
+    <!-- Official VLibras CDN Script -->
     <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+    <script>
+      // Initialize VLibras with proper error handling and timing
+      document.addEventListener('DOMContentLoaded', function() {
+        try {
+          // Wait a moment for the VLibras script to fully load
+          setTimeout(() => {
+            if (typeof VLibras !== 'undefined' && VLibras.Widget) {
+              new VLibras.Widget('https://vlibras.gov.br/app');
+            } else {
+              console.warn('VLibras widget not available');
+            }
+          }, 500);
+        } catch (error) {
+          console.warn('VLibras initialization failed:', error);
+        }
+      });
+    </script>
   </body>
 </html>

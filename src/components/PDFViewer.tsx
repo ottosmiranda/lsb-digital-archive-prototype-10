@@ -1,32 +1,33 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Download, Maximize2, Minimize2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Download, Maximize2, Minimize2, AlertCircle, RefreshCw, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { buildProxyPDFUrl, buildPDFJSUrl, detectPDFCapabilities, logPDFEvent } from '@/utils/pdfUtils';
+import { buildProxyPDFUrl, logPDFEvent } from '@/utils/pdfUtils';
 
 interface PDFViewerProps {
   pdfUrl: string;
   title: string;
 }
 
-type ViewerStrategy = 'proxy' | 'pdfjs' | 'download';
+type ViewerStrategy = 'proxy' | 'google-docs' | 'direct' | 'download';
 
 const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
   const [strategy, setStrategy] = useState<ViewerStrategy>('proxy');
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [capabilities] = useState(() => detectPDFCapabilities());
 
   // Get the appropriate URL based on strategy
   const getPDFUrl = useCallback(() => {
     switch (strategy) {
       case 'proxy':
         return buildProxyPDFUrl(pdfUrl);
-      case 'pdfjs':
-        return buildPDFJSUrl(pdfUrl);
+      case 'google-docs':
+        return `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+      case 'direct':
+        return pdfUrl;
       default:
         return pdfUrl;
     }
@@ -42,17 +43,22 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
   // Handle iframe load error
   const handleIframeError = useCallback(() => {
     logPDFEvent('PDF load failed', { strategy, url: getPDFUrl() });
-    setError(`Erro ao carregar PDF via ${strategy}`);
     
     if (strategy === 'proxy') {
-      logPDFEvent('Switching to PDF.js fallback');
-      setStrategy('pdfjs');
+      logPDFEvent('Switching to Google Docs viewer fallback');
+      setStrategy('google-docs');
       setLoading(true);
       setError(null);
-    } else if (strategy === 'pdfjs') {
+    } else if (strategy === 'google-docs') {
+      logPDFEvent('Switching to direct PDF fallback');
+      setStrategy('direct');
+      setLoading(true);
+      setError(null);
+    } else if (strategy === 'direct') {
       logPDFEvent('All strategies failed, showing download option');
       setStrategy('download');
       setLoading(false);
+      setError('Não foi possível carregar o PDF no navegador');
     }
   }, [strategy, getPDFUrl]);
 
@@ -60,7 +66,6 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
   useEffect(() => {
     logPDFEvent('Initializing PDF viewer', { 
       strategy, 
-      capabilities,
       originalUrl: pdfUrl,
       viewerUrl: getPDFUrl()
     });
@@ -74,10 +79,10 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
         logPDFEvent('PDF loading timeout', { strategy });
         handleIframeError();
       }
-    }, 15000); // 15 seconds timeout
+    }, 10000); // 10 seconds timeout
 
     return () => clearTimeout(timeout);
-  }, [strategy, pdfUrl, getPDFUrl, capabilities, loading, handleIframeError]);
+  }, [strategy, pdfUrl, getPDFUrl, loading, handleIframeError]);
 
   const toggleFullscreen = () => {
     setIsFullscreen(prev => !prev);
@@ -93,16 +98,16 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
   };
 
   const openInNewTab = () => {
-    logPDFEvent('Opening PDF in new tab', { url: getPDFUrl() });
-    window.open(getPDFUrl(), '_blank');
+    logPDFEvent('Opening PDF in new tab', { url: pdfUrl });
+    window.open(pdfUrl, '_blank');
   };
 
   const retryLoading = () => {
     logPDFEvent('Retrying PDF load', { strategy });
     setLoading(true);
     setError(null);
-    // Force iframe reload by changing key
-    setStrategy(prev => prev);
+    // Reset to proxy strategy
+    setStrategy('proxy');
   };
 
   // Render based on current strategy
@@ -124,7 +129,12 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
                 Baixar PDF
               </Button>
               <Button onClick={openInNewTab} variant="outline">
+                <ExternalLink className="h-4 w-4 mr-2" />
                 Abrir em nova aba
+              </Button>
+              <Button onClick={retryLoading} variant="outline">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Tentar novamente
               </Button>
             </div>
           </div>
@@ -140,7 +150,9 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
               <p className="text-sm text-gray-600">Carregando PDF...</p>
               <p className="text-xs text-gray-500 mt-1">
-                Estratégia: {strategy === 'proxy' ? 'Proxy Supabase' : 'PDF.js via CDN'}
+                Estratégia: {strategy === 'proxy' ? 'Proxy Supabase' : 
+                            strategy === 'google-docs' ? 'Google Docs Viewer' : 
+                            'Acesso Direto'}
               </p>
             </div>
           </div>
@@ -158,7 +170,7 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
           </div>
         )}
         <iframe
-          key={`${strategy}-${Date.now()}`} // Force reload on strategy change
+          key={`${strategy}-${Date.now()}`}
           src={getPDFUrl()}
           title={title}
           className="w-full h-full border-0"
@@ -170,6 +182,16 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
     );
   };
 
+  const getStrategyLabel = () => {
+    switch (strategy) {
+      case 'proxy': return 'Proxy Supabase';
+      case 'google-docs': return 'Google Docs Viewer';
+      case 'direct': return 'Acesso Direto';
+      case 'download': return 'Download Apenas';
+      default: return strategy;
+    }
+  };
+
   return (
     <Card className={`mb-6 ${isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''}`}>
       <CardContent className="p-0">
@@ -177,28 +199,23 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
         <div className="flex items-center justify-between p-4 border-b bg-gray-50">
           <div className="flex items-center space-x-3">
             <Badge variant="outline" className="text-xs">
-              {strategy === 'proxy' && 'Proxy Supabase'}
-              {strategy === 'pdfjs' && 'PDF.js CDN'}
-              {strategy === 'download' && 'Download Apenas'}
+              {getStrategyLabel()}
             </Badge>
             {error && (
               <Badge variant="destructive" className="text-xs">
                 Erro de Carregamento
               </Badge>
             )}
-            <Badge variant="secondary" className="text-xs">
-              {capabilities.browserName} | {capabilities.isMobile ? 'Mobile' : 'Desktop'}
-            </Badge>
           </div>
 
           <div className="flex items-center space-x-2">
-            <Button onClick={downloadPDF} size="sm" variant="outline">
+            <Button onClick={downloadPDF} size="sm" variant="outline" title="Baixar PDF">
               <Download className="h-4 w-4" />
             </Button>
-            <Button onClick={openInNewTab} size="sm" variant="outline">
-              Abrir em nova aba
+            <Button onClick={openInNewTab} size="sm" variant="outline" title="Abrir em nova aba">
+              <ExternalLink className="h-4 w-4" />
             </Button>
-            <Button onClick={toggleFullscreen} size="sm" variant="outline">
+            <Button onClick={toggleFullscreen} size="sm" variant="outline" title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}>
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
           </div>

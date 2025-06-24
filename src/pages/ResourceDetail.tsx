@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
@@ -89,6 +88,7 @@ const ResourceDetail = () => {
           year: foundResource.year,
           subject: foundResource.subject,
           embedUrl: foundResource.embedUrl,
+          pdfUrl: foundResource.pdfUrl, // Add pdfUrl from SearchResult
           fullDescription: foundResource.description, // Use description as fullDescription for now
           tags: foundResource.subject ? [foundResource.subject] : undefined
         };

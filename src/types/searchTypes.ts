@@ -1,4 +1,3 @@
-
 export interface SearchResult {
   id: number;
   title: string;
@@ -14,6 +13,7 @@ export interface SearchResult {
   pais?: string;
   documentType?: string;
   embedUrl?: string; // Add embedUrl property for podcasts
+  pdfUrl?: string; // Add pdfUrl property for books
 }
 
 export interface SearchFilters {

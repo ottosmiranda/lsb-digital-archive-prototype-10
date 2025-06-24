@@ -20,4 +20,5 @@ export interface Resource {
   tableOfContents?: string[];
   transcript?: boolean;
   embedUrl?: string;
+  pdfUrl?: string; // Add pdfUrl property for books
 }

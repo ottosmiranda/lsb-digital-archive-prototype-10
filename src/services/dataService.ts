@@ -429,6 +429,14 @@ export class DataService {
       // Extract document type from the new field
       const documentType = item.tipo_documento || 'Livro';
 
+      // Build complete PDF URL - ensure it's properly formatted
+      let pdfUrl: string | undefined;
+      if (item.arquivo) {
+        const baseFileUrl = 'https://link-business-school.onrender.com';
+        pdfUrl = item.arquivo.startsWith('http') ? item.arquivo : `${baseFileUrl}${item.arquivo}`;
+        console.log(`📚 Book PDF URL: ${pdfUrl}`);
+      }
+
       const result: SearchResult = {
         id,
         title,
@@ -439,7 +447,8 @@ export class DataService {
         subject,
         pages: item.paginas,
         thumbnail: item.imagem_url,
-        documentType
+        documentType,
+        pdfUrl
       };
 
       return result;

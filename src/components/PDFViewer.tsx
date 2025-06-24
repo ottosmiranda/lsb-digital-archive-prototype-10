@@ -4,9 +4,13 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
 
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configure PDF.js worker to use the installed version
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url,
+).toString();
 
 interface PDFViewerProps {
   pdfUrl: string;
@@ -21,17 +25,27 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Create proxied PDF URL using our Edge Function
+  const getProxiedPdfUrl = useCallback(() => {
+    const baseUrl = `https://acnympbxfptajtxvmkqn.supabase.co/functions/v1/proxy-pdf`;
+    const encodedUrl = encodeURIComponent(pdfUrl);
+    return `${baseUrl}?url=${encodedUrl}`;
+  }, [pdfUrl]);
+
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
+    console.log('✅ PDF loaded successfully with', numPages, 'pages');
     setNumPages(numPages);
     setLoading(false);
     setError(null);
   }, []);
 
   const onDocumentLoadError = useCallback((error: Error) => {
-    console.error('PDF load error:', error);
-    setError('Erro ao carregar o PDF. Verifique se o arquivo está disponível.');
+    console.error('❌ PDF load error:', error);
+    console.log('📄 Original PDF URL:', pdfUrl);
+    console.log('🔄 Proxied PDF URL:', getProxiedPdfUrl());
+    setError('Erro ao carregar o PDF. O arquivo pode não estar disponível no momento.');
     setLoading(false);
-  }, []);
+  }, [pdfUrl, getProxiedPdfUrl]);
 
   const goToPrevPage = () => {
     setPageNumber(prev => Math.max(1, prev - 1));
@@ -54,9 +68,11 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
   };
 
   const downloadPDF = () => {
+    // Use the original URL for download
     const link = document.createElement('a');
     link.href = pdfUrl;
     link.download = `${title}.pdf`;
+    link.target = '_blank';
     link.click();
   };
 
@@ -67,15 +83,28 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
           <div className="text-red-600 mb-4">
             <p className="font-semibold">Erro ao carregar PDF</p>
             <p className="text-sm">{error}</p>
+            <p className="text-xs text-gray-500 mt-2">
+              URL: {pdfUrl}
+            </p>
           </div>
-          <Button onClick={downloadPDF} variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Baixar PDF
-          </Button>
+          <div className="space-x-2">
+            <Button onClick={downloadPDF} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Baixar PDF
+            </Button>
+            <Button 
+              onClick={() => window.open(pdfUrl, '_blank')} 
+              variant="outline"
+            >
+              Abrir em nova aba
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
   }
+
+  const proxiedUrl = getProxiedPdfUrl();
 
   return (
     <Card className={`mb-6 ${isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''}`}>
@@ -85,18 +114,18 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
           <div className="flex items-center space-x-2">
             <Button
               onClick={goToPrevPage}
-              disabled={pageNumber <= 1}
+              disabled={pageNumber <= 1 || loading}
               size="sm"
               variant="outline"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm font-medium">
-              {pageNumber} de {numPages}
+              {loading ? '...' : `${pageNumber} de ${numPages}`}
             </span>
             <Button
               onClick={goToNextPage}
-              disabled={pageNumber >= numPages}
+              disabled={pageNumber >= numPages || loading}
               size="sm"
               variant="outline"
             >
@@ -105,11 +134,11 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
           </div>
 
           <div className="flex items-center space-x-2">
-            <Button onClick={zoomOut} size="sm" variant="outline">
+            <Button onClick={zoomOut} size="sm" variant="outline" disabled={loading}>
               <ZoomOut className="h-4 w-4" />
             </Button>
             <span className="text-sm font-medium">{Math.round(scale * 100)}%</span>
-            <Button onClick={zoomIn} size="sm" variant="outline">
+            <Button onClick={zoomIn} size="sm" variant="outline" disabled={loading}>
               <ZoomIn className="h-4 w-4" />
             </Button>
             <Button onClick={downloadPDF} size="sm" variant="outline">
@@ -133,11 +162,16 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
           )}
           
           <Document
-            file={pdfUrl}
+            file={proxiedUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
             loading=""
+            error=""
             className="flex justify-center"
+            options={{
+              cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+              cMapPacked: true,
+            }}
           >
             <Page
               pageNumber={pageNumber}
@@ -145,6 +179,8 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
               renderTextLayer={false}
               renderAnnotationLayer={false}
               className="shadow-lg"
+              loading=""
+              error=""
             />
           </Document>
         </div>

@@ -1,29 +1,46 @@
 
 import { Book, Video, Headphones } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useDataLoader } from '@/hooks/useDataLoader';
+import { useMemo } from 'react';
 
 const QuickAccess = () => {
+  const { allData } = useDataLoader();
+
+  // Calculate real counts from loaded data
+  const counts = useMemo(() => {
+    const videosCount = allData.filter(item => item.type === 'video').length;
+    const booksCount = allData.filter(item => item.type === 'titulo').length;
+    const podcastsCount = allData.filter(item => item.type === 'podcast').length;
+
+    return {
+      videos: videosCount > 0 ? videosCount.toString() : '...',
+      books: booksCount > 0 ? booksCount.toString() : '...',
+      podcasts: podcastsCount > 0 ? podcastsCount.toString() : '...'
+    };
+  }, [allData]);
+
   const accessTypes = [
     {
       icon: Book,
       label: 'Livros',
       href: '/buscar?filtros=titulo',
       color: 'from-blue-500 to-blue-600',
-      count: '1,234'
+      count: counts.books
     },
     {
       icon: Video,
       label: 'Vídeos',
       href: '/buscar?filtros=video',
       color: 'from-red-500 to-red-600',
-      count: '342'
+      count: counts.videos
     },
     {
       icon: Headphones,
       label: 'Podcasts',
       href: '/buscar?filtros=podcast',
       color: 'from-purple-500 to-purple-600',
-      count: '128'
+      count: counts.podcasts
     }
   ];
 
@@ -67,7 +84,7 @@ const QuickAccess = () => {
                     {type.label}
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    {type.count} itens
+                    {type.count !== '...' ? `${type.count} itens` : 'Carregando...'}
                   </p>
                 </div>
               </Link>

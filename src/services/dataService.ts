@@ -1,4 +1,5 @@
 import { SearchResult } from '@/types/searchTypes';
+import { supabase } from '@/integrations/supabase/client';
 
 export class DataService {
   private static instance: DataService;
@@ -65,7 +66,56 @@ export class DataService {
 
   private async fetchData(): Promise<SearchResult[]> {
     try {
-      console.log('📡 Fetching /lsb-data.json...');
+      console.log('📡 Starting hybrid data fetch (API + JSON)...');
+      
+      // Fetch videos from API
+      const apiVideos = await this.fetchVideosFromAPI();
+      console.log('🎬 API videos fetched:', apiVideos.length);
+
+      // Fetch other content from JSON
+      const jsonData = await this.fetchJSONData();
+      console.log('📄 JSON data fetched');
+
+      // Combine all data
+      const allResults = [...apiVideos, ...jsonData];
+      console.log('🔄 Combined data, total items:', allResults.length);
+
+      return allResults;
+    } catch (error) {
+      console.error('❌ Error in fetchData:', error);
+      console.warn('⚠️ Falling back to JSON-only data');
+      return this.fetchJSONData();
+    }
+  }
+
+  private async fetchVideosFromAPI(): Promise<SearchResult[]> {
+    try {
+      console.log('🎬 Fetching videos from API...');
+      
+      const { data, error } = await supabase.functions.invoke('fetch-videos');
+      
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        throw error;
+      }
+
+      if (!data.success) {
+        console.error('❌ API returned error:', data.error);
+        throw new Error(data.error);
+      }
+
+      console.log('✅ Videos from API:', data.count);
+      return data.videos;
+    } catch (error) {
+      console.error('❌ Failed to fetch videos from API:', error);
+      console.warn('⚠️ Falling back to mock video data');
+      return this.getMockVideoData();
+    }
+  }
+
+  private async fetchJSONData(): Promise<SearchResult[]> {
+    try {
+      console.log('📡 Fetching JSON data...');
       
       // Add cache-busting timestamp and random parameter
       const timestamp = new Date().getTime();
@@ -83,7 +133,6 @@ export class DataService {
       });
       
       console.log('📊 Response status:', response.status);
-      console.log('📋 Response headers:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         console.warn(`❌ JSON file request failed with status ${response.status}, using fallback mock data`);
@@ -93,62 +142,43 @@ export class DataService {
       console.log('📖 Response OK, parsing JSON...');
       const rawText = await response.text();
       console.log('📏 Raw response length:', rawText.length);
-      console.log('👀 Raw response preview (first 200 chars):', rawText.substring(0, 200));
       
       let data;
       try {
         data = JSON.parse(rawText);
         console.log('✅ JSON parsed successfully');
-        console.log('🔑 Parsed data keys:', Object.keys(data));
-        console.log('📊 Total items reported:', data.totalItens);
       } catch (parseError) {
         console.error('❌ JSON parse error:', parseError);
-        console.warn('⚠️ JSON parsing failed, using fallback mock data');
         return this.getFallbackData();
       }
       
-      // Validate and transform data
-      console.log('🔄 Validating and transforming data...');
-      const transformedData = this.validateAndTransformData(data);
-      console.log('✅ Data transformation complete, final count:', transformedData.length);
-      
-      if (transformedData.length > 3) {
-        console.log('🎉 Successfully loaded real data with', transformedData.length, 'items!');
-      } else {
-        console.warn('⚠️ Only got', transformedData.length, 'items - this might still be fallback data');
-      }
+      // Transform data (excluding videos since they come from API)
+      console.log('🔄 Validating and transforming JSON data...');
+      const transformedData = this.validateAndTransformJSONData(data);
+      console.log('✅ JSON data transformation complete, final count:', transformedData.length);
       
       return transformedData;
     } catch (error) {
-      console.error('❌ Error in fetchData:', error);
-      console.warn('⚠️ Fetch failed, using fallback mock data');
+      console.error('❌ Error in fetchJSONData:', error);
       return this.getFallbackData();
     }
   }
 
-  private validateAndTransformData(data: any): SearchResult[] {
-    console.log('Raw data structure:', data);
-    console.log('Data type:', typeof data);
-    console.log('Is array:', Array.isArray(data));
+  private validateAndTransformJSONData(data: any): SearchResult[] {
+    console.log('Raw JSON data structure:', data);
     
-    if (!data) {
-      console.error('Data is null or undefined');
-      return this.getFallbackData();
+    if (!data || !data.conteudo) {
+      console.error('Invalid JSON data structure - missing conteudo property');
+      return [];
     }
 
-    if (!data.conteudo) {
-      console.error('Invalid data structure - missing conteudo property');
-      console.log('Available top-level keys:', Object.keys(data));
-      return this.getFallbackData();
-    }
-
-    console.log('Conteudo keys:', Object.keys(data.conteudo));
+    console.log('JSON Conteudo keys:', Object.keys(data.conteudo));
     const results: SearchResult[] = [];
-    let idCounter = 1;
+    let idCounter = 2000; // Start from 2000 to avoid conflicts with API videos
 
-    // Process podcasts
+    // Process podcasts only (videos now come from API)
     if (data.conteudo.podcasts && Array.isArray(data.conteudo.podcasts)) {
-      console.log('Processing podcasts, count:', data.conteudo.podcasts.length);
+      console.log('Processing podcasts from JSON, count:', data.conteudo.podcasts.length);
       data.conteudo.podcasts.forEach((item: any, index: number) => {
         try {
           const transformed = this.transformPodcast(item, idCounter++);
@@ -160,31 +190,11 @@ export class DataService {
           console.warn(`Error transforming podcast item ${index}:`, error, item);
         }
       });
-    } else {
-      console.log('No podcasts found or not an array');
-    }
-
-    // Process aulas (videos)
-    if (data.conteudo.aulas && Array.isArray(data.conteudo.aulas)) {
-      console.log('Processing aulas (videos), count:', data.conteudo.aulas.length);
-      data.conteudo.aulas.forEach((item: any, index: number) => {
-        try {
-          const transformed = this.transformVideo(item, idCounter++);
-          if (transformed) {
-            results.push(transformed);
-            console.log(`Video ${index + 1} transformed:`, transformed.title);
-          }
-        } catch (error) {
-          console.warn(`Error transforming video item ${index}:`, error, item);
-        }
-      });
-    } else {
-      console.log('No aulas found or not an array');
     }
 
     // Process livros (books)
     if (data.conteudo.livros && Array.isArray(data.conteudo.livros)) {
-      console.log('Processing livros, count:', data.conteudo.livros.length);
+      console.log('Processing livros from JSON, count:', data.conteudo.livros.length);
       data.conteudo.livros.forEach((item: any, index: number) => {
         try {
           const transformed = this.transformBook(item, idCounter++);
@@ -196,18 +206,38 @@ export class DataService {
           console.warn(`Error transforming livro item ${index}:`, error, item);
         }
       });
-    } else {
-      console.log('No livros found or not an array');
     }
 
-    console.log('Total transformed results:', results.length);
-    
-    if (results.length === 0) {
-      console.warn('No items were successfully transformed, using fallback data');
-      return this.getFallbackData();
-    }
-    
+    console.log('Total JSON results transformed:', results.length);
     return results;
+  }
+
+  private getMockVideoData(): SearchResult[] {
+    console.log('🎭 Using mock video data as fallback');
+    return [
+      {
+        id: 1001,
+        title: 'Introdução aos Negócios Digitais',
+        type: 'video',
+        author: 'LSB Academy',
+        duration: '25:30',
+        description: 'Curso introdutório sobre negócios digitais e empreendedorismo.',
+        year: 2024,
+        subject: 'Negócios',
+        thumbnail: '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
+      },
+      {
+        id: 1002,
+        title: 'Estratégias de Marketing Digital',
+        type: 'video',
+        author: 'LSB Marketing',
+        duration: '32:15',
+        description: 'Aprenda as melhores estratégias de marketing digital.',
+        year: 2024,
+        subject: 'Marketing',
+        thumbnail: '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
+      }
+    ];
   }
 
   private transformPodcast(item: any, id: number): SearchResult | null {
@@ -235,56 +265,12 @@ export class DataService {
         subject,
         episodes: item.total_episodes ? `${item.total_episodes} episódios` : undefined,
         thumbnail: item.imagem_url,
-        embedUrl: item.embed_url // Map embed_url to embedUrl
+        embedUrl: item.embed_url
       };
 
       return result;
     } catch (error) {
       console.error('Error in transformPodcast:', error, item);
-      return null;
-    }
-  }
-
-  private transformVideo(item: any, id: number): SearchResult | null {
-    if (!item) return null;
-
-    try {
-      const title = item.titulo || 'Vídeo sem título';
-      const description = item.descricao || 'Descrição não disponível';
-      const author = item.canal || item.publicador || 'Canal não informado';
-      const year = item.ano ? parseInt(item.ano) : 2023;
-      
-      // Handle categories
-      let subject = 'Educação';
-      if (item.categorias && Array.isArray(item.categorias) && item.categorias.length > 0) {
-        subject = item.categorias[0];
-      }
-
-      // Handle duration - use provided duration or extract from YouTube if available
-      let duration: string | undefined;
-      if (item.duracao) {
-        duration = item.duracao;
-      } else if (item.url && item.url.includes('youtube.com')) {
-        // For YouTube videos without duration, we'll set a default
-        duration = 'N/A';
-      }
-
-      const result: SearchResult = {
-        id,
-        title,
-        type: 'video',
-        author,
-        description,
-        year,
-        subject,
-        duration,
-        thumbnail: item.imagem_url,
-        embedUrl: item.embed_url // Map embed_url to embedUrl
-      };
-
-      return result;
-    } catch (error) {
-      console.error('Error in transformVideo:', error, item);
       return null;
     }
   }
@@ -342,9 +328,8 @@ export class DataService {
   }
 
   private getFallbackData(): SearchResult[] {
-    console.warn('🚨 USING FALLBACK MOCK DATA - Real JSON data failed to load');
+    console.warn('🚨 USING FALLBACK MOCK DATA - Real data failed to load');
     
-    // Minimal fallback data with Portuguese content
     return [
       {
         id: 1,

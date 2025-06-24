@@ -2,8 +2,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { VLibrasContextType, VLibrasState, VLibrasConfig } from '@/types/vlibrasTypes';
 import { vlibrasService } from '@/services/vlibrasService';
-import { userSettingsService } from '@/services/userSettingsService';
-import { useAuth } from '@/contexts/AuthContext';
+import { platformSettingsService } from '@/services/platformSettingsService';
 
 type VLibrasAction =
   | { type: 'SET_LOADING'; payload: boolean }
@@ -44,29 +43,23 @@ const VLibrasContext = createContext<VLibrasContextType | undefined>(undefined);
 
 export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(vlibrasReducer, initialState);
-  const { state: authState } = useAuth();
 
   useEffect(() => {
     loadConfig();
-  }, [authState.isAuthenticated, authState.user]);
+  }, []);
 
   const loadConfig = async () => {
     try {
+      // Always try to load from platform settings first
+      const { data, error } = await platformSettingsService.getVLibrasConfig();
+      
       let config: VLibrasConfig;
       
-      if (authState.isAuthenticated && authState.user) {
-        // Load from database for authenticated users
-        const { data, error } = await userSettingsService.getVLibrasConfig(authState.user.id);
-        
-        if (error) {
-          console.warn('Error loading config from database, using localStorage fallback:', error);
-          config = vlibrasService.loadConfig();
-        } else {
-          config = data || vlibrasService.getDefaultConfig();
-        }
+      if (error || !data) {
+        console.warn('Error loading platform config, using default:', error);
+        config = vlibrasService.getDefaultConfig();
       } else {
-        // Load from localStorage for unauthenticated users
-        config = vlibrasService.loadConfig();
+        config = data;
       }
       
       dispatch({ type: 'INITIALIZE', payload: config });
@@ -83,21 +76,14 @@ export const VLibrasProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const saveConfig = async (newConfig: VLibrasConfig) => {
     try {
-      if (authState.isAuthenticated && authState.user) {
-        // Save to database for authenticated users
-        const { error } = await userSettingsService.saveVLibrasConfig(authState.user.id, newConfig);
-        if (error) {
-          console.error('Error saving config to database:', error);
-          // Fallback to localStorage
-          vlibrasService.saveConfig(newConfig);
-        }
-      } else {
-        // Save to localStorage for unauthenticated users
-        vlibrasService.saveConfig(newConfig);
+      const { error } = await platformSettingsService.saveVLibrasConfig(newConfig);
+      if (error) {
+        console.error('Error saving platform config:', error);
+        throw error;
       }
     } catch (error) {
       console.error('Error saving VLibras config:', error);
-      vlibrasService.saveConfig(newConfig);
+      throw error;
     }
   };
 

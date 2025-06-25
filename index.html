@@ -20,9 +20,6 @@
     <meta name="twitter:site" content="@lsb_oficial" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-    <!-- CSP for VLibras -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vlibras.gov.br; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vlibras.gov.br; font-src 'self' https://fonts.gstatic.com https://vlibras.gov.br; connect-src 'self' https://*.supabase.co https://link-business-school.onrender.com https://vlibras.gov.br https://acessos.vlibras.gov.br; img-src 'self' data: https: blob:; media-src 'self' https: blob:; object-src 'none'; base-uri 'self'; worker-src 'self' blob:;">
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -31,7 +28,7 @@
   <body>
     <div id="root"></div>
     
-    <!-- VLibras Widget - Official Implementation -->
+    <!-- VLibras Widget - CDN Implementation with Fallback -->
     <div vw class="enabled">
       <div vw-access-button class="active"></div>
       <div vw-plugin-wrapper>
@@ -41,106 +38,150 @@
     
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- VLibras Official Implementation -->
+    <!-- VLibras CDN Implementation with Multiple Fallbacks -->
     <script>
+      // VLibras CDN Integration with CORS-compliant sources
       (function() {
-        console.log('🔧 VLibras - Starting official implementation...');
+        console.log('🔧 VLibras CDN Integration - Starting initialization...');
         
-        // Check if VLibras is available
-        function checkVLibrasAvailability() {
-          return fetch('https://vlibras.gov.br/app/vlibras-plugin.js', { 
-            method: 'HEAD',
-            mode: 'no-cors'
-          }).then(() => true).catch(() => false);
+        // CDN sources with CORS support (ordered by reliability)
+        const cdnSources = [
+          {
+            name: 'jsDelivr CDN',
+            url: 'https://cdn.jsdelivr.net/gh/vlibras/vlibras-web@latest/vlibras-plugin.js',
+            widgetUrl: 'https://cdn.jsdelivr.net/gh/vlibras/vlibras-web@latest'
+          },
+          {
+            name: 'unpkg CDN',
+            url: 'https://unpkg.com/vlibras-web@latest/vlibras-plugin.js',
+            widgetUrl: 'https://unpkg.com/vlibras-web@latest'
+          },
+          {
+            name: 'GitHub Raw',
+            url: 'https://raw.githubusercontent.com/vlibras/vlibras-web/main/vlibras-plugin.js',
+            widgetUrl: 'https://raw.githubusercontent.com/vlibras/vlibras-web/main'
+          }
+        ];
+        
+        let currentSourceIndex = 0;
+        
+        function loadVLibrasFromCDN(source) {
+          console.log(`📡 Attempting to load VLibras from: ${source.name}`);
+          
+          return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = source.url;
+            script.crossOrigin = 'anonymous';
+            
+            script.onload = () => {
+              console.log(`✅ Successfully loaded VLibras from: ${source.name}`);
+              
+              // Test CORS by checking if VLibras object is available
+              if (typeof window.VLibras !== 'undefined') {
+                console.log('🎯 VLibras object detected, initializing widget...');
+                
+                try {
+                  // Initialize VLibras with CDN widget URL
+                  new window.VLibras.Widget(source.widgetUrl);
+                  console.log('🚀 VLibras widget initialized successfully!');
+                  resolve(source);
+                } catch (initError) {
+                  console.error('❌ VLibras initialization failed:', initError);
+                  reject(initError);
+                }
+              } else {
+                console.warn('⚠️ VLibras object not available after script load');
+                reject(new Error('VLibras object not available'));
+              }
+            };
+            
+            script.onerror = (error) => {
+              console.error(`❌ Failed to load VLibras from: ${source.name}`, error);
+              reject(error);
+            };
+            
+            // Add timeout for CORS/network issues
+            setTimeout(() => {
+              if (!script.onload.called) {
+                console.warn(`⏰ Timeout loading from: ${source.name}`);
+                reject(new Error('Load timeout'));
+              }
+            }, 10000);
+            
+            document.head.appendChild(script);
+          });
         }
         
-        function initVLibras() {
-          console.log('📡 Loading VLibras from official source...');
+        function tryNextSource() {
+          if (currentSourceIndex >= cdnSources.length) {
+            console.error('🚫 All CDN sources failed. Attempting official fallback...');
+            loadOfficialVLibras();
+            return;
+          }
+          
+          const currentSource = cdnSources[currentSourceIndex];
+          
+          loadVLibrasFromCDN(currentSource)
+            .then((source) => {
+              console.log(`🎉 VLibras successfully loaded from: ${source.name}`);
+              logCORSHeaders(source.url);
+            })
+            .catch((error) => {
+              console.warn(`⚠️ Source ${currentSource.name} failed:`, error.message);
+              currentSourceIndex++;
+              tryNextSource();
+            });
+        }
+        
+        function loadOfficialVLibras() {
+          console.log('🔄 Falling back to official VLibras source...');
           
           const script = document.createElement('script');
           script.src = 'https://vlibras.gov.br/app/vlibras-plugin.js';
-          script.defer = true;
           
-          script.onload = function() {
-            console.log('✅ VLibras script loaded successfully');
-            
+          script.onload = () => {
+            console.log('✅ Official VLibras loaded');
             try {
-              // Give VLibras time to initialize
-              setTimeout(() => {
-                if (typeof window.VLibras !== 'undefined') {
-                  new window.VLibras.Widget('https://vlibras.gov.br/app');
-                  console.log('🚀 VLibras widget initialized successfully');
-                } else {
-                  console.warn('⚠️ VLibras object not available after script load');
-                  showFallbackAccessibility();
-                }
-              }, 1000);
-              
+              new window.VLibras.Widget('https://vlibras.gov.br/app');
+              console.log('🚀 Official VLibras widget initialized');
             } catch (error) {
-              console.error('❌ VLibras initialization failed:', error);
-              showFallbackAccessibility();
+              console.error('❌ Official VLibras initialization failed:', error);
             }
           };
           
-          script.onerror = function(error) {
-            console.error('❌ Failed to load VLibras script:', error);
-            showFallbackAccessibility();
+          script.onerror = () => {
+            console.error('❌ All VLibras sources failed, including official source');
           };
           
           document.head.appendChild(script);
         }
         
-        function showFallbackAccessibility() {
-          console.log('🔄 Showing fallback accessibility option...');
-          
-          // Hide VLibras elements if they exist
-          const vwElements = document.querySelectorAll('[vw]');
-          vwElements.forEach(el => el.style.display = 'none');
-          
-          // Create simple accessibility notice
-          const fallbackDiv = document.createElement('div');
-          fallbackDiv.innerHTML = `
-            <div style="position: fixed; bottom: 20px; right: 20px; background: #003366; color: white; padding: 10px; border-radius: 8px; font-size: 12px; z-index: 9999; max-width: 250px;">
-              <strong>Acessibilidade:</strong><br>
-              Para recursos de acessibilidade, visite: 
-              <a href="https://vlibras.gov.br" target="_blank" style="color: #87CEEB; text-decoration: underline;">
-                VLibras
-              </a>
-              <button onclick="this.parentElement.parentElement.remove()" style="float: right; background: none; border: none; color: white; cursor: pointer; font-size: 14px;">×</button>
-            </div>
-          `;
-          
-          document.body.appendChild(fallbackDiv);
-          
-          // Auto-hide after 10 seconds
-          setTimeout(() => {
-            if (fallbackDiv.parentElement) {
-              fallbackDiv.remove();
-            }
-          }, 10000);
+        function logCORSHeaders(url) {
+          // Attempt to check CORS headers via fetch (for documentation)
+          fetch(url, { method: 'HEAD', mode: 'cors' })
+            .then(response => {
+              console.log('📋 CORS Headers Analysis for:', url);
+              console.log('Access-Control-Allow-Origin:', response.headers.get('Access-Control-Allow-Origin'));
+              console.log('Access-Control-Allow-Methods:', response.headers.get('Access-Control-Allow-Methods'));
+              console.log('Cross-Origin-Resource-Policy:', response.headers.get('Cross-Origin-Resource-Policy'));
+            })
+            .catch(error => {
+              console.log('📋 Could not fetch CORS headers (expected for some CDNs):', error.message);
+            });
         }
         
-        // Check availability and initialize
-        checkVLibrasAvailability()
-          .then(available => {
-            if (available) {
-              console.log('🎯 VLibras service is available, initializing...');
-              initVLibras();
-            } else {
-              console.warn('⚠️ VLibras service not available, showing fallback...');
-              showFallbackAccessibility();
-            }
-          })
-          .catch(error => {
-            console.error('❌ Error checking VLibras availability:', error);
-            showFallbackAccessibility();
-          });
+        // Start the CDN loading process
+        console.log('🚀 Initializing VLibras CDN integration...');
+        tryNextSource();
         
         // Export for debugging
-        window.vlibrasDiagnostics = {
-          reinitialize: initVLibras,
-          showFallback: showFallbackAccessibility,
-          checkAvailability: checkVLibrasAvailability
+        window.vlibrasCDNInfo = {
+          sources: cdnSources,
+          currentIndex: () => currentSourceIndex,
+          reload: () => {
+            currentSourceIndex = 0;
+            tryNextSource();
+          }
         };
         
       })();

@@ -9,6 +9,9 @@ const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
+  // Check if we're on the home page
+  const isHomePage = location.pathname === "/";
+
   const navItems = [
     { path: "/assuntos", label: "Assuntos" },
     { path: "/sobre", label: "Sobre" },
@@ -28,14 +31,14 @@ const Navigation = () => {
           <div className="flex-shrink-0">
             <Link to="/" className="flex items-center">
               <img
-                src="/lovable-uploads/ad10f17d-c3bc-474d-ad89-bc47ba9fcb79.png"
+                src="/lovable-uploads/3b540975-98b4-4bd2-a37f-1a611d29431e.png"
                 alt="Biblioteca Digital LSB"
                 className="h-10 w-auto"
               />
             </Link>
           </div>
 
-          {/* Desktop Navigation - Links + Search */}
+          {/* Desktop Navigation - Links + Conditional Search */}
           <div className="hidden md:flex items-center space-x-6">
             {/* Navigation Links */}
             <div className="flex space-x-6">
@@ -54,8 +57,8 @@ const Navigation = () => {
               ))}
             </div>
 
-            {/* Compact Search Bar */}
-            <CompactSearchBar />
+            {/* Compact Search Bar - Only show on internal pages */}
+            {!isHomePage && <CompactSearchBar />}
           </div>
 
           {/* Mobile menu button */}
@@ -89,10 +92,12 @@ const Navigation = () => {
               </Link>
             ))}
             
-            {/* Mobile Search Bar */}
-            <div className="px-3 py-2">
-              <CompactSearchBar />
-            </div>
+            {/* Mobile Search Bar - Only show on internal pages */}
+            {!isHomePage && (
+              <div className="px-3 py-2">
+                <CompactSearchBar />
+              </div>
+            )}
           </div>
         </div>
       )}

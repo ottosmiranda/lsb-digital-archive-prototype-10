@@ -1,4 +1,5 @@
 
+import { useEffect, useRef } from "react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ResourceBreadcrumb from "./ResourceBreadcrumb";
@@ -6,7 +7,6 @@ import BackButton from "./BackButton";
 import PodcastDetailHero from "@/components/PodcastDetailHero";
 import PodcastEpisodeList from "@/components/PodcastEpisodeList";
 import { Resource } from "@/types/resourceTypes";
-import { useRef } from "react";
 
 interface PodcastDetailViewProps {
   podcast: Resource;
@@ -14,6 +14,12 @@ interface PodcastDetailViewProps {
 
 const PodcastDetailView = ({ podcast }: PodcastDetailViewProps) => {
   const episodesListRef = useRef<any>(null);
+
+  // Scroll to top when component mounts or when podcast changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [podcast.id]);
+
   const handlePlayLatest = () => {
     const section = document.getElementById("all-episodes-list");
     if (section) {

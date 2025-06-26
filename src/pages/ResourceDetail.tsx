@@ -35,6 +35,11 @@ const ResourceDetail = () => {
   const [resource, setResource] = useState<Resource | null>(null);
   const [resourceLoading, setResourceLoading] = useState(true);
 
+  // Scroll to top when component mounts or when resource changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id, resource]);
+
   useEffect(() => {
     const findResource = () => {
       if (!allData || allData.length === 0) {

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
@@ -39,6 +38,7 @@ interface TransformedVideo {
   year: number;
   subject: string;
   embedUrl?: string;
+  pais?: string; // Add country code
 }
 
 // Create a simple hash function to convert string IDs to unique numbers
@@ -115,7 +115,8 @@ const handler = async (req: Request): Promise<Response> => {
         description: video.descricao || 'Descrição não disponível',
         year: 2024, // Default year since API doesn't provide it
         subject: video.categorias && video.categorias.length > 0 ? video.categorias[0] : 'Educação',
-        embedUrl: video.embed_url
+        embedUrl: video.embed_url,
+        pais: video.pais // Include country code for language filtering
       };
     });
 

@@ -1,4 +1,3 @@
-
 export interface SearchResult {
   id: number;
   originalId?: string; // Add originalId for videos with YouTube IDs
@@ -15,6 +14,7 @@ export interface SearchResult {
   embedUrl?: string;
   pdfUrl?: string;
   documentType?: string;
+  pais?: string; // Add country code for language filtering
 }
 
 export interface SearchFilters {

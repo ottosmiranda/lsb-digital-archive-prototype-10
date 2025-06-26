@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import CompactSearchBar from "@/components/CompactSearchBar";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,12 +23,22 @@ const Navigation = () => {
   return (
     <nav className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0">
-              <span className="text-2xl font-bold text-lsb-primary">Biblioteca Digital</span>
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <div className="flex-shrink-0">
+            <Link to="/" className="flex items-center">
+              <img
+                src="/lovable-uploads/ad10f17d-c3bc-474d-ad89-bc47ba9fcb79.png"
+                alt="Biblioteca Digital LSB"
+                className="h-10 w-auto"
+              />
             </Link>
-            <div className="hidden md:ml-6 md:flex md:space-x-8">
+          </div>
+
+          {/* Desktop Navigation - Links + Search */}
+          <div className="hidden md:flex items-center space-x-6">
+            {/* Navigation Links */}
+            <div className="flex space-x-6">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
@@ -42,8 +53,12 @@ const Navigation = () => {
                 </Link>
               ))}
             </div>
+
+            {/* Compact Search Bar */}
+            <CompactSearchBar />
           </div>
 
+          {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
@@ -55,6 +70,7 @@ const Navigation = () => {
         </div>
       </div>
 
+      {/* Mobile menu */}
       {isOpen && (
         <div className="md:hidden">
           <div className="pt-2 pb-3 space-y-1">
@@ -72,6 +88,11 @@ const Navigation = () => {
                 {item.label}
               </Link>
             ))}
+            
+            {/* Mobile Search Bar */}
+            <div className="px-3 py-2">
+              <CompactSearchBar />
+            </div>
           </div>
         </div>
       )}

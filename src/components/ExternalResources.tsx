@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ExternalResource {
   Nome: string;
@@ -13,19 +14,11 @@ interface ExternalResource {
   Link: string;
 }
 
-interface ExternalResourcesData {
-  tipo: string;
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  conteudo: ExternalResource[];
-}
-
 const ExternalResources = () => {
   const [resources, setResources] = useState<ExternalResource[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [usingFallback, setUsingFallback] = useState(false);
 
   // Create a stable autoplay plugin instance with updated configuration
   const autoplayPlugin = useRef(
@@ -39,15 +32,42 @@ const ExternalResources = () => {
   useEffect(() => {
     const loadResources = async () => {
       try {
-        const response = await fetch('/external-resources.json');
-        if (!response.ok) {
-          throw new Error('Failed to load external resources');
+        console.log('📚 Loading external resources from API...');
+        
+        // Try to fetch from Edge Function first
+        const { data, error: functionError } = await supabase.functions.invoke('fetch-biblioteca');
+        
+        if (functionError) {
+          console.error('❌ Edge function error:', functionError);
+          throw functionError;
         }
-        const data: ExternalResourcesData = await response.json();
-        setResources(data.conteudo);
+
+        if (!data.success) {
+          console.error('❌ API returned error:', data.error);
+          throw new Error(data.error);
+        }
+
+        console.log('✅ External resources loaded from API:', data.count);
+        setResources(data.resources);
+        setUsingFallback(false);
+        
       } catch (err) {
-        console.error('Error loading external resources:', err);
-        setError('Erro ao carregar recursos externos');
+        console.error('❌ Failed to load from API, falling back to static data:', err);
+        
+        // Fallback to static JSON file
+        try {
+          const response = await fetch('/external-resources.json');
+          if (!response.ok) {
+            throw new Error('Failed to load fallback resources');
+          }
+          const fallbackData = await response.json();
+          setResources(fallbackData.conteudo);
+          setUsingFallback(true);
+          console.log('✅ Loaded fallback data:', fallbackData.conteudo.length, 'resources');
+        } catch (fallbackErr) {
+          console.error('❌ Error loading fallback resources:', fallbackErr);
+          setError('Erro ao carregar recursos externos');
+        }
       } finally {
         setLoading(false);
       }
@@ -120,7 +140,53 @@ const ExternalResources = () => {
       }
     };
 
-    return configs[nome as keyof typeof configs] || {
+    // Check for exact match first
+    if (configs[nome as keyof typeof configs]) {
+      return configs[nome as keyof typeof configs];
+    }
+
+    // Smart categorization for new resources based on keywords
+    const lowerName = nome.toLowerCase();
+    const lowerDesc = resources.find(r => r.Nome === nome)?.Descricao?.toLowerCase() || '';
+    
+    if (lowerName.includes('universidade') || lowerName.includes('university') || lowerDesc.includes('educação')) {
+      return {
+        icon: GraduationCap,
+        category: 'Instituição Educacional',
+        color: 'from-blue-500 to-blue-600',
+        highlight: 'Recursos acadêmicos'
+      };
+    }
+    
+    if (lowerName.includes('instituto') || lowerName.includes('pesquisa') || lowerDesc.includes('pesquisa')) {
+      return {
+        icon: Microscope,
+        category: 'Instituto de Pesquisa',
+        color: 'from-green-500 to-green-600',
+        highlight: 'Pesquisa científica'
+      };
+    }
+    
+    if (lowerName.includes('biblioteca') || lowerDesc.includes('biblioteca') || lowerDesc.includes('periódicos')) {
+      return {
+        icon: BookOpen,
+        category: 'Biblioteca Digital',
+        color: 'from-purple-500 to-purple-600',
+        highlight: 'Acesso a publicações'
+      };
+    }
+    
+    if (lowerDesc.includes('economia') || lowerDesc.includes('financ') || lowerDesc.includes('mercado')) {
+      return {
+        icon: TrendingUp,
+        category: 'Análises Econômicas',
+        color: 'from-red-500 to-red-600',
+        highlight: 'Dados econômicos'
+      };
+    }
+    
+    // Default fallback
+    return {
       icon: Globe,
       category: 'Recurso Externo',
       color: 'from-gray-500 to-gray-600',
@@ -168,6 +234,13 @@ const ExternalResources = () => {
             Explore bibliotecas digitais e bases de dados brasileiras cuidadosamente selecionadas 
             para complementar sua pesquisa acadêmica
           </p>
+          {usingFallback && (
+            <div className="mt-4">
+              <Badge variant="outline" className="text-yellow-700 border-yellow-300 bg-yellow-50">
+                Dados de fallback carregados
+              </Badge>
+            </div>
+          )}
         </div>
 
         <div className="px-4">
@@ -247,8 +320,10 @@ const ExternalResources = () => {
           <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 max-w-4xl mx-auto border border-gray-200">
             <h3 className="font-semibold text-lsb-primary mb-2">Sobre estes recursos</h3>
             <p className="text-gray-600 text-sm">
-              Todos os recursos listados foram cuidadosamente selecionados por nossa equipe acadêmica. 
-              Recursos marcados como "Institucional" podem exigir acesso via universidade ou biblioteca. 
+              {usingFallback 
+                ? 'Recursos carregados do banco de dados local. Alguns recursos podem estar desatualizados.'
+                : `Recursos atualizados dinamicamente da nossa base de dados (${resources.length} recursos disponíveis).`
+              } Recursos marcados como "Institucional" podem exigir acesso via universidade ou biblioteca. 
               Para dúvidas sobre acesso, consulte nossa equipe de suporte.
             </p>
           </div>

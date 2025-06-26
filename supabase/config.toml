@@ -12,3 +12,6 @@ verify_jwt = true
 
 [functions.fetch-podcasts]
 verify_jwt = true
+
+[functions.fetch-biblioteca]
+verify_jwt = true

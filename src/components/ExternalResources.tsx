@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Database, BookOpen, Users, Globe, FileText, Microscope, TrendingUp, GraduationCap, Leaf, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,13 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
 import { supabase } from '@/integrations/supabase/client';
-
 interface ExternalResource {
   Nome: string;
   Descricao: string;
   Link: string;
 }
-
 const ExternalResources = () => {
   const [resources, setResources] = useState<ExternalResource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,39 +18,35 @@ const ExternalResources = () => {
   const [usingFallback, setUsingFallback] = useState(false);
 
   // Create a stable autoplay plugin instance with updated configuration
-  const autoplayPlugin = useRef(
-    Autoplay({
-      delay: 4000,
-      stopOnInteraction: false,
-      stopOnMouseEnter: false,
-    })
-  );
-
+  const autoplayPlugin = useRef(Autoplay({
+    delay: 4000,
+    stopOnInteraction: false,
+    stopOnMouseEnter: false
+  }));
   useEffect(() => {
     const loadResources = async () => {
       try {
         console.log('📚 Loading external resources from API...');
-        
+
         // Try to fetch from Edge Function first
-        const { data, error: functionError } = await supabase.functions.invoke('fetch-biblioteca');
-        
+        const {
+          data,
+          error: functionError
+        } = await supabase.functions.invoke('fetch-biblioteca');
         if (functionError) {
           console.error('❌ Edge function error:', functionError);
           throw functionError;
         }
-
         if (!data.success) {
           console.error('❌ API returned error:', data.error);
           throw new Error(data.error);
         }
-
         console.log('✅ External resources loaded from API:', data.count);
         setResources(data.resources);
         setUsingFallback(false);
-        
       } catch (err) {
         console.error('❌ Failed to load from API, falling back to static data:', err);
-        
+
         // Fallback to static JSON file
         try {
           const response = await fetch('/external-resources.json');
@@ -72,10 +65,8 @@ const ExternalResources = () => {
         setLoading(false);
       }
     };
-
     loadResources();
   }, []);
-
   const getResourceConfig = (nome: string) => {
     const configs = {
       'SciELO Brasil': {
@@ -148,7 +139,6 @@ const ExternalResources = () => {
     // Smart categorization for new resources based on keywords
     const lowerName = nome.toLowerCase();
     const lowerDesc = resources.find(r => r.Nome === nome)?.Descricao?.toLowerCase() || '';
-    
     if (lowerName.includes('universidade') || lowerName.includes('university') || lowerDesc.includes('educação')) {
       return {
         icon: GraduationCap,
@@ -157,7 +147,6 @@ const ExternalResources = () => {
         highlight: 'Recursos acadêmicos'
       };
     }
-    
     if (lowerName.includes('instituto') || lowerName.includes('pesquisa') || lowerDesc.includes('pesquisa')) {
       return {
         icon: Microscope,
@@ -166,7 +155,6 @@ const ExternalResources = () => {
         highlight: 'Pesquisa científica'
       };
     }
-    
     if (lowerName.includes('biblioteca') || lowerDesc.includes('biblioteca') || lowerDesc.includes('periódicos')) {
       return {
         icon: BookOpen,
@@ -175,7 +163,6 @@ const ExternalResources = () => {
         highlight: 'Acesso a publicações'
       };
     }
-    
     if (lowerDesc.includes('economia') || lowerDesc.includes('financ') || lowerDesc.includes('mercado')) {
       return {
         icon: TrendingUp,
@@ -184,7 +171,7 @@ const ExternalResources = () => {
         highlight: 'Dados econômicos'
       };
     }
-    
+
     // Default fallback
     return {
       icon: Globe,
@@ -193,38 +180,29 @@ const ExternalResources = () => {
       highlight: 'Conteúdo especializado'
     };
   };
-
   const handleResourceClick = (url: string, name: string) => {
     console.log(`Accessing external resource: ${name}`);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
-
   if (loading) {
-    return (
-      <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
+    return <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-gray-600">Carregando recursos externos...</p>
           </div>
         </div>
-      </section>
-    );
+      </section>;
   }
-
   if (error) {
-    return (
-      <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
+    return <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-red-600">{error}</p>
           </div>
         </div>
-      </section>
-    );
+      </section>;
   }
-
-  return (
-    <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
+  return <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12 animate-fade-in">
           <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
@@ -234,38 +212,34 @@ const ExternalResources = () => {
             Explore bibliotecas digitais e bases de dados brasileiras cuidadosamente selecionadas 
             para complementar sua pesquisa acadêmica
           </p>
-          {usingFallback && (
-            <div className="mt-4">
+          {usingFallback && <div className="mt-4">
               <Badge variant="outline" className="text-yellow-700 border-yellow-300 bg-yellow-50">
                 Dados de fallback carregados
               </Badge>
-            </div>
-          )}
+            </div>}
         </div>
 
         <div className="px-4">
-          <Carousel
-            plugins={[autoplayPlugin.current]}
-            opts={{
-              align: "start",
-              loop: true,
-              dragFree: false,
-              containScroll: "trimSnaps",
-            }}
-            className="w-full"
-          >
-            <CarouselContent className="py-4" style={{ marginLeft: '-1rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
+          <Carousel plugins={[autoplayPlugin.current]} opts={{
+          align: "start",
+          loop: true,
+          dragFree: false,
+          containScroll: "trimSnaps"
+        }} className="w-full">
+            <CarouselContent className="py-4" style={{
+            marginLeft: '-1rem',
+            paddingLeft: '1rem',
+            paddingRight: '1rem'
+          }}>
               {resources.map((resource, index) => {
-                const config = getResourceConfig(resource.Nome);
-                const IconComponent = config.icon;
-                
-                return (
-                  <CarouselItem key={resource.Nome} className="basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4" style={{ paddingLeft: '1rem' }}>
-                    <Card
-                      className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full mx-2"
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                      onClick={() => handleResourceClick(resource.Link, resource.Nome)}
-                    >
+              const config = getResourceConfig(resource.Nome);
+              const IconComponent = config.icon;
+              return <CarouselItem key={resource.Nome} className="basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4" style={{
+                paddingLeft: '1rem'
+              }}>
+                    <Card className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full mx-2" style={{
+                  animationDelay: `${index * 0.1}s`
+                }} onClick={() => handleResourceClick(resource.Link, resource.Nome)}>
                       <CardContent className="p-4 h-full flex flex-col">
                         <div className="flex items-start justify-between mb-3">
                           <div className={`w-10 h-10 bg-gradient-to-br ${config.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
@@ -298,18 +272,14 @@ const ExternalResources = () => {
                           </div>
                         </div>
                         
-                        <Button
-                          size="sm"
-                          className="w-full bg-lsb-primary hover:bg-lsb-primary/90 text-white border-0 group-hover:shadow-md transition-all text-xs"
-                        >
+                        <Button size="sm" className="w-full bg-lsb-primary hover:bg-lsb-primary/90 text-white border-0 group-hover:shadow-md transition-all text-xs">
                           Acessar
                           <ExternalLink className="ml-1 h-3 w-3" />
                         </Button>
                       </CardContent>
                     </Card>
-                  </CarouselItem>
-                );
-              })}
+                  </CarouselItem>;
+            })}
             </CarouselContent>
             <CarouselPrevious className="hidden md:flex -left-8" />
             <CarouselNext className="hidden md:flex -right-8" />
@@ -317,20 +287,9 @@ const ExternalResources = () => {
         </div>
 
         <div className="text-center mt-12 space-y-4">
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 max-w-4xl mx-auto border border-gray-200">
-            <h3 className="font-semibold text-lsb-primary mb-2">Sobre estes recursos</h3>
-            <p className="text-gray-600 text-sm">
-              {usingFallback 
-                ? 'Recursos carregados do banco de dados local. Alguns recursos podem estar desatualizados.'
-                : `Recursos atualizados dinamicamente da nossa base de dados (${resources.length} recursos disponíveis).`
-              } Recursos marcados como "Institucional" podem exigir acesso via universidade ou biblioteca. 
-              Para dúvidas sobre acesso, consulte nossa equipe de suporte.
-            </p>
-          </div>
+          
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default ExternalResources;

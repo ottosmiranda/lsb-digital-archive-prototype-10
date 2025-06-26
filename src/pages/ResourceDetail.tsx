@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
@@ -37,41 +38,56 @@ const ResourceDetail = () => {
   useEffect(() => {
     const findResource = () => {
       if (!allData || allData.length === 0) {
+        console.log('📊 No data available yet');
         setResourceLoading(false);
         return;
       }
 
-      console.log('Looking for resource with ID:', id);
-      console.log('Available data:', allData.length, 'items');
+      console.log('🔍 Looking for resource with ID:', id);
+      console.log('📊 Available data:', allData.length, 'items');
+
+      // Log all available resources for debugging
+      console.log('📋 Available resources:', allData.map(item => ({
+        id: item.id,
+        type: item.type,
+        title: item.title,
+        originalId: (item as any).originalId || 'N/A'
+      })));
 
       // First try to find by exact ID match
       let foundResource = allData.find(item => String(item.id) === id);
 
-      // If not found by exact ID, try route-based mapping
+      // If not found by exact ID, try to find by originalId for videos
       if (!foundResource) {
-        const routeId = parseInt(id || '0');
-        console.log('Trying route-based mapping for ID:', routeId);
+        console.log('🔍 Trying to find by originalId for videos...');
+        foundResource = allData.find(item => 
+          item.type === 'video' && (item as any).originalId === id
+        );
+      }
 
-        if (routeId >= 11 && routeId <= 20) {
-          // Route IDs 11-20 should map to videos (aulas)
+      // If still not found, try title-based search as fallback
+      if (!foundResource) {
+        console.log('🔍 Trying title-based search as fallback...');
+        const searchId = parseInt(id || '0');
+        
+        if (searchId >= 1000) {
+          // Look for videos with similar IDs
           const videos = allData.filter(item => item.type === 'video');
-          console.log('Found videos:', videos.length);
-          const videoIndex = routeId - 11; // 11 maps to index 0, 12 to index 1, etc.
-          if (videoIndex >= 0 && videoIndex < videos.length) {
-            foundResource = videos[videoIndex];
-            console.log('Found video by route mapping:', foundResource.title);
-          }
-        } else if (routeId >= 1 && routeId <= 10) {
-          // Route IDs 1-10 should map to podcasts
-          const podcasts = allData.filter(item => item.type === 'podcast');
-          const podcastIndex = routeId - 1;
-          if (podcastIndex >= 0 && podcastIndex < podcasts.length) {
-            foundResource = podcasts[podcastIndex];
+          console.log('🎬 Found videos:', videos.length);
+          
+          if (videos.length > 0) {
+            // Try to find closest match or use first video as fallback
+            foundResource = videos.find(v => v.id === searchId) || videos[0];
+            if (foundResource) {
+              console.log('🎯 Using video fallback:', foundResource.title);
+            }
           }
         }
       }
 
       if (foundResource) {
+        console.log('✅ Found resource:', foundResource.title, 'ID:', foundResource.id);
+        
         // Convert SearchResult to Resource format
         const convertedResource: Resource = {
           id: typeof foundResource.id === 'string' ? parseInt(id || '0') : foundResource.id,
@@ -88,15 +104,15 @@ const ResourceDetail = () => {
           year: foundResource.year,
           subject: foundResource.subject,
           embedUrl: foundResource.embedUrl,
-          pdfUrl: foundResource.pdfUrl, // Add pdfUrl from SearchResult
-          fullDescription: foundResource.description, // Use description as fullDescription for now
+          pdfUrl: foundResource.pdfUrl,
+          fullDescription: foundResource.description,
           tags: foundResource.subject ? [foundResource.subject] : undefined
         };
 
-        console.log('Setting converted resource:', convertedResource);
+        console.log('🔄 Setting converted resource:', convertedResource);
         setResource(convertedResource);
       } else {
-        console.log('Resource not found');
+        console.log('❌ Resource not found for ID:', id);
         setResource(null);
       }
       

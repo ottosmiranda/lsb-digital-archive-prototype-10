@@ -1,33 +1,35 @@
+
 export interface SearchResult {
   id: number;
+  originalId?: string; // Add originalId for videos with YouTube IDs
   title: string;
   type: 'video' | 'titulo' | 'podcast';
   author: string;
   duration?: string;
   pages?: number;
-  episodes?: string; // Add episodes property for podcasts
+  episodes?: string | number;
   thumbnail?: string;
   description: string;
   year: number;
   subject: string;
-  pais?: string;
+  embedUrl?: string;
+  pdfUrl?: string;
   documentType?: string;
-  embedUrl?: string; // Add embedUrl property for podcasts
-  pdfUrl?: string; // Add pdfUrl property for books
 }
 
 export interface SearchFilters {
-  resourceType: string[]; // Keep for backward compatibility with tabs
+  resourceType: string[];
   subject: string[];
   author: string;
   year: string;
   duration: string;
   language: string[];
-  documentType: string[]; // Academic document types
+  documentType: string[];
 }
 
-export interface DataValidationError {
-  field: string;
-  message: string;
-  item: any;
+export interface FilterCounts {
+  resourceType: Record<string, number>;
+  subject: Record<string, number>;
+  language: Record<string, number>;
+  documentType: Record<string, number>;
 }

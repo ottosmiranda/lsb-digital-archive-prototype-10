@@ -29,6 +29,7 @@ interface VideoItem {
 
 interface TransformedVideo {
   id: number;
+  originalId: string;
   title: string;
   type: 'video';
   author: string;
@@ -38,6 +39,19 @@ interface TransformedVideo {
   year: number;
   subject: string;
   embedUrl?: string;
+}
+
+// Create a simple hash function to convert string IDs to unique numbers
+function stringToHash(str: string): number {
+  let hash = 0;
+  if (str.length === 0) return hash;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  // Ensure positive number and add offset to avoid conflicts
+  return Math.abs(hash) + 1000;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -84,21 +98,29 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`🎯 Total videos fetched: ${allVideos.length}`);
 
-    // Transform videos to match SearchResult interface
-    const transformedVideos: TransformedVideo[] = allVideos.map((video, index) => ({
-      id: index + 1000, // Start from 1000 to avoid conflicts with existing data
-      title: video.titulo || 'Vídeo sem título',
-      type: 'video' as const,
-      author: video.canal || 'Canal não informado',
-      duration: 'N/A', // API doesn't provide duration
-      thumbnail: video.imagem_url,
-      description: video.descricao || 'Descrição não disponível',
-      year: 2024, // Default year since API doesn't provide it
-      subject: video.categorias && video.categorias.length > 0 ? video.categorias[0] : 'Educação',
-      embedUrl: video.embed_url
-    }));
+    // Transform videos to match SearchResult interface with preserved original IDs
+    const transformedVideos: TransformedVideo[] = allVideos.map((video) => {
+      const hashedId = stringToHash(video.id);
+      
+      console.log(`🔄 Transforming video: ${video.id} -> ${hashedId} (${video.titulo})`);
+      
+      return {
+        id: hashedId,
+        originalId: video.id, // Preserve original YouTube ID
+        title: video.titulo || 'Vídeo sem título',
+        type: 'video' as const,
+        author: video.canal || 'Canal não informado',
+        duration: 'N/A', // API doesn't provide duration
+        thumbnail: video.imagem_url,
+        description: video.descricao || 'Descrição não disponível',
+        year: 2024, // Default year since API doesn't provide it
+        subject: video.categorias && video.categorias.length > 0 ? video.categorias[0] : 'Educação',
+        embedUrl: video.embed_url
+      };
+    });
 
     console.log(`✅ Videos transformed successfully: ${transformedVideos.length} items`);
+    console.log(`📊 Video IDs mapping:`, transformedVideos.map(v => `${v.originalId} -> ${v.id}`));
 
     return new Response(JSON.stringify({
       success: true,

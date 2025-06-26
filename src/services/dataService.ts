@@ -1,4 +1,3 @@
-
 import { SearchResult } from '@/types/searchTypes';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -51,6 +50,13 @@ export class DataService {
       this.lastLoadTime = Date.now();
       console.log('✅ Data loaded successfully, total items:', this.cachedData.length);
       
+      // Log data summary for debugging
+      const summary = this.cachedData.reduce((acc, item) => {
+        acc[item.type] = (acc[item.type] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      console.log('📊 Data summary by type:', summary);
+      
       return this.cachedData;
     } catch (error) {
       console.error('❌ Failed to load data, clearing loading promise:', error);
@@ -70,6 +76,15 @@ export class DataService {
       const videos = await this.fetchVideosFromAPI();
       results.push(...videos);
       console.log('🎬 Videos fetched:', videos.length);
+      
+      // Log video IDs for debugging
+      if (videos.length > 0) {
+        console.log('🎬 Video IDs preview:', videos.slice(0, 3).map(v => ({
+          id: v.id,
+          originalId: v.originalId,
+          title: v.title
+        })));
+      }
     } catch (error) {
       console.error('❌ Failed to fetch videos:', error);
       errors.push('videos');

@@ -27,7 +27,7 @@ const Navigation = () => {
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link to="/" className="flex items-center">
-              <img alt="Biblioteca Digital LSB" className="h-10 w-auto" src="/lovable-uploads/586155ef-45c1-461b-906f-81a19967d3ed.png" />
+              <img alt="Biblioteca Digital LSB" className="h-10 w-auto" src="/lovable-uploads/2166379e-4179-4662-bfa4-4b77803f7347.png" />
             </Link>
           </div>
 

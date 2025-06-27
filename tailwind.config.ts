@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -19,7 +20,7 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				'inter': ['Inter', 'sans-serif'],
+				'aeonik': ['Aeonik', 'Montserrat', 'sans-serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',

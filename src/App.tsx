@@ -7,7 +7,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import SearchResults from "./pages/SearchResults";
 import ResourceDetail from "./pages/ResourceDetail";
-import Assuntos from "./pages/Assuntos";
 import Midia from "./pages/Midia";
 import Sobre from "./pages/Sobre";
 import Settings from "./pages/Settings";
@@ -24,7 +23,6 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/buscar" element={<SearchResults />} />
           <Route path="/recurso/:id" element={<ResourceDetail />} />
-          <Route path="/assuntos" element={<Assuntos />} />
           <Route path="/midia" element={<Midia />} />
           <Route path="/sobre" element={<Sobre />} />
           <Route path="/settings" element={<Settings />} />

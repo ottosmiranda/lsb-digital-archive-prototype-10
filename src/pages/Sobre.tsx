@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Users, Download, Globe, Heart, Mail, Phone, MapPin } from "lucide-react";
+import { BookOpen, Users, Download, Globe, Heart, Mail, Phone, MapPin, Target, Eye, Award } from "lucide-react";
 
 const stats = [
   { label: 'Recursos Disponíveis', value: '1,026', icon: BookOpen },
@@ -36,171 +36,238 @@ const teamMembers = [
   }
 ];
 
+const missionVisionValues = [
+  {
+    number: "01",
+    title: "Missão",
+    description: "Contribuir para a evolução do mundo transformando pessoas através da educação",
+    icon: Target,
+    color: "bg-blue-500"
+  },
+  {
+    number: "02", 
+    title: "Visão",
+    description: "Ser referência em empreendedorismo, impactando futuras gerações",
+    icon: Eye,
+    color: "bg-green-500"
+  },
+  {
+    number: "03",
+    title: "Valores",
+    description: "Respeito, Coragem, Responsabilidade e Simplicidade",
+    icon: Award,
+    color: "bg-purple-500"
+  }
+];
+
 const Sobre = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main>
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Sobre a Biblioteca Digital LSB
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Democratizando o acesso ao conhecimento através de uma plataforma digital 
-            aberta e colaborativa para toda a comunidade lusófona.
-          </p>
-        </div>
-
-        {/* Mission Section */}
-        <div className="mb-12">
-          <Card>
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl">Nossa Missão</CardTitle>
-            </CardHeader>
-            <CardContent className="prose prose-lg mx-auto">
-              <p className="text-gray-600 text-center">
-                Promover o acesso livre e gratuito ao conhecimento, oferecendo uma 
-                biblioteca digital abrangente que conecta pessoas, ideias e recursos 
-                educacionais de qualidade. Acreditamos que o conhecimento deve ser 
-                acessível a todos, independentemente de localização ou condição social.
+        <section className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-black py-20 md:py-32 overflow-hidden">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
+          </div>
+          
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div className="animate-fade-in">
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+                Sobre a
+                <span className="block text-lsb-accent">Link School of Business</span>
+              </h1>
+              
+              <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-4xl mx-auto leading-relaxed">
+                Transformando vidas através da educação e do empreendedorismo desde 2020
               </p>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </div>
+        </section>
+
+        {/* About Link Section */}
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="animate-slide-up">
+                <h2 className="text-3xl font-bold text-gray-900 mb-6">Quem Somos</h2>
+                <div className="prose prose-lg text-gray-600 space-y-4">
+                  <p>
+                    A Link School of Business é uma faculdade inovadora fundada em 2020, 
+                    dedicada a formar empreendedores e líderes preparados para os desafios 
+                    do mundo moderno.
+                  </p>
+                  <p>
+                    Nossa abordagem pedagógica combina teoria e prática, proporcionando 
+                    aos estudantes uma experiência educacional única que os prepara para 
+                    criar impacto real no mercado.
+                  </p>
+                  <p>
+                    Com um método inovador e foco no desenvolvimento de competências 
+                    empreendedoras, formamos profissionais capazes de transformar ideias 
+                    em realidade e gerar valor para a sociedade.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="relative">
+                <div className="bg-gradient-to-br from-lsb-primary to-blue-600 rounded-2xl p-8 text-white">
+                  <h3 className="text-2xl font-semibold mb-4">Nossa Biblioteca Digital</h3>
+                  <p className="text-blue-100 leading-relaxed">
+                    Como extensão de nossa missão educacional, a Biblioteca Digital LSB 
+                    democratiza o acesso ao conhecimento, oferecendo recursos gratuitos 
+                    e de qualidade para toda a comunidade acadêmica e profissional.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Mission, Vision, Values */}
+        <section className="py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Nossos Pilares</h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Os valores que guiam nossa jornada na transformação da educação
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {missionVisionValues.map((item, index) => {
+                const IconComponent = item.icon;
+                return (
+                  <Card key={index} className="relative overflow-hidden hover:shadow-xl transition-all duration-300 group">
+                    <div className={`absolute top-0 left-0 w-2 h-full ${item.color}`}></div>
+                    
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className={`w-12 h-12 rounded-full ${item.color} flex items-center justify-center text-white font-bold text-lg`}>
+                          {item.number}
+                        </div>
+                        <div className={`p-2 rounded-lg ${item.color.replace('bg-', 'bg-').replace('-500', '-50')}`}>
+                          <IconComponent className={`h-6 w-6 ${item.color.replace('bg-', 'text-')}`} />
+                        </div>
+                      </div>
+                      <CardTitle className="text-xl text-gray-900">{item.title}</CardTitle>
+                    </CardHeader>
+                    
+                    <CardContent>
+                      <CardDescription className="text-gray-600 leading-relaxed">
+                        {item.description}
+                      </CardDescription>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        </section>
 
         {/* Stats Section */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-semibold text-center mb-8">Nossa Comunidade</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {stats.map((stat, index) => {
-              const IconComponent = stat.icon;
-              return (
-                <Card key={index} className="text-center">
-                  <CardHeader className="pb-3">
-                    <div className="mx-auto p-3 rounded-full bg-primary/10 w-fit">
-                      <IconComponent className="h-6 w-6 text-primary" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-primary mb-1">
-                      {stat.value}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {stat.label}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Nossa Comunidade Digital</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              {stats.map((stat, index) => {
+                const IconComponent = stat.icon;
+                return (
+                  <Card key={index} className="text-center hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="mx-auto p-4 rounded-full bg-lsb-primary/10 w-fit">
+                        <IconComponent className="h-8 w-8 text-lsb-primary" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-4xl font-bold text-lsb-primary mb-2">
+                        {stat.value}
+                      </div>
+                      <div className="text-sm text-gray-600 font-medium">
+                        {stat.label}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
-        </div>
-
-        {/* Values Section */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-semibold text-center mb-8">Nossos Valores</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <div className="p-2 rounded-lg bg-blue-50 w-fit">
-                  <BookOpen className="h-6 w-6 text-blue-600" />
-                </div>
-                <CardTitle>Acesso Livre</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>
-                  Conhecimento deve ser gratuito e acessível a todos, 
-                  sem barreiras geográficas ou econômicas.
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="p-2 rounded-lg bg-green-50 w-fit">
-                  <Users className="h-6 w-6 text-green-600" />
-                </div>
-                <CardTitle>Colaboração</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>
-                  Construímos uma comunidade onde todos podem contribuir 
-                  e compartilhar conhecimento.
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="p-2 rounded-lg bg-purple-50 w-fit">
-                  <Heart className="h-6 w-6 text-purple-600" />
-                </div>
-                <CardTitle>Qualidade</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>
-                  Curamos cuidadosamente nosso acervo para garantir 
-                  conteúdo relevante e de alta qualidade.
-                </CardDescription>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        </section>
 
         {/* Team Section */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-semibold text-center mb-8">Nossa Equipe</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {teamMembers.map((member, index) => (
-              <Card key={index} className="text-center">
-                <CardHeader>
-                  <div className="w-16 h-16 rounded-full bg-gray-200 mx-auto mb-3"></div>
-                  <CardTitle className="text-lg">{member.name}</CardTitle>
-                  <CardDescription>{member.role}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Badge variant="secondary" className="text-xs">
-                    {member.expertise}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))}
+        <section className="py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Nossa Equipe</h2>
+              <p className="text-lg text-gray-600">
+                Profissionais dedicados à excelência educacional
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {teamMembers.map((member, index) => (
+                <Card key={index} className="text-center hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-lsb-primary to-blue-600 mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-white font-bold text-xl">
+                        {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </span>
+                    </div>
+                    <CardTitle className="text-lg">{member.name}</CardTitle>
+                    <CardDescription>{member.role}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Badge variant="secondary" className="text-xs">
+                      {member.expertise}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* Contact Section */}
-        <div className="bg-gray-50 rounded-lg p-6">
-          <h2 className="text-2xl font-semibold text-center mb-6">Entre em Contato</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-primary" />
-              <div>
-                <div className="font-medium">Email</div>
-                <div className="text-sm text-gray-600">contato@lsb.digital</div>
+        <section className="py-16 bg-gradient-to-br from-lsb-primary to-blue-600">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl font-bold text-white mb-6">Entre em Contato</h2>
+            <p className="text-blue-100 text-lg mb-8 max-w-2xl mx-auto">
+              Tem dúvidas sobre nossos recursos ou quer saber mais sobre a Link School of Business?
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+              <div className="flex items-center justify-center gap-3 text-white">
+                <Mail className="h-6 w-6" />
+                <div>
+                  <div className="font-semibold">Email</div>
+                  <div className="text-blue-100 text-sm">contato@lsb.digital</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-center gap-3 text-white">
+                <Phone className="h-6 w-6" />
+                <div>
+                  <div className="font-semibold">Telefone</div>
+                  <div className="text-blue-100 text-sm">+55 (11) 3456-7890</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-center gap-3 text-white">
+                <MapPin className="h-6 w-6" />
+                <div>
+                  <div className="font-semibold">Localização</div>
+                  <div className="text-blue-100 text-sm">São Paulo, Brasil</div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Phone className="h-5 w-5 text-primary" />
-              <div>
-                <div className="font-medium">Telefone</div>
-                <div className="text-sm text-gray-600">+55 (11) 3456-7890</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <MapPin className="h-5 w-5 text-primary" />
-              <div>
-                <div className="font-medium">Endereço</div>
-                <div className="text-sm text-gray-600">São Paulo, Brasil</div>
-              </div>
-            </div>
-          </div>
-          <div className="text-center">
-            <Button>
+            
+            <Button size="lg" className="bg-lsb-accent text-lsb-primary hover:bg-lsb-accent/90 font-semibold">
               Enviar Mensagem
             </Button>
           </div>
-        </div>
+        </section>
       </main>
 
       <Footer />

@@ -1,68 +1,64 @@
-
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Users, Download, Globe, Heart, Mail, Phone, MapPin, Target, Eye, Award } from "lucide-react";
-
-const stats = [
-  { label: 'Recursos Disponíveis', value: '1,026', icon: BookOpen },
-  { label: 'Usuários Ativos', value: '15,234', icon: Users },
-  { label: 'Downloads Realizados', value: '89,567', icon: Download },
-  { label: 'Países Atendidos', value: '45', icon: Globe }
-];
-
-const teamMembers = [
-  {
-    name: 'Dr. Maria Silva',
-    role: 'Diretora Acadêmica',
-    expertise: 'Educação e Tecnologia'
-  },
-  {
-    name: 'João Santos',
-    role: 'Coordenador Técnico',
-    expertise: 'Desenvolvimento de Sistemas'
-  },
-  {
-    name: 'Ana Costa',
-    role: 'Curadora de Conteúdo',
-    expertise: 'Ciências Sociais'
-  },
-  {
-    name: 'Pedro Lima',
-    role: 'Designer UX/UI',
-    expertise: 'Experiência do Usuário'
-  }
-];
-
-const missionVisionValues = [
-  {
-    number: "01",
-    title: "Missão",
-    description: "Contribuir para a evolução do mundo transformando pessoas através da educação",
-    icon: Target,
-    color: "bg-blue-500"
-  },
-  {
-    number: "02", 
-    title: "Visão",
-    description: "Ser referência em empreendedorismo, impactando futuras gerações",
-    icon: Eye,
-    color: "bg-green-500"
-  },
-  {
-    number: "03",
-    title: "Valores",
-    description: "Respeito, Coragem, Responsabilidade e Simplicidade",
-    icon: Award,
-    color: "bg-purple-500"
-  }
-];
-
+const stats = [{
+  label: 'Recursos Disponíveis',
+  value: '1,026',
+  icon: BookOpen
+}, {
+  label: 'Usuários Ativos',
+  value: '15,234',
+  icon: Users
+}, {
+  label: 'Downloads Realizados',
+  value: '89,567',
+  icon: Download
+}, {
+  label: 'Países Atendidos',
+  value: '45',
+  icon: Globe
+}];
+const teamMembers = [{
+  name: 'Dr. Maria Silva',
+  role: 'Diretora Acadêmica',
+  expertise: 'Educação e Tecnologia'
+}, {
+  name: 'João Santos',
+  role: 'Coordenador Técnico',
+  expertise: 'Desenvolvimento de Sistemas'
+}, {
+  name: 'Ana Costa',
+  role: 'Curadora de Conteúdo',
+  expertise: 'Ciências Sociais'
+}, {
+  name: 'Pedro Lima',
+  role: 'Designer UX/UI',
+  expertise: 'Experiência do Usuário'
+}];
+const missionVisionValues = [{
+  number: "01",
+  title: "Missão",
+  description: "Contribuir para a evolução do mundo transformando pessoas através da educação",
+  icon: Target,
+  color: "bg-blue-500"
+}, {
+  number: "02",
+  title: "Visão",
+  description: "Ser referência em empreendedorismo, impactando futuras gerações",
+  icon: Eye,
+  color: "bg-green-500"
+}, {
+  number: "03",
+  title: "Valores",
+  description: "Respeito, Coragem, Responsabilidade e Simplicidade",
+  icon: Award,
+  color: "bg-purple-500"
+}];
 const Sobre = () => {
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <Navigation />
       
       <main>
@@ -138,9 +134,8 @@ const Sobre = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {missionVisionValues.map((item, index) => {
-                const IconComponent = item.icon;
-                return (
-                  <Card key={index} className="relative overflow-hidden hover:shadow-xl transition-all duration-300 group">
+              const IconComponent = item.icon;
+              return <Card key={index} className="relative overflow-hidden hover:shadow-xl transition-all duration-300 group">
                     <div className={`absolute top-0 left-0 w-2 h-full ${item.color}`}></div>
                     
                     <CardHeader className="pb-4">
@@ -160,119 +155,23 @@ const Sobre = () => {
                         {item.description}
                       </CardDescription>
                     </CardContent>
-                  </Card>
-                );
-              })}
+                  </Card>;
+            })}
             </div>
           </div>
         </section>
 
         {/* Stats Section */}
-        <section className="py-16 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Nossa Comunidade Digital</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              {stats.map((stat, index) => {
-                const IconComponent = stat.icon;
-                return (
-                  <Card key={index} className="text-center hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-3">
-                      <div className="mx-auto p-4 rounded-full bg-lsb-primary/10 w-fit">
-                        <IconComponent className="h-8 w-8 text-lsb-primary" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-4xl font-bold text-lsb-primary mb-2">
-                        {stat.value}
-                      </div>
-                      <div className="text-sm text-gray-600 font-medium">
-                        {stat.label}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        
 
         {/* Team Section */}
-        <section className="py-16 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Nossa Equipe</h2>
-              <p className="text-lg text-gray-600">
-                Profissionais dedicados à excelência educacional
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {teamMembers.map((member, index) => (
-                <Card key={index} className="text-center hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-lsb-primary to-blue-600 mx-auto mb-4 flex items-center justify-center">
-                      <span className="text-white font-bold text-xl">
-                        {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                      </span>
-                    </div>
-                    <CardTitle className="text-lg">{member.name}</CardTitle>
-                    <CardDescription>{member.role}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Badge variant="secondary" className="text-xs">
-                      {member.expertise}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
+        
 
         {/* Contact Section */}
-        <section className="py-16 bg-gradient-to-br from-lsb-primary to-blue-600">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl font-bold text-white mb-6">Entre em Contato</h2>
-            <p className="text-blue-100 text-lg mb-8 max-w-2xl mx-auto">
-              Tem dúvidas sobre nossos recursos ou quer saber mais sobre a Link School of Business?
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-              <div className="flex items-center justify-center gap-3 text-white">
-                <Mail className="h-6 w-6" />
-                <div>
-                  <div className="font-semibold">Email</div>
-                  <div className="text-blue-100 text-sm">contato@lsb.digital</div>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-center gap-3 text-white">
-                <Phone className="h-6 w-6" />
-                <div>
-                  <div className="font-semibold">Telefone</div>
-                  <div className="text-blue-100 text-sm">+55 (11) 3456-7890</div>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-center gap-3 text-white">
-                <MapPin className="h-6 w-6" />
-                <div>
-                  <div className="font-semibold">Localização</div>
-                  <div className="text-blue-100 text-sm">São Paulo, Brasil</div>
-                </div>
-              </div>
-            </div>
-            
-            <Button size="lg" className="bg-lsb-accent text-lsb-primary hover:bg-lsb-accent/90 font-semibold">
-              Enviar Mensagem
-            </Button>
-          </div>
-        </section>
+        
       </main>
 
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 export default Sobre;

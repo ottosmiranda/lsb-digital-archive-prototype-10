@@ -6,11 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
 import { supabase } from '@/integrations/supabase/client';
+import ExternalResourcesSkeleton from '@/components/skeletons/ExternalResourcesSkeleton';
+
 interface ExternalResource {
   Nome: string;
   Descricao: string;
   Link: string;
 }
+
 const ExternalResources = () => {
   const [resources, setResources] = useState<ExternalResource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -185,24 +188,21 @@ const ExternalResources = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
   if (loading) {
-    return <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <p className="text-gray-600">Carregando recursos externos...</p>
-          </div>
-        </div>
-      </section>;
+    return <ExternalResourcesSkeleton />;
   }
   if (error) {
-    return <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
+    return (
+      <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-red-600">{error}</p>
           </div>
         </div>
-      </section>;
+      </section>
+    );
   }
-  return <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
+  return (
+    <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12 animate-fade-in">
           <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
@@ -290,6 +290,8 @@ const ExternalResources = () => {
           
         </div>
       </div>
-    </section>;
+    </section>
+  );
 };
+
 export default ExternalResources;

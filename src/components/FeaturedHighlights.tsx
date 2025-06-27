@@ -1,4 +1,3 @@
-
 import { Star, ImageOff } from 'lucide-react';
 import { useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import Autoplay from 'embla-carousel-autoplay';
 import { useDataLoader } from '@/hooks/useDataLoader';
 import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
+import FeaturedHighlightsSkeleton from '@/components/skeletons/FeaturedHighlightsSkeleton';
 
 // Helper fallback for missing thumbnails
 const FallbackThumb = ({ label = "Miniatura Indisponível" }) => (
@@ -85,6 +85,11 @@ const FeaturedHighlights = () => {
   console.log('FeaturedHighlights - highlights count:', highlights.length);
   console.log('FeaturedHighlights - highlights:', highlights);
 
+  // Show skeleton while loading
+  if (loading) {
+    return <FeaturedHighlightsSkeleton />;
+  }
+
   // UI
   return (
     <section className="py-16 md:py-24 bg-white">
@@ -97,10 +102,8 @@ const FeaturedHighlights = () => {
           <div className="w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
         </div>
 
-        {/* LOADING, fallback, or Highlights Carousel */}
-        {loading ? (
-          <div className="text-center my-12 text-lg text-gray-400 animate-pulse">Carregando destaques…</div>
-        ) : highlights.length === 0 ? (
+        {/* Highlights Carousel or empty state */}
+        {highlights.length === 0 ? (
           <div className="text-center my-12 text-lg text-gray-400">Nenhum destaque encontrado.</div>
         ) : (
           <div className="relative">

@@ -1,4 +1,3 @@
-
 import { Play, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
 import { useDataLoader } from '@/hooks/useDataLoader';
 import { useMemo } from 'react';
+import FeaturedMediaSkeleton from '@/components/skeletons/FeaturedMediaSkeleton';
 
 const FeaturedMedia = () => {
   const { allData, loading } = useDataLoader();
@@ -75,20 +75,7 @@ const FeaturedMedia = () => {
   );
 
   if (loading) {
-    return (
-      <section className="py-16 md:py-24 bg-lsb-section">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
-              Mídia em Destaque
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Carregando conteúdos audiovisuais...
-            </p>
-          </div>
-        </div>
-      </section>
-    );
+    return <FeaturedMediaSkeleton />;
   }
 
   return (

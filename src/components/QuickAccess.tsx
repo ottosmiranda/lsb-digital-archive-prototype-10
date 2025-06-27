@@ -3,9 +3,10 @@ import { Book, Video, Headphones } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDataLoader } from '@/hooks/useDataLoader';
 import { useMemo } from 'react';
+import QuickAccessSkeleton from '@/components/skeletons/QuickAccessSkeleton';
 
 const QuickAccess = () => {
-  const { allData } = useDataLoader();
+  const { allData, loading } = useDataLoader();
 
   // Calculate real counts from loaded data
   const counts = useMemo(() => {
@@ -43,6 +44,10 @@ const QuickAccess = () => {
       count: counts.podcasts
     }
   ];
+
+  if (loading) {
+    return <QuickAccessSkeleton />;
+  }
 
   return (
     <section className="py-16 md:py-24 bg-lsb-section">

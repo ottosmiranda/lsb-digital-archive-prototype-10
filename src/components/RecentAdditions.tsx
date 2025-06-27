@@ -1,4 +1,3 @@
-
 import { Book, Video, Headphones, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { useDataLoader } from '@/hooks/useDataLoader';
 import { useMemo } from 'react';
+import RecentAdditionsSkeleton from '@/components/skeletons/RecentAdditionsSkeleton';
 
 // Fallback image for missing thumbnails
 const PLACEHOLDER_THUMB = '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png';
@@ -71,20 +71,7 @@ const RecentAdditions = () => {
   }, [allData]);
 
   if (loading) {
-    return (
-      <section className="py-16 md:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
-              Novidades no Acervo
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Carregando novidades...
-            </p>
-          </div>
-        </div>
-      </section>
-    );
+    return <RecentAdditionsSkeleton />;
   }
 
   return (

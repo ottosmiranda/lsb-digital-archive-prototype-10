@@ -1,9 +1,9 @@
-
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDataLoader } from '@/hooks/useDataLoader';
 import { useNavigate } from 'react-router-dom';
 import { useTopItems } from './MostAccessed/useTopItems';
 import MostAccessedTableRow from './MostAccessed/MostAccessedTableRow';
+import MostAccessedSkeleton from '@/components/skeletons/MostAccessedSkeleton';
 
 const MostAccessed = () => {
   const { allData, loading } = useDataLoader();
@@ -15,23 +15,7 @@ const MostAccessed = () => {
   };
 
   if (loading) {
-    return (
-      <section className="py-16 md:py-24 bg-lsb-section">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
-              Mais Acessados
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Os conteúdos mais populares da nossa biblioteca digital
-            </p>
-          </div>
-          <div className="text-center my-12 text-lg text-gray-400 animate-pulse">
-            Carregando ranking...
-          </div>
-        </div>
-      </section>
-    );
+    return <MostAccessedSkeleton />;
   }
 
   if (topItems.length === 0) {

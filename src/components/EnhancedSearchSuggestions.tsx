@@ -1,9 +1,10 @@
 
 import { useState, useEffect } from 'react';
-import { Search, Clock, TrendingUp, Star } from 'lucide-react';
+import { Search, Clock, TrendingUp, Star, BookOpen, User, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useSearchAnalytics } from '@/hooks/useSearchAnalytics';
+import { useIntelligentAutoComplete } from '@/hooks/useIntelligentAutoComplete';
 
 interface EnhancedSearchSuggestionsProps {
   query: string;
@@ -20,72 +21,72 @@ const EnhancedSearchSuggestions = ({
   isVisible,
   className
 }: EnhancedSearchSuggestionsProps) => {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const { recentSearches, trendingSearches } = useSearchAnalytics();
+  const { getSuggestions, getPopularTerms, isReady } = useIntelligentAutoComplete();
   
-  // Popular topics remain static as they're editorial content
-  const [popularTopics] = useState(['Comunicação', 'Direitos', 'Literatura', 'História']);
+  // Get intelligent suggestions based on the query
+  const intelligentSuggestions = query.length > 1 ? getSuggestions(query, 6) : [];
+  
+  // Get popular terms from real data
+  const popularSubjects = isReady ? getPopularTerms('subject', 4) : ['Comunicação', 'Direitos', 'Literatura', 'História'];
 
-  useEffect(() => {
-    if (query.length > 1) {
-      // Enhanced suggestions with better matching
-      const mockSuggestions = [
-        'Libras básico para iniciantes',
-        'Gramática da língua de sinais',
-        'Alfabeto em libras',
-        'Números e quantidades',
-        'Interpretação de libras',
-        'Cultura surda brasileira',
-        'Educação inclusiva',
-        'História da comunidade surda',
-        'Tecnologia assistiva para surdos',
-        'Literatura surda brasileira'
-      ].filter(suggestion => 
-        suggestion.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      setSuggestions(mockSuggestions.slice(0, 6));
-    } else {
-      setSuggestions([]);
+  // Helper function to get icon for category
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'title': return BookOpen;
+      case 'subject': return Tag;
+      case 'author': return User;
+      default: return Search;
     }
-  }, [query]);
+  };
 
   if (!isVisible) return null;
 
-  const showSuggestions = suggestions.length > 0;
+  const showIntelligentSuggestions = intelligentSuggestions.length > 0;
   const showRecent = query.length <= 1 && recentSearches.length > 0;
   const showTrending = query.length <= 1 && trendingSearches.length > 0;
-  const showPopular = query.length <= 1 && popularTopics.length > 0;
+  const showPopular = query.length <= 1 && popularSubjects.length > 0;
 
-  if (!showSuggestions && !showRecent && !showTrending && !showPopular) return null;
+  if (!showIntelligentSuggestions && !showRecent && !showTrending && !showPopular) return null;
 
   return (
     <div className={cn(
       "absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] max-h-96 overflow-y-auto",
       className
     )}>
-      {/* Search Suggestions */}
-      {showSuggestions && (
+      {/* Intelligent Search Suggestions */}
+      {showIntelligentSuggestions && (
         <div className="p-3">
           <div className="text-xs text-gray-500 px-3 py-2 font-medium flex items-center gap-2">
             <Search className="h-3 w-3" />
             Sugestões para "{query}"
           </div>
-          {suggestions.map((suggestion, index) => (
-            <button
-              key={index}
-              onClick={() => onSuggestionClick(suggestion)}
-              className="w-full text-left px-3 py-3 hover:bg-lsb-section rounded-md flex items-center gap-3 text-sm group transition-colors"
-            >
-              <Search className="h-4 w-4 text-gray-400 group-hover:text-lsb-primary" />
-              <span className="flex-1">{suggestion}</span>
-              {index < 3 && (
-                <Badge variant="outline" className="text-xs">
-                  Popular
-                </Badge>
-              )}
-            </button>
-          ))}
+          {intelligentSuggestions.map((suggestion, index) => {
+            const IconComponent = getCategoryIcon(suggestion.category);
+            return (
+              <button
+                key={`${suggestion.category}-${suggestion.term}-${index}`}
+                onClick={() => onSuggestionClick(suggestion.term)}
+                className="w-full text-left px-3 py-3 hover:bg-lsb-section rounded-md flex items-center gap-3 text-sm group transition-colors"
+              >
+                <IconComponent className="h-4 w-4 text-gray-400 group-hover:text-lsb-primary" />
+                <span className="flex-1 capitalize">{suggestion.term}</span>
+                <div className="flex items-center gap-2">
+                  {suggestion.matchType === 'prefix' && (
+                    <Badge variant="outline" className="text-xs">
+                      {suggestion.category === 'title' ? 'Título' : 
+                       suggestion.category === 'subject' ? 'Assunto' : 'Autor'}
+                    </Badge>
+                  )}
+                  {suggestion.frequency > 3 && (
+                    <Badge className="bg-lsb-accent text-lsb-primary text-xs">
+                      {suggestion.frequency}
+                    </Badge>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -140,11 +141,11 @@ const EnhancedSearchSuggestions = ({
             Tópicos Populares
           </div>
           <div className="flex flex-wrap gap-2 px-3">
-            {popularTopics.map((topic, index) => (
+            {popularSubjects.map((topic, index) => (
               <button
                 key={index}
                 onClick={() => onSuggestionClick(topic)}
-                className="px-3 py-1 bg-lsb-section hover:bg-lsb-primary hover:text-white rounded-full text-xs transition-colors"
+                className="px-3 py-1 bg-lsb-section hover:bg-lsb-primary hover:text-white rounded-full text-xs transition-colors capitalize"
               >
                 {topic}
               </button>

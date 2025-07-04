@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { useProgressiveDataLoader } from '@/hooks/useProgressiveDataLoader';
-import { useMemo, useEffect } from 'react';
+import { useDataLoader } from '@/hooks/useDataLoader';
+import { useMemo } from 'react';
 import RecentAdditionsSkeleton from '@/components/skeletons/RecentAdditionsSkeleton';
 
 // Fallback image for missing thumbnails
@@ -45,15 +45,7 @@ const formatDate = (year: number) => {
 };
 
 const RecentAdditions = () => {
-  const { allData, loading, dataLoaded, loadData } = useProgressiveDataLoader();
-  
-  // Load data on mount
-  useEffect(() => {
-    if (!dataLoaded && !loading) {
-      console.log('🔄 RecentAdditions: Loading data on mount');
-      loadData();
-    }
-  }, [dataLoaded, loading, loadData]);
+  const { allData, loading } = useDataLoader();
 
   // Get mixed recent items from real API data
   const recentItems = useMemo(() => {

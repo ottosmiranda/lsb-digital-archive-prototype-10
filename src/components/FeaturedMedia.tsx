@@ -3,20 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import { useProgressiveDataLoader } from '@/hooks/useProgressiveDataLoader';
-import { useMemo, useEffect } from 'react';
+import { useDataLoader } from '@/hooks/useDataLoader';
+import { useMemo } from 'react';
 import FeaturedMediaSkeleton from '@/components/skeletons/FeaturedMediaSkeleton';
 
 const FeaturedMedia = () => {
-  const { allData, loading, dataLoaded, loadData } = useProgressiveDataLoader();
-  
-  // Load data on mount
-  useEffect(() => {
-    if (!dataLoaded && !loading) {
-      console.log('🔄 FeaturedMedia: Loading data on mount');
-      loadData();
-    }
-  }, [dataLoaded, loading, loadData]);
+  const { allData, loading } = useDataLoader();
 
   // Get featured content from real API data
   const { videos, podcasts } = useMemo(() => {

@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import PodcastDetailHero from "@/components/PodcastDetailHero";
 import PodcastEpisodeList from "@/components/PodcastEpisodeList";
-import { useProgressiveDataLoader } from '@/hooks/useProgressiveDataLoader';
+import { useDataLoader } from '@/hooks/useDataLoader';
 import LoadingSkeleton from '@/components/ResourceDetail/LoadingSkeleton';
 import ResourceNotFound from '@/components/ResourceDetail/ResourceNotFound';
 import ResourceBreadcrumb from '@/components/ResourceDetail/ResourceBreadcrumb';
@@ -31,15 +31,7 @@ import { Resource } from '@/types/resourceTypes';
 
 const ResourceDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { allData, loading, dataLoaded, loadData } = useProgressiveDataLoader();
-  
-  // Load data on mount
-  useEffect(() => {
-    if (!dataLoaded && !loading) {
-      console.log('🔄 ResourceDetail: Loading data on mount');
-      loadData();
-    }
-  }, [dataLoaded, loading, loadData]);
+  const { allData, loading } = useDataLoader();
   const [resource, setResource] = useState<Resource | null>(null);
   const [resourceLoading, setResourceLoading] = useState(true);
 

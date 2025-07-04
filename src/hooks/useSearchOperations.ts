@@ -67,30 +67,6 @@ export const useSearchOperations = ({
   // Always update results when query, filters, sortBy, or dataLoaded changes
   useEffect(() => {
     if (!dataLoaded) return;
-    
-    // Debug log para verificar os dados
-    console.log('🔍 [SEARCH-DEBUG] Search operations running with:', {
-      totalData: allData.length,
-      query: query,
-      filters: filters,
-      sortBy: sortBy
-    });
-    
-    // Contar por tipo
-    const dataByType = allData.reduce((acc, item) => {
-      acc[item.type] = (acc[item.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    console.log('🔍 [SEARCH-DEBUG] Data by type:', dataByType);
-    
-    // Verificar especificamente os podcasts
-    const podcasts = allData.filter(item => item.type === 'podcast');
-    console.log('🔍 [SEARCH-DEBUG] Podcasts found in allData:', podcasts.length);
-    if (podcasts.length > 0) {
-      console.log('🔍 [SEARCH-DEBUG] First podcast sample:', podcasts[0]);
-    }
-    
     performSearch(query, filters, sortBy);
     // eslint-disable-next-line
   }, [query, filters, sortBy, dataLoaded, performSearch]);

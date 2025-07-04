@@ -1,8 +1,7 @@
 
-
 import { useMemo } from 'react';
 import { SearchFilters } from '@/types/searchTypes';
-import { useProgressiveDataLoader } from '@/hooks/useProgressiveDataLoader';
+import { useDataLoader } from '@/hooks/useDataLoader';
 import { useSearchState } from '@/hooks/useSearchState';
 import { useSearchOperations } from '@/hooks/useSearchOperations';
 import { checkHasActiveFilters } from '@/utils/searchUtils';
@@ -10,13 +9,8 @@ import { checkHasActiveFilters } from '@/utils/searchUtils';
 export const useSearchResults = () => {
   const resultsPerPage = 9;
   
-  // Load initial data using progressive loader
-  const { 
-    allData, 
-    loading, 
-    dataLoaded, 
-    forceRefresh
-  } = useProgressiveDataLoader();
+  // Load initial data
+  const { allData, loading, dataLoaded, usingFallback, setLoading, forceRefresh } = useDataLoader();
   
   // Manage search state and URL params
   const {
@@ -37,7 +31,7 @@ export const useSearchResults = () => {
     filters,
     sortBy,
     dataLoaded,
-    setLoading: () => {} // Progressive loader manages its own loading state
+    setLoading
   });
 
   // Calculate pagination values
@@ -81,7 +75,7 @@ export const useSearchResults = () => {
     currentPage,
     loading,
     hasActiveFilters,
-    usingFallback: false, // Progressive loader doesn't use fallback data
+    usingFallback,
     handleFilterChange,
     handleSortChange,
     handlePageChange,
@@ -90,4 +84,3 @@ export const useSearchResults = () => {
     forceRefresh
   };
 };
-

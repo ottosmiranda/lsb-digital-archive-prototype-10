@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { SearchResult } from '@/types/searchTypes';
-import { useProgressiveDataLoader } from '@/hooks/useProgressiveDataLoader';
+import { useDataLoader } from '@/hooks/useDataLoader';
 
 export interface AutoCompleteResult {
   term: string;
@@ -11,15 +11,7 @@ export interface AutoCompleteResult {
 }
 
 export const useIntelligentAutoComplete = () => {
-  const { allData, dataLoaded, loadData, loading } = useProgressiveDataLoader();
-  
-  // Load data on mount
-  useEffect(() => {
-    if (!dataLoaded && !loading) {
-      console.log('🔄 AutoComplete: Loading data on mount');
-      loadData();
-    }
-  }, [dataLoaded, loading, loadData]);
+  const { allData, dataLoaded } = useDataLoader();
   const [termsIndex, setTermsIndex] = useState<Map<string, AutoCompleteResult>>(new Map());
 
   // Extract and process terms from data

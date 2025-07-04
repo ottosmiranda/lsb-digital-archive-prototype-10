@@ -1,25 +1,9 @@
 
-
 import { useEffect } from "react";
 import { useSearchResults } from '@/hooks/useSearchResults';
-import { useProgressiveDataLoader } from '@/hooks/useProgressiveDataLoader';
 import SearchLayout from '@/components/SearchLayout';
-import LoadingProgress from '@/components/LoadingProgress';
 
 const SearchResults = () => {
-  const {
-    allData,
-    videos,
-    books,
-    podcasts,
-    loading,
-    loadingStates,
-    loadingProgress,
-    dataLoaded,
-    loadData,
-    forceRefresh
-  } = useProgressiveDataLoader();
-
   const {
     query,
     filters,
@@ -28,21 +12,15 @@ const SearchResults = () => {
     totalResults,
     totalPages,
     currentPage,
+    loading,
     hasActiveFilters,
     usingFallback,
     handleFilterChange,
     handleSortChange,
     handlePageChange,
     setQuery,
+    forceRefresh
   } = useSearchResults();
-
-  // Load data on mount
-  useEffect(() => {
-    if (!dataLoaded && !loading) {
-      console.log('🔄 SearchResults: Loading data on mount');
-      loadData();
-    }
-  }, [dataLoaded, loading, loadData]);
 
   const handleClearFilters = () => {
     handleFilterChange({
@@ -65,19 +43,6 @@ const SearchResults = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
-
-  // Show loading progress if data is loading
-  if (loading && !dataLoaded) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <LoadingProgress
-          progress={loadingProgress}
-          loadingStates={loadingStates}
-          showDetails={true}
-        />
-      </div>
-    );
-  }
 
   return (
     <SearchLayout
@@ -102,4 +67,3 @@ const SearchResults = () => {
 };
 
 export default SearchResults;
-

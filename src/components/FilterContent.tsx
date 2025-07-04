@@ -11,7 +11,7 @@ import AuthorInput from '@/components/AuthorInput';
 import AuthorList from '@/components/AuthorList';
 
 // Static data moved outside component to prevent re-creation
-const languages = ['Português', 'Inglês', 'Espanhol'];
+const languages = ['Português', 'English', 'Espanhol'];
 const subjects = [
   'Educação', 'História', 'Linguística', 'Cultura Surda', 'Inclusão', 
   'Tecnologia', 'Saúde', 'Direitos', 'Arte', 'Literatura'

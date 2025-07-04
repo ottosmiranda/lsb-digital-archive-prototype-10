@@ -81,7 +81,24 @@ export const filterResults = (
     if (currentFilters.duration && (item.type === 'video' || item.type === 'podcast')) {
       const duration = item.duration;
       if (duration) {
-        const [minutes] = duration.split(':').map(Number);
+        let minutes = 0;
+        
+        // Parse different duration formats
+        if (duration.includes('h')) {
+          // Format: "1h 28min" or "2h"
+          const hourMatch = duration.match(/(\d+)h/);
+          const minMatch = duration.match(/(\d+)min/);
+          minutes = (hourMatch ? parseInt(hourMatch[1]) * 60 : 0) + (minMatch ? parseInt(minMatch[1]) : 0);
+        } else if (duration.includes('min')) {
+          // Format: "88min"
+          const minMatch = duration.match(/(\d+)min/);
+          minutes = minMatch ? parseInt(minMatch[1]) : 0;
+        } else if (duration.includes(':')) {
+          // Legacy format: "12:30"
+          const [mins] = duration.split(':').map(Number);
+          minutes = mins || 0;
+        }
+        
         switch (currentFilters.duration) {
           case 'short':
             if (minutes > 10) return false;
@@ -98,8 +115,17 @@ export const filterResults = (
 
     // "Idioma" filter
     if (currentFilters.language.length > 0) {
-      if (!item.pais) return false;
-      const itemLanguage = countryToLanguage[item.pais.toUpperCase()];
+      let itemLanguage: string | undefined;
+      
+      // For books, use the direct language field
+      if (item.type === 'titulo' && item.language) {
+        itemLanguage = item.language;
+      }
+      // For videos, use country code mapping
+      else if (item.pais) {
+        itemLanguage = countryToLanguage[item.pais.toUpperCase()];
+      }
+      
       if (!itemLanguage || !currentFilters.language.includes(itemLanguage)) {
         return false;
       }

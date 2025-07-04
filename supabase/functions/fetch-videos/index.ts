@@ -24,6 +24,7 @@ interface VideoItem {
   categorias: string[];
   pais: string;
   embed_url: string;
+  duracao: number;
 }
 
 interface TransformedVideo {
@@ -52,6 +53,16 @@ function stringToHash(str: string): number {
   }
   // Ensure positive number and add offset to avoid conflicts
   return Math.abs(hash) + 1000;
+}
+
+// Format duration from minutes to readable format
+function formatDuration(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes}min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -110,7 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
         title: video.titulo || 'Vídeo sem título',
         type: 'video' as const,
         author: video.canal || 'Canal não informado',
-        duration: 'N/A', // API doesn't provide duration
+        duration: video.duracao ? formatDuration(video.duracao) : undefined,
         thumbnail: video.imagem_url,
         description: video.descricao || 'Descrição não disponível',
         year: 2024, // Default year since API doesn't provide it

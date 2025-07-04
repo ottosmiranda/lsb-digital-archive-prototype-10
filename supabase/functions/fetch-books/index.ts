@@ -19,6 +19,7 @@ interface BookItem {
   id: string;
   titulo: string;
   autor: string;
+  language: string;
   ano: string;
   categorias: string[];
   descricao: string;
@@ -39,6 +40,7 @@ interface TransformedBook {
   subject: string;
   documentType?: string;
   pdfUrl?: string;
+  language?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -94,8 +96,8 @@ const handler = async (req: Request): Promise<Response> => {
         description = `Livro de ${book.autor} sobre ${book.categorias && book.categorias.length > 0 ? book.categorias[0] : 'diversos temas'}, ${book.paginas} páginas.`;
       }
 
-      // Build complete PDF URL
-      const pdfUrl = book.arquivo ? `${baseFileUrl}${book.arquivo}` : undefined;
+      // Use direct PDF URL from API
+      const pdfUrl = book.arquivo || undefined;
 
       // Use default thumbnail for books
       const defaultThumbnail = '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png';
@@ -111,7 +113,8 @@ const handler = async (req: Request): Promise<Response> => {
         year: book.ano ? parseInt(book.ano) : 2024,
         subject: book.categorias && book.categorias.length > 0 ? book.categorias[0] : 'Literatura',
         documentType: book.tipo_documento || 'Livro',
-        pdfUrl: pdfUrl
+        pdfUrl: pdfUrl,
+        language: book.language || undefined
       };
     });
 

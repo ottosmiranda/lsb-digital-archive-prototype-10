@@ -15,6 +15,7 @@ export interface SearchResult {
   pdfUrl?: string;
   documentType?: string;
   pais?: string; // Add country code for language filtering
+  language?: string; // Add language field for books
 }
 
 export interface SearchFilters {

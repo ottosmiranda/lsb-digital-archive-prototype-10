@@ -12,22 +12,22 @@ interface PodcastApiResponse {
   limit: number;
   total: number;
   totalPages: number;
-  conteudo: PodcastItem[];
+  conteudo: PodcastEpisodeItem[];
 }
 
-interface PodcastItem {
-  id: string;
+interface PodcastEpisodeItem {
   tipo: string;
-  titulo: string;
-  descricao: string;
+  podcast_id: string;
+  podcast_titulo: string;
   publicador: string;
+  episodio_id: string;
+  episodio_titulo: string;
+  descricao: string;
+  data_lancamento: string;
+  duracao_ms: number;
   url: string;
-  ano: string;
-  categorias: string[];
-  total_episodes: string;
-  imagem_url: string;
-  pais: string;
   embed_url: string;
+  imagem_url: string;
 }
 
 interface TransformedPodcast {
@@ -38,7 +38,7 @@ interface TransformedPodcast {
   description: string;
   year: number;
   subject: string;
-  episodes?: string;
+  duration?: string;
   thumbnail?: string;
   embedUrl?: string;
 }
@@ -53,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('🎧 Starting podcast API fetch...');
     
     const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
-    const allPodcasts: PodcastItem[] = [];
+    const allEpisodes: PodcastEpisodeItem[] = [];
     let currentPage = 1;
     let totalPages = 1;
 
@@ -77,28 +77,39 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       const data: PodcastApiResponse = await response.json();
-      console.log(`✅ Page ${currentPage} fetched: ${data.conteudo.length} podcasts`);
+      console.log(`✅ Page ${currentPage} fetched: ${data.conteudo.length} episodes`);
 
-      allPodcasts.push(...data.conteudo);
+      allEpisodes.push(...data.conteudo);
       totalPages = data.totalPages;
       currentPage++;
 
     } while (currentPage <= totalPages);
 
-    console.log(`🎯 Total podcasts fetched: ${allPodcasts.length}`);
+    console.log(`🎯 Total episodes fetched: ${allEpisodes.length}`);
 
-    // Transform podcasts to match SearchResult interface
-    const transformedPodcasts: TransformedPodcast[] = allPodcasts.map((podcast, index) => ({
+    // Format duration from milliseconds to readable format
+    const formatDuration = (durationMs: number): string => {
+      const minutes = Math.floor(durationMs / 60000);
+      if (minutes < 60) {
+        return `${minutes}min`;
+      }
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
+    };
+
+    // Transform episodes to match SearchResult interface
+    const transformedPodcasts: TransformedPodcast[] = allEpisodes.map((episode, index) => ({
       id: index + 2000, // Start from 2000 to avoid conflicts with videos
-      title: podcast.titulo || 'Podcast sem título',
+      title: episode.episodio_titulo || 'Episódio sem título',
       type: 'podcast' as const,
-      author: podcast.publicador || 'Autor não informado',
-      description: podcast.descricao || 'Descrição não disponível',
-      year: podcast.ano ? parseInt(podcast.ano) : 2023,
-      subject: podcast.categorias && podcast.categorias.length > 0 ? podcast.categorias[0] : 'Podcast',
-      episodes: podcast.total_episodes ? `${podcast.total_episodes} episódios` : undefined,
-      thumbnail: podcast.imagem_url,
-      embedUrl: podcast.embed_url
+      author: episode.publicador || 'Autor não informado',
+      description: episode.descricao || 'Descrição não disponível',
+      year: episode.data_lancamento ? new Date(episode.data_lancamento).getFullYear() : 2024,
+      subject: episode.podcast_titulo || 'Podcast',
+      duration: episode.duracao_ms ? formatDuration(episode.duracao_ms) : undefined,
+      thumbnail: episode.imagem_url,
+      embedUrl: episode.embed_url
     }));
 
     console.log(`✅ Podcasts transformed successfully: ${transformedPodcasts.length} items`);

@@ -1,24 +1,19 @@
+
 import { Play, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import { useDataLoader } from '@/hooks/useDataLoader';
+import { useInfiniteContentLoader } from '@/hooks/useInfiniteContentLoader';
 import { useMemo } from 'react';
 import FeaturedMediaSkeleton from '@/components/skeletons/FeaturedMediaSkeleton';
 
 const FeaturedMedia = () => {
-  const { allData, loading } = useDataLoader();
+  const { getItemsByType, loading } = useInfiniteContentLoader();
 
-  // Get featured content from real API data
+  // Get featured content from optimized loader
   const { videos, podcasts } = useMemo(() => {
-    if (!allData || allData.length === 0) {
-      return { videos: [], podcasts: [] };
-    }
-
-    // Get first 3 videos
-    const videoData = allData
-      .filter(item => item.type === 'video')
+    const videoData = getItemsByType('video')
       .slice(0, 3)
       .map(video => ({
         id: video.id,
@@ -28,20 +23,18 @@ const FeaturedMedia = () => {
         author: video.author
       }));
 
-    // Get first 3 podcasts
-    const podcastData = allData
-      .filter(item => item.type === 'podcast')
+    const podcastData = getItemsByType('podcast')
       .slice(0, 3)
       .map(podcast => ({
         id: podcast.id,
         title: podcast.title,
-        duration: podcast.episodes || 'N/A',
+        duration: podcast.duration || 'N/A',
         thumbnail: podcast.thumbnail || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
         author: podcast.author
       }));
 
     return { videos: videoData, podcasts: podcastData };
-  }, [allData]);
+  }, [getItemsByType]);
 
   const MediaCard = ({ item, type }: { item: any; type: 'video' | 'podcast' }) => (
     <Link to={`/recurso/${item.id}`}>

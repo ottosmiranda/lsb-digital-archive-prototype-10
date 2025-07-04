@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { useDataLoader } from '@/hooks/useDataLoader';
+import { useInfiniteContentLoader } from '@/hooks/useInfiniteContentLoader';
 import { useMemo } from 'react';
 import RecentAdditionsSkeleton from '@/components/skeletons/RecentAdditionsSkeleton';
 
@@ -45,16 +45,17 @@ const formatDate = (year: number) => {
 };
 
 const RecentAdditions = () => {
-  const { allData, loading } = useDataLoader();
+  const { getAllItems, loading } = useInfiniteContentLoader();
 
-  // Get mixed recent items from real API data
+  // Get mixed recent items from optimized loader
   const recentItems = useMemo(() => {
-    if (!allData || allData.length === 0) {
+    const allItems = getAllItems();
+    
+    if (!allItems || allItems.length === 0) {
       return [];
     }
 
-    // Sort by year (most recent first) and take up to 6 items
-    const sortedItems = allData
+    return allItems
       .sort((a, b) => b.year - a.year)
       .slice(0, 6)
       .map(item => ({
@@ -66,9 +67,7 @@ const RecentAdditions = () => {
         thumbnail: item.thumbnail || PLACEHOLDER_THUMB,
         addedDate: item.year.toString(),
       }));
-
-    return sortedItems;
-  }, [allData]);
+  }, [getAllItems]);
 
   if (loading) {
     return <RecentAdditionsSkeleton />;
@@ -99,7 +98,6 @@ const RecentAdditions = () => {
                     >
                       <CardContent className="p-6">
                         <div className="flex items-start space-x-4">
-                          {/* Left side: Icon and content */}
                           <div className="flex-shrink-0">
                             <div className="w-12 h-12 bg-lsb-section rounded-lg flex items-center justify-center">
                               <IconComponent className="h-6 w-6 lsb-primary" />
@@ -126,7 +124,6 @@ const RecentAdditions = () => {
                               {item.description}
                             </p>
                           </div>
-                          {/* Right side: Thumbnail */}
                           <div className="flex-shrink-0">
                             <div className="w-20 h-20 bg-gray-200 rounded-lg overflow-hidden">
                               <img 

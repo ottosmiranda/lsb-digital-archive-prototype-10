@@ -44,66 +44,62 @@ interface TransformedBook {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('📚 Starting books API fetch...');
+    console.log('📚 Starting optimized books API fetch...');
     
-    const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
-    const baseFileUrl = 'https://link-business-school.onrender.com';
-    const allBooks: BookItem[] = [];
-    let currentPage = 1;
-    let totalPages = 1;
-
-    // Fetch all pages
-    do {
-      console.log(`📡 Fetching books page ${currentPage}/${totalPages}...`);
-      
-      const apiUrl = `${baseUrl}?tipo=livro&page=${currentPage}`;
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'LSB-Digital-Library/1.0'
-        },
-        signal: AbortSignal.timeout(10000) // 10 second timeout
-      });
-
-      if (!response.ok) {
-        console.error(`❌ API request failed: ${response.status} ${response.statusText}`);
-        throw new Error(`API request failed: ${response.status}`);
+    // Parse request body for pagination parameters
+    let page = 1;
+    let limit = 10;
+    
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        page = body.page || 1;
+        limit = body.limit || 10;
+        console.log(`📄 Request params: page=${page}, limit=${limit}`);
+      } catch (e) {
+        console.log('📄 No body params, using defaults');
       }
+    }
 
-      const data: BookApiResponse = await response.json();
-      console.log(`✅ Page ${currentPage} fetched: ${data.conteudo.length} books`);
+    const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
+    const apiUrl = `${baseUrl}?tipo=livro&page=${page}&limit=${limit}`;
+    
+    console.log(`📡 Fetching books from: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'LSB-Digital-Library/1.0'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
 
-      allBooks.push(...data.conteudo);
-      totalPages = data.totalPages;
-      currentPage++;
+    if (!response.ok) {
+      console.error(`❌ API request failed: ${response.status} ${response.statusText}`);
+      throw new Error(`API request failed: ${response.status}`);
+    }
 
-    } while (currentPage <= totalPages);
-
-    console.log(`🎯 Total books fetched: ${allBooks.length}`);
+    const data: BookApiResponse = await response.json();
+    console.log(`✅ API Response: ${data.conteudo.length} books, page ${data.page}/${data.totalPages}`);
 
     // Transform books to match SearchResult interface
-    const transformedBooks: TransformedBook[] = allBooks.map((book, index) => {
-      // Generate description if empty
+    const transformedBooks: TransformedBook[] = data.conteudo.map((book, index) => {
       let description = book.descricao;
       if (!description || description.trim() === '') {
         description = `Livro de ${book.autor} sobre ${book.categorias && book.categorias.length > 0 ? book.categorias[0] : 'diversos temas'}, ${book.paginas} páginas.`;
       }
 
-      // Use direct PDF URL from API
       const pdfUrl = book.arquivo || undefined;
-
-      // Use default thumbnail for books
       const defaultThumbnail = '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png';
 
       return {
-        id: index + 3000, // Start from 3000 to avoid conflicts with videos (1000+) and podcasts (2000+)
+        id: (page - 1) * limit + index + 3000, // Generate unique IDs based on page and position
         title: book.titulo || 'Livro sem título',
         type: 'titulo' as const,
         author: book.autor || 'Autor não informado',
@@ -118,10 +114,14 @@ const handler = async (req: Request): Promise<Response> => {
       };
     });
 
-    console.log(`✅ Books transformed successfully: ${transformedBooks.length} items`);
+    console.log(`✅ Books transformed: ${transformedBooks.length} items for page ${page}`);
 
     return new Response(JSON.stringify({
       success: true,
+      page: data.page,
+      limit: data.limit,
+      total: data.total,
+      totalPages: data.totalPages,
       count: transformedBooks.length,
       books: transformedBooks
     }), {
@@ -138,6 +138,10 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({
       success: false,
       error: error.message,
+      page: 1,
+      limit: 10,
+      total: 0,
+      totalPages: 0,
       books: []
     }), {
       status: 500,

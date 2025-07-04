@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
@@ -39,7 +40,7 @@ interface TransformedVideo {
   year: number;
   subject: string;
   embedUrl?: string;
-  pais?: string; // Add country code
+  pais?: string;
 }
 
 // Create a simple hash function to convert string IDs to unique numbers
@@ -51,11 +52,9 @@ function stringToHash(str: string): number {
     hash = ((hash << 5) - hash) + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
-  // Ensure positive number and add offset to avoid conflicts
   return Math.abs(hash) + 1000;
 }
 
-// Format duration from minutes to readable format
 function formatDuration(minutes: number): string {
   if (minutes < 60) {
     return `${minutes}min`;
@@ -66,76 +65,78 @@ function formatDuration(minutes: number): string {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('🎬 Starting video API fetch...');
+    console.log('🎬 Starting optimized video API fetch...');
     
-    const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
-    const allVideos: VideoItem[] = [];
-    let currentPage = 1;
-    let totalPages = 1;
-
-    // Fetch all pages
-    do {
-      console.log(`📡 Fetching page ${currentPage}/${totalPages}...`);
-      
-      const apiUrl = `${baseUrl}?tipo=aula&page=${currentPage}`;
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'LSB-Digital-Library/1.0'
-        },
-        signal: AbortSignal.timeout(10000) // 10 second timeout
-      });
-
-      if (!response.ok) {
-        console.error(`❌ API request failed: ${response.status} ${response.statusText}`);
-        throw new Error(`API request failed: ${response.status}`);
+    // Parse request body for pagination parameters
+    let page = 1;
+    let limit = 10; // Default limit for optimization
+    
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        page = body.page || 1;
+        limit = body.limit || 10;
+        console.log(`📄 Request params: page=${page}, limit=${limit}`);
+      } catch (e) {
+        console.log('📄 No body params, using defaults');
       }
+    }
 
-      const data: VideoApiResponse = await response.json();
-      console.log(`✅ Page ${currentPage} fetched: ${data.conteudo.length} videos`);
+    const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
+    const apiUrl = `${baseUrl}?tipo=aula&page=${page}&limit=${limit}`;
+    
+    console.log(`📡 Fetching videos from: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'LSB-Digital-Library/1.0'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
 
-      allVideos.push(...data.conteudo);
-      totalPages = data.totalPages;
-      currentPage++;
+    if (!response.ok) {
+      console.error(`❌ API request failed: ${response.status} ${response.statusText}`);
+      throw new Error(`API request failed: ${response.status}`);
+    }
 
-    } while (currentPage <= totalPages);
+    const data: VideoApiResponse = await response.json();
+    console.log(`✅ API Response: ${data.conteudo.length} videos, page ${data.page}/${data.totalPages}`);
 
-    console.log(`🎯 Total videos fetched: ${allVideos.length}`);
-
-    // Transform videos to match SearchResult interface with preserved original IDs
-    const transformedVideos: TransformedVideo[] = allVideos.map((video) => {
+    // Transform videos to match SearchResult interface
+    const transformedVideos: TransformedVideo[] = data.conteudo.map((video) => {
       const hashedId = stringToHash(video.id);
-      
-      console.log(`🔄 Transforming video: ${video.id} -> ${hashedId} (${video.titulo})`);
       
       return {
         id: hashedId,
-        originalId: video.id, // Preserve original YouTube ID
+        originalId: video.id,
         title: video.titulo || 'Vídeo sem título',
         type: 'video' as const,
         author: video.canal || 'Canal não informado',
         duration: video.duracao ? formatDuration(video.duracao) : undefined,
         thumbnail: video.imagem_url,
         description: video.descricao || 'Descrição não disponível',
-        year: 2024, // Default year since API doesn't provide it
+        year: 2024,
         subject: video.categorias && video.categorias.length > 0 ? video.categorias[0] : 'Educação',
         embedUrl: video.embed_url,
-        pais: video.pais // Include country code for language filtering
+        pais: video.pais
       };
     });
 
-    console.log(`✅ Videos transformed successfully: ${transformedVideos.length} items`);
-    console.log(`📊 Video IDs mapping:`, transformedVideos.map(v => `${v.originalId} -> ${v.id}`));
+    console.log(`✅ Videos transformed: ${transformedVideos.length} items for page ${page}`);
 
     return new Response(JSON.stringify({
       success: true,
+      page: data.page,
+      limit: data.limit,
+      total: data.total,
+      totalPages: data.totalPages,
       count: transformedVideos.length,
       videos: transformedVideos
     }), {
@@ -152,6 +153,10 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({
       success: false,
       error: error.message,
+      page: 1,
+      limit: 10,
+      total: 0,
+      totalPages: 0,
       videos: []
     }), {
       status: 500,

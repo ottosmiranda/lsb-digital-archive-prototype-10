@@ -44,50 +44,49 @@ interface TransformedPodcast {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('🎧 Starting podcast API fetch...');
+    console.log('🎧 Starting optimized podcast API fetch...');
     
-    const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
-    const allEpisodes: PodcastEpisodeItem[] = [];
+    // Parse request body for pagination parameters
+    let page = 1;
+    let limit = 10;
     
-    // Fetch only first 3 pages for instant loading (max ~30 episodes)
-    const maxPages = 3;
-    let currentPage = 1;
-    let totalPages = 1;
-
-    do {
-      console.log(`📡 Fetching page ${currentPage}/${Math.min(totalPages, maxPages)}...`);
-      
-      const apiUrl = `${baseUrl}?tipo=podcast&page=${currentPage}&limit=20`; // Increase limit per page
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'LSB-Digital-Library/1.0'
-        },
-        signal: AbortSignal.timeout(8000) // Reduce timeout for faster failure
-      });
-
-      if (!response.ok) {
-        console.error(`❌ API request failed: ${response.status} ${response.statusText}`);
-        throw new Error(`API request failed: ${response.status}`);
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        page = body.page || 1;
+        limit = body.limit || 10;
+        console.log(`📄 Request params: page=${page}, limit=${limit}`);
+      } catch (e) {
+        console.log('📄 No body params, using defaults');
       }
+    }
 
-      const data: PodcastApiResponse = await response.json();
-      console.log(`✅ Page ${currentPage} fetched: ${data.conteudo.length} episodes`);
+    const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
+    const apiUrl = `${baseUrl}?tipo=podcast&page=${page}&limit=${limit}`;
+    
+    console.log(`📡 Fetching podcasts from: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'LSB-Digital-Library/1.0'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
 
-      allEpisodes.push(...data.conteudo);
-      totalPages = Math.min(data.totalPages, maxPages); // Limit total pages
-      currentPage++;
+    if (!response.ok) {
+      console.error(`❌ API request failed: ${response.status} ${response.statusText}`);
+      throw new Error(`API request failed: ${response.status}`);
+    }
 
-    } while (currentPage <= totalPages);
-
-    console.log(`🎯 Total episodes fetched: ${allEpisodes.length}`);
+    const data: PodcastApiResponse = await response.json();
+    console.log(`✅ API Response: ${data.conteudo.length} podcasts, page ${data.page}/${data.totalPages}`);
 
     // Format duration from milliseconds to readable format
     const formatDuration = (durationMs: number): string => {
@@ -101,8 +100,8 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     // Transform episodes to match SearchResult interface
-    const transformedPodcasts: TransformedPodcast[] = allEpisodes.map((episode, index) => ({
-      id: index + 2000, // Start from 2000 to avoid conflicts with videos
+    const transformedPodcasts: TransformedPodcast[] = data.conteudo.map((episode, index) => ({
+      id: (page - 1) * limit + index + 2000, // Generate unique IDs based on page and position
       title: episode.episodio_titulo || 'Episódio sem título',
       type: 'podcast' as const,
       author: episode.publicador || 'Autor não informado',
@@ -114,10 +113,14 @@ const handler = async (req: Request): Promise<Response> => {
       embedUrl: episode.embed_url
     }));
 
-    console.log(`✅ Podcasts transformed successfully: ${transformedPodcasts.length} items`);
+    console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items for page ${page}`);
 
     return new Response(JSON.stringify({
       success: true,
+      page: data.page,
+      limit: data.limit,
+      total: data.total,
+      totalPages: data.totalPages,
       count: transformedPodcasts.length,
       podcasts: transformedPodcasts
     }), {
@@ -134,6 +137,10 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({
       success: false,
       error: error.message,
+      page: 1,
+      limit: 10,
+      total: 0,
+      totalPages: 0,
       podcasts: []
     }), {
       status: 500,

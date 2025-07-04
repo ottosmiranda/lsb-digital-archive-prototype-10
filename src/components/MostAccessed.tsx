@@ -1,12 +1,21 @@
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useDataLoader } from '@/hooks/useDataLoader';
+import { useProgressiveDataLoader } from '@/hooks/useProgressiveDataLoader';
 import { useNavigate } from 'react-router-dom';
 import { useTopItems } from './MostAccessed/useTopItems';
+import { useEffect } from 'react';
 import MostAccessedTableRow from './MostAccessed/MostAccessedTableRow';
 import MostAccessedSkeleton from '@/components/skeletons/MostAccessedSkeleton';
 
 const MostAccessed = () => {
-  const { allData, loading } = useDataLoader();
+  const { allData, loading, dataLoaded, loadData } = useProgressiveDataLoader();
+  
+  // Load data on mount
+  useEffect(() => {
+    if (!dataLoaded && !loading) {
+      console.log('🔄 MostAccessed: Loading data on mount');
+      loadData();
+    }
+  }, [dataLoaded, loading, loadData]);
   const navigate = useNavigate();
   const topItems = useTopItems(allData);
 

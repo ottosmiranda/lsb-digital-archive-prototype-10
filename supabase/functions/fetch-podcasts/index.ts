@@ -51,7 +51,8 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('🎧 Starting podcast API fetch...');
+    console.log('🎧 [PODCAST-DEBUG] Starting podcast API fetch...');
+    console.log('🎧 [PODCAST-DEBUG] Target: ~50 episodes from 5 pages of 10 items each');
     
     const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
     const allEpisodes: PodcastEpisodeItem[] = [];
@@ -63,10 +64,10 @@ const handler = async (req: Request): Promise<Response> => {
     let totalPages = 1;
 
     do {
-      console.log(`📡 Fetching page ${currentPage}/${Math.min(totalPages, maxPages)}...`);
+      console.log(`📡 [PODCAST-DEBUG] Fetching page ${currentPage}/${Math.min(totalPages, maxPages)}...`);
       
       const apiUrl = `${baseUrl}?tipo=podcast&page=${currentPage}&limit=${itemsPerPage}`;
-      console.log(`🔗 API URL: ${apiUrl}`);
+      console.log(`🔗 [PODCAST-DEBUG] API URL: ${apiUrl}`);
       
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -83,8 +84,18 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       const data: PodcastApiResponse = await response.json();
-      console.log(`✅ Page ${currentPage} fetched: ${data.conteudo.length} episodes`);
-      console.log(`📊 API Response meta: total=${data.total}, totalPages=${data.totalPages}, limit=${data.limit}`);
+      console.log(`✅ [PODCAST-DEBUG] Page ${currentPage} fetched: ${data.conteudo.length} episodes`);
+      console.log(`📊 [PODCAST-DEBUG] API Response meta: total=${data.total}, totalPages=${data.totalPages}, limit=${data.limit}`);
+      
+      // Debug primeiro episódio de cada página
+      if (data.conteudo.length > 0) {
+        console.log(`🎯 [PODCAST-DEBUG] Sample episode from page ${currentPage}:`, {
+          podcast_id: data.conteudo[0].podcast_id,
+          episodio_titulo: data.conteudo[0].episodio_titulo,
+          publicador: data.conteudo[0].publicador,
+          data_lancamento: data.conteudo[0].data_lancamento
+        });
+      }
 
       allEpisodes.push(...data.conteudo);
       totalPages = Math.min(data.totalPages, maxPages); // Limit total pages
@@ -92,7 +103,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     } while (currentPage <= totalPages);
 
-    console.log(`🎯 Total episodes fetched: ${allEpisodes.length}`);
+    console.log(`🎯 [PODCAST-DEBUG] Total episodes fetched: ${allEpisodes.length}`);
+    
+    // Debug dos primeiros episódios
+    if (allEpisodes.length > 0) {
+      console.log(`🔍 [PODCAST-DEBUG] First 3 episodes overview:`, allEpisodes.slice(0, 3).map(ep => ({
+        id: ep.podcast_id,
+        titulo: ep.episodio_titulo,
+        publicador: ep.publicador
+      })));
+    }
 
     // Format duration from milliseconds to readable format
     const formatDuration = (durationMs: number): string => {
@@ -119,8 +139,16 @@ const handler = async (req: Request): Promise<Response> => {
       embedUrl: episode.embed_url
     }));
 
-    console.log(`✅ Podcasts transformed successfully: ${transformedPodcasts.length} items`);
-    console.log(`🔍 Sample podcast data:`, transformedPodcasts.slice(0, 2));
+    console.log(`✅ [PODCAST-DEBUG] Podcasts transformed successfully: ${transformedPodcasts.length} items`);
+    console.log(`🔍 [PODCAST-DEBUG] Sample podcast data:`, transformedPodcasts.slice(0, 2));
+    
+    // Verifica se o tipo está correto
+    const podcastTypes = transformedPodcasts.map(p => p.type);
+    console.log(`🔍 [PODCAST-DEBUG] All podcast types:`, [...new Set(podcastTypes)]);
+    
+    // Confirma que todos têm type: 'podcast'
+    const allArePodcasts = transformedPodcasts.every(p => p.type === 'podcast');
+    console.log(`✅ [PODCAST-DEBUG] All items have type='podcast': ${allArePodcasts}`);
 
     return new Response(JSON.stringify({
       success: true,

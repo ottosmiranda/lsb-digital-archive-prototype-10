@@ -124,14 +124,29 @@ export const useProgressiveDataLoader = () => {
     }));
 
     try {
+      console.log('🎧 [PROGRESSIVE-DEBUG] Calling fetch-podcasts edge function...');
       const { data, error } = await supabase.functions.invoke('fetch-podcasts');
-      if (error) throw error;
-      if (!data.success) throw new Error(data.error);
+      
+      if (error) {
+        console.error('❌ [PROGRESSIVE-DEBUG] Supabase edge function error:', error);
+        throw error;
+      }
+      
+      if (!data.success) {
+        console.error('❌ [PROGRESSIVE-DEBUG] Edge function returned error:', data.error);
+        throw new Error(data.error);
+      }
 
-      console.log(`✅ Podcasts fetched: ${data.count} items`);
+      console.log(`✅ [PROGRESSIVE-DEBUG] Podcasts fetched: ${data.count} items`);
+      console.log(`🔍 [PROGRESSIVE-DEBUG] First podcast from edge function:`, data.podcasts?.[0]);
       setState(prev => {
         const newLoadingStates = { ...prev.loadingStates, podcasts: false };
         const newAllData = [...prev.videos, ...prev.books, ...data.podcasts];
+        
+        console.log(`🔍 [PROGRESSIVE-DEBUG] Integrating ${data.podcasts.length} podcasts into allData`);
+        console.log(`🔍 [PROGRESSIVE-DEBUG] Total items after podcasts: ${newAllData.length}`);
+        console.log(`🔍 [PROGRESSIVE-DEBUG] Podcast types in allData:`, newAllData.filter(item => item.type === 'podcast').length);
+        
         return {
           ...prev,
           podcasts: data.podcasts,
@@ -154,13 +169,32 @@ export const useProgressiveDataLoader = () => {
   }, [updateProgress]);
 
   const loadData = useCallback(async () => {
-    console.log('🚀 Progressive data loader: Starting parallel fetch...');
+    console.log('🚀 [PROGRESSIVE-DEBUG] Progressive data loader: Starting parallel fetch...');
     setState(prev => ({ ...prev, loading: true, dataLoaded: false, loadingProgress: 0 }));
+    
+    // Log para debug no início
+    console.log('🔍 [PROGRESSIVE-DEBUG] Initial state:', {
+      videos: 0, books: 0, podcasts: 0, total: 0
+    });
     
     // Start all fetches in parallel
     await Promise.all([fetchVideos(), fetchBooks(), fetchPodcasts()]);
     
-    setState(prev => ({ ...prev, loading: false, dataLoaded: true, loadingProgress: 100 }));
+    setState(prev => {
+      console.log('🎉 [PROGRESSIVE-DEBUG] All data loaded! Final counts:', {
+        videos: prev.videos.length,
+        books: prev.books.length, 
+        podcasts: prev.podcasts.length,
+        total: prev.allData.length
+      });
+      
+      // Final check - make sure podcasts are in allData
+      const podcastsInAllData = prev.allData.filter(item => item.type === 'podcast');
+      console.log(`🔍 [PROGRESSIVE-DEBUG] Podcasts in final allData: ${podcastsInAllData.length}`);
+      
+      return { ...prev, loading: false, dataLoaded: true, loadingProgress: 100 };
+    });
+    
     console.log('🎉 Progressive data loader: All data loaded successfully');
   }, [fetchVideos, fetchBooks, fetchPodcasts]);
 

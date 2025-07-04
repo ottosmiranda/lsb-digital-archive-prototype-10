@@ -44,7 +44,14 @@ export const filterResults = (
   searchQuery: string, 
   currentFilters: SearchFilters
 ): SearchResult[] => {
-  return results.filter(item => {
+  console.log('🔍 [FILTER-DEBUG] Starting filter with:', {
+    totalResults: results.length,
+    searchQuery,
+    filters: currentFilters,
+    podcastsInResults: results.filter(r => r.type === 'podcast').length
+  });
+  
+  const filteredResults = results.filter(item => {
     if (searchQuery) {
       const queryNormalized = normalizeText(searchQuery);
       const titleNormalized = normalizeText(item.title);
@@ -61,7 +68,13 @@ export const filterResults = (
 
     // "Tipo de Item" filter (uses resourceType for tabs compatibility)
     if (currentFilters.resourceType.length > 0) {
-      if (!currentFilters.resourceType.includes(item.type)) return false;
+      const typeMatches = currentFilters.resourceType.includes(item.type);
+      console.log('🔍 [FILTER-DEBUG] Type filter check:', {
+        itemType: item.type,
+        filterTypes: currentFilters.resourceType,
+        matches: typeMatches
+      });
+      if (!typeMatches) return false;
     }
 
     if (currentFilters.subject.length > 0) {
@@ -140,6 +153,14 @@ export const filterResults = (
 
     return true;
   });
+  
+  console.log('🔍 [FILTER-DEBUG] Filter results:', {
+    originalCount: results.length,
+    filteredCount: filteredResults.length,
+    podcastsFiltered: filteredResults.filter(r => r.type === 'podcast').length
+  });
+  
+  return filteredResults;
 };
 
 export const sortResults = (resultsToSort: SearchResult[], sortType: string, query: string = ''): SearchResult[] => {

@@ -1,12 +1,20 @@
 
 import { Book, Video, Headphones } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useDataLoader } from '@/hooks/useDataLoader';
-import { useMemo } from 'react';
+import { useProgressiveDataLoader } from '@/hooks/useProgressiveDataLoader';
+import { useMemo, useEffect } from 'react';
 import QuickAccessSkeleton from '@/components/skeletons/QuickAccessSkeleton';
 
 const QuickAccess = () => {
-  const { allData, loading } = useDataLoader();
+  const { allData, loading, dataLoaded, loadData } = useProgressiveDataLoader();
+  
+  // Load data on mount
+  useEffect(() => {
+    if (!dataLoaded && !loading) {
+      console.log('🔄 QuickAccess: Loading data on mount');
+      loadData();
+    }
+  }, [dataLoaded, loading, loadData]);
 
   // Calculate real counts from loaded data
   const counts = useMemo(() => {

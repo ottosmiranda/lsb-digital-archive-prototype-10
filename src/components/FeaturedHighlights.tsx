@@ -1,11 +1,11 @@
 import { Star, ImageOff } from 'lucide-react';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
-import { useDataLoader } from '@/hooks/useDataLoader';
+import { useProgressiveDataLoader } from '@/hooks/useProgressiveDataLoader';
 import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import FeaturedHighlightsSkeleton from '@/components/skeletons/FeaturedHighlightsSkeleton';
@@ -66,7 +66,15 @@ const typeBadgeColor = (type: string) => {
 };
 
 const FeaturedHighlights = () => {
-  const { allData, loading } = useDataLoader();
+  const { allData, loading, dataLoaded, loadData } = useProgressiveDataLoader();
+  
+  // Load data on mount
+  useEffect(() => {
+    if (!dataLoaded && !loading) {
+      console.log('🔄 FeaturedHighlights: Loading data on mount');
+      loadData();
+    }
+  }, [dataLoaded, loading, loadData]);
   const navigate = useNavigate();
 
   // Create a stable autoplay plugin instance with updated configuration

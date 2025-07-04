@@ -1,4 +1,5 @@
 
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
@@ -55,22 +56,25 @@ const handler = async (req: Request): Promise<Response> => {
     const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
     const allEpisodes: PodcastEpisodeItem[] = [];
     
-    // Fetch only first 3 pages for instant loading (max ~30 episodes)
-    const maxPages = 3;
+    // Fetch 5 pages with limit 10 (as per API pagination) for ~50 episodes
+    const maxPages = 5;
+    const itemsPerPage = 10; // API uses 10 items per page
     let currentPage = 1;
     let totalPages = 1;
 
     do {
       console.log(`📡 Fetching page ${currentPage}/${Math.min(totalPages, maxPages)}...`);
       
-      const apiUrl = `${baseUrl}?tipo=podcast&page=${currentPage}&limit=20`; // Increase limit per page
+      const apiUrl = `${baseUrl}?tipo=podcast&page=${currentPage}&limit=${itemsPerPage}`;
+      console.log(`🔗 API URL: ${apiUrl}`);
+      
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'LSB-Digital-Library/1.0'
         },
-        signal: AbortSignal.timeout(8000) // Reduce timeout for faster failure
+        signal: AbortSignal.timeout(10000) // 10 second timeout
       });
 
       if (!response.ok) {
@@ -80,6 +84,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       const data: PodcastApiResponse = await response.json();
       console.log(`✅ Page ${currentPage} fetched: ${data.conteudo.length} episodes`);
+      console.log(`📊 API Response meta: total=${data.total}, totalPages=${data.totalPages}, limit=${data.limit}`);
 
       allEpisodes.push(...data.conteudo);
       totalPages = Math.min(data.totalPages, maxPages); // Limit total pages
@@ -115,6 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
     }));
 
     console.log(`✅ Podcasts transformed successfully: ${transformedPodcasts.length} items`);
+    console.log(`🔍 Sample podcast data:`, transformedPodcasts.slice(0, 2));
 
     return new Response(JSON.stringify({
       success: true,
@@ -146,3 +152,4 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 serve(handler);
+

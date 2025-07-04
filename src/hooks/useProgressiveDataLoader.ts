@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { SearchResult } from '@/types/searchTypes';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,13 +34,16 @@ export const useProgressiveDataLoader = () => {
     dataLoaded: false,
   });
 
-  const updateProgress = useCallback(() => {
-    const completedCount = Object.values(state.loadingStates).filter(loading => !loading).length;
+  // Calculate progress based on completed loads
+  const updateProgress = useCallback((loadingStates: { videos: boolean; books: boolean; podcasts: boolean }) => {
+    const completedCount = Object.values(loadingStates).filter(loading => !loading).length;
     const progress = (completedCount / 3) * 100;
-    setState(prev => ({ ...prev, loadingProgress: progress }));
-  }, [state.loadingStates]);
+    console.log(`📊 Progress update: ${completedCount}/3 completed (${progress}%)`);
+    return progress;
+  }, []);
 
   const fetchVideos = useCallback(async () => {
+    console.log('🎬 Starting videos fetch...');
     setState(prev => ({ 
       ...prev, 
       loadingStates: { ...prev.loadingStates, videos: true } 
@@ -50,22 +54,33 @@ export const useProgressiveDataLoader = () => {
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
 
-      setState(prev => ({
-        ...prev,
-        videos: data.videos,
-        allData: [...prev.books, ...prev.podcasts, ...data.videos],
-        loadingStates: { ...prev.loadingStates, videos: false }
-      }));
+      console.log(`✅ Videos fetched: ${data.count} items`);
+      setState(prev => {
+        const newLoadingStates = { ...prev.loadingStates, videos: false };
+        const newAllData = [...prev.books, ...prev.podcasts, ...data.videos];
+        return {
+          ...prev,
+          videos: data.videos,
+          allData: newAllData,
+          loadingStates: newLoadingStates,
+          loadingProgress: updateProgress(newLoadingStates)
+        };
+      });
     } catch (error) {
       console.error('❌ Failed to fetch videos:', error);
-      setState(prev => ({ 
-        ...prev, 
-        loadingStates: { ...prev.loadingStates, videos: false } 
-      }));
+      setState(prev => {
+        const newLoadingStates = { ...prev.loadingStates, videos: false };
+        return { 
+          ...prev, 
+          loadingStates: newLoadingStates,
+          loadingProgress: updateProgress(newLoadingStates)
+        };
+      });
     }
-  }, []);
+  }, [updateProgress]);
 
   const fetchBooks = useCallback(async () => {
+    console.log('📚 Starting books fetch...');
     setState(prev => ({ 
       ...prev, 
       loadingStates: { ...prev.loadingStates, books: true } 
@@ -76,22 +91,33 @@ export const useProgressiveDataLoader = () => {
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
 
-      setState(prev => ({
-        ...prev,
-        books: data.books,
-        allData: [...prev.videos, ...prev.podcasts, ...data.books],
-        loadingStates: { ...prev.loadingStates, books: false }
-      }));
+      console.log(`✅ Books fetched: ${data.count} items`);
+      setState(prev => {
+        const newLoadingStates = { ...prev.loadingStates, books: false };
+        const newAllData = [...prev.videos, ...prev.podcasts, ...data.books];
+        return {
+          ...prev,
+          books: data.books,
+          allData: newAllData,
+          loadingStates: newLoadingStates,
+          loadingProgress: updateProgress(newLoadingStates)
+        };
+      });
     } catch (error) {
       console.error('❌ Failed to fetch books:', error);
-      setState(prev => ({ 
-        ...prev, 
-        loadingStates: { ...prev.loadingStates, books: false } 
-      }));
+      setState(prev => {
+        const newLoadingStates = { ...prev.loadingStates, books: false };
+        return { 
+          ...prev, 
+          loadingStates: newLoadingStates,
+          loadingProgress: updateProgress(newLoadingStates)
+        };
+      });
     }
-  }, []);
+  }, [updateProgress]);
 
   const fetchPodcasts = useCallback(async () => {
+    console.log('🎧 Starting podcasts fetch...');
     setState(prev => ({ 
       ...prev, 
       loadingStates: { ...prev.loadingStates, podcasts: true } 
@@ -102,33 +128,41 @@ export const useProgressiveDataLoader = () => {
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
 
-      setState(prev => ({
-        ...prev,
-        podcasts: data.podcasts,
-        allData: [...prev.videos, ...prev.books, ...data.podcasts],
-        loadingStates: { ...prev.loadingStates, podcasts: false }
-      }));
+      console.log(`✅ Podcasts fetched: ${data.count} items`);
+      setState(prev => {
+        const newLoadingStates = { ...prev.loadingStates, podcasts: false };
+        const newAllData = [...prev.videos, ...prev.books, ...data.podcasts];
+        return {
+          ...prev,
+          podcasts: data.podcasts,
+          allData: newAllData,
+          loadingStates: newLoadingStates,
+          loadingProgress: updateProgress(newLoadingStates)
+        };
+      });
     } catch (error) {
       console.error('❌ Failed to fetch podcasts:', error);
-      setState(prev => ({ 
-        ...prev, 
-        loadingStates: { ...prev.loadingStates, podcasts: false } 
-      }));
+      setState(prev => {
+        const newLoadingStates = { ...prev.loadingStates, podcasts: false };
+        return { 
+          ...prev, 
+          loadingStates: newLoadingStates,
+          loadingProgress: updateProgress(newLoadingStates)
+        };
+      });
     }
-  }, []);
+  }, [updateProgress]);
 
   const loadData = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true, dataLoaded: false }));
+    console.log('🚀 Progressive data loader: Starting parallel fetch...');
+    setState(prev => ({ ...prev, loading: true, dataLoaded: false, loadingProgress: 0 }));
     
     // Start all fetches in parallel
     await Promise.all([fetchVideos(), fetchBooks(), fetchPodcasts()]);
     
-    setState(prev => ({ ...prev, loading: false, dataLoaded: true }));
+    setState(prev => ({ ...prev, loading: false, dataLoaded: true, loadingProgress: 100 }));
+    console.log('🎉 Progressive data loader: All data loaded successfully');
   }, [fetchVideos, fetchBooks, fetchPodcasts]);
-
-  useEffect(() => {
-    updateProgress();
-  }, [updateProgress]);
 
   return {
     ...state,

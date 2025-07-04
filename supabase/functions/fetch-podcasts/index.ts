@@ -54,21 +54,23 @@ const handler = async (req: Request): Promise<Response> => {
     
     const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
     const allEpisodes: PodcastEpisodeItem[] = [];
+    
+    // Fetch only first 3 pages for instant loading (max ~30 episodes)
+    const maxPages = 3;
     let currentPage = 1;
     let totalPages = 1;
 
-    // Fetch all pages
     do {
-      console.log(`📡 Fetching page ${currentPage}/${totalPages}...`);
+      console.log(`📡 Fetching page ${currentPage}/${Math.min(totalPages, maxPages)}...`);
       
-      const apiUrl = `${baseUrl}?tipo=podcast&page=${currentPage}`;
+      const apiUrl = `${baseUrl}?tipo=podcast&page=${currentPage}&limit=20`; // Increase limit per page
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'LSB-Digital-Library/1.0'
         },
-        signal: AbortSignal.timeout(10000) // 10 second timeout
+        signal: AbortSignal.timeout(8000) // Reduce timeout for faster failure
       });
 
       if (!response.ok) {
@@ -80,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`✅ Page ${currentPage} fetched: ${data.conteudo.length} episodes`);
 
       allEpisodes.push(...data.conteudo);
-      totalPages = data.totalPages;
+      totalPages = Math.min(data.totalPages, maxPages); // Limit total pages
       currentPage++;
 
     } while (currentPage <= totalPages);

@@ -6,7 +6,7 @@ export class DataService {
   private cachedData: SearchResult[] | null = null;
   private loadingPromise: Promise<SearchResult[]> | null = null;
   private lastLoadTime: number = 0;
-  private maxCacheAge: number = 5 * 60 * 1000; // 5 minutes in milliseconds
+  private maxCacheAge: number = 30 * 60 * 1000; // 30 minutes in milliseconds
 
   private constructor() {}
 
@@ -66,47 +66,51 @@ export class DataService {
   }
 
   private async fetchDataFromAPIs(): Promise<SearchResult[]> {
-    console.log('📡 Starting API-only data fetch (Videos + Books + Podcasts)...');
+    console.log('📡 Starting PARALLEL API fetch (Videos + Books + Podcasts)...');
     
+    // Fetch all APIs in parallel for maximum speed
+    const [videosResult, booksResult, podcastsResult] = await Promise.allSettled([
+      this.fetchVideosFromAPI(),
+      this.fetchBooksFromAPI(), 
+      this.fetchPodcastsFromAPI()
+    ]);
+
     const results: SearchResult[] = [];
     const errors: string[] = [];
 
-    try {
-      // Fetch videos from API
-      const videos = await this.fetchVideosFromAPI();
-      results.push(...videos);
-      console.log('🎬 Videos fetched:', videos.length);
+    // Process videos result
+    if (videosResult.status === 'fulfilled') {
+      results.push(...videosResult.value);
+      console.log('🎬 Videos fetched:', videosResult.value.length);
       
       // Log video IDs for debugging
-      if (videos.length > 0) {
-        console.log('🎬 Video IDs preview:', videos.slice(0, 3).map(v => ({
+      if (videosResult.value.length > 0) {
+        console.log('🎬 Video IDs preview:', videosResult.value.slice(0, 3).map(v => ({
           id: v.id,
           originalId: v.originalId,
           title: v.title
         })));
       }
-    } catch (error) {
-      console.error('❌ Failed to fetch videos:', error);
+    } else {
+      console.error('❌ Failed to fetch videos:', videosResult.reason);
       errors.push('videos');
     }
 
-    try {
-      // Fetch books from API
-      const books = await this.fetchBooksFromAPI();
-      results.push(...books);
-      console.log('📚 Books fetched:', books.length);
-    } catch (error) {
-      console.error('❌ Failed to fetch books:', error);
+    // Process books result
+    if (booksResult.status === 'fulfilled') {
+      results.push(...booksResult.value);
+      console.log('📚 Books fetched:', booksResult.value.length);
+    } else {
+      console.error('❌ Failed to fetch books:', booksResult.reason);
       errors.push('books');
     }
 
-    try {
-      // Fetch podcasts from API
-      const podcasts = await this.fetchPodcastsFromAPI();
-      results.push(...podcasts);
-      console.log('🎧 Podcasts fetched:', podcasts.length);
-    } catch (error) {
-      console.error('❌ Failed to fetch podcasts:', error);
+    // Process podcasts result
+    if (podcastsResult.status === 'fulfilled') {
+      results.push(...podcastsResult.value);
+      console.log('🎧 Podcasts fetched:', podcastsResult.value.length);
+    } else {
+      console.error('❌ Failed to fetch podcasts:', podcastsResult.reason);
       errors.push('podcasts');
     }
 

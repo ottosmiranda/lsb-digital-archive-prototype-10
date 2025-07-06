@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { useInfiniteContentLoader } from '@/hooks/useInfiniteContentLoader';
+import { useHomepageContent } from '@/hooks/useHomepageContent';
 import { useMemo } from 'react';
 import RecentAdditionsSkeleton from '@/components/skeletons/RecentAdditionsSkeleton';
 
@@ -45,13 +45,13 @@ const formatDate = (year: number) => {
 };
 
 const RecentAdditions = () => {
-  const { getAllItems, loading } = useInfiniteContentLoader();
+  const { content, loading } = useHomepageContent();
 
-  // Get mixed recent items from optimized loader
+  // Get mixed recent items from homepage API
   const recentItems = useMemo(() => {
-    const allItems = getAllItems();
+    const allItems = [...content.videos, ...content.books, ...content.podcasts];
     
-    if (!allItems || allItems.length === 0) {
+    if (allItems.length === 0) {
       return [];
     }
 
@@ -67,7 +67,7 @@ const RecentAdditions = () => {
         thumbnail: item.thumbnail || PLACEHOLDER_THUMB,
         addedDate: item.year.toString(),
       }));
-  }, [getAllItems]);
+  }, [content]);
 
   if (loading) {
     return <RecentAdditionsSkeleton />;

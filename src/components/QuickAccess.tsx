@@ -1,25 +1,21 @@
 
 import { Book, Video, Headphones } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useDataLoader } from '@/hooks/useDataLoader';
+import { useHomepageContent } from '@/hooks/useHomepageContent';
 import { useMemo } from 'react';
 import QuickAccessSkeleton from '@/components/skeletons/QuickAccessSkeleton';
 
 const QuickAccess = () => {
-  const { allData, loading } = useDataLoader();
+  const { content, loading } = useHomepageContent();
 
-  // Calculate real counts from loaded data
+  // Calculate real counts from homepage content
   const counts = useMemo(() => {
-    const videosCount = allData.filter(item => item.type === 'video').length;
-    const booksCount = allData.filter(item => item.type === 'titulo').length;
-    const podcastsCount = allData.filter(item => item.type === 'podcast').length;
-
     return {
-      videos: videosCount > 0 ? videosCount.toString() : '...',
-      books: booksCount > 0 ? booksCount.toString() : '...',
-      podcasts: podcastsCount > 0 ? podcastsCount.toString() : '...'
+      videos: content.videos.length > 0 ? content.videos.length.toString() + '+' : '...',
+      books: content.books.length > 0 ? content.books.length.toString() + '+' : '...',
+      podcasts: content.podcasts.length > 0 ? content.podcasts.length.toString() + '+' : '...'
     };
-  }, [allData]);
+  }, [content]);
 
   const accessTypes = [
     {

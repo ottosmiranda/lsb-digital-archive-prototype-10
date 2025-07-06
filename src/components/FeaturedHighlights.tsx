@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
-import { useDataLoader } from '@/hooks/useDataLoader';
+import { useHomepageContent } from '@/hooks/useHomepageContent';
 import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import FeaturedHighlightsSkeleton from '@/components/skeletons/FeaturedHighlightsSkeleton';
@@ -66,7 +66,7 @@ const typeBadgeColor = (type: string) => {
 };
 
 const FeaturedHighlights = () => {
-  const { allData, loading } = useDataLoader();
+  const { content, loading } = useHomepageContent();
   const navigate = useNavigate();
 
   // Create a stable autoplay plugin instance with updated configuration
@@ -78,12 +78,18 @@ const FeaturedHighlights = () => {
     })
   );
 
-  // Memoize highlights so we pick new ones only when data changes
-  const highlights = useMemo(() => getFeaturedHighlights(allData), [allData]);
+  // Get mixed highlights from new API content
+  const highlights = useMemo(() => {
+    const allItems = [...content.videos, ...content.books, ...content.podcasts];
+    return allItems.slice(0, 6); // Take first 6 items mixed
+  }, [content]);
 
-  console.log('FeaturedHighlights - allData count:', allData.length);
+  console.log('FeaturedHighlights - content loaded:', {
+    videos: content.videos.length,
+    books: content.books.length,
+    podcasts: content.podcasts.length
+  });
   console.log('FeaturedHighlights - highlights count:', highlights.length);
-  console.log('FeaturedHighlights - highlights:', highlights);
 
   // Show skeleton while loading
   if (loading) {

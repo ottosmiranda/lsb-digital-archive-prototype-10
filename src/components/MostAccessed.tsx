@@ -1,13 +1,14 @@
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useDataLoader } from '@/hooks/useDataLoader';
+import { useHomepageContent } from '@/hooks/useHomepageContent';
 import { useNavigate } from 'react-router-dom';
 import { useTopItems } from './MostAccessed/useTopItems';
 import MostAccessedTableRow from './MostAccessed/MostAccessedTableRow';
 import MostAccessedSkeleton from '@/components/skeletons/MostAccessedSkeleton';
 
 const MostAccessed = () => {
-  const { allData, loading } = useDataLoader();
+  const { content, loading } = useHomepageContent();
   const navigate = useNavigate();
+  const allData = [...content.videos, ...content.books, ...content.podcasts];
   const topItems = useTopItems(allData);
 
   const handleItemClick = (id: number) => {

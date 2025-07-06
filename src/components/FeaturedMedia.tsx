@@ -4,37 +4,37 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import { useInfiniteContentLoader } from '@/hooks/useInfiniteContentLoader';
+import { useHomepageContent } from '@/hooks/useHomepageContent';
 import { useMemo } from 'react';
 import FeaturedMediaSkeleton from '@/components/skeletons/FeaturedMediaSkeleton';
 
 const FeaturedMedia = () => {
-  const { getItemsByType, loading } = useInfiniteContentLoader();
+  const { content, loading } = useHomepageContent();
 
-  // Get featured content from optimized loader
+  // Get featured content from homepage API
   const { videos, podcasts } = useMemo(() => {
-    const videoData = getItemsByType('video')
+    const videoData = content.videos
       .slice(0, 3)
       .map(video => ({
         id: video.id,
         title: video.title,
         duration: video.duration || 'N/A',
-        thumbnail: video.thumbnail || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
+        thumbnail: video.thumbnail,
         author: video.author
       }));
 
-    const podcastData = getItemsByType('podcast')
+    const podcastData = content.podcasts
       .slice(0, 3)
       .map(podcast => ({
         id: podcast.id,
         title: podcast.title,
         duration: podcast.duration || 'N/A',
-        thumbnail: podcast.thumbnail || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
+        thumbnail: podcast.thumbnail,
         author: podcast.author
       }));
 
     return { videos: videoData, podcasts: podcastData };
-  }, [getItemsByType]);
+  }, [content]);
 
   const MediaCard = ({ item, type }: { item: any; type: 'video' | 'podcast' }) => (
     <Link to={`/recurso/${item.id}`}>

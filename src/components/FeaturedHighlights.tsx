@@ -1,3 +1,4 @@
+
 import { Star, ImageOff } from 'lucide-react';
 import { useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -91,16 +92,23 @@ const FeaturedHighlights = () => {
     })
   );
 
-  // Get mixed highlights from new API content
+  // Get mixed highlights using the existing getFeaturedHighlights function
   const highlights = useMemo(() => {
-    console.log('🔄 PHASE 3: Processing FeaturedHighlights data...');
+    console.log('🔄 PHASE 3: Processing FeaturedHighlights data with intelligent mixing...');
     
     const allItems = [...content.videos, ...content.books, ...content.podcasts];
-    const finalHighlights = allItems.slice(0, 6); // Take first 6 items mixed
     
-    console.log('✅ PHASE 3: FeaturedHighlights data processed:', {
+    // Use the existing getFeaturedHighlights function for intelligent mixing
+    const finalHighlights = getFeaturedHighlights(allItems);
+    
+    console.log('✅ PHASE 3: FeaturedHighlights intelligent mixing completed:', {
       allItemsCount: allItems.length,
       finalHighlightsCount: finalHighlights.length,
+      highlightsByType: {
+        videos: finalHighlights.filter(h => h.type === 'video').length,
+        books: finalHighlights.filter(h => h.type === 'titulo').length,
+        podcasts: finalHighlights.filter(h => h.type === 'podcast').length
+      },
       highlightsSample: finalHighlights.slice(0, 2)
     });
     

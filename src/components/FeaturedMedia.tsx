@@ -9,22 +9,38 @@ import { useMemo } from 'react';
 import FeaturedMediaSkeleton from '@/components/skeletons/FeaturedMediaSkeleton';
 
 const FeaturedMedia = () => {
-  const { content, loading } = useHomepageContentContext();
+  const { content, rotatedContent, loading } = useHomepageContentContext();
 
-  // FASE 3: Debug component data reception
-  console.group('🎬 PHASE 3: FeaturedMedia Component Diagnostics');
+  console.group('🎬 PHASE 3: FeaturedMedia Component with Daily Rotation');
   console.log('Loading state:', loading);
+  console.log('Rotated daily media:', {
+    videos: rotatedContent.dailyMedia.videos.length,
+    podcasts: rotatedContent.dailyMedia.podcasts.length
+  });
   console.log('Raw content received:', {
     videos: content.videos.length,
     podcasts: content.podcasts.length
   });
-  console.log('Videos sample:', content.videos.slice(0, 2));
-  console.log('Podcasts sample:', content.podcasts.slice(0, 2));
   console.groupEnd();
 
-  // Get featured content from homepage API
   const { videos, podcasts } = useMemo(() => {
-    console.log('🔄 PHASE 3: Processing FeaturedMedia data...');
+    console.log('🔄 PHASE 3: Processing FeaturedMedia with rotation logic...');
+    
+    // Prioridade 1: Usar conteúdo rotacionado se disponível
+    if (rotatedContent.dailyMedia.videos.length > 0 || rotatedContent.dailyMedia.podcasts.length > 0) {
+      console.log('✅ Using rotated daily media:', {
+        videos: rotatedContent.dailyMedia.videos.length,
+        podcasts: rotatedContent.dailyMedia.podcasts.length
+      });
+      
+      return {
+        videos: rotatedContent.dailyMedia.videos,
+        podcasts: rotatedContent.dailyMedia.podcasts
+      };
+    }
+    
+    // Prioridade 2: Fallback para dados da API
+    console.log('🔄 Fallback: Using API data for featured media...');
     
     const videoData = content.videos
       .slice(0, 3)
@@ -47,14 +63,13 @@ const FeaturedMedia = () => {
       }));
 
     console.log('✅ PHASE 3: FeaturedMedia data processed:', {
+      source: 'api_fallback',
       processedVideos: videoData.length,
-      processedPodcasts: podcastData.length,
-      videoSample: videoData[0],
-      podcastSample: podcastData[0]
+      processedPodcasts: podcastData.length
     });
 
     return { videos: videoData, podcasts: podcastData };
-  }, [content]);
+  }, [content, rotatedContent.dailyMedia]);
 
   const MediaCard = ({ item, type }: { item: any; type: 'video' | 'podcast' }) => (
     <Link to={`/recurso/${item.id}`}>

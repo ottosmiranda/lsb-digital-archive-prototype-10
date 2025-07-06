@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      featured_content_rotation: {
+        Row: {
+          content_data: Json
+          content_type: string
+          created_at: string
+          id: string
+          is_active: boolean
+          rotation_date: string
+          updated_at: string
+        }
+        Insert: {
+          content_data: Json
+          content_type: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          rotation_date?: string
+          updated_at?: string
+        }
+        Update: {
+          content_data?: Json
+          content_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          rotation_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_settings: {
         Row: {
           created_at: string

@@ -11,39 +11,58 @@ import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import FeaturedHighlightsSkeleton from '@/components/skeletons/FeaturedHighlightsSkeleton';
 
-// Helper fallback for missing thumbnails
-const FallbackThumb = ({ label = "Miniatura Indisponível" }) => (
-  <div className="w-full h-64 bg-gray-200 flex items-center justify-center flex-col gap-2">
-    <ImageOff className="w-12 h-12 text-gray-400" />
-    <span className="text-gray-500 text-sm">{label}</span>
-  </div>
-);
-
-// Picks up to 6 items, mixing podcasts, videos, and books with image where possible
-function getFeaturedHighlights(allData: SearchResult[]): SearchResult[] {
+// Função inteligente de mesclagem para garantir variedade
+function getIntelligentMixedHighlights(allData: SearchResult[]): SearchResult[] {
   if (!allData || allData.length === 0) return [];
   
-  // Separate into types using the correct SearchResult structure
   const podcasts = allData.filter(item => item.type === "podcast");
   const videos = allData.filter(item => item.type === "video");
   const livros = allData.filter(item => item.type === "titulo");
   
-  // Try to ensure at least 2 of each type
-  let picks: SearchResult[] = [];
-  if (podcasts[0]) picks.push(podcasts[0]);
-  if (podcasts[1]) picks.push(podcasts[1]);
-  if (videos[0]) picks.push(videos[0]);
-  if (videos[1]) picks.push(videos[1]);
-  if (livros[0]) picks.push(livros[0]);
-  if (livros[1]) picks.push(livros[1]);
+  console.log('🎯 Intelligent mixing - Available:', {
+    podcasts: podcasts.length,
+    videos: videos.length,
+    books: livros.length
+  });
   
-  // Fill up to 6 with next-most-recent of any type
-  const remaining = [...podcasts.slice(2), ...videos.slice(2), ...livros.slice(2)];
-  for (const item of remaining) {
-    if (picks.length >= 6) break;
-    // Don't duplicate
-    if (!picks.find(h => h.id === item.id && h.type === item.type)) picks.push(item);
+  // Padrão de mesclagem: livro, podcast, vídeo, livro, podcast, vídeo
+  const pattern = ['titulo', 'podcast', 'video'];
+  let picks: SearchResult[] = [];
+  
+  for (let i = 0; i < 6; i++) {
+    const targetType = pattern[i % 3];
+    const slotIndex = Math.floor(i / 3); // 0 ou 1 para cada tipo
+    
+    let item = null;
+    if (targetType === 'titulo' && livros[slotIndex]) {
+      item = livros[slotIndex];
+    } else if (targetType === 'podcast' && podcasts[slotIndex]) {
+      item = podcasts[slotIndex];
+    } else if (targetType === 'video' && videos[slotIndex]) {
+      item = videos[slotIndex];
+    }
+    
+    // Fallback: se não tem o tipo desejado, pega qualquer um disponível
+    if (!item) {
+      const remaining = [...podcasts, ...videos, ...livros];
+      const usedIds = picks.map(p => p.id);
+      item = remaining.find(r => !usedIds.includes(r.id));
+    }
+    
+    if (item && !picks.find(p => p.id === item.id)) {
+      picks.push(item);
+    }
   }
+  
+  console.log('✅ Intelligent mixing result:', {
+    total: picks.length,
+    byType: {
+      videos: picks.filter(p => p.type === 'video').length,
+      books: picks.filter(p => p.type === 'titulo').length,
+      podcasts: picks.filter(p => p.type === 'podcast').length
+    },
+    items: picks.map(p => `${p.type}: ${p.title?.substring(0, 30)}...`)
+  });
   
   return picks.slice(0, 6);
 }
@@ -67,23 +86,19 @@ const typeBadgeColor = (type: string) => {
 };
 
 const FeaturedHighlights = () => {
-  const { content, loading } = useHomepageContentContext();
+  const { content, rotatedContent, loading } = useHomepageContentContext();
   const navigate = useNavigate();
 
-  // FASE 3: Debug component data reception
-  console.group('⭐ PHASE 3: FeaturedHighlights Component Diagnostics');
+  console.group('⭐ PHASE 3: FeaturedHighlights Component with Rotation Support');
   console.log('Loading state:', loading);
+  console.log('Rotated weekly highlights:', rotatedContent.weeklyHighlights.length);
   console.log('Raw content received:', {
     videos: content.videos.length,
     books: content.books.length,
     podcasts: content.podcasts.length
   });
-  console.log('Videos sample:', content.videos.slice(0, 2));
-  console.log('Books sample:', content.books.slice(0, 2));
-  console.log('Podcasts sample:', content.podcasts.slice(0, 2));
   console.groupEnd();
 
-  // Create a stable autoplay plugin instance with updated configuration
   const autoplayPlugin = useRef(
     Autoplay({
       delay: 4000,
@@ -92,49 +107,46 @@ const FeaturedHighlights = () => {
     })
   );
 
-  // Get mixed highlights using the existing getFeaturedHighlights function
   const highlights = useMemo(() => {
-    console.log('🔄 PHASE 3: Processing FeaturedHighlights data with intelligent mixing...');
+    console.log('🔄 PHASE 3: Processing FeaturedHighlights with rotation logic...');
     
+    // Prioridade 1: Usar conteúdo rotacionado se disponível
+    if (rotatedContent.weeklyHighlights.length > 0) {
+      console.log('✅ Using rotated weekly highlights:', rotatedContent.weeklyHighlights.length);
+      return rotatedContent.weeklyHighlights;
+    }
+    
+    // Prioridade 2: Fallback para lógica inteligente com dados da API
+    console.log('🔄 Fallback: Using intelligent mixing from API data...');
     const allItems = [...content.videos, ...content.books, ...content.podcasts];
+    const intelligentHighlights = getIntelligentMixedHighlights(allItems);
     
-    // Use the existing getFeaturedHighlights function for intelligent mixing
-    const finalHighlights = getFeaturedHighlights(allItems);
-    
-    console.log('✅ PHASE 3: FeaturedHighlights intelligent mixing completed:', {
-      allItemsCount: allItems.length,
-      finalHighlightsCount: finalHighlights.length,
+    console.log('✅ PHASE 3: FeaturedHighlights processing completed:', {
+      source: rotatedContent.weeklyHighlights.length > 0 ? 'rotated_database' : 'intelligent_api_fallback',
+      finalHighlightsCount: intelligentHighlights.length,
       highlightsByType: {
-        videos: finalHighlights.filter(h => h.type === 'video').length,
-        books: finalHighlights.filter(h => h.type === 'titulo').length,
-        podcasts: finalHighlights.filter(h => h.type === 'podcast').length
-      },
-      highlightsSample: finalHighlights.slice(0, 2)
+        videos: intelligentHighlights.filter(h => h.type === 'video').length,
+        books: intelligentHighlights.filter(h => h.type === 'titulo').length,
+        podcasts: intelligentHighlights.filter(h => h.type === 'podcast').length
+      }
     });
     
-    return finalHighlights;
-  }, [content]);
+    return intelligentHighlights;
+  }, [content, rotatedContent.weeklyHighlights]);
 
   console.log('🎯 PHASE 3: FeaturedHighlights final state:', {
     loading,
     highlightsCount: highlights.length,
-    contentSummary: {
-      videos: content.videos.length,
-      books: content.books.length,
-      podcasts: content.podcasts.length
-    }
+    usingRotatedContent: rotatedContent.weeklyHighlights.length > 0
   });
 
-  // Show skeleton while loading
   if (loading) {
     return <FeaturedHighlightsSkeleton />;
   }
 
-  // UI
   return (
     <section className="py-16 md:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
         <div className="text-center mb-12 animate-fade-in">
           <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
             Destaques da Semana
@@ -142,7 +154,6 @@ const FeaturedHighlights = () => {
           <div className="w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
         </div>
 
-        {/* Highlights Carousel or empty state */}
         {highlights.length === 0 ? (
           <div className="text-center my-12 text-lg text-gray-400">Nenhum destaque encontrado.</div>
         ) : (

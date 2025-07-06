@@ -6,15 +6,63 @@ export const useTopItems = (allData: SearchResult[]): SearchResult[] => {
   return useMemo(() => {
     if (!allData || allData.length === 0) return [];
     
-    // Mix different content types and take top 6 for carousel
-    const shuffled = [...allData].sort((a, b) => {
-      // Sort by a mix of ID and type for consistent but varied results
-      const aScore = (a.id || 1) * (a.type === 'podcast' ? 3 : a.type === 'video' ? 2 : 1);
-      const bScore = (b.id || 1) * (b.type === 'podcast' ? 3 : b.type === 'video' ? 2 : 1);
-      return bScore - aScore;
+    console.log('🔥 MostAccessed: Processing top items selection...');
+    
+    // Algoritmo melhorado para "Mais Acessados" - simula popularidade baseada em ID e tipo
+    const itemsWithPopularity = allData.map(item => ({
+      ...item,
+      popularityScore: calculatePopularityScore(item)
+    }));
+    
+    // Ordenar por score de popularidade (decrescente)
+    const sortedByPopularity = itemsWithPopularity.sort((a, b) => b.popularityScore - a.popularityScore);
+    
+    // Pegar os top 6 mais "acessados"
+    const topItems = sortedByPopularity.slice(0, 6);
+    
+    console.log('🔥 MostAccessed: Selected top items:', {
+      totalAvailable: allData.length,
+      selectedCount: topItems.length,
+      typeDistribution: {
+        videos: topItems.filter(item => item.type === 'video').length,
+        books: topItems.filter(item => item.type === 'titulo').length,
+        podcasts: topItems.filter(item => item.type === 'podcast').length
+      }
     });
-
-    // Return top 6 items for carousel display
-    return shuffled.slice(0, 6);
+    
+    return topItems;
   }, [allData]);
 };
+
+// Simula um score de popularidade baseado em características do item
+function calculatePopularityScore(item: SearchResult): number {
+  let score = 0;
+  
+  // Base score pelo ID (itens com IDs menores são "mais antigos" e podem ser mais populares)
+  const idScore = Math.max(1000 - (item.id || 1000), 100);
+  score += idScore;
+  
+  // Bonus por tipo (podcasts tendem a ter mais replay value)
+  const typeBonus = {
+    'podcast': 300,
+    'video': 200,
+    'titulo': 100
+  };
+  score += typeBonus[item.type as keyof typeof typeBonus] || 50;
+  
+  // Bonus se tem thumbnail (conteúdo mais visual tende a ser mais acessado)
+  if (item.thumbnail) {
+    score += 150;
+  }
+  
+  // Bonus baseado no comprimento do título (títulos médios performam melhor)
+  const titleLength = item.title?.length || 0;
+  if (titleLength >= 20 && titleLength <= 60) {
+    score += 100;
+  }
+  
+  // Adicionar alguma aleatoriedade para variação
+  score += Math.random() * 50;
+  
+  return Math.round(score);
+}

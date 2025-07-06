@@ -1,9 +1,10 @@
+
 import { Book, Video, Headphones, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { useHomepageContent } from '@/hooks/useHomepageContent';
+import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useMemo } from 'react';
 import RecentAdditionsSkeleton from '@/components/skeletons/RecentAdditionsSkeleton';
 
@@ -45,11 +46,24 @@ const formatDate = (year: number) => {
 };
 
 const RecentAdditions = () => {
-  const { content, loading } = useHomepageContent();
+  const { content, loading, error } = useHomepageContentContext();
+
+  console.log('🆕 RecentAdditions - Rendering with context data:', {
+    loading,
+    error,
+    videosCount: content.videos.length,
+    booksCount: content.books.length,
+    podcastsCount: content.podcasts.length
+  });
 
   // Get mixed recent items from homepage API
   const recentItems = useMemo(() => {
     const allItems = [...content.videos, ...content.books, ...content.podcasts];
+    
+    console.log('🆕 RecentAdditions - Processing items:', {
+      totalItems: allItems.length,
+      allItems: allItems.map(item => ({ id: item.id, title: item.title, type: item.type }))
+    });
     
     if (allItems.length === 0) {
       return [];
@@ -69,8 +83,15 @@ const RecentAdditions = () => {
       }));
   }, [content]);
 
+  console.log('🆕 RecentAdditions - Final recent items:', recentItems);
+
   if (loading) {
+    console.log('🆕 RecentAdditions - Showing skeleton loader');
     return <RecentAdditionsSkeleton />;
+  }
+
+  if (error) {
+    console.log('🆕 RecentAdditions - Error state:', error);
   }
 
   return (
@@ -84,6 +105,14 @@ const RecentAdditions = () => {
             Confira os materiais mais recentes adicionados à nossa biblioteca
           </p>
         </div>
+
+        {error && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
+            <p className="text-yellow-800 text-center">
+              ⚠️ Problemas ao carregar conteúdo recente. Mostrando dados disponíveis.
+            </p>
+          </div>
+        )}
 
         {recentItems.length > 0 ? (
           <>
@@ -130,6 +159,10 @@ const RecentAdditions = () => {
                                 src={item.thumbnail} 
                                 alt={item.title}
                                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                onError={(e) => {
+                                  console.log('🖼️ Image load error for:', item.title);
+                                  e.currentTarget.src = PLACEHOLDER_THUMB;
+                                }}
                               />
                             </div>
                           </div>
@@ -155,7 +188,18 @@ const RecentAdditions = () => {
           </>
         ) : (
           <div className="text-center py-8">
-            <p className="text-gray-600">Nenhum conteúdo disponível no momento.</p>
+            <p className="text-gray-600">
+              {loading ? 'Carregando novidades...' : 'Nenhum conteúdo disponível no momento.'}
+            </p>
+            {!loading && (
+              <Button 
+                onClick={() => window.location.reload()} 
+                variant="outline" 
+                className="mt-4"
+              >
+                Tentar Novamente
+              </Button>
+            )}
           </div>
         )}
       </div>

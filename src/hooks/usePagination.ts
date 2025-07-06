@@ -1,13 +1,25 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 interface UsePaginationProps {
   initialPage?: number;
+  externalCurrentPage?: number;
   onPageChange?: (page: number) => void;
 }
 
-export const usePagination = ({ initialPage = 1, onPageChange }: UsePaginationProps = {}) => {
+export const usePagination = ({ 
+  initialPage = 1, 
+  externalCurrentPage,
+  onPageChange 
+}: UsePaginationProps = {}) => {
   const [currentPage, setCurrentPage] = useState(initialPage);
+
+  // Sincronizar com página externa (da resposta da busca)
+  useEffect(() => {
+    if (externalCurrentPage !== undefined && externalCurrentPage !== currentPage) {
+      setCurrentPage(externalCurrentPage);
+    }
+  }, [externalCurrentPage, currentPage]);
 
   const handlePageChange = useCallback((page: number) => {
     console.log('📄 Page changed to:', page);
@@ -18,10 +30,11 @@ export const usePagination = ({ initialPage = 1, onPageChange }: UsePaginationPr
 
   const resetToFirstPage = useCallback(() => {
     setCurrentPage(1);
-  }, []);
+    onPageChange?.(1);
+  }, [onPageChange]);
 
   return {
-    currentPage,
+    currentPage: externalCurrentPage !== undefined ? externalCurrentPage : currentPage,
     setCurrentPage,
     handlePageChange,
     resetToFirstPage

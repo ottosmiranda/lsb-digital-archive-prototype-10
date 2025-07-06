@@ -1,5 +1,5 @@
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { SearchFilters } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
 import { usePagination } from '@/hooks/usePagination';
@@ -19,9 +19,6 @@ export const useSearchResults = () => {
     setQuery
   } = useSearchState();
 
-  // Gerenciar paginação
-  const { currentPage, handlePageChange, resetToFirstPage, setCurrentPage } = usePagination();
-
   // Gerenciar resposta da busca
   const { 
     searchResponse, 
@@ -32,35 +29,64 @@ export const useSearchResults = () => {
     setUsingFallback 
   } = useSearchResponse();
 
+  // Gerenciar paginação - usar página da resposta como fonte da verdade
+  const { currentPage, handlePageChange, resetToFirstPage } = usePagination({
+    initialPage: 1,
+    externalCurrentPage: searchResponse.pagination.currentPage,
+    onPageChange: (page) => {
+      // A página será atualizada via nova busca
+    }
+  });
+
+  // Callbacks estáveis para o useSearchExecution
+  const onSearchComplete = useCallback((response: any) => {
+    updateSearchResponse(response);
+  }, [updateSearchResponse]);
+
+  const onSearchError = useCallback((errorQuery: string, errorFilters: SearchFilters, errorSortBy: string, errorCurrentPage: number) => {
+    clearResults(errorFilters, errorSortBy, errorCurrentPage);
+  }, [clearResults]);
+
+  const onUsingFallback = useCallback((fallback: boolean) => {
+    setUsingFallback(fallback);
+  }, [setUsingFallback]);
+
   // Gerenciar execução da busca
   const { performSearch, forceRefresh, loading } = useSearchExecution({
     resultsPerPage,
-    onSearchComplete: updateSearchResponse,
-    onSearchError: (errorQuery, errorFilters, errorSortBy, errorCurrentPage) => {
-      clearResults(errorFilters, errorSortBy, errorCurrentPage);
-    },
-    onUsingFallback: setUsingFallback
+    onSearchComplete,
+    onSearchError,
+    onUsingFallback
   });
+
+  // Memoizar chave de busca para evitar buscas desnecessárias
+  const searchKey = useMemo(() => {
+    return JSON.stringify({ query, filters, sortBy, currentPage });
+  }, [query, filters, sortBy, currentPage]);
 
   // Executar busca quando parâmetros mudarem
   useEffect(() => {
     performSearch(query, filters, sortBy, currentPage);
-  }, [query, filters, sortBy, currentPage, performSearch]);
+  }, [searchKey, performSearch]); // Usar searchKey memoizada
 
   // Handlers
   const handleFilterChange = useCallback((newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
     setFilters(newFilters);
     // Resetar página apenas se não for digitação no autor
     if (!options?.authorTyping) {
-      resetToFirstPage();
+      // A página será resetada na próxima busca
     }
-  }, [setFilters, resetToFirstPage]);
+  }, [setFilters]);
 
   const handleSortChange = useCallback((newSort: string) => {
     console.log('📊 Sort changed to:', newSort);
     setSortBy(newSort);
-    resetToFirstPage();
-  }, [setSortBy, resetToFirstPage]);
+    // A página será resetada na próxima busca
+  }, [setSortBy]);
+
+  const handlePageChangeInternal = useCallback((page: number) => {
+    handlePageChange(page);
+  }, [handlePageChange]);
 
   const handleForceRefresh = useCallback(async () => {
     await forceRefresh(query, filters, sortBy, currentPage);
@@ -79,7 +105,7 @@ export const useSearchResults = () => {
     usingFallback,
     handleFilterChange,
     handleSortChange,
-    handlePageChange,
+    handlePageChange: handlePageChangeInternal,
     setFilters,
     setQuery,
     forceRefresh: handleForceRefresh

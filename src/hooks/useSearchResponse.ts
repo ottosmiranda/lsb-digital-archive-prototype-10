@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 import { checkHasActiveFilters } from '@/utils/searchUtils';
 
@@ -54,13 +54,13 @@ export const useSearchResponse = () => {
     return checkHasActiveFilters(searchResponse.searchInfo.appliedFilters);
   }, [searchResponse.searchInfo.appliedFilters]);
 
-  const updateSearchResponse = (response: SearchResponse) => {
+  const updateSearchResponse = useCallback((response: SearchResponse) => {
     setSearchResponse(response);
-  };
+  }, []);
 
-  const clearResults = (filters: SearchFilters, sortBy: string, currentPage: number = 1) => {
+  const clearResults = useCallback((filters: SearchFilters, sortBy: string, currentPage: number = 1) => {
     setSearchResponse(createEmptyResponse(filters, sortBy, currentPage));
-  };
+  }, []);
 
   return {
     searchResponse,

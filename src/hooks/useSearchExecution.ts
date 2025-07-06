@@ -4,9 +4,25 @@ import { SearchFilters } from '@/types/searchTypes';
 import { useApiSearch } from '@/hooks/useApiSearch';
 import { checkHasActiveFilters } from '@/utils/searchUtils';
 
+interface SearchResponse {
+  results: any[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalResults: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+  searchInfo: {
+    query: string;
+    appliedFilters: SearchFilters;
+    sortBy: string;
+  };
+}
+
 interface UseSearchExecutionProps {
   resultsPerPage?: number;
-  onSearchComplete: (response: any) => void;
+  onSearchComplete: (response: SearchResponse) => void;
   onSearchError: (error: string, filters: SearchFilters, sortBy: string, currentPage: number) => void;
   onUsingFallback: (usingFallback: boolean) => void;
 }

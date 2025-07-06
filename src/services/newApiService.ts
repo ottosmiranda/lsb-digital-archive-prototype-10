@@ -129,6 +129,92 @@ export class NewApiService {
     return `${minutes}m`;
   }
 
+  private async healthCheck(): Promise<boolean> {
+    const healthUrl = `${API_BASE_URL}/health`;
+    const startTime = Date.now();
+    
+    try {
+      console.log('🏥 API Health Check - Starting...');
+      const response = await fetch(healthUrl, {
+        signal: AbortSignal.timeout(3000), // 3s timeout for health check
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      const duration = Date.now() - startTime;
+      const isHealthy = response.ok;
+      
+      console.log(`🏥 API Health Check - ${isHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY'}:`, {
+        status: response.status,
+        duration: `${duration}ms`,
+        latency: duration > 2000 ? 'HIGH' : duration > 1000 ? 'MEDIUM' : 'LOW'
+      });
+      
+      return isHealthy;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error('🏥 API Health Check - ❌ FAILED:', {
+        error: error instanceof Error ? error.message : 'Unknown',
+        duration: `${duration}ms`
+      });
+      return false;
+    }
+  }
+
+  private async fetchWithRetry(url: string, requestId: string, maxRetries: number = 3): Promise<Response> {
+    let lastError: Error;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const attemptId = `${requestId}_attempt_${attempt}`;
+      console.log(`🔄 ${attemptId} - Starting (${attempt}/${maxRetries})`);
+      
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.error(`⏰ ${attemptId} - Timeout (5s)`);
+          controller.abort();
+        }, 5000); // 5s timeout per attempt
+        
+        const startTime = Date.now();
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'LSB-Digital-Archive/1.0'
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        const duration = Date.now() - startTime;
+        
+        console.log(`📊 ${attemptId} - Response:`, {
+          status: response.status,
+          ok: response.ok,
+          duration: `${duration}ms`
+        });
+        
+        if (response.ok) {
+          return response;
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        console.error(`❌ ${attemptId} - Failed:`, lastError.message);
+        
+        // Don't retry on final attempt
+        if (attempt < maxRetries) {
+          const backoffTime = Math.min(1000 * Math.pow(2, attempt - 1), 8000); // Exponential backoff, max 8s
+          console.log(`⏳ ${attemptId} - Retrying in ${backoffTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+        }
+      }
+    }
+    
+    throw lastError!;
+  }
+
   async fetchContent(tipo: 'livro' | 'aula' | 'podcast', page: number = 1, limit: number = 10): Promise<SearchResult[]> {
     const cacheKey = this.getCacheKey(tipo, page, limit);
     const requestId = `${tipo}_${Date.now()}`;
@@ -176,41 +262,10 @@ export class NewApiService {
     
     console.log(`🌐 ${requestId} - Making HTTP request to:`, url);
     
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.error(`⏰ ${requestId} - Request timeout (15s)`);
-      controller.abort();
-    }, 15000); // 15 second timeout
-
     try {
-      console.log(`📡 ${requestId} - Sending fetch request...`);
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        }
-      });
+      console.log(`📡 ${requestId} - Using fetchWithRetry...`);
+      const response = await this.fetchWithRetry(url, requestId);
       
-      clearTimeout(timeoutId);
-      
-      console.log(`📊 ${requestId} - Response received:`, {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ ${requestId} - HTTP Error:`, {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText.substring(0, 500) // Limit error body log
-        });
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
       console.log(`📄 ${requestId} - Parsing JSON response...`);
       const rawData: APIResponse = await response.json();
       
@@ -252,21 +307,10 @@ export class NewApiService {
       return transformedData;
       
     } catch (error) {
-      clearTimeout(timeoutId);
-      
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          console.error(`❌ ${requestId} - Request aborted (timeout)`);
-        } else {
-          console.error(`❌ ${requestId} - Fetch error:`, {
-            name: error.name,
-            message: error.message,
-            stack: error.stack?.substring(0, 500)
-          });
-        }
-      } else {
-        console.error(`❌ ${requestId} - Unknown error:`, error);
-      }
+      console.error(`❌ ${requestId} - Final fetch error:`, {
+        error: error instanceof Error ? error.message : 'Unknown',
+        stack: error instanceof Error ? error.stack?.substring(0, 500) : 'No stack'
+      });
       
       throw error;
     }
@@ -283,39 +327,52 @@ export class NewApiService {
     console.log(`⏰ Started at:`, new Date().toISOString());
     
     try {
-      // Use Promise.allSettled to handle partial failures gracefully
-      console.log(`📡 ${requestId} - Starting parallel content fetch...`);
+      // Health check first
+      console.log(`🏥 ${requestId} - Checking API health...`);
+      const isHealthy = await this.healthCheck();
       
-      const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
-        this.fetchContent('livro', 1, 6),
-        this.fetchContent('aula', 1, 6),
-        this.fetchContent('podcast', 1, 6)
-      ]);
-
-      console.log(`📊 ${requestId} - Fetch results:`, {
-        books: booksResult.status,
-        videos: videosResult.status,
-        podcasts: podcastsResult.status
-      });
-
-      const books = booksResult.status === 'fulfilled' ? booksResult.value : [];
-      const videos = videosResult.status === 'fulfilled' ? videosResult.value : [];
-      const podcasts = podcastsResult.status === 'fulfilled' ? podcastsResult.value : [];
-
-      if (booksResult.status === 'rejected') {
-        console.error(`❌ ${requestId} - Books fetch failed:`, booksResult.reason);
+      if (!isHealthy) {
+        console.warn(`⚠️ ${requestId} - API health check failed, but proceeding anyway...`);
       }
-      if (videosResult.status === 'rejected') {
-        console.error(`❌ ${requestId} - Videos fetch failed:`, videosResult.reason);
+      
+      // Sequential loading with progressive results
+      console.log(`📡 ${requestId} - Starting SEQUENTIAL content fetch...`);
+      
+      let books: SearchResult[] = [];
+      let videos: SearchResult[] = [];
+      let podcasts: SearchResult[] = [];
+      
+      // Load books first
+      try {
+        console.log(`📚 ${requestId} - Loading books...`);
+        books = await this.fetchContent('livro', 1, 6);
+        console.log(`✅ ${requestId} - Books loaded: ${books.length}`);
+      } catch (error) {
+        console.error(`❌ ${requestId} - Books failed:`, error);
       }
-      if (podcastsResult.status === 'rejected') {
-        console.error(`❌ ${requestId} - Podcasts fetch failed:`, podcastsResult.reason);
+      
+      // Load videos second
+      try {
+        console.log(`🎬 ${requestId} - Loading videos...`);
+        videos = await this.fetchContent('aula', 1, 6);
+        console.log(`✅ ${requestId} - Videos loaded: ${videos.length}`);
+      } catch (error) {
+        console.error(`❌ ${requestId} - Videos failed:`, error);
+      }
+      
+      // Load podcasts last
+      try {
+        console.log(`🎧 ${requestId} - Loading podcasts...`);
+        podcasts = await this.fetchContent('podcast', 1, 6);
+        console.log(`✅ ${requestId} - Podcasts loaded: ${podcasts.length}`);
+      } catch (error) {
+        console.error(`❌ ${requestId} - Podcasts failed:`, error);
       }
 
       const result = { videos, books, podcasts };
       const totalItems = books.length + videos.length + podcasts.length;
 
-      console.log(`✅ ${requestId} - Homepage content loaded:`, {
+      console.log(`✅ ${requestId} - Homepage content loaded SEQUENTIALLY:`, {
         books: books.length,
         videos: videos.length,
         podcasts: podcasts.length,
@@ -325,7 +382,7 @@ export class NewApiService {
 
       // If no content was loaded at all, throw an error
       if (totalItems === 0) {
-        throw new Error('No content could be loaded from any source');
+        throw new Error('No content could be loaded from any source after sequential attempts');
       }
 
       console.groupEnd();

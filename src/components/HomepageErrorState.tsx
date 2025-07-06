@@ -12,7 +12,11 @@ interface HomepageErrorStateProps {
 }
 
 const HomepageErrorState = ({ error, onRetry, isUsingFallback, apiStatus }: HomepageErrorStateProps) => {
-  if (!error && !isUsingFallback) return null;
+  // Don't show anything if using fallback (removes the "Using Alternative Data Source" section)
+  if (isUsingFallback) return null;
+  
+  // Only show if there's an actual error
+  if (!error) return null;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -31,7 +35,7 @@ const HomepageErrorState = ({ error, onRetry, isUsingFallback, apiStatus }: Home
   };
 
   return (
-    <Card className={`my-8 ${isUsingFallback ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'}`}>
+    <Card className="my-8 bg-orange-50 border-orange-200">
       <CardContent className="p-6">
         <div className="flex flex-col space-y-4">
           {/* Status indicators */}
@@ -48,49 +52,26 @@ const HomepageErrorState = ({ error, onRetry, isUsingFallback, apiStatus }: Home
                 Circuit Breaker: OPEN
               </Badge>
             )}
-            {isUsingFallback && (
-              <Badge className="bg-blue-100 text-blue-800">
-                <Wifi className="h-4 w-4 mr-1" />
-                Usando Fonte Alternativa
-              </Badge>
-            )}
           </div>
 
           <div className="text-center">
             <div className="flex justify-center mb-4">
-              {isUsingFallback ? (
-                <div className="h-12 w-12 bg-blue-500 rounded-full flex items-center justify-center">
-                  <Wifi className="h-6 w-6 text-white" />
-                </div>
-              ) : (
-                <AlertCircle className="h-12 w-12 text-orange-500" />
-              )}
+              <AlertCircle className="h-12 w-12 text-orange-500" />
             </div>
             
             <div>
-              <h3 className={`text-lg font-semibold mb-2 ${isUsingFallback ? 'text-blue-800' : 'text-orange-800'}`}>
-                {isUsingFallback ? 'Usando Fonte de Dados Alternativa' : 'Problemas de Conectividade'}
+              <h3 className="text-lg font-semibold mb-2 text-orange-800">
+                Problemas de Conectividade
               </h3>
               
-              {isUsingFallback ? (
-                <div>
-                  <p className="text-blue-700 mb-4">
-                    Estamos carregando conteúdo de nossa fonte alternativa enquanto nossa API principal está com problemas de conectividade.
-                  </p>
-                  <p className="text-sm text-blue-600 mb-4">
-                    O conteúdo está sendo exibido normalmente, mas pode haver pequenas diferenças na atualização.
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-orange-700 mb-4">
-                    {error || 'Não foi possível carregar o conteúdo da API principal.'}
-                  </p>
-                  <p className="text-sm text-orange-600 mb-4">
-                    Nossa equipe está trabalhando para resolver este problema. Tente novamente em alguns instantes.
-                  </p>
-                </div>
-              )}
+              <div>
+                <p className="text-orange-700 mb-4">
+                  {error || 'Não foi possível carregar o conteúdo da API principal.'}
+                </p>
+                <p className="text-sm text-orange-600 mb-4">
+                  Nossa equipe está trabalhando para resolver este problema. Tente novamente em alguns instantes.
+                </p>
+              </div>
 
               {/* Debug info in development */}
               {process.env.NODE_ENV === 'development' && apiStatus && (
@@ -105,10 +86,10 @@ const HomepageErrorState = ({ error, onRetry, isUsingFallback, apiStatus }: Home
             <Button 
               onClick={onRetry}
               variant="outline"
-              className={`${isUsingFallback ? 'border-blue-300 text-blue-700 hover:bg-blue-100' : 'border-orange-300 text-orange-700 hover:bg-orange-100'}`}
+              className="border-orange-300 text-orange-700 hover:bg-orange-100"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
-              {isUsingFallback ? 'Tentar API Principal' : 'Tentar Novamente'}
+              Tentar Novamente
             </Button>
           </div>
         </div>

@@ -1,18 +1,30 @@
 
-import { useMemo } from 'react';
-import { SearchFilters } from '@/types/searchTypes';
-import { useDataLoader } from '@/hooks/useDataLoader';
+import { useState, useEffect, useMemo } from 'react';
+import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
-import { useSearchOperations } from '@/hooks/useSearchOperations';
+import { useApiSearch } from '@/hooks/useApiSearch';
 import { checkHasActiveFilters } from '@/utils/searchUtils';
+
+interface SearchResponse {
+  results: SearchResult[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalResults: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+  searchInfo: {
+    query: string;
+    appliedFilters: SearchFilters;
+    sortBy: string;
+  };
+}
 
 export const useSearchResults = () => {
   const resultsPerPage = 9;
   
-  // Load initial data
-  const { allData, loading, dataLoaded, usingFallback, setLoading, forceRefresh } = useDataLoader();
-  
-  // Manage search state and URL params
+  // Gerenciar estado de busca e URL params
   const {
     query,
     filters,
@@ -24,31 +36,112 @@ export const useSearchResults = () => {
     setQuery
   } = useSearchState();
 
-  // Perform search operations
-  const { searchResults } = useSearchOperations({
-    allData,
-    query,
-    filters,
-    sortBy,
-    dataLoaded,
-    setLoading
+  // Hook para busca na API
+  const { search, loading, error, clearCache } = useApiSearch({ resultsPerPage });
+  
+  // Estado dos resultados
+  const [searchResponse, setSearchResponse] = useState<SearchResponse>({
+    results: [],
+    pagination: {
+      currentPage: 1,
+      totalPages: 0,
+      totalResults: 0,
+      hasNextPage: false,
+      hasPreviousPage: false
+    },
+    searchInfo: {
+      query: '',
+      appliedFilters: {
+        resourceType: [],
+        subject: [],
+        author: '',
+        year: '',
+        duration: '',
+        language: [],
+        documentType: []
+      },
+      sortBy: 'relevance'
+    }
   });
 
-  // Calculate pagination values
-  const totalResults = searchResults.length;
-  const totalPages = Math.ceil(totalResults / resultsPerPage);
-  const startIndex = (currentPage - 1) * resultsPerPage;
-  const endIndex = startIndex + resultsPerPage;
-  const currentResults = searchResults.slice(startIndex, endIndex);
+  const [usingFallback, setUsingFallback] = useState(false);
 
-  // Check if any filters are active
+  // Verificar se há filtros ativos
   const hasActiveFilters = useMemo((): boolean => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
+  // Função para executar busca
+  const performSearch = async () => {
+    // Só buscar se houver query ou filtros ativos
+    if (!query.trim() && !hasActiveFilters) {
+      setSearchResponse({
+        results: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalResults: 0,
+          hasNextPage: false,
+          hasPreviousPage: false
+        },
+        searchInfo: {
+          query: '',
+          appliedFilters: filters,
+          sortBy
+        }
+      });
+      return;
+    }
+
+    console.log('🚀 Performing search:', { query, filters, sortBy, currentPage });
+
+    try {
+      const response = await search(query, filters, sortBy, currentPage);
+      
+      setSearchResponse({
+        results: response.results,
+        pagination: response.pagination,
+        searchInfo: response.searchInfo
+      });
+
+      setUsingFallback(!response.success);
+
+      if (response.error) {
+        console.warn('⚠️ Search completed with errors:', response.error);
+      }
+
+    } catch (err) {
+      console.error('❌ Search failed:', err);
+      setUsingFallback(true);
+      
+      setSearchResponse({
+        results: [],
+        pagination: {
+          currentPage,
+          totalPages: 0,
+          totalResults: 0,
+          hasNextPage: false,
+          hasPreviousPage: false
+        },
+        searchInfo: {
+          query,
+          appliedFilters: filters,
+          sortBy
+        }
+      });
+    }
+  };
+
+  // Executar busca quando parâmetros mudarem
+  useEffect(() => {
+    performSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, filters, sortBy, currentPage]);
+
+  // Handlers
   const handleFilterChange = (newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
     setFilters(newFilters);
-    // Only reset pagination if it's a "major" filter change, not just typing in the author field.
+    // Resetar página apenas se não for digitação no autor
     if (!options?.authorTyping) {
       setCurrentPage(1);
     }
@@ -65,14 +158,20 @@ export const useSearchResults = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const forceRefresh = async () => {
+    console.log('🔄 Force refresh requested');
+    clearCache();
+    await performSearch();
+  };
+
   return {
     query,
     filters,
     sortBy,
-    currentResults,
-    totalResults,
-    totalPages,
-    currentPage,
+    currentResults: searchResponse.results,
+    totalResults: searchResponse.pagination.totalResults,
+    totalPages: searchResponse.pagination.totalPages,
+    currentPage: searchResponse.pagination.currentPage,
     loading,
     hasActiveFilters,
     usingFallback,

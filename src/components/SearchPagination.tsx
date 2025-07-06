@@ -8,6 +8,7 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
+import PageJumpInput from "@/components/PageJumpInput";
 
 interface SearchPaginationProps {
   currentPage: number;
@@ -17,6 +18,9 @@ interface SearchPaginationProps {
 
 const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPaginationProps) => {
   if (totalPages <= 1) return null;
+
+  // Mostrar input de navegação direta apenas quando há muitas páginas
+  const showPageJump = totalPages > 10;
 
   // Função para determinar quais páginas mostrar
   const getVisiblePages = (): (number | 'ellipsis')[] => {
@@ -62,7 +66,17 @@ const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPagin
   const visiblePages = getVisiblePages();
 
   return (
-    <div className="mt-8 flex justify-center">
+    <div className="mt-8 flex flex-col items-center gap-4">
+      {showPageJump && (
+        <div className="flex items-center justify-center">
+          <PageJumpInput
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+          />
+        </div>
+      )}
+      
       <Pagination>
         <PaginationContent>
           <PaginationItem>

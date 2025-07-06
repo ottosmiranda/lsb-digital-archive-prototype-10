@@ -144,6 +144,14 @@ export const filterResults = (
 
 export const sortResults = (resultsToSort: SearchResult[], sortType: string, query: string = ''): SearchResult[] => {
   switch (sortType) {
+    case 'title':
+      // Alphabetical sorting by title
+      return resultsToSort.sort((a, b) => {
+        const titleA = normalizeText(a.title);
+        const titleB = normalizeText(b.title);
+        return titleA.localeCompare(titleB, 'pt-BR', { numeric: true });
+      });
+    
     case 'recent':
       return resultsToSort.sort((a, b) => b.year - a.year);
     

@@ -33,6 +33,18 @@ const SearchHeaderWithTabs = ({
     { id: 'podcast', label: 'Podcasts', icon: Headphones }
   ];
 
+  // Show different result text when "Todos" is active and sorted alphabetically
+  const getResultDescription = () => {
+    if (activeContentType === 'all' && sortBy === 'title') {
+      return resultCount === 0 
+        ? 'Nenhum resultado encontrado'
+        : `${resultCount} resultado${resultCount !== 1 ? 's' : ''} encontrado${resultCount !== 1 ? 's' : ''} (todos os tipos, ordem alfabética)`;
+    }
+    return resultCount === 0 
+      ? 'Nenhum resultado encontrado'
+      : `${resultCount} resultado${resultCount !== 1 ? 's' : ''} encontrado${resultCount !== 1 ? 's' : ''}`;
+  };
+
   return (
     <div className="space-y-6">
       {/* Search Results Header */}
@@ -42,10 +54,7 @@ const SearchHeaderWithTabs = ({
             {query ? `Resultados para "${query}"` : 'Resultados da busca'}
           </h1>
           <p className="text-gray-600 mt-1">
-            {resultCount === 0 
-              ? 'Nenhum resultado encontrado'
-              : `${resultCount} resultado${resultCount !== 1 ? 's' : ''} encontrado${resultCount !== 1 ? 's' : ''}`
-            }
+            {getResultDescription()}
           </p>
         </div>
         
@@ -60,6 +69,7 @@ const SearchHeaderWithTabs = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="relevance">Relevância</SelectItem>
+                <SelectItem value="title">Alfabética</SelectItem>
                 <SelectItem value="recent">Mais recentes</SelectItem>
                 <SelectItem value="accessed">Mais acessados</SelectItem>
                 <SelectItem value="type">Por tipo</SelectItem>

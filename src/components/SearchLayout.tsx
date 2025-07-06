@@ -111,6 +111,8 @@ const SearchLayout = ({
     
     if (type === 'all') {
       newFilters.resourceType = [];
+      // Automatically apply alphabetical sorting when "Todos" is selected
+      onSortChange('title');
     } else {
       // Ensure only valid types are pushed. This assumes `type` is one of 'titulo', 'video', 'podcast'.
       newFilters.resourceType = [type]; 

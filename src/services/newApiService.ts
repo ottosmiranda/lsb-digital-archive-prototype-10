@@ -1,5 +1,5 @@
-
 import { SearchResult } from '@/types/searchTypes';
+import { ApiTimeoutManager } from './apiTimeoutManager';
 
 const API_BASE_URL = 'https://link-business-school.onrender.com/api/v1';
 
@@ -16,6 +16,7 @@ export class NewApiService {
   private static instance: NewApiService;
   private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
   private activeRequests = new Map<string, Promise<SearchResult[]>>();
+  private timeoutManager = new ApiTimeoutManager();
   private circuitBreaker = {
     failures: 0,
     lastFailTime: 0,
@@ -25,25 +26,24 @@ export class NewApiService {
   private healthStatus: 'unknown' | 'healthy' | 'unhealthy' = 'unknown';
 
   private constructor() {
-    console.log('🔧 NewApiService - Constructor called with ultra-aggressive timeouts');
-    // Start background health monitoring
+    console.log('🔧 NewApiService - Constructor with AbortController system');
     this.startHealthMonitoring();
   }
 
   static getInstance(): NewApiService {
     if (!NewApiService.instance) {
-      console.log('🆕 NewApiService - Creating new instance with circuit breaker');
+      console.log('🆕 NewApiService - Creating instance with forced timeout system');
       NewApiService.instance = new NewApiService();
     }
     return NewApiService.instance;
   }
 
   private startHealthMonitoring(): void {
-    // Monitor health every 30 seconds in background
+    // Monitor health every 30 seconds with forced timeout
     setInterval(async () => {
       if (!this.circuitBreaker.breakerOpen) {
         const isHealthy = await this.healthCheck();
-        console.log(`🔄 Background health check: ${isHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY'}`);
+        console.log(`🔄 Background health: ${isHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY'}`);
       }
     }, 30000);
   }
@@ -143,60 +143,30 @@ export class NewApiService {
   }
 
   private async healthCheck(): Promise<boolean> {
-    const healthUrl = `${API_BASE_URL}/health`;
-    const startTime = Date.now();
+    const requestId = `health_${Date.now()}`;
+    console.log(`🏥 ${requestId} - Starting forced health check (1s timeout)`);
     
     try {
-      console.log('🏥 DIAGNOSTIC Health Check - Starting (3s timeout)...');
+      const { controller, timeoutPromise, cleanup } = this.timeoutManager.createAbortableRequest(requestId, 1000);
       
-      // Diagnostic timeout with detailed logging
-      const healthPromise = fetch(healthUrl, {
+      const healthUrl = `${API_BASE_URL}/health`;
+      const fetchPromise = fetch(healthUrl, {
+        signal: controller.signal,
         headers: { 'Accept': 'application/json' }
       });
-      
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          console.log('⏰ DIAGNOSTIC - Health check timeout after 3s');
-          reject(new Error('Health check timeout (3s)'));
-        }, 3000);
-      });
-      
-      const response = await Promise.race([healthPromise, timeoutPromise]);
-      const duration = Date.now() - startTime;
+
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
       const isHealthy = response.ok;
       
       this.healthStatus = isHealthy ? 'healthy' : 'unhealthy';
+      console.log(`🏥 ${requestId} - Health check: ${isHealthy ? '✅ SUCCESS' : '❌ FAILED'}`);
       
-      console.log(`🏥 DIAGNOSTIC Health Check - ${isHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY'}:`, {
-        status: response.status,
-        duration: `${duration}ms`,
-        latency: duration > 2000 ? 'HIGH' : duration > 1000 ? 'MEDIUM' : 'LOW',
-        timestamp: new Date().toISOString()
-      });
-      
-      // FASE 4: Dashboard em tempo real
-      console.group('📊 API DIAGNOSTIC DASHBOARD');
-      console.log(`Health Status: ${this.healthStatus.toUpperCase()}`);
-      console.log(`Response Time: ${duration}ms`);
-      console.log(`Circuit Breaker: ${this.circuitBreaker.breakerOpen ? 'OPEN' : 'CLOSED'}`);
-      console.log(`Failures: ${this.circuitBreaker.failures}`);
-      console.log(`Cache Size: ${this.cache.size} entries`);
-      console.log(`Active Requests: ${this.activeRequests.size}`);
-      console.groupEnd();
-      
+      cleanup();
       return isHealthy;
+      
     } catch (error) {
-      const duration = Date.now() - startTime;
       this.healthStatus = 'unhealthy';
-      console.error('🏥 DIAGNOSTIC Health Check - ❌ FAILED:', {
-        error: error instanceof Error ? error.message : 'Unknown',
-        duration: `${duration}ms`,
-        timestamp: new Date().toISOString()
-      });
-      
-      // FASE 4: Alert de problema
-      console.warn('🚨 API ALERT: External API is not responding properly');
-      
+      console.error(`🏥 ${requestId} - Health check FAILED:`, error instanceof Error ? error.message : 'Unknown');
       return false;
     }
   }
@@ -231,57 +201,43 @@ export class NewApiService {
     this.circuitBreaker.breakerOpen = false;
   }
 
-  private async fetchWithUltraTimeout(url: string, requestId: string, timeoutMs: number = 3000): Promise<Response> {
-    console.log(`🚀 ${requestId} - DIAGNOSTIC fetch (${timeoutMs}ms timeout)`);
-    const startTime = Date.now();
+  private async fetchWithForcedTimeout(url: string, requestId: string, timeoutMs: number = 2000): Promise<Response> {
+    console.log(`🚀 ${requestId} - Fetch with FORCED timeout (${timeoutMs}ms)`);
+    
+    const { controller, timeoutPromise, cleanup } = this.timeoutManager.createAbortableRequest(requestId, timeoutMs);
     
     try {
       const fetchPromise = fetch(url, {
+        signal: controller.signal,
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
           'User-Agent': 'LSB-Digital-Archive/1.0'
         }
       });
-      
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          console.error(`⏰ ${requestId} - DIAGNOSTIC TIMEOUT (${timeoutMs}ms) - API not responding`);
-          reject(new Error(`DIAGNOSTIC timeout (${timeoutMs}ms)`));
-        }, timeoutMs);
-      });
-      
+
+      // Usar Promise.race com timeout forçado
       const response = await Promise.race([fetchPromise, timeoutPromise]);
-      const duration = Date.now() - startTime;
-      
-      // FASE 4: Advanced monitoring
-      console.group(`📊 ${requestId} - DIAGNOSTIC Response Analysis`);
-      console.log(`Status: ${response.status} ${response.ok ? '✅' : '❌'}`);
-      console.log(`Duration: ${duration}ms`);
-      console.log(`Performance: ${duration > 2000 ? '🐌 SLOW' : duration > 1000 ? '⚠️ MEDIUM' : '⚡ FAST'}`);
-      console.log(`Headers:`, Object.fromEntries(response.headers.entries()));
-      console.groupEnd();
       
       if (response.ok) {
+        console.log(`✅ ${requestId} - Request successful`);
         this.recordSuccess();
+        cleanup();
         return response;
       }
       
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       
     } catch (error) {
-      const duration = Date.now() - startTime;
       this.recordFailure();
+      cleanup();
       
-      // FASE 4: Error analysis
-      console.group(`❌ ${requestId} - DIAGNOSTIC Error Analysis`);
-      console.error(`Error Type: ${error instanceof Error ? error.name : 'Unknown'}`);
-      console.error(`Error Message: ${error instanceof Error ? error.message : 'Unknown'}`);
-      console.error(`Duration: ${duration}ms`);
-      console.error(`Circuit Breaker Status: ${this.circuitBreaker.breakerOpen ? 'WILL OPEN' : 'STILL CLOSED'}`);
-      console.error(`Failures Count: ${this.circuitBreaker.failures}`);
-      console.groupEnd();
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error(`⚡ ${requestId} - Request ABORTED by force timeout`);
+        throw new Error(`Request forcefully aborted after ${timeoutMs}ms`);
+      }
       
+      console.error(`❌ ${requestId} - Request failed:`, error instanceof Error ? error.message : 'Unknown');
       throw error;
     }
   }
@@ -290,43 +246,41 @@ export class NewApiService {
     const cacheKey = this.getCacheKey(tipo, page, limit);
     const requestId = `${tipo}_${Date.now()}`;
     
-    console.group(`🚀 ${requestId} - ULTRA-FAST fetchContent`);
-    console.log(`📊 Request details:`, { tipo, page, limit });
-    console.log(`⏰ Started at:`, new Date().toISOString());
+    console.group(`🚀 ${requestId} - fetchContent with forced timeout`);
     
     // Check cache first
     if (this.isValidCache(cacheKey)) {
       const cached = this.cache.get(cacheKey);
-      console.log(`📦 Returning cached data (${cached!.data.length} items)`);
+      console.log(`📦 Cache HIT: ${cached!.data.length} items`);
       console.groupEnd();
       return cached!.data;
     }
 
     // Fast-fail if circuit breaker is open
     if (this.isCircuitBreakerOpen()) {
-      console.log(`⚡ ${requestId} - Circuit breaker open, using Supabase fallback`);
+      console.log(`⚡ Circuit breaker OPEN - using Supabase fallback`);
       console.groupEnd();
       return this.fetchFromSupabaseFallback(tipo);
     }
 
     // Check for active requests
     if (this.activeRequests.has(cacheKey)) {
-      console.log(`⏳ Request already in progress, waiting...`);
+      console.log(`⏳ Request already in progress`);
       const result = await this.activeRequests.get(cacheKey)!;
       console.groupEnd();
       return result;
     }
 
-    const requestPromise = this.performUltraFastFetch(tipo, page, limit, requestId);
+    const requestPromise = this.performForcedFetch(tipo, page, limit, requestId);
     this.activeRequests.set(cacheKey, requestPromise);
 
     try {
       const result = await requestPromise;
-      console.log(`✅ Request completed successfully (${result.length} items)`);
+      console.log(`✅ Success: ${result.length} items`);
       console.groupEnd();
       return result;
     } catch (error) {
-      console.error(`❌ Request failed, trying Supabase fallback:`, error);
+      console.error(`❌ Failed, using Supabase fallback:`, error);
       console.groupEnd();
       return this.fetchFromSupabaseFallback(tipo);
     } finally {
@@ -334,61 +288,33 @@ export class NewApiService {
     }
   }
 
-  private async performUltraFastFetch(tipo: string, page: number, limit: number, requestId: string): Promise<SearchResult[]> {
+  private async performForcedFetch(tipo: string, page: number, limit: number, requestId: string): Promise<SearchResult[]> {
     const cacheKey = this.getCacheKey(tipo, page, limit);
     const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
     
-    console.log(`🌐 ${requestId} - ULTRA-FAST HTTP request to:`, url);
+    console.log(`🌐 ${requestId} - Attempting forced fetch`);
     
     try {
-      // Try with decreasing timeouts: 3s, 2s, 1s
-      const timeouts = [3000, 2000, 1000];
-      let lastError: Error;
+      // Primeira tentativa: 2 segundos
+      const response = await this.fetchWithForcedTimeout(url, `${requestId}_attempt1`, 2000);
       
-      for (let i = 0; i < timeouts.length; i++) {
-        const timeout = timeouts[i];
-        const attemptId = `${requestId}_attempt_${i + 1}`;
-        
-        try {
-          console.log(`🔥 ${attemptId} - Trying with ${timeout}ms timeout`);
-          const response = await this.fetchWithUltraTimeout(url, attemptId, timeout);
-          
-          console.log(`📄 ${attemptId} - Parsing JSON response...`);
-          const rawData: APIResponse = await response.json();
-          
-          console.log(`📊 ${attemptId} - SUCCESS:`, {
-            tipo: rawData.tipo,
-            total: rawData.total,
-            contentLength: rawData.conteudo?.length || 0
-          });
-          
-          const dataArray = rawData.conteudo || [];
-          
-          if (dataArray.length === 0) {
-            console.warn(`⚠️ ${attemptId} - No content found`);
-            return [];
-          }
-          
-          const transformedData = dataArray.map((item: any) => this.transformToSearchResult(item, tipo));
-          this.setCache(cacheKey, transformedData, 5 * 60 * 1000); // 5 min cache
-          
-          console.log(`✅ ${attemptId} - SUCCESS: ${transformedData.length} items`);
-          return transformedData;
-          
-        } catch (error) {
-          lastError = error instanceof Error ? error : new Error('Unknown error');
-          console.error(`❌ ${attemptId} - Failed: ${lastError.message}`);
-          
-          if (i < timeouts.length - 1) {
-            console.log(`🔄 ${attemptId} - Trying with faster timeout...`);
-          }
-        }
+      console.log(`📄 ${requestId} - Parsing JSON response`);
+      const rawData: APIResponse = await response.json();
+      
+      const dataArray = rawData.conteudo || [];
+      if (dataArray.length === 0) {
+        console.warn(`⚠️ ${requestId} - No content found`);
+        return [];
       }
       
-      throw lastError!;
+      const transformedData = dataArray.map((item: any) => this.transformToSearchResult(item, tipo));
+      this.setCache(cacheKey, transformedData, 5 * 60 * 1000);
+      
+      console.log(`✅ ${requestId} - SUCCESS: ${transformedData.length} items`);
+      return transformedData;
       
     } catch (error) {
-      console.error(`❌ ${requestId} - All ultra-fast attempts failed:`, error);
+      console.error(`❌ ${requestId} - Forced fetch failed:`, error);
       throw error;
     }
   }
@@ -397,40 +323,26 @@ export class NewApiService {
     console.log(`🔄 Using Supabase fallback for ${tipo}`);
     
     try {
-      // Import supabase client dynamically to avoid circular dependencies
       const { supabase } = await import('@/integrations/supabase/client');
       
       let functionName: string;
       switch (tipo) {
-        case 'livro':
-          functionName = 'fetch-books';
-          break;
-        case 'aula':
-          functionName = 'fetch-videos';
-          break;
-        case 'podcast':
-          functionName = 'fetch-podcasts';
-          break;
-        default:
-          throw new Error(`Unsupported tipo: ${tipo}`);
+        case 'livro': functionName = 'fetch-books'; break;
+        case 'aula': functionName = 'fetch-videos'; break;
+        case 'podcast': functionName = 'fetch-podcasts'; break;
+        default: throw new Error(`Unsupported tipo: ${tipo}`);
       }
       
       console.log(`📡 Calling Supabase function: ${functionName}`);
       const { data, error } = await supabase.functions.invoke(functionName);
       
-      if (error) {
-        console.error(`❌ Supabase ${functionName} error:`, error);
-        throw error;
-      }
-      
-      if (!data.success) {
-        console.error(`❌ Supabase ${functionName} returned error:`, data.error);
-        throw new Error(data.error);
+      if (error || !data.success) {
+        console.error(`❌ Supabase ${functionName} error:`, error || data.error);
+        return [];
       }
       
       const items = tipo === 'livro' ? data.books : tipo === 'aula' ? data.videos : data.podcasts;
-      console.log(`✅ Supabase fallback success: ${items.length} ${tipo}s`);
-      
+      console.log(`✅ Supabase success: ${items.length} ${tipo}s`);
       return items;
       
     } catch (error) {
@@ -446,98 +358,59 @@ export class NewApiService {
   }> {
     const requestId = `homepage_${Date.now()}`;
     
-    console.group(`🏠 ${requestId} - DIAGNOSTIC fetchHomepageContent`);
-    console.log(`⏰ Started at:`, new Date().toISOString());
-    console.log(`🌡️ Health status: ${this.healthStatus}`);
-    console.log(`⚡ Circuit breaker: ${this.circuitBreaker.breakerOpen ? 'OPEN' : 'CLOSED'} (failures: ${this.circuitBreaker.failures})`);
-    
-    // FASE 4: Real-time dashboard update
-    console.group('📊 DIAGNOSTIC REAL-TIME DASHBOARD');
-    console.log(`🔄 Active Requests: ${this.activeRequests.size}`);
-    console.log(`💾 Cache Size: ${this.cache.size} entries`);
-    console.log(`📡 API Health: ${this.healthStatus.toUpperCase()}`);
-    console.log(`⚡ Circuit Breaker: ${this.circuitBreaker.breakerOpen ? '🔴 OPEN' : '🟢 CLOSED'}`);
-    console.groupEnd();
+    console.group(`🏠 ${requestId} - fetchHomepageContent with forced timeouts`);
+    console.log(`⏰ Started: ${new Date().toISOString()}`);
+    console.log(`🌡️ Health: ${this.healthStatus}`);
+    console.log(`⚡ Circuit breaker: ${this.circuitBreaker.breakerOpen ? 'OPEN' : 'CLOSED'}`);
     
     try {
-      // FASE 2: Ultra-fast health check first (3s timeout)
-      console.log(`🏥 ${requestId} - DIAGNOSTIC health check with 3s timeout...`);
+      // Health check com timeout forçado
+      console.log(`🏥 ${requestId} - Forced health check (1s)`);
       const isHealthy = await this.healthCheck();
       
       if (!isHealthy) {
-        console.warn(`⚠️ ${requestId} - Health check failed, attempting emergency fallback immediately`);
+        console.warn(`⚠️ ${requestId} - Health failed, emergency fallback`);
         const result = await this.fetchAllFromSupabase();
-        console.log('🆘 DIAGNOSTIC: Using emergency fallback due to API health failure');
         console.groupEnd();
         return result;
       }
       
-      // FASE 2: Progressive loading with 3s timeouts
-      console.log(`📡 ${requestId} - Starting DIAGNOSTIC PROGRESSIVE content fetch (3s timeouts)...`);
+      // Carregamento progressivo com timeouts forçados
+      console.log(`📡 ${requestId} - Progressive loading with forced timeouts`);
       
-      let books: SearchResult[] = [];
-      let videos: SearchResult[] = [];
-      let podcasts: SearchResult[] = [];
-      
-      // FASE 2: Load books first with aggressive timeout
-      try {
-        console.log(`📚 ${requestId} - Loading books with 3s diagnostic timeout...`);
-        const bookStartTime = Date.now();
-        books = await this.fetchContent('livro', 1, 6);
-        const bookDuration = Date.now() - bookStartTime;
-        console.log(`✅ ${requestId} - Books loaded in ${bookDuration}ms: ${books.length} items`);
-      } catch (error) {
-        console.error(`❌ ${requestId} - Books failed:`, error);
-      }
-      
-      // FASE 2: Load videos second with aggressive timeout
-      try {
-        console.log(`🎬 ${requestId} - Loading videos with 3s diagnostic timeout...`);
-        const videoStartTime = Date.now();
-        videos = await this.fetchContent('aula', 1, 6);
-        const videoDuration = Date.now() - videoStartTime;
-        console.log(`✅ ${requestId} - Videos loaded in ${videoDuration}ms: ${videos.length} items`);
-      } catch (error) {
-        console.error(`❌ ${requestId} - Videos failed:`, error);
-      }
-      
-      // FASE 2: Load podcasts last with aggressive timeout
-      try {
-        console.log(`🎧 ${requestId} - Loading podcasts with 3s diagnostic timeout...`);
-        const podcastStartTime = Date.now();
-        podcasts = await this.fetchContent('podcast', 1, 6);
-        const podcastDuration = Date.now() - podcastStartTime;
-        console.log(`✅ ${requestId} - Podcasts loaded in ${podcastDuration}ms: ${podcasts.length} items`);
-      } catch (error) {
-        console.error(`❌ ${requestId} - Podcasts failed:`, error);
-      }
+      const results = await Promise.allSettled([
+        this.fetchContent('livro', 1, 6),
+        this.fetchContent('aula', 1, 6),
+        this.fetchContent('podcast', 1, 6)
+      ]);
 
-      const result = { videos, books, podcasts };
+      const books = results[0].status === 'fulfilled' ? results[0].value : [];
+      const videos = results[1].status === 'fulfilled' ? results[1].value : [];
+      const podcasts = results[2].status === 'fulfilled' ? results[2].value : [];
+
       const totalItems = books.length + videos.length + podcasts.length;
-
-      // FASE 4: Final status report
-      console.group('📋 DIAGNOSTIC FINAL REPORT');
-      console.log(`📊 Total Items Loaded: ${totalItems}`);
+      
+      console.group('📋 FINAL REPORT');
+      console.log(`📊 Total: ${totalItems}`);
       console.log(`📚 Books: ${books.length}`);
       console.log(`🎬 Videos: ${videos.length}`);
       console.log(`🎧 Podcasts: ${podcasts.length}`);
-      console.log(`⏰ Completed at: ${new Date().toISOString()}`);
-      console.log(`🎯 Success Rate: ${totalItems > 0 ? '✅ PARTIAL/FULL SUCCESS' : '❌ COMPLETE FAILURE'}`);
+      console.log(`🎯 Result: ${totalItems > 0 ? '✅ SUCCESS' : '❌ FALLBACK NEEDED'}`);
       console.groupEnd();
 
-      // FASE 2: If no content was loaded at all, try emergency fallback
+      // Se nenhum conteúdo foi carregado, usar fallback
       if (totalItems === 0) {
-        console.log(`🔄 ${requestId} - No content from external API, using emergency fallback`);
+        console.log(`🔄 ${requestId} - No content, using emergency fallback`);
         const fallbackResult = await this.fetchAllFromSupabase();
         console.groupEnd();
         return fallbackResult;
       }
 
       console.groupEnd();
-      return result;
+      return { videos, books, podcasts };
       
     } catch (error) {
-      console.error(`❌ ${requestId} - DIAGNOSTIC fetch failed, using emergency fallback:`, error);
+      console.error(`❌ ${requestId} - Complete failure, emergency fallback:`, error);
       const fallbackResult = await this.fetchAllFromSupabase();
       console.groupEnd();
       return fallbackResult;
@@ -549,7 +422,7 @@ export class NewApiService {
     books: SearchResult[];
     podcasts: SearchResult[];
   }> {
-    console.log('🔄 Fetching all content from Supabase as fallback');
+    console.log('🔄 Emergency: All content from Supabase');
     
     try {
       const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
@@ -562,7 +435,7 @@ export class NewApiService {
       const videos = videosResult.status === 'fulfilled' ? videosResult.value.slice(0, 6) : [];
       const podcasts = podcastsResult.status === 'fulfilled' ? podcastsResult.value.slice(0, 6) : [];
 
-      console.log('✅ Supabase fallback complete:', {
+      console.log('✅ Supabase emergency complete:', {
         books: books.length,
         videos: videos.length,
         podcasts: podcasts.length
@@ -571,16 +444,14 @@ export class NewApiService {
       return { videos, books, podcasts };
       
     } catch (error) {
-      console.error('❌ Supabase fallback failed completely:', error);
+      console.error('❌ Supabase emergency failed:', error);
       return { videos: [], books: [], podcasts: [] };
     }
   }
 
   clearCache(): void {
-    console.log('🧹 Clearing API cache and resetting circuit breaker...');
-    const cacheSize = this.cache.size;
-    const activeRequests = this.activeRequests.size;
-    
+    console.log('🧹 Clearing cache and cancelling requests');
+    this.timeoutManager.cancelAll();
     this.cache.clear();
     this.activeRequests.clear();
     this.circuitBreaker = {
@@ -590,20 +461,16 @@ export class NewApiService {
       openDuration: 10000
     };
     this.healthStatus = 'unknown';
-    
-    console.log(`✅ Cache cleared and circuit breaker reset:`, {
-      clearedEntries: cacheSize,
-      cancelledRequests: activeRequests
-    });
+    console.log('✅ Complete cleanup done');
   }
 
-  // Public method to get current status for debugging
   getStatus() {
     return {
       healthStatus: this.healthStatus,
       circuitBreaker: { ...this.circuitBreaker },
       cacheSize: this.cache.size,
-      activeRequests: this.activeRequests.size
+      activeRequests: this.activeRequests.size,
+      abortableRequests: this.timeoutManager.getActiveRequests()
     };
   }
 }

@@ -4,11 +4,12 @@ import { SearchResult } from '@/types/searchTypes';
 const API_BASE_URL = 'https://link-business-school.onrender.com/api/v1';
 
 interface APIResponse {
-  success: boolean;
-  data: any[];
-  total: number;
+  tipo: string;
   page: number;
   limit: number;
+  total: number;
+  totalPages: number;
+  conteudo: any[];
 }
 
 export class NewApiService {
@@ -46,28 +47,39 @@ export class NewApiService {
 
   private transformToSearchResult(item: any, tipo: string): SearchResult {
     const baseResult: SearchResult = {
-      id: parseInt(item.id || item.podcast_id || item.livro_id || item.aula_id),
-      originalId: item.id || item.podcast_id || item.livro_id || item.aula_id,
-      title: item.titulo || item.podcast_titulo || item.title,
+      id: parseInt(item.id?.replace(/[^0-9]/g, '') || Math.random().toString().substr(2, 8)),
+      originalId: item.id, // Keep the original UUID
+      title: item.titulo || item.podcast_titulo || item.title || 'Título não disponível',
       author: item.autor || item.canal || 'Link Business School',
-      year: new Date(item.data_lancamento || Date.now()).getFullYear(),
-      description: item.descricao || '',
-      subject: this.getSubject(tipo),
+      year: item.ano || new Date().getFullYear(),
+      description: item.descricao || 'Descrição não disponível',
+      subject: this.getSubjectFromCategories(item.categorias) || this.getSubject(tipo),
       type: tipo === 'livro' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
       thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
     };
 
-    // Add type-specific fields
-    if (tipo === 'podcast') {
-      baseResult.duration = item.duracao_ms ? this.formatDuration(item.duracao_ms) : 'N/A';
-      baseResult.embedUrl = item.embed_url;
+    // Add type-specific fields based on actual API response
+    if (tipo === 'livro') {
+      baseResult.pdfUrl = item.arquivo; // API uses 'arquivo' field for PDF URL
+      baseResult.pages = item.paginas; // API uses 'paginas' field
+      baseResult.language = item.language;
+      baseResult.documentType = item.tipo_documento || 'Livro';
     } else if (tipo === 'aula') {
       baseResult.embedUrl = item.embed_url;
-    } else if (tipo === 'livro') {
-      baseResult.pdfUrl = item.arquivo_pdf;
+      baseResult.duration = item.duracao_ms ? this.formatDuration(item.duracao_ms) : undefined;
+    } else if (tipo === 'podcast') {
+      baseResult.duration = item.duracao_ms ? this.formatDuration(item.duracao_ms) : undefined;
+      baseResult.embedUrl = item.embed_url;
     }
 
     return baseResult;
+  }
+
+  private getSubjectFromCategories(categorias: string[]): string {
+    if (!categorias || !Array.isArray(categorias) || categorias.length === 0) {
+      return '';
+    }
+    return categorias[0]; // Use the first category as subject
   }
 
   private getSubject(tipo: string): string {
@@ -108,34 +120,17 @@ export class NewApiService {
       const response = await fetch(url);
       
       console.log(`📊 API Response Status: ${response.status}`);
-      console.log(`📊 API Response Headers:`, Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         throw new Error(`API responded with status: ${response.status}`);
       }
 
-      const rawData = await response.json();
+      const rawData: APIResponse = await response.json();
       console.log(`📊 Raw API Response for ${tipo}:`, rawData);
       
-      // Handle different response formats
-      let dataArray: any[] = [];
-      
-      if (Array.isArray(rawData)) {
-        // Direct array response
-        dataArray = rawData;
-        console.log(`✅ Direct array format detected with ${dataArray.length} items`);
-      } else if (rawData.conteudo && Array.isArray(rawData.conteudo)) {
-        // Wrapped in conteudo property
-        dataArray = rawData.conteudo;
-        console.log(`✅ Wrapped format detected with ${dataArray.length} items`);
-      } else if (rawData.data && Array.isArray(rawData.data)) {
-        // Wrapped in data property
-        dataArray = rawData.data;
-        console.log(`✅ Data wrapper format detected with ${dataArray.length} items`);
-      } else {
-        console.warn(`⚠️ Unexpected API response format for ${tipo}:`, rawData);
-        dataArray = [];
-      }
+      // Extract content array from the response
+      const dataArray = rawData.conteudo || [];
+      console.log(`✅ Found ${dataArray.length} items of type ${tipo}`);
       
       // Transform raw API data to SearchResult format
       const transformedData = dataArray.map((item: any) => this.transformToSearchResult(item, tipo));

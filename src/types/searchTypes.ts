@@ -1,6 +1,7 @@
+
 export interface SearchResult {
   id: number;
-  originalId?: string; // Add originalId for videos with YouTube IDs
+  originalId?: string; // Add originalId for UUIDs from the API
   title: string;
   type: 'video' | 'titulo' | 'podcast';
   author: string;

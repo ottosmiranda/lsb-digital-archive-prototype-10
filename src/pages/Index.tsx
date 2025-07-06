@@ -9,10 +9,10 @@ import MostAccessed from '@/components/MostAccessed';
 import ExternalResources from '@/components/ExternalResources';
 import Footer from '@/components/Footer';
 import HomepageErrorState from '@/components/HomepageErrorState';
-import { useHomepageContent } from '@/hooks/useHomepageContent';
+import { HomepageContentProvider, useHomepageContentContext } from '@/contexts/HomepageContentContext';
 
-const Index = () => {
-  const { error, retry, isUsingFallback } = useHomepageContent();
+const IndexContent = () => {
+  const { error, retry, isUsingFallback } = useHomepageContentContext();
 
   return (
     <div className="min-h-screen bg-white">
@@ -34,6 +34,14 @@ const Index = () => {
       <ExternalResources />
       <Footer />
     </div>
+  );
+};
+
+const Index = () => {
+  return (
+    <HomepageContentProvider>
+      <IndexContent />
+    </HomepageContentProvider>
   );
 };
 

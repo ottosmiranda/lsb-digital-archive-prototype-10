@@ -15,6 +15,7 @@ interface APIResponse {
 export class NewApiService {
   private static instance: NewApiService;
   private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+  private activeRequests = new Map<string, Promise<SearchResult[]>>();
 
   private constructor() {}
 
@@ -34,7 +35,9 @@ export class NewApiService {
     if (!cached) return false;
     
     const now = Date.now();
-    return (now - cached.timestamp) < cached.ttl;
+    const isValid = (now - cached.timestamp) < cached.ttl;
+    console.log(`📦 Cache check for ${cacheKey}: ${isValid ? 'VALID' : 'EXPIRED'}`);
+    return isValid;
   }
 
   private setCache(cacheKey: string, data: any, ttl: number = 15 * 60 * 1000): void {
@@ -43,11 +46,14 @@ export class NewApiService {
       timestamp: Date.now(),
       ttl
     });
+    console.log(`📦 Cache SET: ${cacheKey} with ${data.length} items`);
   }
 
   private transformToSearchResult(item: any, tipo: string): SearchResult {
+    console.log(`🔄 Transforming item for type ${tipo}:`, item);
+    
     const baseResult: SearchResult = {
-      id: parseInt(item.id?.replace(/[^0-9]/g, '') || Math.random().toString().substr(2, 8)),
+      id: Math.random(), // Use random ID for display since we need numbers
       originalId: item.id, // Keep the original UUID
       title: item.titulo || item.podcast_titulo || item.title || 'Título não disponível',
       author: item.autor || item.canal || 'Link Business School',
@@ -72,6 +78,7 @@ export class NewApiService {
       baseResult.embedUrl = item.embed_url;
     }
 
+    console.log(`✅ Transformed result for ${tipo}:`, baseResult);
     return baseResult;
   }
 
@@ -103,34 +110,87 @@ export class NewApiService {
 
   async fetchContent(tipo: 'livro' | 'aula' | 'podcast', page: number = 1, limit: number = 10): Promise<SearchResult[]> {
     const cacheKey = this.getCacheKey(tipo, page, limit);
+    const requestId = `${Date.now()}_${Math.random()}`;
+    
+    console.log(`🚀 [${requestId}] Starting fetchContent for ${tipo} (page: ${page}, limit: ${limit})`);
     
     // Check cache first
     if (this.isValidCache(cacheKey)) {
       const cached = this.cache.get(cacheKey);
-      console.log(`📦 Cache HIT: ${cacheKey} with ${cached!.data.length} items`);
+      console.log(`📦 [${requestId}] Cache HIT: ${cacheKey} with ${cached!.data.length} items`);
       return cached!.data;
     }
 
-    console.log(`🌐 Fetching ${tipo} from new API (page: ${page}, limit: ${limit})`);
-    
+    // Check if there's already an active request for this same data
+    if (this.activeRequests.has(cacheKey)) {
+      console.log(`⏳ [${requestId}] Request already in progress for ${cacheKey}, waiting...`);
+      return await this.activeRequests.get(cacheKey)!;
+    }
+
+    const requestPromise = this.performFetch(tipo, page, limit, requestId);
+    this.activeRequests.set(cacheKey, requestPromise);
+
     try {
-      const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
-      console.log(`📡 API URL: ${url}`);
+      const result = await requestPromise;
+      return result;
+    } finally {
+      this.activeRequests.delete(cacheKey);
+    }
+  }
+
+  private async performFetch(tipo: string, page: number, limit: number, requestId: string): Promise<SearchResult[]> {
+    const cacheKey = this.getCacheKey(tipo, page, limit);
+    const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
+    
+    console.log(`🌐 [${requestId}] Fetching ${tipo} from API: ${url}`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error(`⏰ [${requestId}] Request timeout for ${tipo}`);
+      controller.abort();
+    }, 10000); // 10 second timeout
+
+    try {
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+      });
       
-      const response = await fetch(url);
+      clearTimeout(timeoutId);
       
-      console.log(`📊 API Response Status: ${response.status}`);
+      console.log(`📊 [${requestId}] API Response Status: ${response.status} for ${tipo}`);
       
       if (!response.ok) {
-        throw new Error(`API responded with status: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`❌ [${requestId}] API Error for ${tipo}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`API responded with status: ${response.status} - ${response.statusText}`);
       }
 
       const rawData: APIResponse = await response.json();
-      console.log(`📊 Raw API Response for ${tipo}:`, rawData);
+      console.log(`📊 [${requestId}] Raw API Response for ${tipo}:`, {
+        tipo: rawData.tipo,
+        total: rawData.total,
+        page: rawData.page,
+        itemCount: rawData.conteudo?.length || 0,
+        firstItem: rawData.conteudo?.[0]
+      });
       
       // Extract content array from the response
       const dataArray = rawData.conteudo || [];
-      console.log(`✅ Found ${dataArray.length} items of type ${tipo}`);
+      
+      if (dataArray.length === 0) {
+        console.warn(`⚠️ [${requestId}] No content found for ${tipo}`);
+        return [];
+      }
+      
+      console.log(`✅ [${requestId}] Found ${dataArray.length} items of type ${tipo}`);
       
       // Transform raw API data to SearchResult format
       const transformedData = dataArray.map((item: any) => this.transformToSearchResult(item, tipo));
@@ -138,15 +198,26 @@ export class NewApiService {
       // Cache the results
       this.setCache(cacheKey, transformedData);
       
-      console.log(`✅ Fetched and transformed ${transformedData.length} ${tipo} items from new API`);
+      console.log(`✅ [${requestId}] Successfully fetched and transformed ${transformedData.length} ${tipo} items`);
       return transformedData;
       
     } catch (error) {
-      console.error(`❌ Failed to fetch ${tipo} from new API:`, error);
-      console.error(`❌ Error details:`, {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
-      });
+      clearTimeout(timeoutId);
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.error(`❌ [${requestId}] Request aborted (timeout) for ${tipo}`);
+        } else {
+          console.error(`❌ [${requestId}] Network error for ${tipo}:`, {
+            message: error.message,
+            stack: error.stack,
+            url
+          });
+        }
+      } else {
+        console.error(`❌ [${requestId}] Unknown error for ${tipo}:`, error);
+      }
+      
       throw error;
     }
   }
@@ -156,42 +227,33 @@ export class NewApiService {
     books: SearchResult[];
     podcasts: SearchResult[];
   }> {
-    console.log('🏠 Fetching homepage content from new API...');
+    const requestId = `homepage_${Date.now()}`;
+    console.log(`🏠 [${requestId}] Starting homepage content fetch...`);
     
     try {
-      // Fetch small amounts in parallel for homepage
-      const [videosResult, booksResult, podcastsResult] = await Promise.allSettled([
-        this.fetchContent('aula', 1, 6),
-        this.fetchContent('livro', 1, 6), 
-        this.fetchContent('podcast', 1, 6)
-      ]);
+      // Fetch content sequentially to avoid overwhelming the API
+      console.log(`📚 [${requestId}] Fetching books...`);
+      const books = await this.fetchContent('livro', 1, 6);
+      
+      console.log(`🎥 [${requestId}] Fetching videos...`);
+      const videos = await this.fetchContent('aula', 1, 6);
+      
+      console.log(`🎧 [${requestId}] Fetching podcasts...`);
+      const podcasts = await this.fetchContent('podcast', 1, 6);
 
-      const result = {
-        videos: videosResult.status === 'fulfilled' ? videosResult.value : [],
-        books: booksResult.status === 'fulfilled' ? booksResult.value : [],
-        podcasts: podcastsResult.status === 'fulfilled' ? podcastsResult.value : []
-      };
+      const result = { videos, books, podcasts };
 
-      // Log any failures
-      if (videosResult.status === 'rejected') {
-        console.error('❌ Failed to fetch videos:', videosResult.reason);
-      }
-      if (booksResult.status === 'rejected') {
-        console.error('❌ Failed to fetch books:', booksResult.reason);
-      }
-      if (podcastsResult.status === 'rejected') {
-        console.error('❌ Failed to fetch podcasts:', podcastsResult.reason);
-      }
-
-      console.log('✅ Homepage content loaded:', {
+      console.log(`✅ [${requestId}] Homepage content loaded successfully:`, {
         videos: result.videos.length,
         books: result.books.length,
-        podcasts: result.podcasts.length
+        podcasts: result.podcasts.length,
+        total: result.videos.length + result.books.length + result.podcasts.length
       });
 
       return result;
+      
     } catch (error) {
-      console.error('❌ Failed to fetch homepage content:', error);
+      console.error(`❌ [${requestId}] Failed to fetch homepage content:`, error);
       throw error;
     }
   }
@@ -199,6 +261,7 @@ export class NewApiService {
   clearCache(): void {
     console.log('🧹 Clearing new API cache...');
     this.cache.clear();
+    this.activeRequests.clear();
   }
 }
 

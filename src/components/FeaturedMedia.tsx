@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import { useHomepageContent } from '@/hooks/useHomepageContent';
+import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useMemo } from 'react';
 import FeaturedMediaSkeleton from '@/components/skeletons/FeaturedMediaSkeleton';
 
 const FeaturedMedia = () => {
-  const { content, loading } = useHomepageContent();
+  const { content, loading } = useHomepageContentContext();
 
   // Get featured content from homepage API
   const { videos, podcasts } = useMemo(() => {

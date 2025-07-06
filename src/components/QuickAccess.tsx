@@ -1,12 +1,12 @@
 
 import { Book, Video, Headphones } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useHomepageContent } from '@/hooks/useHomepageContent';
+import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useMemo } from 'react';
 import QuickAccessSkeleton from '@/components/skeletons/QuickAccessSkeleton';
 
 const QuickAccess = () => {
-  const { content, loading } = useHomepageContent();
+  const { content, loading } = useHomepageContentContext();
 
   // Calculate real counts from homepage content
   const counts = useMemo(() => {

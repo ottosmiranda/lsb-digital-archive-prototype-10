@@ -1,12 +1,13 @@
+
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useHomepageContent } from '@/hooks/useHomepageContent';
+import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useNavigate } from 'react-router-dom';
 import { useTopItems } from './MostAccessed/useTopItems';
 import MostAccessedTableRow from './MostAccessed/MostAccessedTableRow';
 import MostAccessedSkeleton from '@/components/skeletons/MostAccessedSkeleton';
 
 const MostAccessed = () => {
-  const { content, loading } = useHomepageContent();
+  const { content, loading } = useHomepageContentContext();
   const navigate = useNavigate();
   const allData = [...content.videos, ...content.books, ...content.podcasts];
   const topItems = useTopItems(allData);

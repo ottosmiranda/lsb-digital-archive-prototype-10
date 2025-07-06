@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
-import { useHomepageContent } from '@/hooks/useHomepageContent';
+import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import FeaturedHighlightsSkeleton from '@/components/skeletons/FeaturedHighlightsSkeleton';
@@ -66,7 +66,7 @@ const typeBadgeColor = (type: string) => {
 };
 
 const FeaturedHighlights = () => {
-  const { content, loading } = useHomepageContent();
+  const { content, loading } = useHomepageContentContext();
   const navigate = useNavigate();
 
   // Create a stable autoplay plugin instance with updated configuration

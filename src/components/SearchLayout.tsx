@@ -53,24 +53,32 @@ const SearchLayout = ({
   const [view, setView] = useState<'grid' | 'list'>('grid');
   // activeContentType reflects the state of the resourceType filter driven by tabs
   const [activeContentType, setActiveContentType] = useState('all');
+  const [showAllContent, setShowAllContent] = useState(false);
 
   // Sync activeContentType with filters.resourceType
   useEffect(() => {
     if (filters.resourceType.length === 1 && ['titulo', 'video', 'podcast'].includes(filters.resourceType[0])) {
       setActiveContentType(filters.resourceType[0]);
+      setShowAllContent(false);
     } else if (filters.resourceType.length === 0) {
       setActiveContentType('all');
+      // Don't automatically set showAllContent here - let it be controlled by user action
     } else {
       // Multiple resourceTypes selected, or an unknown one. Default to 'all'.
       // This scenario might occur if filters are set externally or if `resourceType` can hold more complex states.
       // For tab interaction, it's usually one type or 'all'.
       setActiveContentType('all'); 
+      setShowAllContent(false);
     }
   }, [filters.resourceType]);
   
   const hasResults = currentResults.length > 0;
-  const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
-  const showWelcomeState = !loading && !query && !hasActiveFilters && !hasResults;
+  
+  // Modified logic: consider showAllContent as an active state
+  const effectiveHasActiveFilters = hasActiveFilters || showAllContent;
+  
+  const showEmptyState = !loading && !hasResults && (query || effectiveHasActiveFilters);
+  const showWelcomeState = !loading && !query && !effectiveHasActiveFilters && !hasResults;
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
     const newFilters = { ...filters };
@@ -111,11 +119,13 @@ const SearchLayout = ({
     
     if (type === 'all') {
       newFilters.resourceType = [];
+      setShowAllContent(true); // Explicitly set showAllContent when "Todos" is selected
       // Automatically apply alphabetical sorting when "Todos" is selected
       onSortChange('title');
     } else {
       // Ensure only valid types are pushed. This assumes `type` is one of 'titulo', 'video', 'podcast'.
       newFilters.resourceType = [type]; 
+      setShowAllContent(false);
     }
     
     onFiltersChange(newFilters);

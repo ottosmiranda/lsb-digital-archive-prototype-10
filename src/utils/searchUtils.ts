@@ -1,4 +1,3 @@
-
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
 // Helper function to normalize text for better Portuguese search
@@ -60,9 +59,12 @@ export const filterResults = (
       if (!matchesQuery) return false;
     }
 
-    // "Tipo de Item" filter (uses resourceType for tabs compatibility)
+    // "Tipo de Item" filter - modificado para suportar 'all'
     if (currentFilters.resourceType.length > 0) {
-      if (!currentFilters.resourceType.includes(item.type)) return false;
+      // Se contém 'all', não filtrar por tipo (mostrar todos)
+      if (!currentFilters.resourceType.includes('all')) {
+        if (!currentFilters.resourceType.includes(item.type)) return false;
+      }
     }
 
     if (currentFilters.subject.length > 0) {
@@ -201,8 +203,7 @@ export const sortResults = (resultsToSort: SearchResult[], sortType: string, que
 };
 
 export const checkHasActiveFilters = (
-  filterObj: SearchFilters, 
-  showAllContent: boolean = false
+  filterObj: SearchFilters
 ): boolean => {
   return filterObj.resourceType.length > 0 || 
          filterObj.subject.length > 0 || 
@@ -210,6 +211,5 @@ export const checkHasActiveFilters = (
          Boolean(filterObj.year) || 
          Boolean(filterObj.duration) ||
          filterObj.language.length > 0 ||
-         filterObj.documentType.length > 0 ||
-         showAllContent; // Consider "Todos" state as active filter
+         filterObj.documentType.length > 0;
 };

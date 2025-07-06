@@ -65,16 +65,15 @@ export const useSearchResults = () => {
   });
 
   const [usingFallback, setUsingFallback] = useState(false);
-  const [showAllContent, setShowAllContent] = useState(false);
 
   // Verificar se há filtros ativos - incluindo estado "Todos"
   const hasActiveFilters = useMemo((): boolean => {
-    return checkHasActiveFilters(filters, showAllContent);
-  }, [filters, showAllContent]);
+    return checkHasActiveFilters(filters);
+  }, [filters]);
 
   // Função para executar busca
   const performSearch = async () => {
-    // Buscar se houver query, filtros ativos, ou estado "Todos" ativo
+    // Buscar se houver query, filtros ativos (incluindo 'all' para "Todos")
     if (!query.trim() && !hasActiveFilters) {
       setSearchResponse({
         results: [],
@@ -99,8 +98,7 @@ export const useSearchResults = () => {
       filters, 
       sortBy, 
       currentPage,
-      hasActiveFilters,
-      showAllContent
+      hasActiveFilters
     });
 
     try {
@@ -157,18 +155,11 @@ export const useSearchResults = () => {
   useEffect(() => {
     performSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, filters, sortBy, currentPage, showAllContent]);
+  }, [query, filters, sortBy, currentPage]);
 
   // Handlers
   const handleFilterChange = (newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
     setFilters(newFilters);
-    
-    // Verificar se é mudança para "Todos" (resourceType vazio)
-    if (newFilters.resourceType.length === 0 && sortBy === 'title') {
-      setShowAllContent(true);
-    } else if (newFilters.resourceType.length > 0) {
-      setShowAllContent(false);
-    }
     
     // Resetar página apenas se não for digitação no autor
     if (!options?.authorTyping) {

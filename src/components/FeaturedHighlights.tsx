@@ -69,6 +69,19 @@ const FeaturedHighlights = () => {
   const { content, loading } = useHomepageContentContext();
   const navigate = useNavigate();
 
+  // FASE 3: Debug component data reception
+  console.group('⭐ PHASE 3: FeaturedHighlights Component Diagnostics');
+  console.log('Loading state:', loading);
+  console.log('Raw content received:', {
+    videos: content.videos.length,
+    books: content.books.length,
+    podcasts: content.podcasts.length
+  });
+  console.log('Videos sample:', content.videos.slice(0, 2));
+  console.log('Books sample:', content.books.slice(0, 2));
+  console.log('Podcasts sample:', content.podcasts.slice(0, 2));
+  console.groupEnd();
+
   // Create a stable autoplay plugin instance with updated configuration
   const autoplayPlugin = useRef(
     Autoplay({
@@ -80,16 +93,29 @@ const FeaturedHighlights = () => {
 
   // Get mixed highlights from new API content
   const highlights = useMemo(() => {
+    console.log('🔄 PHASE 3: Processing FeaturedHighlights data...');
+    
     const allItems = [...content.videos, ...content.books, ...content.podcasts];
-    return allItems.slice(0, 6); // Take first 6 items mixed
+    const finalHighlights = allItems.slice(0, 6); // Take first 6 items mixed
+    
+    console.log('✅ PHASE 3: FeaturedHighlights data processed:', {
+      allItemsCount: allItems.length,
+      finalHighlightsCount: finalHighlights.length,
+      highlightsSample: finalHighlights.slice(0, 2)
+    });
+    
+    return finalHighlights;
   }, [content]);
 
-  console.log('FeaturedHighlights - content loaded:', {
-    videos: content.videos.length,
-    books: content.books.length,
-    podcasts: content.podcasts.length
+  console.log('🎯 PHASE 3: FeaturedHighlights final state:', {
+    loading,
+    highlightsCount: highlights.length,
+    contentSummary: {
+      videos: content.videos.length,
+      books: content.books.length,
+      podcasts: content.podcasts.length
+    }
   });
-  console.log('FeaturedHighlights - highlights count:', highlights.length);
 
   // Show skeleton while loading
   if (loading) {

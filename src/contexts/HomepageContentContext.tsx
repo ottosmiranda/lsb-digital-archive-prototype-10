@@ -49,57 +49,80 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   console.groupEnd();
 
   const loadContent = async () => {
-    console.group('🚀 HomepageContentProvider - ULTRA-FAST loadContent');
+    console.group('🚀 DIAGNOSTIC loadContent - Phase 1: Starting data load with detailed tracking');
     console.log('⏰ Load started at:', new Date().toISOString());
-    console.log('🔄 Setting loading to true');
+    console.log('🔄 Setting loading state to true');
     
     setLoading(true);
     setError(null);
     setIsUsingFallback(false);
 
     try {
-      // Get API status for debugging
+      // FASE 1: Get API status for debugging dashboard
       const status = newApiService.getStatus();
       setApiStatus(status);
-      console.log('📊 API Status:', status);
+      console.group('📊 DIAGNOSTIC API STATUS DASHBOARD');
+      console.log('Health Status:', status.healthStatus.toUpperCase());
+      console.log('Circuit Breaker:', status.circuitBreaker.breakerOpen ? 'OPEN' : 'CLOSED');
+      console.log('Cache Size:', status.cacheSize);
+      console.log('Active Requests:', status.activeRequests);
+      console.groupEnd();
 
-      console.log('📡 Calling newApiService.fetchHomepageContent() with ultra-fast timeouts...');
+      console.log('📡 PHASE 1: Calling newApiService.fetchHomepageContent() with diagnostic timeouts...');
+      const startTime = Date.now();
+      
       const homepageContent = await newApiService.fetchHomepageContent();
       
-      console.log('✅ API Response received:', {
+      const loadTime = Date.now() - startTime;
+      console.log('✅ PHASE 1: API Response received in', loadTime, 'ms:', {
         videos: homepageContent.videos.length,
         books: homepageContent.books.length,
         podcasts: homepageContent.podcasts.length,
-        totalItems: homepageContent.videos.length + homepageContent.books.length + homepageContent.podcasts.length
+        totalItems: homepageContent.videos.length + homepageContent.books.length + homepageContent.podcasts.length,
+        loadTimeMs: loadTime
       });
 
+      // FASE 1: Detailed data validation
+      console.group('🔍 PHASE 1: Data validation and source detection');
+      console.log('Videos sample:', homepageContent.videos.slice(0, 2));
+      console.log('Books sample:', homepageContent.books.slice(0, 2));
+      console.log('Podcasts sample:', homepageContent.podcasts.slice(0, 2));
+      
       // Check if we're using Supabase fallback (indicated by specific patterns in the data)
       const usingFallback = homepageContent.videos.some(v => v.id > 1000000) || 
                            homepageContent.books.some(b => b.id > 2000) ||
                            homepageContent.podcasts.some(p => p.id > 1000);
       
+      console.log('Data source:', usingFallback ? 'SUPABASE FALLBACK' : 'EXTERNAL API');
+      console.groupEnd();
+      
+      // FASE 2: Progressive data setting with detailed logging
+      console.log('🔄 PHASE 2: Setting content in React state...');
       setContent(homepageContent);
       setIsUsingFallback(usingFallback);
       
-      if (usingFallback) {
-        console.log('🔄 Using Supabase fallback data due to external API issues');
-      } else {
-        console.log('✅ Content set successfully from external API');
-      }
+      console.log('✅ PHASE 2: Content state updated successfully');
+      console.log('📊 PHASE 2: Final content state:', {
+        videos: homepageContent.videos.length,
+        books: homepageContent.books.length,
+        podcasts: homepageContent.podcasts.length,
+        isUsingFallback: usingFallback
+      });
       
     } catch (err) {
-      console.error('❌ API Error details:', {
+      console.error('❌ PHASE 1: Critical error in loadContent:', {
         error: err,
         message: err instanceof Error ? err.message : 'Unknown error',
-        stack: err instanceof Error ? err.stack : 'No stack trace'
+        stack: err instanceof Error ? err.stack : 'No stack trace',
+        timestamp: new Date().toISOString()
       });
       
       const errorMessage = err instanceof Error ? err.message : 'Failed to load content';
       setError(errorMessage);
       
-      // Try to get some content from Supabase as last resort
+      // FASE 1: Emergency fallback attempt
       try {
-        console.log('🔄 Final attempt: trying Supabase fallback directly...');
+        console.log('🆘 EMERGENCY: Attempting direct Supabase fallback...');
         const { supabase } = await import('@/integrations/supabase/client');
         
         const [videosResult, booksResult, podcastsResult] = await Promise.allSettled([
@@ -118,24 +141,24 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
         const totalFallbackItems = videos.length + books.length + podcasts.length;
         
         if (totalFallbackItems > 0) {
-          console.log('✅ Final fallback successful:', { videos: videos.length, books: books.length, podcasts: podcasts.length });
+          console.log('✅ EMERGENCY: Fallback successful:', { videos: videos.length, books: books.length, podcasts: podcasts.length });
           setContent({ videos, books, podcasts });
           setIsUsingFallback(true);
           setError(null); // Clear error since we got some data
         } else {
-          console.log('❌ Final fallback also failed - no content available');
+          console.log('❌ EMERGENCY: Fallback also failed - no content available');
           setContent({ videos: [], books: [], podcasts: [] });
         }
         
       } catch (fallbackError) {
-        console.error('❌ Final fallback failed:', fallbackError);
+        console.error('❌ EMERGENCY: Final fallback failed:', fallbackError);
         setContent({ videos: [], books: [], podcasts: [] });
       }
       
     } finally {
-      console.log('🔄 Setting loading to false');
+      console.log('🔄 PHASE 2: Setting loading to false');
       setLoading(false);
-      console.log('⏰ Load completed at:', new Date().toISOString());
+      console.log('⏰ DIAGNOSTIC: Load completed at:', new Date().toISOString());
       console.groupEnd();
     }
   };

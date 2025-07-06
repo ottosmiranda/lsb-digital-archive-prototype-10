@@ -11,8 +11,21 @@ import FeaturedMediaSkeleton from '@/components/skeletons/FeaturedMediaSkeleton'
 const FeaturedMedia = () => {
   const { content, loading } = useHomepageContentContext();
 
+  // FASE 3: Debug component data reception
+  console.group('🎬 PHASE 3: FeaturedMedia Component Diagnostics');
+  console.log('Loading state:', loading);
+  console.log('Raw content received:', {
+    videos: content.videos.length,
+    podcasts: content.podcasts.length
+  });
+  console.log('Videos sample:', content.videos.slice(0, 2));
+  console.log('Podcasts sample:', content.podcasts.slice(0, 2));
+  console.groupEnd();
+
   // Get featured content from homepage API
   const { videos, podcasts } = useMemo(() => {
+    console.log('🔄 PHASE 3: Processing FeaturedMedia data...');
+    
     const videoData = content.videos
       .slice(0, 3)
       .map(video => ({
@@ -32,6 +45,13 @@ const FeaturedMedia = () => {
         thumbnail: podcast.thumbnail,
         author: podcast.author
       }));
+
+    console.log('✅ PHASE 3: FeaturedMedia data processed:', {
+      processedVideos: videoData.length,
+      processedPodcasts: podcastData.length,
+      videoSample: videoData[0],
+      podcastSample: podcastData[0]
+    });
 
     return { videos: videoData, podcasts: podcastData };
   }, [content]);

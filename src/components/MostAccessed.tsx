@@ -9,8 +9,28 @@ import MostAccessedSkeleton from '@/components/skeletons/MostAccessedSkeleton';
 const MostAccessed = () => {
   const { content, loading } = useHomepageContentContext();
   const navigate = useNavigate();
+  
+  // FASE 3: Debug component data reception
+  console.group('📊 PHASE 3: MostAccessed Component Diagnostics');
+  console.log('Loading state:', loading);
+  console.log('Raw content received:', {
+    videos: content.videos.length,
+    books: content.books.length,
+    podcasts: content.podcasts.length
+  });
+  
   const allData = [...content.videos, ...content.books, ...content.podcasts];
+  console.log('Combined data array:', allData.length);
+  console.log('Sample combined data:', allData.slice(0, 3));
+  console.groupEnd();
+  
   const topItems = useTopItems(allData);
+  
+  // FASE 3: Debug processed data
+  console.log('📈 PHASE 3: MostAccessed processed data:', {
+    topItemsCount: topItems.length,
+    topItemsSample: topItems.slice(0, 3)
+  });
 
   const handleItemClick = (id: number) => {
     navigate(`/recurso/${id}`);

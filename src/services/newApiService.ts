@@ -147,15 +147,18 @@ export class NewApiService {
     const startTime = Date.now();
     
     try {
-      console.log('🏥 ULTRA-FAST Health Check - Starting (2s timeout)...');
+      console.log('🏥 DIAGNOSTIC Health Check - Starting (3s timeout)...');
       
-      // Ultra-aggressive timeout with Promise.race
+      // Diagnostic timeout with detailed logging
       const healthPromise = fetch(healthUrl, {
         headers: { 'Accept': 'application/json' }
       });
       
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Health check timeout (2s)')), 2000);
+        setTimeout(() => {
+          console.log('⏰ DIAGNOSTIC - Health check timeout after 3s');
+          reject(new Error('Health check timeout (3s)'));
+        }, 3000);
       });
       
       const response = await Promise.race([healthPromise, timeoutPromise]);
@@ -164,20 +167,36 @@ export class NewApiService {
       
       this.healthStatus = isHealthy ? 'healthy' : 'unhealthy';
       
-      console.log(`🏥 ULTRA-FAST Health Check - ${isHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY'}:`, {
+      console.log(`🏥 DIAGNOSTIC Health Check - ${isHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY'}:`, {
         status: response.status,
         duration: `${duration}ms`,
-        latency: duration > 1500 ? 'HIGH' : duration > 800 ? 'MEDIUM' : 'LOW'
+        latency: duration > 2000 ? 'HIGH' : duration > 1000 ? 'MEDIUM' : 'LOW',
+        timestamp: new Date().toISOString()
       });
+      
+      // FASE 4: Dashboard em tempo real
+      console.group('📊 API DIAGNOSTIC DASHBOARD');
+      console.log(`Health Status: ${this.healthStatus.toUpperCase()}`);
+      console.log(`Response Time: ${duration}ms`);
+      console.log(`Circuit Breaker: ${this.circuitBreaker.breakerOpen ? 'OPEN' : 'CLOSED'}`);
+      console.log(`Failures: ${this.circuitBreaker.failures}`);
+      console.log(`Cache Size: ${this.cache.size} entries`);
+      console.log(`Active Requests: ${this.activeRequests.size}`);
+      console.groupEnd();
       
       return isHealthy;
     } catch (error) {
       const duration = Date.now() - startTime;
       this.healthStatus = 'unhealthy';
-      console.error('🏥 ULTRA-FAST Health Check - ❌ FAILED:', {
+      console.error('🏥 DIAGNOSTIC Health Check - ❌ FAILED:', {
         error: error instanceof Error ? error.message : 'Unknown',
-        duration: `${duration}ms`
+        duration: `${duration}ms`,
+        timestamp: new Date().toISOString()
       });
+      
+      // FASE 4: Alert de problema
+      console.warn('🚨 API ALERT: External API is not responding properly');
+      
       return false;
     }
   }
@@ -213,7 +232,7 @@ export class NewApiService {
   }
 
   private async fetchWithUltraTimeout(url: string, requestId: string, timeoutMs: number = 3000): Promise<Response> {
-    console.log(`🚀 ${requestId} - ULTRA-FAST fetch (${timeoutMs}ms timeout)`);
+    console.log(`🚀 ${requestId} - DIAGNOSTIC fetch (${timeoutMs}ms timeout)`);
     const startTime = Date.now();
     
     try {
@@ -227,19 +246,21 @@ export class NewApiService {
       
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          console.error(`⏰ ${requestId} - ULTRA-TIMEOUT (${timeoutMs}ms)`);
-          reject(new Error(`Ultra timeout (${timeoutMs}ms)`));
+          console.error(`⏰ ${requestId} - DIAGNOSTIC TIMEOUT (${timeoutMs}ms) - API not responding`);
+          reject(new Error(`DIAGNOSTIC timeout (${timeoutMs}ms)`));
         }, timeoutMs);
       });
       
       const response = await Promise.race([fetchPromise, timeoutPromise]);
       const duration = Date.now() - startTime;
       
-      console.log(`📊 ${requestId} - ULTRA-FAST Response:`, {
-        status: response.status,
-        ok: response.ok,
-        duration: `${duration}ms`
-      });
+      // FASE 4: Advanced monitoring
+      console.group(`📊 ${requestId} - DIAGNOSTIC Response Analysis`);
+      console.log(`Status: ${response.status} ${response.ok ? '✅' : '❌'}`);
+      console.log(`Duration: ${duration}ms`);
+      console.log(`Performance: ${duration > 2000 ? '🐌 SLOW' : duration > 1000 ? '⚠️ MEDIUM' : '⚡ FAST'}`);
+      console.log(`Headers:`, Object.fromEntries(response.headers.entries()));
+      console.groupEnd();
       
       if (response.ok) {
         this.recordSuccess();
@@ -251,10 +272,16 @@ export class NewApiService {
     } catch (error) {
       const duration = Date.now() - startTime;
       this.recordFailure();
-      console.error(`❌ ${requestId} - ULTRA-FAST Failed:`, {
-        error: error instanceof Error ? error.message : 'Unknown',
-        duration: `${duration}ms`
-      });
+      
+      // FASE 4: Error analysis
+      console.group(`❌ ${requestId} - DIAGNOSTIC Error Analysis`);
+      console.error(`Error Type: ${error instanceof Error ? error.name : 'Unknown'}`);
+      console.error(`Error Message: ${error instanceof Error ? error.message : 'Unknown'}`);
+      console.error(`Duration: ${duration}ms`);
+      console.error(`Circuit Breaker Status: ${this.circuitBreaker.breakerOpen ? 'WILL OPEN' : 'STILL CLOSED'}`);
+      console.error(`Failures Count: ${this.circuitBreaker.failures}`);
+      console.groupEnd();
+      
       throw error;
     }
   }
@@ -419,53 +446,68 @@ export class NewApiService {
   }> {
     const requestId = `homepage_${Date.now()}`;
     
-    console.group(`🏠 ${requestId} - ULTRA-FAST fetchHomepageContent`);
+    console.group(`🏠 ${requestId} - DIAGNOSTIC fetchHomepageContent`);
     console.log(`⏰ Started at:`, new Date().toISOString());
     console.log(`🌡️ Health status: ${this.healthStatus}`);
     console.log(`⚡ Circuit breaker: ${this.circuitBreaker.breakerOpen ? 'OPEN' : 'CLOSED'} (failures: ${this.circuitBreaker.failures})`);
     
+    // FASE 4: Real-time dashboard update
+    console.group('📊 DIAGNOSTIC REAL-TIME DASHBOARD');
+    console.log(`🔄 Active Requests: ${this.activeRequests.size}`);
+    console.log(`💾 Cache Size: ${this.cache.size} entries`);
+    console.log(`📡 API Health: ${this.healthStatus.toUpperCase()}`);
+    console.log(`⚡ Circuit Breaker: ${this.circuitBreaker.breakerOpen ? '🔴 OPEN' : '🟢 CLOSED'}`);
+    console.groupEnd();
+    
     try {
-      // Ultra-fast health check first
-      console.log(`🏥 ${requestId} - ULTRA-FAST health check...`);
+      // FASE 2: Ultra-fast health check first (3s timeout)
+      console.log(`🏥 ${requestId} - DIAGNOSTIC health check with 3s timeout...`);
       const isHealthy = await this.healthCheck();
       
       if (!isHealthy) {
-        console.warn(`⚠️ ${requestId} - Health check failed, using Supabase fallback immediately`);
+        console.warn(`⚠️ ${requestId} - Health check failed, attempting emergency fallback immediately`);
         const result = await this.fetchAllFromSupabase();
+        console.log('🆘 DIAGNOSTIC: Using emergency fallback due to API health failure');
         console.groupEnd();
         return result;
       }
       
-      // Sequential loading with ultra-fast timeouts
-      console.log(`📡 ${requestId} - Starting ULTRA-FAST SEQUENTIAL content fetch...`);
+      // FASE 2: Progressive loading with 3s timeouts
+      console.log(`📡 ${requestId} - Starting DIAGNOSTIC PROGRESSIVE content fetch (3s timeouts)...`);
       
       let books: SearchResult[] = [];
       let videos: SearchResult[] = [];
       let podcasts: SearchResult[] = [];
       
-      // Load books first (fastest usually)
+      // FASE 2: Load books first with aggressive timeout
       try {
-        console.log(`📚 ${requestId} - Loading books with ultra timeout...`);
+        console.log(`📚 ${requestId} - Loading books with 3s diagnostic timeout...`);
+        const bookStartTime = Date.now();
         books = await this.fetchContent('livro', 1, 6);
-        console.log(`✅ ${requestId} - Books loaded: ${books.length}`);
+        const bookDuration = Date.now() - bookStartTime;
+        console.log(`✅ ${requestId} - Books loaded in ${bookDuration}ms: ${books.length} items`);
       } catch (error) {
         console.error(`❌ ${requestId} - Books failed:`, error);
       }
       
-      // Load videos second
+      // FASE 2: Load videos second with aggressive timeout
       try {
-        console.log(`🎬 ${requestId} - Loading videos with ultra timeout...`);
+        console.log(`🎬 ${requestId} - Loading videos with 3s diagnostic timeout...`);
+        const videoStartTime = Date.now();
         videos = await this.fetchContent('aula', 1, 6);
-        console.log(`✅ ${requestId} - Videos loaded: ${videos.length}`);
+        const videoDuration = Date.now() - videoStartTime;
+        console.log(`✅ ${requestId} - Videos loaded in ${videoDuration}ms: ${videos.length} items`);
       } catch (error) {
         console.error(`❌ ${requestId} - Videos failed:`, error);
       }
       
-      // Load podcasts last
+      // FASE 2: Load podcasts last with aggressive timeout
       try {
-        console.log(`🎧 ${requestId} - Loading podcasts with ultra timeout...`);
+        console.log(`🎧 ${requestId} - Loading podcasts with 3s diagnostic timeout...`);
+        const podcastStartTime = Date.now();
         podcasts = await this.fetchContent('podcast', 1, 6);
-        console.log(`✅ ${requestId} - Podcasts loaded: ${podcasts.length}`);
+        const podcastDuration = Date.now() - podcastStartTime;
+        console.log(`✅ ${requestId} - Podcasts loaded in ${podcastDuration}ms: ${podcasts.length} items`);
       } catch (error) {
         console.error(`❌ ${requestId} - Podcasts failed:`, error);
       }
@@ -473,17 +515,19 @@ export class NewApiService {
       const result = { videos, books, podcasts };
       const totalItems = books.length + videos.length + podcasts.length;
 
-      console.log(`✅ ${requestId} - ULTRA-FAST content loaded:`, {
-        books: books.length,
-        videos: videos.length,
-        podcasts: podcasts.length,
-        total: totalItems,
-        completedAt: new Date().toISOString()
-      });
+      // FASE 4: Final status report
+      console.group('📋 DIAGNOSTIC FINAL REPORT');
+      console.log(`📊 Total Items Loaded: ${totalItems}`);
+      console.log(`📚 Books: ${books.length}`);
+      console.log(`🎬 Videos: ${videos.length}`);
+      console.log(`🎧 Podcasts: ${podcasts.length}`);
+      console.log(`⏰ Completed at: ${new Date().toISOString()}`);
+      console.log(`🎯 Success Rate: ${totalItems > 0 ? '✅ PARTIAL/FULL SUCCESS' : '❌ COMPLETE FAILURE'}`);
+      console.groupEnd();
 
-      // If no content was loaded at all, try Supabase fallback
+      // FASE 2: If no content was loaded at all, try emergency fallback
       if (totalItems === 0) {
-        console.log(`🔄 ${requestId} - No content from external API, using Supabase fallback`);
+        console.log(`🔄 ${requestId} - No content from external API, using emergency fallback`);
         const fallbackResult = await this.fetchAllFromSupabase();
         console.groupEnd();
         return fallbackResult;
@@ -493,7 +537,7 @@ export class NewApiService {
       return result;
       
     } catch (error) {
-      console.error(`❌ ${requestId} - ULTRA-FAST fetch failed, using Supabase fallback:`, error);
+      console.error(`❌ ${requestId} - DIAGNOSTIC fetch failed, using emergency fallback:`, error);
       const fallbackResult = await this.fetchAllFromSupabase();
       console.groupEnd();
       return fallbackResult;

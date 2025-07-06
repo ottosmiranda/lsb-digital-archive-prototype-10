@@ -29,6 +29,7 @@ export class NewApiService {
     breakerOpen: false,
     openDuration: 15000 // Increased to 15 seconds
   };
+  private healthIntervalId: NodeJS.Timeout | null = null;
   private healthStatus: 'unknown' | 'healthy' | 'unhealthy' = 'unknown';
 
   private constructor() {
@@ -46,12 +47,19 @@ export class NewApiService {
 
   private startHealthMonitoring(): void {
     // Monitor health every 30 seconds with enhanced timeout
-    setInterval(async () => {
+    this.healthIntervalId = setInterval(async () => {
       if (!this.circuitBreaker.breakerOpen) {
         const isHealthy = await this.healthCheck();
         console.log(`🔄 Background health: ${isHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY'}`);
       }
     }, 30000);
+  }
+
+  stopHealthMonitoring(): void {
+    if (this.healthIntervalId) {
+      clearInterval(this.healthIntervalId);
+      this.healthIntervalId = null;
+    }
   }
 
   private getCacheKey(tipo: string, page: number, limit: number): string {
@@ -636,6 +644,7 @@ export class NewApiService {
 
   clearCache(): void {
     console.log('🧹 Clearing cache and cancelling requests');
+    this.stopHealthMonitoring();
     this.timeoutManager.cancelAll();
     this.cache.clear();
     this.activeRequests.clear();

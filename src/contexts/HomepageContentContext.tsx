@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { SearchResult } from '@/types/searchTypes';
 import { newApiService } from '@/services/newApiService';
@@ -14,6 +13,16 @@ interface ContentCounts {
   videos: number;
   books: number;
   podcasts: number;
+}
+
+// Type definitions for rotated content data
+interface WeeklyHighlightsData {
+  highlights: SearchResult[];
+}
+
+interface DailyMediaData {
+  videos: SearchResult[];
+  podcasts: SearchResult[];
 }
 
 interface RotatedContent {
@@ -98,10 +107,16 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
       const dailyRotation = rotations?.find(r => r.content_type === 'daily_media');
 
       const newRotatedContent: RotatedContent = {
-        weeklyHighlights: weeklyRotation?.content_data?.highlights || [],
+        weeklyHighlights: weeklyRotation?.content_data 
+          ? (weeklyRotation.content_data as WeeklyHighlightsData).highlights || []
+          : [],
         dailyMedia: {
-          videos: dailyRotation?.content_data?.videos || [],
-          podcasts: dailyRotation?.content_data?.podcasts || []
+          videos: dailyRotation?.content_data 
+            ? (dailyRotation.content_data as DailyMediaData).videos || []
+            : [],
+          podcasts: dailyRotation?.content_data 
+            ? (dailyRotation.content_data as DailyMediaData).podcasts || []
+            : []
         }
       };
 

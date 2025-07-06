@@ -1,3 +1,4 @@
+
 import { SearchResult } from '@/types/searchTypes';
 
 const API_BASE_URL = 'https://link-business-school.onrender.com/api/v1';
@@ -102,25 +103,55 @@ export class NewApiService {
     
     try {
       const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
+      console.log(`📡 API URL: ${url}`);
+      
       const response = await fetch(url);
+      
+      console.log(`📊 API Response Status: ${response.status}`);
+      console.log(`📊 API Response Headers:`, Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         throw new Error(`API responded with status: ${response.status}`);
       }
 
       const rawData = await response.json();
+      console.log(`📊 Raw API Response for ${tipo}:`, rawData);
+      
+      // Handle different response formats
+      let dataArray: any[] = [];
+      
+      if (Array.isArray(rawData)) {
+        // Direct array response
+        dataArray = rawData;
+        console.log(`✅ Direct array format detected with ${dataArray.length} items`);
+      } else if (rawData.conteudo && Array.isArray(rawData.conteudo)) {
+        // Wrapped in conteudo property
+        dataArray = rawData.conteudo;
+        console.log(`✅ Wrapped format detected with ${dataArray.length} items`);
+      } else if (rawData.data && Array.isArray(rawData.data)) {
+        // Wrapped in data property
+        dataArray = rawData.data;
+        console.log(`✅ Data wrapper format detected with ${dataArray.length} items`);
+      } else {
+        console.warn(`⚠️ Unexpected API response format for ${tipo}:`, rawData);
+        dataArray = [];
+      }
       
       // Transform raw API data to SearchResult format
-      const transformedData = rawData.map((item: any) => this.transformToSearchResult(item, tipo));
+      const transformedData = dataArray.map((item: any) => this.transformToSearchResult(item, tipo));
       
       // Cache the results
       this.setCache(cacheKey, transformedData);
       
-      console.log(`✅ Fetched ${transformedData.length} ${tipo} items from new API`);
+      console.log(`✅ Fetched and transformed ${transformedData.length} ${tipo} items from new API`);
       return transformedData;
       
     } catch (error) {
       console.error(`❌ Failed to fetch ${tipo} from new API:`, error);
+      console.error(`❌ Error details:`, {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
   }
@@ -134,17 +165,28 @@ export class NewApiService {
     
     try {
       // Fetch small amounts in parallel for homepage
-      const [videos, books, podcasts] = await Promise.allSettled([
+      const [videosResult, booksResult, podcastsResult] = await Promise.allSettled([
         this.fetchContent('aula', 1, 6),
         this.fetchContent('livro', 1, 6), 
         this.fetchContent('podcast', 1, 6)
       ]);
 
       const result = {
-        videos: videos.status === 'fulfilled' ? videos.value : [],
-        books: books.status === 'fulfilled' ? books.value : [],
-        podcasts: podcasts.status === 'fulfilled' ? podcasts.value : []
+        videos: videosResult.status === 'fulfilled' ? videosResult.value : [],
+        books: booksResult.status === 'fulfilled' ? booksResult.value : [],
+        podcasts: podcastsResult.status === 'fulfilled' ? podcastsResult.value : []
       };
+
+      // Log any failures
+      if (videosResult.status === 'rejected') {
+        console.error('❌ Failed to fetch videos:', videosResult.reason);
+      }
+      if (booksResult.status === 'rejected') {
+        console.error('❌ Failed to fetch books:', booksResult.reason);
+      }
+      if (podcastsResult.status === 'rejected') {
+        console.error('❌ Failed to fetch podcasts:', podcastsResult.reason);
+      }
 
       console.log('✅ Homepage content loaded:', {
         videos: result.videos.length,

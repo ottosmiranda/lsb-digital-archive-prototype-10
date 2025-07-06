@@ -1,17 +1,41 @@
 
-import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Fire, ImageOff } from 'lucide-react';
+import { useMemo, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import Autoplay from 'embla-carousel-autoplay';
 import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useNavigate } from 'react-router-dom';
+import { SearchResult } from '@/types/searchTypes';
 import { useTopItems } from './MostAccessed/useTopItems';
-import MostAccessedTableRow from './MostAccessed/MostAccessedTableRow';
 import MostAccessedSkeleton from '@/components/skeletons/MostAccessedSkeleton';
+
+const typeBadge = (type: string) => {
+  switch (type) {
+    case "podcast": return "Podcast";
+    case "video": return "Vídeo";
+    case "titulo": return "Livro";
+    default: return "Conteúdo";
+  }
+};
+
+const typeBadgeColor = (type: string) => {
+  switch (type) {
+    case "titulo": return "bg-blue-100 text-blue-800";
+    case "video": return "bg-red-100 text-red-800";
+    case "podcast": return "bg-purple-100 text-purple-800";
+    default: return "bg-gray-100 text-gray-800";
+  }
+};
 
 const MostAccessed = () => {
   const { content, loading } = useHomepageContentContext();
   const navigate = useNavigate();
   
   // FASE 3: Debug component data reception
-  console.group('📊 PHASE 3: MostAccessed Component Diagnostics');
+  console.group('🔥 PHASE 3: MostAccessed Component Diagnostics');
   console.log('Loading state:', loading);
   console.log('Raw content received:', {
     videos: content.videos.length,
@@ -27,14 +51,19 @@ const MostAccessed = () => {
   const topItems = useTopItems(allData);
   
   // FASE 3: Debug processed data
-  console.log('📈 PHASE 3: MostAccessed processed data:', {
+  console.log('🔥 PHASE 3: MostAccessed processed data:', {
     topItemsCount: topItems.length,
     topItemsSample: topItems.slice(0, 3)
   });
 
-  const handleItemClick = (id: number) => {
-    navigate(`/recurso/${id}`);
-  };
+  // Create a stable autoplay plugin instance
+  const autoplayPlugin = useRef(
+    Autoplay({
+      delay: 4500,
+      stopOnInteraction: false,
+      stopOnMouseEnter: false,
+    })
+  );
 
   if (loading) {
     return <MostAccessedSkeleton />;
@@ -63,37 +92,77 @@ const MostAccessed = () => {
   return (
     <section className="py-16 md:py-24 bg-lsb-section">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section Header */}
         <div className="text-center mb-12 animate-fade-in">
           <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
             Mais Acessados
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Os conteúdos mais populares da nossa biblioteca digital
-          </p>
+          <div className="w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden animate-slide-up">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">#</TableHead>
-                <TableHead>Título</TableHead>
-                <TableHead className="hidden md:table-cell">Tipo</TableHead>
-                <TableHead className="hidden lg:table-cell">Autor</TableHead>
-                <TableHead className="text-right">Visualizações</TableHead>
-                <TableHead className="w-16"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {topItems.map((item) => (
-                <MostAccessedTableRow
-                  key={`${item.id}-${item.type}`}
-                  item={item}
-                  onItemClick={handleItemClick}
-                />
+        {/* Most Accessed Carousel */}
+        <div className="relative">
+          <Carousel
+            plugins={[autoplayPlugin.current]}
+            opts={{
+              align: "start",
+              loop: true,
+              dragFree: false,
+              containScroll: "trimSnaps",
+            }}
+            className="w-full"
+          >
+            <CarouselContent className="-ml-4">
+              {topItems.map((item, index) => (
+                <CarouselItem key={`${item.type}-${item.id}`} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                  <Card
+                    className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                    onClick={() => navigate(`/recurso/${item.id}`)}
+                  >
+                    <CardContent className="p-0 h-full flex flex-col">
+                      <div className="relative overflow-hidden rounded-t-lg">
+                        {item.thumbnail ? (
+                          <img 
+                            src={item.thumbnail}
+                            alt={item.title}
+                            className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-40 bg-gray-200 flex items-center justify-center flex-col gap-2">
+                            <ImageOff className="w-8 h-8 text-gray-400" />
+                            <span className="text-gray-500 text-xs">Sem imagem</span>
+                          </div>
+                        )}
+                        <Badge className="absolute top-3 left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
+                          <Fire className="h-3 w-3" />
+                          Mais Acessado
+                        </Badge>
+                      </div>
+                      <div className="p-3 flex-1 flex flex-col">
+                        <Badge variant="outline" className={`mb-2 text-xs self-start ${typeBadgeColor(item.type)}`}>
+                          {typeBadge(item.type)}
+                        </Badge>
+                        <h3 className="font-semibold text-sm mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight flex-1">
+                          {item.title}
+                        </h3>
+                        <p className="text-xs text-gray-600 mb-3">{item.author}</p>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full text-lsb-primary hover:bg-lsb-primary hover:text-white transition-all duration-300 text-xs"
+                        >
+                          Ver Detalhes
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
               ))}
-            </TableBody>
-          </Table>
+            </CarouselContent>
+            <CarouselPrevious className="hidden md:flex -left-8" />
+            <CarouselNext className="hidden md:flex -right-8" />
+          </Carousel>
         </div>
       </div>
     </section>

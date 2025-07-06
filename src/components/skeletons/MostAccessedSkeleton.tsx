@@ -8,58 +8,33 @@ const MostAccessedSkeleton = () => {
         {/* Section Header */}
         <div className="text-center mb-12">
           <Skeleton className="h-10 w-48 mx-auto mb-4" />
-          <Skeleton className="h-6 w-80 mx-auto" />
+          <Skeleton className="h-1 w-24 mx-auto rounded-full" />
         </div>
 
-        {/* Table Skeleton */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left">
-                    <Skeleton className="h-4 w-4" />
-                  </th>
-                  <th className="px-6 py-3 text-left">
-                    <Skeleton className="h-4 w-16" />
-                  </th>
-                  <th className="px-6 py-3 text-left hidden md:table-cell">
-                    <Skeleton className="h-4 w-12" />
-                  </th>
-                  <th className="px-6 py-3 text-left hidden lg:table-cell">
-                    <Skeleton className="h-4 w-16" />
-                  </th>
-                  <th className="px-6 py-3 text-right">
-                    <Skeleton className="h-4 w-20" />
-                  </th>
-                  <th className="px-6 py-3 w-16"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {Array.from({ length: 10 }).map((_, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <Skeleton className="h-6 w-6 rounded-full" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Skeleton className="h-4 w-48" />
-                    </td>
-                    <td className="px-6 py-4 hidden md:table-cell">
-                      <Skeleton className="h-5 w-16 rounded-full" />
-                    </td>
-                    <td className="px-6 py-4 hidden lg:table-cell">
-                      <Skeleton className="h-4 w-32" />
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Skeleton className="h-4 w-12 ml-auto" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Skeleton className="h-4 w-4" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Carousel Skeleton */}
+        <div className="relative">
+          <div className="flex gap-4 overflow-hidden">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="flex-shrink-0 w-full sm:w-1/2 md:w-1/3 lg:w-1/4">
+                <div className="border-0 shadow-lg rounded-lg overflow-hidden">
+                  <div className="p-0">
+                    <div className="relative">
+                      <Skeleton className="w-full h-40" />
+                      <div className="absolute top-3 left-3">
+                        <Skeleton className="h-6 w-24 rounded-full" />
+                      </div>
+                    </div>
+                    <div className="p-3 space-y-3">
+                      <Skeleton className="h-4 w-16 rounded-full" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-20" />
+                      <Skeleton className="h-8 w-full rounded" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

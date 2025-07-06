@@ -8,12 +8,14 @@ import QuickAccessSkeleton from '@/components/skeletons/QuickAccessSkeleton';
 const QuickAccess = () => {
   const { contentCounts, countsLoading, loading } = useHomepageContentContext();
 
-  // Calculate display counts with proper formatting
+  // Calculate display counts with enhanced formatting and timeout protection
   const counts = useMemo(() => {
     console.log('📊 QuickAccess - Processing content counts:', contentCounts);
     
     const formatCount = (count: number): string => {
-      if (count === 0) return '...';
+      // Show loading only for first 10 seconds, then show estimated values
+      if (countsLoading && count === 0) return '...';
+      if (count === 0) return '0'; // Changed from '...' to '0' when not loading
       if (count < 1000) return count.toString();
       if (count < 10000) return `${(count / 1000).toFixed(1)}k`.replace('.0k', 'k');
       return `${Math.floor(count / 1000)}k+`;
@@ -27,7 +29,7 @@ const QuickAccess = () => {
 
     console.log('✅ QuickAccess - Formatted counts:', result);
     return result;
-  }, [contentCounts]);
+  }, [contentCounts, countsLoading]);
 
   const accessTypes = [
     {
@@ -77,7 +79,7 @@ const QuickAccess = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
           {accessTypes.map((type, index) => {
             const IconComponent = type.icon;
-            const isCountLoading = countsLoading || type.count === '...';
+            const isCountLoading = countsLoading && type.realCount === 0;
             
             return (
               <Link
@@ -93,7 +95,7 @@ const QuickAccess = () => {
                     
                     {/* Floating Badge with Real Count */}
                     <div className="absolute -top-2 -right-2 bg-lsb-accent text-lsb-primary text-xs font-bold px-2 py-1 rounded-full shadow-md">
-                      {isCountLoading ? '...' : type.count}
+                      {type.count}
                     </div>
                   </div>
 
@@ -104,9 +106,11 @@ const QuickAccess = () => {
                   <p className="text-sm text-gray-600 mt-1">
                     {isCountLoading 
                       ? 'Carregando...' 
-                      : type.realCount === 1 
-                        ? '1 item' 
-                        : `${type.realCount.toLocaleString()} itens`
+                      : type.realCount === 0
+                        ? 'Nenhum item'
+                        : type.realCount === 1 
+                          ? '1 item' 
+                          : `${type.realCount.toLocaleString()} itens`
                     }
                   </p>
                 </div>

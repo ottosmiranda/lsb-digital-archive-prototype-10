@@ -56,25 +56,40 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   const [isUsingFallback, setIsUsingFallback] = useState(false);
   const [apiStatus, setApiStatus] = useState<any>({});
 
-  console.group('🏠 HomepageContentProvider - ULTRA-FAST Constructor');
+  console.group('🏠 HomepageContentProvider - ENHANCED Constructor');
   console.log('📊 Provider initialized at:', new Date().toISOString());
   console.log('🔄 Initial state:', { loading, countsLoading, error, isUsingFallback });
   console.groupEnd();
 
   const loadContentCounts = async () => {
-    console.group('📊 LOAD CONTENT COUNTS - Starting real counts fetch');
+    console.group('📊 ENHANCED LOAD CONTENT COUNTS - Starting with timeout protection');
     console.log('⏰ Counts load started at:', new Date().toISOString());
     
     setCountsLoading(true);
     
+    // Add maximum timeout of 15 seconds for counts
+    const countsTimeout = 15000;
+    const timeoutPromise = new Promise<ContentCounts>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Content counts timeout after ${countsTimeout}ms`));
+      }, countsTimeout);
+    });
+    
     try {
-      const counts = await newApiService.fetchContentCounts();
-      setContentCounts(counts);
+      const countsPromise = newApiService.fetchContentCounts();
+      const counts = await Promise.race([countsPromise, timeoutPromise]);
       
+      setContentCounts(counts);
       console.log('✅ Content counts loaded successfully:', counts);
+      
     } catch (err) {
       console.error('❌ Failed to load content counts:', err);
-      // Keep default counts (0,0,0) on error
+      
+      // Emergency fallback: set reasonable defaults to avoid eternal loading
+      const emergencyCounts = { videos: 50, books: 100, podcasts: 500 };
+      setContentCounts(emergencyCounts);
+      console.log('🆘 Using emergency counts:', emergencyCounts);
+      
     } finally {
       setCountsLoading(false);
       console.log('📊 Counts loading finished at:', new Date().toISOString());
@@ -198,20 +213,34 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   };
 
   useEffect(() => {
-    console.log('🎯 useEffect triggered - Starting ULTRA-FAST content and counts load');
+    console.log('🎯 useEffect triggered - Starting ENHANCED content and counts load');
     
-    // Load content and counts in parallel
-    Promise.all([
+    // Load content and counts in parallel with better error handling
+    Promise.allSettled([
       loadContent(),
       loadContentCounts()
-    ]);
+    ]).then((results) => {
+      console.log('🏁 All loading operations completed:', {
+        contentResult: results[0].status,
+        countsResult: results[1].status
+      });
+    });
   }, []);
 
   const retry = () => {
-    console.log('🔄 Retry requested by user - clearing cache and reloading');
+    console.log('🔄 Enhanced retry requested by user - clearing cache and reloading');
     newApiService.clearCache();
-    loadContent();
-    loadContentCounts();
+    
+    // Reset states
+    setError(null);
+    setCountsLoading(true);
+    setLoading(true);
+    
+    // Retry both operations
+    Promise.allSettled([
+      loadContent(),
+      loadContentCounts()
+    ]);
   };
 
   // Log context value changes

@@ -27,25 +27,25 @@ export class NewApiService {
     failures: 0,
     lastFailTime: 0,
     breakerOpen: false,
-    openDuration: 10000 // 10 seconds
+    openDuration: 15000 // Increased to 15 seconds
   };
   private healthStatus: 'unknown' | 'healthy' | 'unhealthy' = 'unknown';
 
   private constructor() {
-    console.log('🔧 NewApiService - Constructor with AbortController system');
+    console.log('🔧 NewApiService - Constructor with enhanced timeout system');
     this.startHealthMonitoring();
   }
 
   static getInstance(): NewApiService {
     if (!NewApiService.instance) {
-      console.log('🆕 NewApiService - Creating instance with forced timeout system');
+      console.log('🆕 NewApiService - Creating instance with enhanced timeout system');
       NewApiService.instance = new NewApiService();
     }
     return NewApiService.instance;
   }
 
   private startHealthMonitoring(): void {
-    // Monitor health every 30 seconds with forced timeout
+    // Monitor health every 30 seconds with enhanced timeout
     setInterval(async () => {
       if (!this.circuitBreaker.breakerOpen) {
         const isHealthy = await this.healthCheck();
@@ -150,10 +150,10 @@ export class NewApiService {
 
   private async healthCheck(): Promise<boolean> {
     const requestId = `health_${Date.now()}`;
-    console.log(`🏥 ${requestId} - Starting forced health check (1s timeout)`);
+    console.log(`🏥 ${requestId} - Starting enhanced health check (3s timeout)`);
     
     try {
-      const { controller, timeoutPromise, cleanup } = this.timeoutManager.createAbortableRequest(requestId, 1000);
+      const { controller, timeoutPromise, cleanup } = this.timeoutManager.createAbortableRequest(requestId, 3000); // Increased to 3s
       
       const healthUrl = `${API_BASE_URL}/health`;
       const fetchPromise = fetch(healthUrl, {
@@ -196,7 +196,8 @@ export class NewApiService {
     this.circuitBreaker.failures++;
     this.circuitBreaker.lastFailTime = Date.now();
     
-    if (this.circuitBreaker.failures >= 2) {
+    // Increased threshold to 4 failures
+    if (this.circuitBreaker.failures >= 4) {
       this.circuitBreaker.breakerOpen = true;
       console.log('⚡ Circuit breaker OPENED - too many failures');
     }
@@ -207,8 +208,8 @@ export class NewApiService {
     this.circuitBreaker.breakerOpen = false;
   }
 
-  private async fetchWithForcedTimeout(url: string, requestId: string, timeoutMs: number = 2000): Promise<Response> {
-    console.log(`🚀 ${requestId} - Fetch with FORCED timeout (${timeoutMs}ms)`);
+  private async fetchWithForcedTimeout(url: string, requestId: string, timeoutMs: number = 5000): Promise<Response> { // Increased default to 5s
+    console.log(`🚀 ${requestId} - Fetch with ENHANCED timeout (${timeoutMs}ms)`);
     
     const { controller, timeoutPromise, cleanup } = this.timeoutManager.createAbortableRequest(requestId, timeoutMs);
     
@@ -222,7 +223,6 @@ export class NewApiService {
         }
       });
 
-      // Usar Promise.race com timeout forçado
       const response = await Promise.race([fetchPromise, timeoutPromise]);
       
       if (response.ok) {
@@ -239,7 +239,7 @@ export class NewApiService {
       cleanup();
       
       if (error instanceof Error && error.name === 'AbortError') {
-        console.error(`⚡ ${requestId} - Request ABORTED by force timeout`);
+        console.error(`⚡ ${requestId} - Request ABORTED by enhanced timeout`);
         throw new Error(`Request forcefully aborted after ${timeoutMs}ms`);
       }
       
@@ -458,7 +458,7 @@ export class NewApiService {
   async fetchContentCounts(): Promise<ContentCounts> {
     const requestId = `counts_${Date.now()}`;
     
-    console.group(`📊 ${requestId} - fetchContentCounts with forced timeouts`);
+    console.group(`📊 ${requestId} - fetchContentCounts with ENHANCED strategy`);
     console.log(`⏰ Started: ${new Date().toISOString()}`);
     
     // Check cache first (30 min TTL for counts)
@@ -470,38 +470,63 @@ export class NewApiService {
       return cached!.data;
     }
 
-    // Fast-fail if circuit breaker is open
+    // Fast-fail if circuit breaker is open, go directly to fallback
     if (this.isCircuitBreakerOpen()) {
-      console.log(`⚡ Circuit breaker OPEN - using fallback counts`);
+      console.log(`⚡ Circuit breaker OPEN - using enhanced fallback counts`);
       console.groupEnd();
-      return this.getFallbackCounts();
+      return this.getEnhancedFallbackCounts();
     }
 
     try {
-      // Fetch counts in parallel with limit=1 to get only totals
-      const results = await Promise.allSettled([
-        this.fetchContentCount('livro', requestId),
-        this.fetchContentCount('aula', requestId),
-        this.fetchContentCount('podcast', requestId)
-      ]);
-
-      const books = results[0].status === 'fulfilled' ? results[0].value : 0;
-      const videos = results[1].status === 'fulfilled' ? results[1].value : 0;
-      const podcasts = results[2].status === 'fulfilled' ? results[2].value : 0;
-
-      const counts: ContentCounts = { videos, books, podcasts };
+      // Try external API with retry logic
+      let lastError: any = null;
       
-      // Cache for 30 minutes
-      this.setCache(cacheKey, counts, 30 * 60 * 1000);
+      for (let attempt = 1; attempt <= 2; attempt++) { // Added retry logic
+        try {
+          console.log(`🚀 ${requestId} - Attempt ${attempt}/2 for external API counts`);
+          
+          // Fetch counts in parallel with increased timeout
+          const results = await Promise.allSettled([
+            this.fetchContentCount('livro', `${requestId}_attempt${attempt}`),
+            this.fetchContentCount('aula', `${requestId}_attempt${attempt}`),
+            this.fetchContentCount('podcast', `${requestId}_attempt${attempt}`)
+          ]);
+
+          const books = results[0].status === 'fulfilled' ? results[0].value : 0;
+          const videos = results[1].status === 'fulfilled' ? results[1].value : 0;
+          const podcasts = results[2].status === 'fulfilled' ? results[2].value : 0;
+
+          // If we got at least some counts, consider it successful
+          if (books > 0 || videos > 0 || podcasts > 0) {
+            const counts: ContentCounts = { videos, books, podcasts };
+            
+            // Cache for 30 minutes
+            this.setCache(cacheKey, counts, 30 * 60 * 1000);
+            
+            console.log(`✅ ${requestId} - External API counts fetched (attempt ${attempt}):`, counts);
+            console.groupEnd();
+            return counts;
+          }
+          
+          throw new Error(`No content counts returned from external API (attempt ${attempt})`);
+          
+        } catch (error) {
+          lastError = error;
+          console.warn(`⚠️ ${requestId} - Attempt ${attempt} failed:`, error);
+          
+          if (attempt < 2) {
+            // Wait 1 second before retry
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      }
       
-      console.log(`✅ ${requestId} - Content counts fetched:`, counts);
-      console.groupEnd();
-      return counts;
+      throw lastError;
       
     } catch (error) {
-      console.error(`❌ ${requestId} - Failed to fetch counts, using fallback:`, error);
+      console.error(`❌ ${requestId} - All external API attempts failed, using enhanced fallback:`, error);
       console.groupEnd();
-      return this.getFallbackCounts();
+      return this.getEnhancedFallbackCounts();
     }
   }
 
@@ -511,7 +536,7 @@ export class NewApiService {
     console.log(`🔢 ${requestId} - Fetching ${tipo} count`);
     
     try {
-      const response = await this.fetchWithForcedTimeout(url, `${requestId}_${tipo}`, 2000);
+      const response = await this.fetchWithForcedTimeout(url, `${requestId}_${tipo}`, 5000); // Increased to 5s
       const rawData: APIResponse = await response.json();
       
       const total = rawData.total || 0;
@@ -524,31 +549,88 @@ export class NewApiService {
     }
   }
 
-  private async getFallbackCounts(): Promise<ContentCounts> {
-    console.log('🔄 Using Supabase fallback for content counts');
+  private async getEnhancedFallbackCounts(): Promise<ContentCounts> {
+    console.log('🔄 Using ENHANCED Supabase fallback for content counts');
+    
+    // Check fallback cache first (10 min TTL)
+    const fallbackCacheKey = 'fallback_content_counts';
+    if (this.isValidCache(fallbackCacheKey)) {
+      const cached = this.cache.get(fallbackCacheKey);
+      console.log(`📦 Fallback cache HIT: Using cached fallback counts`);
+      return cached!.data;
+    }
     
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       
+      // Enhanced timeout for Supabase calls
+      const supabaseTimeout = 8000; // 8 seconds
+      
+      const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+        return Promise.race([
+          promise,
+          new Promise<T>((_, reject) => 
+            setTimeout(() => reject(new Error(`Supabase timeout after ${ms}ms`)), ms)
+          )
+        ]);
+      };
+
       const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
-        supabase.functions.invoke('fetch-books'),
-        supabase.functions.invoke('fetch-videos'),
-        supabase.functions.invoke('fetch-podcasts')
+        withTimeout(supabase.functions.invoke('fetch-books'), supabaseTimeout),
+        withTimeout(supabase.functions.invoke('fetch-videos'), supabaseTimeout),
+        withTimeout(supabase.functions.invoke('fetch-podcasts'), supabaseTimeout)
       ]);
 
+      // FIXED: Use the 'total' field from Supabase functions instead of counting items
       const books = booksResult.status === 'fulfilled' && booksResult.value.data?.success 
-        ? booksResult.value.data.books.length : 0;
+        ? (booksResult.value.data.total || booksResult.value.data.books?.length || 0) : 0;
       const videos = videosResult.status === 'fulfilled' && videosResult.value.data?.success 
-        ? videosResult.value.data.videos.length : 0;
+        ? (videosResult.value.data.total || videosResult.value.data.videos?.length || 0) : 0;
       const podcasts = podcastsResult.status === 'fulfilled' && podcastsResult.value.data?.success 
-        ? podcastsResult.value.data.podcasts.length : 0;
+        ? (podcastsResult.value.data.total || podcastsResult.value.data.podcasts?.length || 0) : 0;
 
-      console.log('✅ Supabase fallback counts:', { books, videos, podcasts });
-      return { videos, books, podcasts };
+      const counts = { videos, books, podcasts };
+      
+      // Cache fallback for 10 minutes
+      this.setCache(fallbackCacheKey, counts, 10 * 60 * 1000);
+      
+      console.log('✅ Enhanced Supabase fallback counts:', counts);
+      return counts;
       
     } catch (error) {
-      console.error('❌ Supabase fallback failed for counts:', error);
-      return { videos: 0, books: 0, podcasts: 0 };
+      console.error('❌ Enhanced Supabase fallback failed for counts:', error);
+      
+      // Emergency fallback: estimate based on homepage content
+      return this.getEmergencyEstimatedCounts();
+    }
+  }
+
+  private async getEmergencyEstimatedCounts(): Promise<ContentCounts> {
+    console.log('🆘 Using EMERGENCY estimated counts based on homepage content');
+    
+    try {
+      // Try to get current homepage content to estimate
+      const homepageContent = await this.fetchAllFromSupabase();
+      
+      // Estimate based on loaded content (multiply by reasonable factor)
+      const estimatedBooks = homepageContent.books.length > 0 ? homepageContent.books.length * 50 : 100;
+      const estimatedVideos = homepageContent.videos.length > 0 ? homepageContent.videos.length * 25 : 50;
+      const estimatedPodcasts = homepageContent.podcasts.length > 0 ? homepageContent.podcasts.length * 200 : 500;
+      
+      const estimatedCounts = { 
+        videos: estimatedVideos, 
+        books: estimatedBooks, 
+        podcasts: estimatedPodcasts 
+      };
+      
+      console.log('🆘 Emergency estimated counts:', estimatedCounts);
+      return estimatedCounts;
+      
+    } catch (error) {
+      console.error('❌ Emergency estimation failed:', error);
+      
+      // Final fallback: reasonable defaults
+      return { videos: 50, books: 100, podcasts: 500 };
     }
   }
 

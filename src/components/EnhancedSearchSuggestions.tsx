@@ -25,7 +25,7 @@ const EnhancedSearchSuggestions = ({
   const { getSuggestions, getPopularTerms, isReady } = useIntelligentAutoComplete();
   
   // Get intelligent suggestions based on the query
-  const intelligentSuggestions = query.length > 1 ? getSuggestions(query, 6) : [];
+  const intelligentSuggestions = (query.length > 1 && isReady) ? getSuggestions(query, 6) : [];
   
   // Get popular terms from real data
   const popularSubjects = isReady ? getPopularTerms('subject', 4) : ['Comunicação', 'Direitos', 'Literatura', 'História'];
@@ -40,6 +40,18 @@ const EnhancedSearchSuggestions = ({
     }
   };
 
+  // Debug logging
+  useEffect(() => {
+    if (query.length > 1) {
+      console.log('🔍 EnhancedSearchSuggestions:', {
+        query,
+        isReady,
+        suggestionsCount: intelligentSuggestions.length,
+        popularSubjectsCount: popularSubjects.length
+      });
+    }
+  }, [query, isReady, intelligentSuggestions.length, popularSubjects.length]);
+
   if (!isVisible) return null;
 
   const showIntelligentSuggestions = intelligentSuggestions.length > 0;
@@ -47,7 +59,22 @@ const EnhancedSearchSuggestions = ({
   const showTrending = query.length <= 1 && trendingSearches.length > 0;
   const showPopular = query.length <= 1 && popularSubjects.length > 0;
 
-  if (!showIntelligentSuggestions && !showRecent && !showTrending && !showPopular) return null;
+  if (!showIntelligentSuggestions && !showRecent && !showTrending && !showPopular) {
+    // Show loading state if data is still loading
+    if (query.length > 1 && !isReady) {
+      return (
+        <div className={cn(
+          "absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] max-h-96 overflow-y-auto",
+          className
+        )}>
+          <div className="p-3 text-center text-sm text-gray-500">
+            Carregando sugestões inteligentes...
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className={cn(

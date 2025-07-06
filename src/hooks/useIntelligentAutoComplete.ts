@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { SearchResult } from '@/types/searchTypes';
 import { useDataLoader } from '@/hooks/useDataLoader';
@@ -13,35 +14,42 @@ export interface AutoCompleteResult {
 export const useIntelligentAutoComplete = () => {
   const { allData, dataLoaded } = useDataLoader();
   const [termsIndex, setTermsIndex] = useState<Map<string, AutoCompleteResult>>(new Map());
+  const [isReady, setIsReady] = useState(false);
 
   // Extract and process terms from data
   const extractTerms = useCallback((data: SearchResult[]) => {
     const termsMap = new Map<string, AutoCompleteResult>();
 
+    console.log('🔍 Extracting terms from', data.length, 'items for auto-complete');
+
     data.forEach((item) => {
       // Extract from title
-      const titleWords = item.title
-        .toLowerCase()
-        .replace(/[^\w\sáàâãéêíóôõúç]/g, ' ')
-        .split(/\s+/)
-        .filter(word => word.length >= 3);
+      if (item.title) {
+        const titleWords = item.title
+          .toLowerCase()
+          .replace(/[^\w\sáàâãéêíóôõúç]/g, ' ')
+          .split(/\s+/)
+          .filter(word => word.length >= 3);
 
-      titleWords.forEach(word => {
-        const key = `title:${word}`;
-        if (termsMap.has(key)) {
-          const existing = termsMap.get(key)!;
-          existing.frequency++;
-          existing.sourceItems.push(item.id.toString());
-        } else {
-          termsMap.set(key, {
-            term: word,
-            category: 'title',
-            frequency: 1,
-            matchType: 'prefix',
-            sourceItems: [item.id.toString()]
-          });
-        }
-      });
+        titleWords.forEach(word => {
+          const key = `title:${word}`;
+          if (termsMap.has(key)) {
+            const existing = termsMap.get(key)!;
+            existing.frequency++;
+            if (!existing.sourceItems.includes(item.id.toString())) {
+              existing.sourceItems.push(item.id.toString());
+            }
+          } else {
+            termsMap.set(key, {
+              term: word,
+              category: 'title',
+              frequency: 1,
+              matchType: 'prefix',
+              sourceItems: [item.id.toString()]
+            });
+          }
+        });
+      }
 
       // Extract from subject
       if (item.subject) {
@@ -56,7 +64,9 @@ export const useIntelligentAutoComplete = () => {
           if (termsMap.has(key)) {
             const existing = termsMap.get(key)!;
             existing.frequency++;
-            existing.sourceItems.push(item.id.toString());
+            if (!existing.sourceItems.includes(item.id.toString())) {
+              existing.sourceItems.push(item.id.toString());
+            }
           } else {
             termsMap.set(key, {
               term: word,
@@ -82,7 +92,9 @@ export const useIntelligentAutoComplete = () => {
           if (termsMap.has(key)) {
             const existing = termsMap.get(key)!;
             existing.frequency++;
-            existing.sourceItems.push(item.id.toString());
+            if (!existing.sourceItems.includes(item.id.toString())) {
+              existing.sourceItems.push(item.id.toString());
+            }
           } else {
             termsMap.set(key, {
               term: word,
@@ -96,16 +108,21 @@ export const useIntelligentAutoComplete = () => {
       }
     });
 
+    console.log('✅ Built auto-complete index with', termsMap.size, 'terms');
     return termsMap;
   }, []);
 
   // Build terms index when data is loaded
   useEffect(() => {
-    if (dataLoaded && allData.length > 0) {
+    if (dataLoaded && allData && allData.length > 0) {
       console.log('🔍 Building auto-complete terms index from', allData.length, 'items');
       const index = extractTerms(allData);
       setTermsIndex(index);
+      setIsReady(true);
       console.log('✅ Auto-complete index built with', index.size, 'terms');
+    } else {
+      console.log('⏳ Auto-complete waiting for data...', { dataLoaded, dataCount: allData?.length || 0 });
+      setIsReady(false);
     }
   }, [dataLoaded, allData, extractTerms]);
 
@@ -153,7 +170,10 @@ export const useIntelligentAutoComplete = () => {
     const subjectSuggestions = sorted.filter(r => r.category === 'subject').slice(0, 3);
     const authorSuggestions = sorted.filter(r => r.category === 'author').slice(0, 2);
 
-    return [...titleSuggestions, ...subjectSuggestions, ...authorSuggestions].slice(0, maxResults);
+    const finalResults = [...titleSuggestions, ...subjectSuggestions, ...authorSuggestions].slice(0, maxResults);
+    
+    console.log('🔍 Auto-complete suggestions for:', query, 'found:', finalResults.length);
+    return finalResults;
   }, [termsIndex]);
 
   // Get popular terms by category
@@ -170,6 +190,6 @@ export const useIntelligentAutoComplete = () => {
   return {
     getSuggestions,
     getPopularTerms,
-    isReady: dataLoaded && termsIndex.size > 0
+    isReady: isReady && termsIndex.size > 0
   };
 };

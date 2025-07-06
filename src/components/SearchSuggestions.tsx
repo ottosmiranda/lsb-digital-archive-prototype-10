@@ -24,7 +24,7 @@ const SearchSuggestions = ({
   const { getSuggestions, isReady } = useIntelligentAutoComplete();
   
   // Get intelligent suggestions based on the query
-  const intelligentSuggestions = query.length > 1 ? getSuggestions(query, 5) : [];
+  const intelligentSuggestions = (query.length > 1 && isReady) ? getSuggestions(query, 5) : [];
 
   // Helper function to get icon for category
   const getCategoryIcon = (category: string) => {
@@ -36,13 +36,41 @@ const SearchSuggestions = ({
     }
   };
 
+  // Debug logging
+  useEffect(() => {
+    if (query.length > 1) {
+      console.log('🔍 SearchSuggestions:', {
+        query,
+        isReady,
+        suggestionsCount: intelligentSuggestions.length,
+        recentCount: recentSearches.length,
+        trendingCount: trendingSearches.length
+      });
+    }
+  }, [query, isReady, intelligentSuggestions.length, recentSearches.length, trendingSearches.length]);
+
   if (!isVisible) return null;
 
   const showIntelligentSuggestions = intelligentSuggestions.length > 0;
   const showRecent = query.length <= 1 && recentSearches.length > 0;
   const showTrending = query.length <= 1 && trendingSearches.length > 0;
 
-  if (!showIntelligentSuggestions && !showRecent && !showTrending) return null;
+  if (!showIntelligentSuggestions && !showRecent && !showTrending) {
+    // Show loading state if data is still loading
+    if (query.length > 1 && !isReady) {
+      return (
+        <div className={cn(
+          "absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] max-h-80 overflow-y-auto",
+          className
+        )}>
+          <div className="p-3 text-center text-sm text-gray-500">
+            Carregando sugestões...
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className={cn(
@@ -63,6 +91,11 @@ const SearchSuggestions = ({
               >
                 <IconComponent className="h-4 w-4 text-gray-400" />
                 <span className="capitalize">{suggestion.term}</span>
+                {suggestion.frequency > 1 && (
+                  <span className="ml-auto text-xs text-gray-400">
+                    {suggestion.frequency}
+                  </span>
+                )}
               </button>
             );
           })}

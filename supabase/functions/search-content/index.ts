@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -41,22 +40,27 @@ serve(async (req) => {
 
     // Determinar quais tipos de conteúdo buscar - FIXED: Handle 'all' correctly
     let contentTypes: string[];
+    let isMultiTypeSearch = false;
+    
     if (filters?.resourceType?.length) {
       // Se contém 'all', buscar todos os tipos
       if (filters.resourceType.includes('all')) {
         contentTypes = ['livro', 'aula', 'podcast'];
+        isMultiTypeSearch = true;
       } else {
         // Mapear tipos específicos
         contentTypes = filters.resourceType.map(type => 
           type === 'titulo' ? 'livro' : type === 'video' ? 'aula' : type
         );
+        isMultiTypeSearch = contentTypes.length > 1;
       }
     } else {
       // Padrão: buscar todos os tipos
       contentTypes = ['livro', 'aula', 'podcast'];
+      isMultiTypeSearch = true;
     }
 
-    console.log('📋 Content types to search:', contentTypes);
+    console.log('📋 Content types to search:', contentTypes, '| Multi-type:', isMultiTypeSearch);
 
     // Função para obter total real da API externa
     const getRealTotal = async (tipo: string): Promise<number> => {
@@ -106,7 +110,100 @@ serve(async (req) => {
       }
     };
 
-    // Função para buscar dados paginados de um tipo específico com paginação real
+    // Função para buscar todos os itens de todos os tipos para paginação inteligente
+    const fetchAllContentForIntelligentPagination = async (): Promise<{ items: any[], totalResults: number }> => {
+      console.log('🧠 Fetching all content for intelligent pagination');
+      
+      let allItems: any[] = [];
+      let totalResults = 0;
+
+      // Buscar todos os itens de todos os tipos
+      for (const tipo of contentTypes) {
+        try {
+          const realTotal = await getRealTotal(tipo);
+          totalResults += realTotal;
+          
+          if (realTotal === 0) continue;
+
+          // Para tipos com poucos itens, buscar tudo
+          if (realTotal <= 100) {
+            const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=100`;
+            console.log(`🌐 Fetching all ${tipo} from:`, url);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
+            const response = await fetch(url, {
+              signal: controller.signal,
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'LSB-Search/1.0'
+              }
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+              const rawData = await response.json();
+              const items = rawData.conteudo || [];
+              const transformedItems = items.map((item: any) => transformToSearchResult(item, tipo));
+              allItems = allItems.concat(transformedItems);
+              console.log(`✅ ${tipo}: ${items.length} items fetched`);
+            }
+          } else {
+            // Para tipos com muitos itens (como podcasts), buscar em chunks maiores
+            let currentPage = 1;
+            let hasMore = true;
+            
+            while (hasMore && allItems.length < 500) { // Limitar para não sobrecarregar
+              const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${currentPage}&limit=100`;
+              
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 10000);
+              
+              const response = await fetch(url, {
+                signal: controller.signal,
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json',
+                  'User-Agent': 'LSB-Search/1.0'
+                }
+              });
+              
+              clearTimeout(timeoutId);
+              
+              if (response.ok) {
+                const rawData = await response.json();
+                const items = rawData.conteudo || [];
+                
+                if (items.length === 0) {
+                  hasMore = false;
+                } else {
+                  const transformedItems = items.map((item: any) => transformToSearchResult(item, tipo));
+                  allItems = allItems.concat(transformedItems);
+                  console.log(`✅ ${tipo} page ${currentPage}: ${items.length} items fetched, total so far: ${allItems.length}`);
+                  
+                  if (items.length < 100) {
+                    hasMore = false;
+                  }
+                  currentPage++;
+                }
+              } else {
+                hasMore = false;
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`❌ Error fetching ${tipo}:`, error);
+        }
+      }
+
+      console.log(`📊 Total items fetched: ${allItems.length}, Total available: ${totalResults}`);
+      return { items: allItems, totalResults };
+    };
+
+    // Função para buscar dados paginados de um tipo específico (busca single-type)
     const fetchContentType = async (tipo: string, requestedPage: number, requestedLimit: number) => {
       try {
         // Primeiro, obter o total real
@@ -243,183 +340,170 @@ serve(async (req) => {
       }
     };
 
-    // Buscar dados para os tipos solicitados
-    const results = await Promise.all(
-      contentTypes.map(async (tipo) => {
-        const result = await fetchContentType(tipo, page, limit);
-        return {
-          tipo,
-          items: result.items.map((item: any) => transformToSearchResult(item, tipo)),
-          total: result.total
-        };
-      })
-    );
-
-    // Combinar resultados
     let allItems: any[] = [];
     let totalFromAllTypes = 0;
 
-    for (const result of results) {
-      allItems = allItems.concat(result.items);
-      totalFromAllTypes += result.total;
-    }
-    
-    console.log(`📊 Total items before filtering: ${allItems.length}, Total available: ${totalFromAllTypes}`);
-
-    // Se estamos buscando tipos específicos, usar o total desse tipo
-    // Se estamos buscando todos os tipos, somar os totais
-    let actualTotal = totalFromAllTypes;
-    
-    if (filters?.resourceType?.length === 1) {
-      // Busca por tipo específico - usar o total desse tipo
-      const typeTotal = results.find(r => {
-        const mappedType = filters.resourceType![0] === 'titulo' ? 'livro' : 
-                          filters.resourceType![0] === 'video' ? 'aula' : 
-                          filters.resourceType![0];
-        return r.tipo === mappedType;
-      })?.total || 0;
-      actualTotal = typeTotal;
-    }
-
-    // Aplicar filtros localmente se necessário
-    let filteredItems = allItems;
-
-    // Filtro por query (busca no título, autor e descrição)
-    if (query?.trim()) {
-      const searchTerms = query.toLowerCase().trim().split(' ');
-      filteredItems = filteredItems.filter(item => {
-        const searchText = `${item.title} ${item.author} ${item.description}`.toLowerCase();
-        return searchTerms.every(term => searchText.includes(term));
-      });
+    // Implementar paginação inteligente para busca multi-tipo
+    if (isMultiTypeSearch) {
+      console.log('🧠 Using intelligent pagination for multi-type search');
       
-      // Se há busca por texto, o total deve ser recalculado
-      // Isso requer buscar todos os itens para filtrar - implementação simplificada por ora
-      actualTotal = filteredItems.length;
-    }
+      const { items: fetchedItems, totalResults } = await fetchAllContentForIntelligentPagination();
+      totalFromAllTypes = totalResults;
+      
+      // Aplicar filtros localmente se necessário
+      let filteredItems = fetchedItems;
 
-    // Aplicar outros filtros
-    if (filters?.author?.trim()) {
-      const authorFilter = filters.author.toLowerCase().trim();
-      filteredItems = filteredItems.filter(item => 
-        item.author.toLowerCase().includes(authorFilter)
-      );
-      actualTotal = filteredItems.length;
-    }
-
-    if (filters?.subject?.length) {
-      filteredItems = filteredItems.filter(item =>
-        filters.subject!.some(subject => 
-          item.subject.toLowerCase().includes(subject.toLowerCase())
-        )
-      );
-      actualTotal = filteredItems.length;
-    }
-
-    if (filters?.year?.trim()) {
-      const yearFilter = parseInt(filters.year);
-      if (!isNaN(yearFilter)) {
-        filteredItems = filteredItems.filter(item => item.year === yearFilter);
-        actualTotal = filteredItems.length;
+      // Filtro por query (busca no título, autor e descrição)
+      if (query?.trim()) {
+        const searchTerms = query.toLowerCase().trim().split(' ');
+        filteredItems = filteredItems.filter(item => {
+          const searchText = `${item.title} ${item.author} ${item.description}`.toLowerCase();
+          return searchTerms.every(term => searchText.includes(term));
+        });
+        
+        totalFromAllTypes = filteredItems.length;
       }
-    }
 
-    if (filters?.duration?.trim()) {
-      filteredItems = filteredItems.filter(item => {
-        if (!item.duration) return false;
-        const duration = item.duration.toLowerCase();
-        const filter = filters.duration!.toLowerCase();
-        
-        if (filter === 'curta') return duration.includes('m') && !duration.includes('h');
-        if (filter === 'media') return duration.includes('h') && parseInt(duration) <= 2;
-        if (filter === 'longa') return duration.includes('h') && parseInt(duration) > 2;
-        
-        return duration.includes(filter);
-      });
-      actualTotal = filteredItems.length;
-    }
+      // Aplicar outros filtros
+      if (filters?.author?.trim()) {
+        const authorFilter = filters.author.toLowerCase().trim();
+        filteredItems = filteredItems.filter(item => 
+          item.author.toLowerCase().includes(authorFilter)
+        );
+        totalFromAllTypes = filteredItems.length;
+      }
 
-    if (filters?.language?.length) {
-      filteredItems = filteredItems.filter(item =>
-        filters.language!.some(lang => 
-          item.language?.toLowerCase().includes(lang.toLowerCase()) ||
-          item.pais?.toLowerCase().includes(lang.toLowerCase())
-        )
-      );
-      actualTotal = filteredItems.length;
-    }
+      if (filters?.subject?.length) {
+        filteredItems = filteredItems.filter(item =>
+          filters.subject!.some(subject => 
+            item.subject.toLowerCase().includes(subject.toLowerCase())
+          )
+        );
+        totalFromAllTypes = filteredItems.length;
+      }
 
-    if (filters?.documentType?.length) {
-      filteredItems = filteredItems.filter(item =>
-        filters.documentType!.some(docType => 
-          item.documentType?.toLowerCase().includes(docType.toLowerCase())
-        )
-      );
-      actualTotal = filteredItems.length;
-    }
-
-    console.log(`📊 Total items after filtering: ${filteredItems.length}, Actual total: ${actualTotal}`);
-
-    // Aplicar ordenação
-    if (sortBy) {
-      filteredItems.sort((a, b) => {
-        switch (sortBy) {
-          case 'recent':
-            return b.year - a.year;
-          case 'accessed':
-            const typeOrder = { 'podcast': 3, 'video': 2, 'titulo': 1 };
-            return (typeOrder[b.type] || 0) - (typeOrder[a.type] || 0);
-          case 'title':
-            return a.title.localeCompare(b.title);
-          default: // relevance
-            if (query?.trim()) {
-              const searchTerms = query.toLowerCase().trim().split(' ');
-              const getRelevance = (item: any) => {
-                const title = item.title.toLowerCase();
-                const author = item.author.toLowerCase();
-                let score = 0;
-                
-                searchTerms.forEach(term => {
-                  if (title.includes(term)) score += 10;
-                  if (author.includes(term)) score += 5;
-                  if (item.description.toLowerCase().includes(term)) score += 1;
-                });
-                
-                return score;
-              };
-              
-              return getRelevance(b) - getRelevance(a);
-            }
-            return 0;
+      if (filters?.year?.trim()) {
+        const yearFilter = parseInt(filters.year);
+        if (!isNaN(yearFilter)) {
+          filteredItems = filteredItems.filter(item => item.year === yearFilter);
+          totalFromAllTypes = filteredItems.length;
         }
-      });
-    }
+      }
 
-    // Para paginação final, se não há filtros que afetam o total, usar os itens já paginados
-    // Se há filtros, os itens já foram filtrados, então usar eles diretamente
-    const hasFiltersAffectingTotal = query?.trim() || filters?.author?.trim() || 
-      filters?.subject?.length || filters?.year?.trim() || filters?.duration?.trim() ||
-      filters?.language?.length || filters?.documentType?.length;
+      if (filters?.duration?.trim()) {
+        filteredItems = filteredItems.filter(item => {
+          if (!item.duration) return false;
+          const duration = item.duration.toLowerCase();
+          const filter = filters.duration!.toLowerCase();
+          
+          if (filter === 'curta') return duration.includes('m') && !duration.includes('h');
+          if (filter === 'media') return duration.includes('h') && parseInt(duration) <= 2;
+          if (filter === 'longa') return duration.includes('h') && parseInt(duration) > 2;
+          
+          return duration.includes(filter);
+        });
+        totalFromAllTypes = filteredItems.length;
+      }
 
-    let finalItems = filteredItems;
-    
-    // Se há filtros que afetam o total, precisamos paginar localmente
-    if (hasFiltersAffectingTotal) {
+      if (filters?.language?.length) {
+        filteredItems = filteredItems.filter(item =>
+          filters.language!.some(lang => 
+            item.language?.toLowerCase().includes(lang.toLowerCase()) ||
+            item.pais?.toLowerCase().includes(lang.toLowerCase())
+          )
+        );
+        totalFromAllTypes = filteredItems.length;
+      }
+
+      if (filters?.documentType?.length) {
+        filteredItems = filteredItems.filter(item =>
+          filters.documentType!.some(docType => 
+            item.documentType?.toLowerCase().includes(docType.toLowerCase())
+          )
+        );
+        totalFromAllTypes = filteredItems.length;
+      }
+
+      // Aplicar ordenação
+      if (sortBy) {
+        filteredItems.sort((a, b) => {
+          switch (sortBy) {
+            case 'recent':
+              return b.year - a.year;
+            case 'accessed':
+              const typeOrder = { 'podcast': 3, 'video': 2, 'titulo': 1 };
+              return (typeOrder[b.type] || 0) - (typeOrder[a.type] || 0);
+            case 'title':
+              return a.title.localeCompare(b.title);
+            default: // relevance
+              if (query?.trim()) {
+                const searchTerms = query.toLowerCase().trim().split(' ');
+                const getRelevance = (item: any) => {
+                  const title = item.title.toLowerCase();
+                  const author = item.author.toLowerCase();
+                  let score = 0;
+                  
+                  searchTerms.forEach(term => {
+                    if (title.includes(term)) score += 10;
+                    if (author.includes(term)) score += 5;
+                    if (item.description.toLowerCase().includes(term)) score += 1;
+                  });
+                  
+                  return score;
+                };
+                
+                return getRelevance(b) - getRelevance(a);
+              }
+              return a.title.localeCompare(b.title); // Default to alphabetical for "Todos"
+          }
+        });
+      } else {
+        // Default sorting for "Todos" - alphabetical
+        filteredItems.sort((a, b) => a.title.localeCompare(b.title));
+      }
+
+      // Implementar paginação inteligente: 9 itens por página
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
-      finalItems = filteredItems.slice(startIndex, endIndex);
+      allItems = filteredItems.slice(startIndex, endIndex);
+      
+      console.log(`🧠 Intelligent pagination: page ${page}, showing items ${startIndex}-${endIndex}, total: ${filteredItems.length}`);
+      
+    } else {
+      // Busca single-type (comportamento original)
+      console.log('📄 Using single-type search pagination');
+      
+      const results = await Promise.all(
+        contentTypes.map(async (tipo) => {
+          const result = await fetchContentType(tipo, page, limit);
+          return {
+            tipo,
+            items: result.items.map((item: any) => transformToSearchResult(item, tipo)),
+            total: result.total
+          };
+        })
+      );
+
+      // Combinar resultados
+      for (const result of results) {
+        allItems = allItems.concat(result.items);
+        totalFromAllTypes += result.total;
+      }
     }
     
-    const totalPages = Math.ceil(actualTotal / limit);
+    console.log(`📊 Final results: ${allItems.length} items, total available: ${totalFromAllTypes}`);
+    
+    const totalPages = Math.ceil(totalFromAllTypes / limit);
 
-    console.log(`📄 Final pagination: page ${page}/${totalPages}, showing ${finalItems.length}/${actualTotal} items`);
+    console.log(`📄 Final pagination: page ${page}/${totalPages}, showing ${allItems.length}/${totalFromAllTypes} items`);
 
     const response = {
       success: true,
-      results: finalItems,
+      results: allItems,
       pagination: {
         currentPage: page,
         totalPages,
-        totalResults: actualTotal,
+        totalResults: totalFromAllTypes,
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1
       },

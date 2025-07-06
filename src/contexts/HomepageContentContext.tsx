@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { SearchResult } from '@/types/searchTypes';
 import { newApiService } from '@/services/newApiService';
@@ -9,9 +8,17 @@ interface HomepageContent {
   podcasts: SearchResult[];
 }
 
+interface ContentCounts {
+  videos: number;
+  books: number;
+  podcasts: number;
+}
+
 interface HomepageContentContextType {
   content: HomepageContent;
+  contentCounts: ContentCounts;
   loading: boolean;
+  countsLoading: boolean;
   error: string | null;
   retry: () => void;
   isUsingFallback: boolean;
@@ -38,15 +45,42 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
     books: [],
     podcasts: []
   });
+  const [contentCounts, setContentCounts] = useState<ContentCounts>({
+    videos: 0,
+    books: 0,
+    podcasts: 0
+  });
   const [loading, setLoading] = useState(true);
+  const [countsLoading, setCountsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
   const [apiStatus, setApiStatus] = useState<any>({});
 
   console.group('🏠 HomepageContentProvider - ULTRA-FAST Constructor');
   console.log('📊 Provider initialized at:', new Date().toISOString());
-  console.log('🔄 Initial state:', { loading, error, isUsingFallback });
+  console.log('🔄 Initial state:', { loading, countsLoading, error, isUsingFallback });
   console.groupEnd();
+
+  const loadContentCounts = async () => {
+    console.group('📊 LOAD CONTENT COUNTS - Starting real counts fetch');
+    console.log('⏰ Counts load started at:', new Date().toISOString());
+    
+    setCountsLoading(true);
+    
+    try {
+      const counts = await newApiService.fetchContentCounts();
+      setContentCounts(counts);
+      
+      console.log('✅ Content counts loaded successfully:', counts);
+    } catch (err) {
+      console.error('❌ Failed to load content counts:', err);
+      // Keep default counts (0,0,0) on error
+    } finally {
+      setCountsLoading(false);
+      console.log('📊 Counts loading finished at:', new Date().toISOString());
+      console.groupEnd();
+    }
+  };
 
   const loadContent = async () => {
     console.group('🚀 DIAGNOSTIC loadContent - Phase 1: Starting data load with detailed tracking');
@@ -164,20 +198,27 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   };
 
   useEffect(() => {
-    console.log('🎯 useEffect triggered - Starting ULTRA-FAST content load');
-    loadContent();
+    console.log('🎯 useEffect triggered - Starting ULTRA-FAST content and counts load');
+    
+    // Load content and counts in parallel
+    Promise.all([
+      loadContent(),
+      loadContentCounts()
+    ]);
   }, []);
 
   const retry = () => {
     console.log('🔄 Retry requested by user - clearing cache and reloading');
     newApiService.clearCache();
     loadContent();
+    loadContentCounts();
   };
 
   // Log context value changes
   useEffect(() => {
     console.log('📊 Context state updated:', {
       loading,
+      countsLoading,
       error,
       isUsingFallback,
       contentSummary: {
@@ -185,15 +226,18 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
         books: content.books.length,
         podcasts: content.podcasts.length
       },
+      contentCounts,
       apiStatus
     });
-  }, [loading, error, isUsingFallback, content, apiStatus]);
+  }, [loading, countsLoading, error, isUsingFallback, content, contentCounts, apiStatus]);
 
   return (
     <HomepageContentContext.Provider
       value={{
         content,
+        contentCounts,
         loading,
+        countsLoading,
         error,
         retry,
         isUsingFallback,

@@ -6,16 +6,28 @@ import { useMemo } from 'react';
 import QuickAccessSkeleton from '@/components/skeletons/QuickAccessSkeleton';
 
 const QuickAccess = () => {
-  const { content, loading } = useHomepageContentContext();
+  const { contentCounts, countsLoading, loading } = useHomepageContentContext();
 
-  // Calculate real counts from homepage content
+  // Calculate display counts with proper formatting
   const counts = useMemo(() => {
-    return {
-      videos: content.videos.length > 0 ? content.videos.length.toString() + '+' : '...',
-      books: content.books.length > 0 ? content.books.length.toString() + '+' : '...',
-      podcasts: content.podcasts.length > 0 ? content.podcasts.length.toString() + '+' : '...'
+    console.log('📊 QuickAccess - Processing content counts:', contentCounts);
+    
+    const formatCount = (count: number): string => {
+      if (count === 0) return '...';
+      if (count < 1000) return count.toString();
+      if (count < 10000) return `${(count / 1000).toFixed(1)}k`.replace('.0k', 'k');
+      return `${Math.floor(count / 1000)}k+`;
     };
-  }, [content]);
+
+    const result = {
+      videos: formatCount(contentCounts.videos),
+      books: formatCount(contentCounts.books),
+      podcasts: formatCount(contentCounts.podcasts)
+    };
+
+    console.log('✅ QuickAccess - Formatted counts:', result);
+    return result;
+  }, [contentCounts]);
 
   const accessTypes = [
     {
@@ -23,21 +35,24 @@ const QuickAccess = () => {
       label: 'Livros',
       href: '/buscar?filtros=titulo',
       color: 'from-blue-500 to-blue-600',
-      count: counts.books
+      count: counts.books,
+      realCount: contentCounts.books
     },
     {
       icon: Video,
       label: 'Vídeos',
       href: '/buscar?filtros=video',
       color: 'from-red-500 to-red-600',
-      count: counts.videos
+      count: counts.videos,
+      realCount: contentCounts.videos
     },
     {
       icon: Headphones,
       label: 'Podcasts',
       href: '/buscar?filtros=podcast',
       color: 'from-purple-500 to-purple-600',
-      count: counts.podcasts
+      count: counts.podcasts,
+      realCount: contentCounts.podcasts
     }
   ];
 
@@ -62,6 +77,8 @@ const QuickAccess = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
           {accessTypes.map((type, index) => {
             const IconComponent = type.icon;
+            const isCountLoading = countsLoading || type.count === '...';
+            
             return (
               <Link
                 key={type.label}
@@ -74,9 +91,9 @@ const QuickAccess = () => {
                   <div className={`relative mx-auto w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br ${type.color} rounded-full flex items-center justify-center mb-4 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer`}>
                     <IconComponent className="h-10 w-10 md:h-12 md:w-12 text-white" />
                     
-                    {/* Floating Badge */}
+                    {/* Floating Badge with Real Count */}
                     <div className="absolute -top-2 -right-2 bg-lsb-accent text-lsb-primary text-xs font-bold px-2 py-1 rounded-full shadow-md">
-                      {type.count}
+                      {isCountLoading ? '...' : type.count}
                     </div>
                   </div>
 
@@ -85,7 +102,12 @@ const QuickAccess = () => {
                     {type.label}
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    {type.count !== '...' ? `${type.count} itens` : 'Carregando...'}
+                    {isCountLoading 
+                      ? 'Carregando...' 
+                      : type.realCount === 1 
+                        ? '1 item' 
+                        : `${type.realCount.toLocaleString()} itens`
+                    }
                   </p>
                 </div>
               </Link>

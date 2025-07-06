@@ -12,6 +12,12 @@ interface APIResponse {
   conteudo: any[];
 }
 
+interface ContentCounts {
+  videos: number;
+  books: number;
+  podcasts: number;
+}
+
 export class NewApiService {
   private static instance: NewApiService;
   private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
@@ -446,6 +452,103 @@ export class NewApiService {
     } catch (error) {
       console.error('❌ Supabase emergency failed:', error);
       return { videos: [], books: [], podcasts: [] };
+    }
+  }
+
+  async fetchContentCounts(): Promise<ContentCounts> {
+    const requestId = `counts_${Date.now()}`;
+    
+    console.group(`📊 ${requestId} - fetchContentCounts with forced timeouts`);
+    console.log(`⏰ Started: ${new Date().toISOString()}`);
+    
+    // Check cache first (30 min TTL for counts)
+    const cacheKey = 'content_counts';
+    if (this.isValidCache(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      console.log(`📦 Cache HIT: Content counts from cache`);
+      console.groupEnd();
+      return cached!.data;
+    }
+
+    // Fast-fail if circuit breaker is open
+    if (this.isCircuitBreakerOpen()) {
+      console.log(`⚡ Circuit breaker OPEN - using fallback counts`);
+      console.groupEnd();
+      return this.getFallbackCounts();
+    }
+
+    try {
+      // Fetch counts in parallel with limit=1 to get only totals
+      const results = await Promise.allSettled([
+        this.fetchContentCount('livro', requestId),
+        this.fetchContentCount('aula', requestId),
+        this.fetchContentCount('podcast', requestId)
+      ]);
+
+      const books = results[0].status === 'fulfilled' ? results[0].value : 0;
+      const videos = results[1].status === 'fulfilled' ? results[1].value : 0;
+      const podcasts = results[2].status === 'fulfilled' ? results[2].value : 0;
+
+      const counts: ContentCounts = { videos, books, podcasts };
+      
+      // Cache for 30 minutes
+      this.setCache(cacheKey, counts, 30 * 60 * 1000);
+      
+      console.log(`✅ ${requestId} - Content counts fetched:`, counts);
+      console.groupEnd();
+      return counts;
+      
+    } catch (error) {
+      console.error(`❌ ${requestId} - Failed to fetch counts, using fallback:`, error);
+      console.groupEnd();
+      return this.getFallbackCounts();
+    }
+  }
+
+  private async fetchContentCount(tipo: 'livro' | 'aula' | 'podcast', requestId: string): Promise<number> {
+    const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=1`;
+    
+    console.log(`🔢 ${requestId} - Fetching ${tipo} count`);
+    
+    try {
+      const response = await this.fetchWithForcedTimeout(url, `${requestId}_${tipo}`, 2000);
+      const rawData: APIResponse = await response.json();
+      
+      const total = rawData.total || 0;
+      console.log(`✅ ${requestId} - ${tipo} count: ${total}`);
+      return total;
+      
+    } catch (error) {
+      console.error(`❌ ${requestId} - Failed to fetch ${tipo} count:`, error);
+      return 0;
+    }
+  }
+
+  private async getFallbackCounts(): Promise<ContentCounts> {
+    console.log('🔄 Using Supabase fallback for content counts');
+    
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
+        supabase.functions.invoke('fetch-books'),
+        supabase.functions.invoke('fetch-videos'),
+        supabase.functions.invoke('fetch-podcasts')
+      ]);
+
+      const books = booksResult.status === 'fulfilled' && booksResult.value.data?.success 
+        ? booksResult.value.data.books.length : 0;
+      const videos = videosResult.status === 'fulfilled' && videosResult.value.data?.success 
+        ? videosResult.value.data.videos.length : 0;
+      const podcasts = podcastsResult.status === 'fulfilled' && podcastsResult.value.data?.success 
+        ? podcastsResult.value.data.podcasts.length : 0;
+
+      console.log('✅ Supabase fallback counts:', { books, videos, podcasts });
+      return { videos, books, podcasts };
+      
+    } catch (error) {
+      console.error('❌ Supabase fallback failed for counts:', error);
+      return { videos: 0, books: 0, podcasts: 0 };
     }
   }
 

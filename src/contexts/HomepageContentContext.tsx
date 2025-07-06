@@ -108,14 +108,14 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
 
       const newRotatedContent: RotatedContent = {
         weeklyHighlights: weeklyRotation?.content_data 
-          ? (weeklyRotation.content_data as WeeklyHighlightsData).highlights || []
+          ? (weeklyRotation.content_data as unknown as WeeklyHighlightsData).highlights || []
           : [],
         dailyMedia: {
           videos: dailyRotation?.content_data 
-            ? (dailyRotation.content_data as DailyMediaData).videos || []
+            ? (dailyRotation.content_data as unknown as DailyMediaData).videos || []
             : [],
           podcasts: dailyRotation?.content_data 
-            ? (dailyRotation.content_data as DailyMediaData).podcasts || []
+            ? (dailyRotation.content_data as unknown as DailyMediaData).podcasts || []
             : []
         }
       };

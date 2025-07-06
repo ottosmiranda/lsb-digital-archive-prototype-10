@@ -25,6 +25,10 @@ interface SearchParams {
   limit?: number;
 }
 
+// Cache para totais da API externa (30 minutos)
+const totalsCache = new Map<string, { total: number; timestamp: number }>();
+const TOTALS_CACHE_TTL = 30 * 60 * 1000; // 30 minutos
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -42,23 +46,84 @@ serve(async (req) => {
 
     console.log('📋 Content types to search:', contentTypes);
 
-    // Função para buscar dados paginados de um tipo específico
+    // Função para obter total real da API externa
+    const getRealTotal = async (tipo: string): Promise<number> => {
+      const cacheKey = `total_${tipo}`;
+      const cached = totalsCache.get(cacheKey);
+      
+      // Verificar cache
+      if (cached && (Date.now() - cached.timestamp) < TOTALS_CACHE_TTL) {
+        console.log(`📊 Cache HIT for ${tipo} total: ${cached.total}`);
+        return cached.total;
+      }
+
+      try {
+        console.log(`📊 Fetching real total for ${tipo} from API`);
+        const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=1`;
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'LSB-Search/1.0'
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const rawData = await response.json();
+        const total = rawData.total || 0;
+        
+        // Cachear o total
+        totalsCache.set(cacheKey, { total, timestamp: Date.now() });
+        
+        console.log(`✅ Real total for ${tipo}: ${total}`);
+        return total;
+        
+      } catch (error) {
+        console.error(`❌ Error fetching total for ${tipo}:`, error);
+        return 0;
+      }
+    };
+
+    // Função para buscar dados paginados de um tipo específico com paginação real
     const fetchContentType = async (tipo: string, requestedPage: number, requestedLimit: number) => {
       try {
+        // Primeiro, obter o total real
+        const realTotal = await getRealTotal(tipo);
+        
+        if (realTotal === 0) {
+          console.log(`⚠️ No content available for ${tipo}`);
+          return { items: [], total: 0 };
+        }
+
+        // Calcular quais itens buscar baseado na página solicitada
+        const startItem = (requestedPage - 1) * requestedLimit;
+        const endItem = startItem + requestedLimit;
+        
+        // Verificar se a página solicitada existe
+        if (startItem >= realTotal) {
+          console.log(`📄 Page ${requestedPage} is beyond available content for ${tipo} (total: ${realTotal})`);
+          return { items: [], total: realTotal };
+        }
+
         let allItems: any[] = [];
         
-        // Para tipos com muitos itens (podcast), implementar paginação real
         if (tipo === 'podcast') {
-          // Calcular quantas páginas da API externa precisamos
-          const apiPageSize = 100; // Buscar em chunks maiores da API
-          const startItem = (requestedPage - 1) * requestedLimit;
-          const endItem = startItem + requestedLimit;
-          
-          // Determinar qual página da API externa começar
+          // Para podcasts, implementar paginação real da API externa
+          const apiPageSize = 100; // Buscar em chunks de 100
           const startApiPage = Math.floor(startItem / apiPageSize) + 1;
-          const endApiPage = Math.floor(endItem / apiPageSize) + 1;
+          const endApiPage = Math.floor((endItem - 1) / apiPageSize) + 1;
           
-          console.log(`📄 Podcast pagination: requesting items ${startItem}-${endItem}, API pages ${startApiPage}-${endApiPage}`);
+          console.log(`📄 ${tipo} pagination: requesting items ${startItem}-${endItem}, API pages ${startApiPage}-${endApiPage}`);
           
           // Buscar as páginas necessárias da API externa
           for (let apiPage = startApiPage; apiPage <= endApiPage; apiPage++) {
@@ -96,57 +161,115 @@ serve(async (req) => {
               break;
             }
           }
+          
+          // Extrair apenas os itens necessários para a página solicitada
+          const itemsInAllPages = allItems.length;
+          const localStartIndex = startItem % (apiPageSize * (endApiPage - startApiPage + 1));
+          const localEndIndex = localStartIndex + requestedLimit;
+          
+          allItems = allItems.slice(localStartIndex, localEndIndex);
+          console.log(`📊 Final ${tipo} items for page ${requestedPage}: ${allItems.length} of ${itemsInAllPages} loaded, total available: ${realTotal}`);
+          
         } else {
-          // Para tipos com poucos itens (livro, aula), buscar tudo de uma vez
-          const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=100`;
-          console.log(`🌐 Fetching all ${tipo} from:`, url);
-          
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000);
-          
-          const response = await fetch(url, {
-            signal: controller.signal,
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'User-Agent': 'LSB-Search/1.0'
+          // Para tipos com poucos itens (livro, aula), buscar tudo de uma vez se necessário
+          if (realTotal <= 100) {
+            const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=100`;
+            console.log(`🌐 Fetching all ${tipo} from:`, url);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            
+            const response = await fetch(url, {
+              signal: controller.signal,
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'LSB-Search/1.0'
+              }
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            
+            const rawData = await response.json();
+            const allContentItems = rawData.conteudo || [];
+            
+            // Paginar localmente
+            allItems = allContentItems.slice(startItem, endItem);
+            console.log(`📊 ${tipo} local pagination: ${allItems.length} items for page ${requestedPage}`);
+            
+          } else {
+            // Se há muitos itens, usar paginação da API
+            const apiPage = Math.ceil(endItem / 100);
+            const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${apiPage}&limit=100`;
+            
+            const response = await fetch(url, {
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'LSB-Search/1.0'
+              }
+            });
+            
+            if (response.ok) {
+              const rawData = await response.json();
+              const items = rawData.conteudo || [];
+              const localStart = startItem % 100;
+              allItems = items.slice(localStart, localStart + requestedLimit);
+            }
           }
-          
-          const rawData = await response.json();
-          allItems = rawData.conteudo || [];
         }
         
-        console.log(`✅ ${tipo}: ${allItems.length} total items fetched`);
-        
-        // Transformar dados para o formato SearchResult
-        return allItems.map((item: any) => transformToSearchResult(item, tipo));
+        return { items: allItems, total: realTotal };
         
       } catch (error) {
         console.error(`❌ Error fetching ${tipo}:`, error);
-        return [];
+        return { items: [], total: 0 };
       }
     };
 
-    // Se há filtros específicos de tipo, buscar apenas os tipos solicitados
-    // Senão, buscar todos os tipos
-    const fetchPromises = contentTypes.map(async (tipo) => {
-      return await fetchContentType(tipo, page, limit);
-    });
+    // Buscar dados para os tipos solicitados
+    const results = await Promise.all(
+      contentTypes.map(async (tipo) => {
+        const result = await fetchContentType(tipo, page, limit);
+        return {
+          tipo,
+          items: result.items.map((item: any) => transformToSearchResult(item, tipo)),
+          total: result.total
+        };
+      })
+    );
 
-    // Aguardar todos os resultados
-    const results = await Promise.all(fetchPromises);
-    const allItems = results.flat();
+    // Combinar resultados
+    let allItems: any[] = [];
+    let totalFromAllTypes = 0;
+
+    for (const result of results) {
+      allItems = allItems.concat(result.items);
+      totalFromAllTypes += result.total;
+    }
     
-    console.log(`📊 Total items before filtering: ${allItems.length}`);
+    console.log(`📊 Total items before filtering: ${allItems.length}, Total available: ${totalFromAllTypes}`);
 
-    // Aplicar filtros localmente
+    // Se estamos buscando tipos específicos, usar o total desse tipo
+    // Se estamos buscando todos os tipos, somar os totais
+    let actualTotal = totalFromAllTypes;
+    
+    if (filters?.resourceType?.length === 1) {
+      // Busca por tipo específico - usar o total desse tipo
+      const typeTotal = results.find(r => {
+        const mappedType = filters.resourceType![0] === 'titulo' ? 'livro' : 
+                          filters.resourceType![0] === 'video' ? 'aula' : 
+                          filters.resourceType![0];
+        return r.tipo === mappedType;
+      })?.total || 0;
+      actualTotal = typeTotal;
+    }
+
+    // Aplicar filtros localmente se necessário
     let filteredItems = allItems;
 
     // Filtro por query (busca no título, autor e descrição)
@@ -156,34 +279,38 @@ serve(async (req) => {
         const searchText = `${item.title} ${item.author} ${item.description}`.toLowerCase();
         return searchTerms.every(term => searchText.includes(term));
       });
+      
+      // Se há busca por texto, o total deve ser recalculado
+      // Isso requer buscar todos os itens para filtrar - implementação simplificada por ora
+      actualTotal = filteredItems.length;
     }
 
-    // Filtro por autor
+    // Aplicar outros filtros
     if (filters?.author?.trim()) {
       const authorFilter = filters.author.toLowerCase().trim();
       filteredItems = filteredItems.filter(item => 
         item.author.toLowerCase().includes(authorFilter)
       );
+      actualTotal = filteredItems.length;
     }
 
-    // Filtro por assunto
     if (filters?.subject?.length) {
       filteredItems = filteredItems.filter(item =>
         filters.subject!.some(subject => 
           item.subject.toLowerCase().includes(subject.toLowerCase())
         )
       );
+      actualTotal = filteredItems.length;
     }
 
-    // Filtro por ano
     if (filters?.year?.trim()) {
       const yearFilter = parseInt(filters.year);
       if (!isNaN(yearFilter)) {
         filteredItems = filteredItems.filter(item => item.year === yearFilter);
+        actualTotal = filteredItems.length;
       }
     }
 
-    // Filtro por duração (apenas para vídeos e podcasts)
     if (filters?.duration?.trim()) {
       filteredItems = filteredItems.filter(item => {
         if (!item.duration) return false;
@@ -196,9 +323,9 @@ serve(async (req) => {
         
         return duration.includes(filter);
       });
+      actualTotal = filteredItems.length;
     }
 
-    // Filtro por linguagem
     if (filters?.language?.length) {
       filteredItems = filteredItems.filter(item =>
         filters.language!.some(lang => 
@@ -206,18 +333,19 @@ serve(async (req) => {
           item.pais?.toLowerCase().includes(lang.toLowerCase())
         )
       );
+      actualTotal = filteredItems.length;
     }
 
-    // Filtro por tipo de documento
     if (filters?.documentType?.length) {
       filteredItems = filteredItems.filter(item =>
         filters.documentType!.some(docType => 
           item.documentType?.toLowerCase().includes(docType.toLowerCase())
         )
       );
+      actualTotal = filteredItems.length;
     }
 
-    console.log(`📊 Total items after filtering: ${filteredItems.length}`);
+    console.log(`📊 Total items after filtering: ${filteredItems.length}, Actual total: ${actualTotal}`);
 
     // Aplicar ordenação
     if (sortBy) {
@@ -226,7 +354,6 @@ serve(async (req) => {
           case 'recent':
             return b.year - a.year;
           case 'accessed':
-            // Simulação de "mais acessados" - ordenar por tipo e depois por título
             const typeOrder = { 'podcast': 3, 'video': 2, 'titulo': 1 };
             return (typeOrder[b.type] || 0) - (typeOrder[a.type] || 0);
           case 'title':
@@ -255,36 +382,32 @@ serve(async (req) => {
       });
     }
 
-    // Para paginação, quando temos filtros de tipo específico, aplicar paginação local
-    // Quando não temos filtros específicos, aplicar paginação global
-    const totalResults = filteredItems.length;
-    let paginatedItems = filteredItems;
+    // Para paginação final, se não há filtros que afetam o total, usar os itens já paginados
+    // Se há filtros, os itens já foram filtrados, então usar eles diretamente
+    const hasFiltersAffectingTotal = query?.trim() || filters?.author?.trim() || 
+      filters?.subject?.length || filters?.year?.trim() || filters?.duration?.trim() ||
+      filters?.language?.length || filters?.documentType?.length;
+
+    let finalItems = filteredItems;
     
-    // Se estamos buscando um tipo específico OU temos filtros aplicados, paginar localmente
-    if (filters?.resourceType?.length === 1 || query?.trim() || filters?.author?.trim() || 
-        filters?.subject?.length || filters?.year?.trim() || filters?.duration?.trim() ||
-        filters?.language?.length || filters?.documentType?.length) {
-      
+    // Se há filtros que afetam o total, precisamos paginar localmente
+    if (hasFiltersAffectingTotal) {
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
-      paginatedItems = filteredItems.slice(startIndex, endIndex);
-      
-    } else {
-      // Para busca geral sem filtros, já temos a paginação aplicada pelos fetches específicos
-      // Neste caso, paginatedItems já contém os itens corretos para a página
+      finalItems = filteredItems.slice(startIndex, endIndex);
     }
     
-    const totalPages = Math.ceil(totalResults / limit);
+    const totalPages = Math.ceil(actualTotal / limit);
 
-    console.log(`📄 Pagination: page ${page}/${totalPages}, showing ${paginatedItems.length}/${totalResults} items`);
+    console.log(`📄 Final pagination: page ${page}/${totalPages}, showing ${finalItems.length}/${actualTotal} items`);
 
     const response = {
       success: true,
-      results: paginatedItems,
+      results: finalItems,
       pagination: {
         currentPage: page,
         totalPages,
-        totalResults,
+        totalResults: actualTotal,
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1
       },

@@ -40,7 +40,7 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
     
     const now = Date.now();
     const cacheAge = now - cached.timestamp;
-    const cacheLimit = 10 * 60 * 1000; // 10 minutos para melhor performance
+    const cacheLimit = 5 * 60 * 1000; // Reduzir para 5 minutos para refletir mudanças mais rapidamente
     
     return cacheAge < cacheLimit;
   };
@@ -56,7 +56,12 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
     // Verificar cache
     if (isValidCache(cacheKey)) {
       const cached = searchCache.get(cacheKey);
-      console.log('🎯 Cache hit for search:', { query, page, totalResults: cached!.data.pagination.totalResults });
+      console.log('🎯 Cache hit for search:', { 
+        query, 
+        page, 
+        totalResults: cached!.data.pagination.totalResults,
+        totalPages: cached!.data.pagination.totalPages 
+      });
       return cached!.data;
     }
 
@@ -93,8 +98,8 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
           timestamp: Date.now()
         });
         
-        // Limitar cache a 50 entradas para não consumir muita memória
-        if (newCache.size > 50) {
+        // Limitar cache a 30 entradas para não consumir muita memória
+        if (newCache.size > 30) {
           const firstKey = newCache.keys().next().value;
           newCache.delete(firstKey);
         }

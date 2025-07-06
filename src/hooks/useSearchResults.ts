@@ -119,7 +119,8 @@ export const useSearchResults = () => {
           totalResults: response.pagination.totalResults,
           currentPage: response.pagination.currentPage,
           totalPages: response.pagination.totalPages,
-          resultsInPage: response.results.length
+          resultsInPage: response.results.length,
+          isRealPagination: response.pagination.totalResults > 0
         });
         
         // Prefetch da próxima página se houver

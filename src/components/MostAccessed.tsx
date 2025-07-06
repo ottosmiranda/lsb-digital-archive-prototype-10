@@ -1,5 +1,4 @@
-
-import { Fire, ImageOff } from 'lucide-react';
+import { Flame, ImageOff } from 'lucide-react';
 import { useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -135,7 +134,7 @@ const MostAccessed = () => {
                           </div>
                         )}
                         <Badge className="absolute top-3 left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
-                          <Fire className="h-3 w-3" />
+                          <Flame className="h-3 w-3" />
                           Mais Acessado
                         </Badge>
                       </div>

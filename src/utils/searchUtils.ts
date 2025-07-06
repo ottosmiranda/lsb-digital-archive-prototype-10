@@ -1,3 +1,4 @@
+
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
 // Helper function to normalize text for better Portuguese search
@@ -199,12 +200,16 @@ export const sortResults = (resultsToSort: SearchResult[], sortType: string, que
   }
 };
 
-export const checkHasActiveFilters = (filterObj: SearchFilters): boolean => {
+export const checkHasActiveFilters = (
+  filterObj: SearchFilters, 
+  showAllContent: boolean = false
+): boolean => {
   return filterObj.resourceType.length > 0 || 
          filterObj.subject.length > 0 || 
          Boolean(filterObj.author) || 
          Boolean(filterObj.year) || 
          Boolean(filterObj.duration) ||
          filterObj.language.length > 0 ||
-         filterObj.documentType.length > 0;
+         filterObj.documentType.length > 0 ||
+         showAllContent; // Consider "Todos" state as active filter
 };

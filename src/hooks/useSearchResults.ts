@@ -37,7 +37,7 @@ export const useSearchResults = () => {
   } = useSearchState();
 
   // Hook para busca na API
-  const { search, loading, error, clearCache } = useApiSearch({ resultsPerPage });
+  const { search, loading, error, clearCache, prefetchNextPage } = useApiSearch({ resultsPerPage });
   
   // Estado dos resultados
   const [searchResponse, setSearchResponse] = useState<SearchResponse>({
@@ -93,7 +93,13 @@ export const useSearchResults = () => {
       return;
     }
 
-    console.log('🚀 Performing search:', { query, filters, sortBy, currentPage });
+    console.log('🚀 Performing search:', { 
+      query, 
+      filters, 
+      sortBy, 
+      currentPage,
+      hasActiveFilters 
+    });
 
     try {
       const response = await search(query, filters, sortBy, currentPage);
@@ -108,6 +114,18 @@ export const useSearchResults = () => {
 
       if (response.error) {
         console.warn('⚠️ Search completed with errors:', response.error);
+      } else {
+        console.log('✅ Search results updated:', {
+          totalResults: response.pagination.totalResults,
+          currentPage: response.pagination.currentPage,
+          totalPages: response.pagination.totalPages,
+          resultsInPage: response.results.length
+        });
+        
+        // Prefetch da próxima página se houver
+        if (response.pagination.hasNextPage) {
+          prefetchNextPage(query, filters, sortBy, currentPage);
+        }
       }
 
     } catch (err) {
@@ -148,12 +166,13 @@ export const useSearchResults = () => {
   };
 
   const handleSortChange = (newSort: string) => {
-    console.log('Sort changed to:', newSort);
+    console.log('📊 Sort changed to:', newSort);
     setSortBy(newSort);
     setCurrentPage(1);
   };
 
   const handlePageChange = (page: number) => {
+    console.log('📄 Page changed to:', page);
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

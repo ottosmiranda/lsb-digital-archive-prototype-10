@@ -42,49 +42,106 @@ serve(async (req) => {
 
     console.log('📋 Content types to search:', contentTypes);
 
-    // Buscar em cada tipo de conteúdo em paralelo
-    const searchPromises = contentTypes.map(async (tipo) => {
+    // Função para buscar dados paginados de um tipo específico
+    const fetchContentType = async (tipo: string, requestedPage: number, requestedLimit: number) => {
       try {
-        // Para API externa, vamos buscar mais itens para ter dados suficientes para filtrar
-        const searchLimit = Math.max(limit * 3, 30); // Buscar mais para poder filtrar
-        const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=${searchLimit}`;
+        let allItems: any[] = [];
         
-        console.log(`🌐 Fetching ${tipo} from:`, url);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
-        
-        const response = await fetch(url, {
-          signal: controller.signal,
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'User-Agent': 'LSB-Search/1.0'
+        // Para tipos com muitos itens (podcast), implementar paginação real
+        if (tipo === 'podcast') {
+          // Calcular quantas páginas da API externa precisamos
+          const apiPageSize = 100; // Buscar em chunks maiores da API
+          const startItem = (requestedPage - 1) * requestedLimit;
+          const endItem = startItem + requestedLimit;
+          
+          // Determinar qual página da API externa começar
+          const startApiPage = Math.floor(startItem / apiPageSize) + 1;
+          const endApiPage = Math.floor(endItem / apiPageSize) + 1;
+          
+          console.log(`📄 Podcast pagination: requesting items ${startItem}-${endItem}, API pages ${startApiPage}-${endApiPage}`);
+          
+          // Buscar as páginas necessárias da API externa
+          for (let apiPage = startApiPage; apiPage <= endApiPage; apiPage++) {
+            const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${apiPage}&limit=${apiPageSize}`;
+            console.log(`🌐 Fetching ${tipo} page ${apiPage} from:`, url);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
+            const response = await fetch(url, {
+              signal: controller.signal,
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'LSB-Search/1.0'
+              }
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+              console.warn(`⚠️ API page ${apiPage} failed: ${response.status}`);
+              continue;
+            }
+            
+            const rawData = await response.json();
+            const items = rawData.conteudo || [];
+            allItems = allItems.concat(items);
+            
+            console.log(`✅ ${tipo} page ${apiPage}: ${items.length} items fetched, total so far: ${allItems.length}`);
+            
+            // Se não há mais itens, parar
+            if (items.length < apiPageSize) {
+              console.log(`📄 Reached end of ${tipo} data at page ${apiPage}`);
+              break;
+            }
           }
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        } else {
+          // Para tipos com poucos itens (livro, aula), buscar tudo de uma vez
+          const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=100`;
+          console.log(`🌐 Fetching all ${tipo} from:`, url);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          
+          const response = await fetch(url, {
+            signal: controller.signal,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'User-Agent': 'LSB-Search/1.0'
+            }
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const rawData = await response.json();
+          allItems = rawData.conteudo || [];
         }
         
-        const rawData = await response.json();
-        const items = rawData.conteudo || [];
-        
-        console.log(`✅ ${tipo}: ${items.length} items fetched`);
+        console.log(`✅ ${tipo}: ${allItems.length} total items fetched`);
         
         // Transformar dados para o formato SearchResult
-        return items.map((item: any) => transformToSearchResult(item, tipo));
+        return allItems.map((item: any) => transformToSearchResult(item, tipo));
         
       } catch (error) {
         console.error(`❌ Error fetching ${tipo}:`, error);
         return [];
       }
+    };
+
+    // Se há filtros específicos de tipo, buscar apenas os tipos solicitados
+    // Senão, buscar todos os tipos
+    const fetchPromises = contentTypes.map(async (tipo) => {
+      return await fetchContentType(tipo, page, limit);
     });
 
     // Aguardar todos os resultados
-    const results = await Promise.all(searchPromises);
+    const results = await Promise.all(fetchPromises);
     const allItems = results.flat();
     
     console.log(`📊 Total items before filtering: ${allItems.length}`);
@@ -198,12 +255,26 @@ serve(async (req) => {
       });
     }
 
-    // Aplicar paginação
+    // Para paginação, quando temos filtros de tipo específico, aplicar paginação local
+    // Quando não temos filtros específicos, aplicar paginação global
     const totalResults = filteredItems.length;
+    let paginatedItems = filteredItems;
+    
+    // Se estamos buscando um tipo específico OU temos filtros aplicados, paginar localmente
+    if (filters?.resourceType?.length === 1 || query?.trim() || filters?.author?.trim() || 
+        filters?.subject?.length || filters?.year?.trim() || filters?.duration?.trim() ||
+        filters?.language?.length || filters?.documentType?.length) {
+      
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      paginatedItems = filteredItems.slice(startIndex, endIndex);
+      
+    } else {
+      // Para busca geral sem filtros, já temos a paginação aplicada pelos fetches específicos
+      // Neste caso, paginatedItems já contém os itens corretos para a página
+    }
+    
     const totalPages = Math.ceil(totalResults / limit);
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedItems = filteredItems.slice(startIndex, endIndex);
 
     console.log(`📄 Pagination: page ${page}/${totalPages}, showing ${paginatedItems.length}/${totalResults} items`);
 

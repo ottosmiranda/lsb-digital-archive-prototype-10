@@ -40,7 +40,7 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
     
     const now = Date.now();
     const cacheAge = now - cached.timestamp;
-    const cacheLimit = 5 * 60 * 1000; // 5 minutos
+    const cacheLimit = 10 * 60 * 1000; // 10 minutos para melhor performance
     
     return cacheAge < cacheLimit;
   };
@@ -56,11 +56,11 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
     // Verificar cache
     if (isValidCache(cacheKey)) {
       const cached = searchCache.get(cacheKey);
-      console.log('🎯 Cache hit for search:', { query, page });
+      console.log('🎯 Cache hit for search:', { query, page, totalResults: cached!.data.pagination.totalResults });
       return cached!.data;
     }
 
-    console.log('🔍 API search request:', { query, filters, sortBy, page });
+    console.log('🔍 API search request:', { query, filters, sortBy, page, resultsPerPage });
     setLoading(true);
     setError(null);
 
@@ -92,14 +92,22 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
           data: response,
           timestamp: Date.now()
         });
+        
+        // Limitar cache a 50 entradas para não consumir muita memória
+        if (newCache.size > 50) {
+          const firstKey = newCache.keys().next().value;
+          newCache.delete(firstKey);
+        }
+        
         return newCache;
       });
 
       console.log('✅ Search completed:', {
         query,
-        page,
+        page: `${page}/${response.pagination.totalPages}`,
         totalResults: response.pagination.totalResults,
-        currentResults: response.results.length
+        currentResults: response.results.length,
+        hasMore: response.pagination.hasNextPage
       });
 
       return response;
@@ -137,10 +145,30 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
     console.log('🧹 Search cache cleared');
   }, []);
 
+  const prefetchNextPage = useCallback(async (
+    query: string,
+    filters: SearchFilters,
+    sortBy: string,
+    currentPage: number
+  ) => {
+    const nextPage = currentPage + 1;
+    const cacheKey = getCacheKey(query, filters, sortBy, nextPage);
+    
+    // Só fazer prefetch se não estiver em cache
+    if (!isValidCache(cacheKey)) {
+      console.log('🔮 Prefetching next page:', nextPage);
+      // Fazer a busca em background sem aguardar
+      search(query, filters, sortBy, nextPage).catch(err => {
+        console.warn('⚠️ Prefetch failed:', err);
+      });
+    }
+  }, [search]);
+
   return {
     search,
     loading,
     error,
-    clearCache
+    clearCache,
+    prefetchNextPage
   };
 };

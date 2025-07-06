@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
 import { useApiSearch } from '@/hooks/useApiSearch';
+import { useDebounce } from '@/hooks/useDebounce';
 import { checkHasActiveFilters } from '@/utils/searchUtils';
 
 interface SearchResponse {
@@ -39,6 +40,10 @@ export const useSearchResults = () => {
   // Hook para busca na API
   const { search, loading, error, clearCache, prefetchNextPage } = useApiSearch({ resultsPerPage });
   
+  // Debounce dos filtros (exceto mudanças de tabs que são imediatas)
+  const debouncedFilters = useDebounce(filters, 300);
+  const debouncedQuery = useDebounce(query, 300);
+  
   // Estado dos resultados
   const [searchResponse, setSearchResponse] = useState<SearchResponse>({
     results: [],
@@ -68,13 +73,13 @@ export const useSearchResults = () => {
 
   // Verificar se há filtros ativos - incluindo estado "Todos"
   const hasActiveFilters = useMemo((): boolean => {
-    return checkHasActiveFilters(filters);
-  }, [filters]);
+    return checkHasActiveFilters(debouncedFilters);
+  }, [debouncedFilters]);
 
   // Função para executar busca
   const performSearch = async () => {
     // Buscar se houver query, filtros ativos (incluindo 'all' para "Todos")
-    if (!query.trim() && !hasActiveFilters) {
+    if (!debouncedQuery.trim() && !hasActiveFilters) {
       setSearchResponse({
         results: [],
         pagination: {
@@ -86,7 +91,7 @@ export const useSearchResults = () => {
         },
         searchInfo: {
           query: '',
-          appliedFilters: filters,
+          appliedFilters: debouncedFilters,
           sortBy
         }
       });
@@ -94,15 +99,15 @@ export const useSearchResults = () => {
     }
 
     console.log('🚀 Performing search:', { 
-      query, 
-      filters, 
+      query: debouncedQuery, 
+      filters: debouncedFilters, 
       sortBy, 
       currentPage,
       hasActiveFilters
     });
 
     try {
-      const response = await search(query, filters, sortBy, currentPage);
+      const response = await search(debouncedQuery, debouncedFilters, sortBy, currentPage);
       
       setSearchResponse({
         results: response.results,
@@ -125,7 +130,7 @@ export const useSearchResults = () => {
         
         // Prefetch da próxima página se houver
         if (response.pagination.hasNextPage) {
-          prefetchNextPage(query, filters, sortBy, currentPage);
+          prefetchNextPage(debouncedQuery, debouncedFilters, sortBy, currentPage);
         }
       }
 
@@ -143,19 +148,19 @@ export const useSearchResults = () => {
           hasPreviousPage: false
         },
         searchInfo: {
-          query,
-          appliedFilters: filters,
+          query: debouncedQuery,
+          appliedFilters: debouncedFilters,
           sortBy
         }
       });
     }
   };
 
-  // Executar busca quando parâmetros mudarem
+  // Executar busca quando parâmetros mudarem (usando debounced values)
   useEffect(() => {
     performSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, filters, sortBy, currentPage]);
+  }, [debouncedQuery, debouncedFilters, sortBy, currentPage]);
 
   // Handlers
   const handleFilterChange = (newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {

@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -29,6 +29,7 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchCache, setSearchCache] = useState<Map<string, { data: SearchResponse; timestamp: number }>>(new Map());
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const getCacheKey = (query: string, filters: SearchFilters, sortBy: string, page: number): string => {
     return JSON.stringify({ query, filters, sortBy, page });
@@ -40,7 +41,7 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
     
     const now = Date.now();
     const cacheAge = now - cached.timestamp;
-    const cacheLimit = 5 * 60 * 1000; // Reduzir para 5 minutos para refletir mudanças mais rapidamente
+    const cacheLimit = 3 * 60 * 1000; // Reduzir para 3 minutos para melhor performance
     
     return cacheAge < cacheLimit;
   };
@@ -65,6 +66,14 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
       return cached!.data;
     }
 
+    // Cancelar requisição anterior se existir
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Criar novo AbortController
+    abortControllerRef.current = new AbortController();
+
     console.log('🔍 API search request:', { query, filters, sortBy, page, resultsPerPage });
     setLoading(true);
     setError(null);
@@ -77,8 +86,17 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
           sortBy,
           page,
           limit: resultsPerPage
+        },
+        headers: {
+          'Content-Type': 'application/json'
         }
       });
+
+      // Verificar se a requisição foi cancelada
+      if (abortControllerRef.current?.signal.aborted) {
+        console.log('🚫 Search request was cancelled');
+        throw new Error('Request cancelled');
+      }
 
       if (searchError) {
         throw new Error(`Search function error: ${searchError.message}`);
@@ -98,8 +116,8 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
           timestamp: Date.now()
         });
         
-        // Limitar cache a 30 entradas para não consumir muita memória
-        if (newCache.size > 30) {
+        // Limitar cache a 20 entradas para melhor performance
+        if (newCache.size > 20) {
           const firstKey = newCache.keys().next().value;
           newCache.delete(firstKey);
         }
@@ -118,6 +136,11 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
       return response;
 
     } catch (err) {
+      // Não mostrar erro se foi cancelado
+      if (err instanceof Error && err.message === 'Request cancelled') {
+        throw err;
+      }
+
       const errorMessage = err instanceof Error ? err.message : 'Search failed';
       console.error('❌ Search error:', errorMessage);
       setError(errorMessage);
@@ -142,6 +165,7 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
       };
     } finally {
       setLoading(false);
+      abortControllerRef.current = null;
     }
   }, [resultsPerPage]);
 
@@ -164,7 +188,9 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
       console.log('🔮 Prefetching next page:', nextPage);
       // Fazer a busca em background sem aguardar
       search(query, filters, sortBy, nextPage).catch(err => {
-        console.warn('⚠️ Prefetch failed:', err);
+        if (err.message !== 'Request cancelled') {
+          console.warn('⚠️ Prefetch failed:', err);
+        }
       });
     }
   }, [search]);

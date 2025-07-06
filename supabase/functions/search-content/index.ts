@@ -39,10 +39,22 @@ serve(async (req) => {
     
     console.log('🔍 Search request:', { query, filters, sortBy, page, limit });
 
-    // Determinar quais tipos de conteúdo buscar
-    const contentTypes = filters?.resourceType?.length 
-      ? filters.resourceType.map(type => type === 'titulo' ? 'livro' : type === 'video' ? 'aula' : type)
-      : ['livro', 'aula', 'podcast'];
+    // Determinar quais tipos de conteúdo buscar - FIXED: Handle 'all' correctly
+    let contentTypes: string[];
+    if (filters?.resourceType?.length) {
+      // Se contém 'all', buscar todos os tipos
+      if (filters.resourceType.includes('all')) {
+        contentTypes = ['livro', 'aula', 'podcast'];
+      } else {
+        // Mapear tipos específicos
+        contentTypes = filters.resourceType.map(type => 
+          type === 'titulo' ? 'livro' : type === 'video' ? 'aula' : type
+        );
+      }
+    } else {
+      // Padrão: buscar todos os tipos
+      contentTypes = ['livro', 'aula', 'podcast'];
+    }
 
     console.log('📋 Content types to search:', contentTypes);
 

@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
 import { useApiSearch } from '@/hooks/useApiSearch';
-import { checkHasActiveFilters } from '@/utils/searchUtils';
+import { shouldPerformSearch, checkHasActiveFilters } from '@/utils/searchUtils';
 
 interface SearchResponse {
   results: SearchResult[];
@@ -54,7 +54,7 @@ export const useSearchResults = () => {
       appliedFilters: {
         resourceType: [],
         subject: [],
-        author: [], // CORRIGIDO: Array vazio
+        author: [],
         year: '',
         duration: '',
         language: [],
@@ -68,15 +68,30 @@ export const useSearchResults = () => {
 
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // Verificar se há filtros ativos - incluindo estado "Todos"
+  // CORRIGIDO: Verificar se há filtros ativos para exibição na UI
   const hasActiveFilters = useMemo((): boolean => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
+  // NOVA: Verificar se deve executar busca
+  const shouldSearch = useMemo((): boolean => {
+    return shouldPerformSearch(query, filters);
+  }, [query, filters]);
+
   // Função para executar busca
   const performSearch = async () => {
-    // Buscar se houver query, filtros ativos (incluindo 'all' para "Todos")
-    if (!query.trim() && !hasActiveFilters) {
+    console.log('🔍 Checking if should perform search:', { 
+      query, 
+      filters, 
+      sortBy, 
+      currentPage,
+      shouldSearch,
+      hasActiveFilters
+    });
+
+    // CORRIGIDO: Usar shouldSearch em vez de hasActiveFilters
+    if (!shouldSearch) {
+      console.log('❌ No search needed - clearing results');
       setSearchResponse({
         results: [],
         pagination: {
@@ -100,7 +115,7 @@ export const useSearchResults = () => {
       filters, 
       sortBy, 
       currentPage,
-      hasActiveFilters
+      shouldSearch
     });
 
     try {
@@ -161,6 +176,7 @@ export const useSearchResults = () => {
 
   // Handlers
   const handleFilterChange = (newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
+    console.log('🔄 Filter change:', { newFilters, options });
     setFilters(newFilters);
     
     // Resetar página apenas se não for digitação no autor

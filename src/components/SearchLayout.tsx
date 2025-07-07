@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -69,8 +70,11 @@ const SearchLayout = ({
   }, [filters.resourceType]);
   
   const hasResults = currentResults.length > 0;
-  const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
-  const showWelcomeState = !loading && !query && !hasActiveFilters && !hasResults;
+  
+  // CORRIGIDO: Lógica para mostrar estados
+  const shouldShowSearch = query || filters.resourceType.length > 0 || hasActiveFilters;
+  const showEmptyState = !loading && !hasResults && shouldShowSearch;
+  const showWelcomeState = !loading && !shouldShowSearch;
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
     const newFilters = { ...filters };
@@ -149,6 +153,7 @@ const SearchLayout = ({
           loading={loading}
           hasActiveFilters={hasActiveFilters}
           usingFallback={usingFallback}
+          query={query}
         />
 
         {!showWelcomeState && (

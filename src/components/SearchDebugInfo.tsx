@@ -3,6 +3,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SearchFilters } from '@/types/searchTypes';
+import { shouldPerformSearch, checkHasActiveFilters } from '@/utils/searchUtils';
 
 interface SearchDebugInfoProps {
   filters: SearchFilters;
@@ -10,6 +11,7 @@ interface SearchDebugInfoProps {
   loading: boolean;
   hasActiveFilters: boolean;
   usingFallback?: boolean;
+  query?: string;
 }
 
 const SearchDebugInfo: React.FC<SearchDebugInfoProps> = ({
@@ -17,13 +19,15 @@ const SearchDebugInfo: React.FC<SearchDebugInfoProps> = ({
   totalResults,
   loading,
   hasActiveFilters,
-  usingFallback = false
+  usingFallback = false,
+  query = ''
 }) => {
   // Só mostrar em desenvolvimento
   if (process.env.NODE_ENV !== 'development') {
     return null;
   }
 
+  const shouldSearch = shouldPerformSearch(query, filters);
   const isGlobalSearch = filters.resourceType.includes('all') || 
     (filters.resourceType.length === 0 && !hasActiveFilters);
 
@@ -33,7 +37,7 @@ const SearchDebugInfo: React.FC<SearchDebugInfoProps> = ({
         <CardTitle className="text-sm text-blue-800">Debug Info (Dev Only)</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
           <div>
             <span className="font-medium text-blue-700">Status:</span>
             <Badge variant={loading ? "secondary" : "default"} className="ml-1">
@@ -42,9 +46,16 @@ const SearchDebugInfo: React.FC<SearchDebugInfoProps> = ({
           </div>
           
           <div>
-            <span className="font-medium text-blue-700">Search Type:</span>
-            <Badge variant={isGlobalSearch ? "outline" : "secondary"} className="ml-1">
-              {isGlobalSearch ? "Global (Todos)" : "Filtered"}
+            <span className="font-medium text-blue-700">Should Search:</span>
+            <Badge variant={shouldSearch ? "default" : "outline"} className="ml-1">
+              {shouldSearch ? "Yes" : "No"}
+            </Badge>
+          </div>
+          
+          <div>
+            <span className="font-medium text-blue-700">Has Active Filters:</span>
+            <Badge variant={hasActiveFilters ? "default" : "outline"} className="ml-1">
+              {hasActiveFilters ? "Yes" : "No"}
             </Badge>
           </div>
           
@@ -77,6 +88,15 @@ const SearchDebugInfo: React.FC<SearchDebugInfoProps> = ({
             )}
           </div>
         </div>
+
+        {query && (
+          <div className="mt-2">
+            <span className="font-medium text-blue-700 text-xs">Query:</span>
+            <Badge variant="outline" className="ml-1 text-xs">
+              "{query}"
+            </Badge>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

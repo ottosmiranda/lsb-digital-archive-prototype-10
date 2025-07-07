@@ -18,6 +18,8 @@ interface SearchParams {
     duration?: string;
     language?: string[];
     documentType?: string[];
+    program?: string[]; // NOVO: Filtro de programa para podcasts
+    channel?: string[]; // NOVO: Filtro de canal para vídeos
   };
   sortBy?: string;
   page?: number;
@@ -513,6 +515,26 @@ serve(async (req) => {
         );
       }
 
+      // NOVO: Filtro de programa para podcasts
+      if (filters?.program?.length) {
+        console.log(`🔍 Applying program filter:`, filters.program);
+        filteredItems = filteredItems.filter(item =>
+          item.type === 'podcast' && filters.program!.some(program => 
+            item.program?.toLowerCase().includes(program.toLowerCase())
+          )
+        );
+      }
+
+      // NOVO: Filtro de canal para vídeos
+      if (filters?.channel?.length) {
+        console.log(`🔍 Applying channel filter:`, filters.channel);
+        filteredItems = filteredItems.filter(item =>
+          item.type === 'video' && filters.channel!.some(channel => 
+            item.channel?.toLowerCase().includes(channel.toLowerCase())
+          )
+        );
+      }
+
       if (query?.trim() || filters?.author || filters?.subject?.length || 
           filters?.year?.trim() || filters?.duration?.trim() || filters?.language?.length) {
         console.log('🔍 Applying filters to all content...');
@@ -848,13 +870,15 @@ function transformToSearchResult(item: any, tipo: string): any {
     return {
       ...baseResult,
       embedUrl: item.embed_url,
-      duration: item.duracao ? formatVideoDuration(item.duracao) : undefined
+      duration: item.duracao ? formatVideoDuration(item.duracao) : undefined,
+      channel: item.canal || undefined // NOVO: Extrair canal para vídeos
     };
   } else if (tipo === 'podcast') {
     return {
       ...baseResult,
       duration: item.duracao_ms ? formatPodcastDuration(item.duracao_ms) : undefined,
-      embedUrl: item.embed_url
+      embedUrl: item.embed_url,
+      program: item.podcast_titulo || undefined // NOVO: Extrair programa para podcasts
     };
   }
 

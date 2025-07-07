@@ -187,54 +187,111 @@ serve(async (req) => {
     const fetchAllContentForGlobalSorting = async (): Promise<{ items: any[], totalResults: number }> => {
       console.log('🌍 Starting GLOBAL sorting with real pagination');
       
-      const totals = await Promise.all(
-        contentTypes.map(async (tipo) => ({
-          tipo,
-          total: await getRealTotal(tipo)
-        }))
-      );
-      
-      const totalResults = totals.reduce((sum, t) => sum + t.total, 0);
-      console.log('📊 Content totals:', totals, 'Total combined:', totalResults);
-      
-      if (totalResults === 0) {
-        return { items: [], totalResults: 0 };
-      }
-      
-      const maxItemsToFetch = Math.max(500, page * limit * 2);
-      
-      console.log(`🎯 Will fetch up to ${maxItemsToFetch} items from each type for global sorting`);
-      
-      let allItems: any[] = [];
-      
-      for (const { tipo, total } of totals) {
-        if (total === 0) continue;
+      try {
+        // FAIL FAST: Timeout mais robusto e paralelo
+        const totalsPromises = contentTypes.map(async (tipo) => {
+          try {
+            const total = await getRealTotal(tipo);
+            console.log(`📊 Total for ${tipo}: ${total}`);
+            return { tipo, total };
+          } catch (error) {
+            console.error(`❌ Failed to get total for ${tipo}:`, error);
+            return { tipo, total: 0 };
+          }
+        });
         
-        const cacheKey = `content_${tipo}_${maxItemsToFetch}`;
-        let typeItems: any[] = [];
+        const totals = await Promise.all(totalsPromises);
+        const totalResults = totals.reduce((sum, t) => sum + t.total, 0);
         
-        const cached = contentCache.get(cacheKey);
-        if (cached && (Date.now() - cached.timestamp) < CONTENT_CACHE_TTL) {
-          console.log(`📦 Content cache HIT for ${tipo}: ${cached.items.length} items`);
-          typeItems = cached.items;
-        } else {
-          console.log(`🌐 Fetching content for ${tipo}`);
-          typeItems = await fetchContentFromType(tipo, Math.min(maxItemsToFetch, total));
-          
-          contentCache.set(cacheKey, { items: typeItems, timestamp: Date.now() });
+        console.log('📊 Content totals:', totals, 'Total combined:', totalResults);
+        
+        if (totalResults === 0) {
+          console.warn('⚠️ No content found for global search - trying fallback');
+          // FALLBACK: tentar buscar diretamente sem cache
+          const fallbackItems = await tryFallbackSearch();
+          return { items: fallbackItems, totalResults: fallbackItems.length };
         }
         
-        allItems = allItems.concat(typeItems);
-        console.log(`✅ ${tipo}: ${typeItems.length} items added`);
+        // OTIMIZADO: Buscar em paralelo com limite inteligente
+        const maxItemsPerType = Math.min(200, Math.max(50, page * limit * 3));
+        console.log(`🎯 Will fetch up to ${maxItemsPerType} items from each type for global sorting`);
+        
+        const contentPromises = totals.map(async ({ tipo, total }) => {
+          if (total === 0) return [];
+          
+          try {
+            console.log(`🌐 Fetching content for ${tipo}`);
+            const items = await fetchContentFromType(tipo, Math.min(maxItemsPerType, total));
+            console.log(`✅ ${tipo}: ${items.length} items fetched`);
+            return items;
+          } catch (error) {
+            console.error(`❌ Error fetching ${tipo}:`, error);
+            return [];
+          }
+        });
+        
+        const allContentArrays = await Promise.all(contentPromises);
+        let allItems = allContentArrays.flat();
+        
+        console.log(`📋 Total items fetched: ${allItems.length}`);
+        
+        if (allItems.length === 0) {
+          console.warn('⚠️ No items fetched - trying fallback');
+          const fallbackItems = await tryFallbackSearch();
+          return { items: fallbackItems, totalResults: fallbackItems.length };
+        }
+        
+        allItems = applySorting(allItems, sortBy || 'title');
+        console.log(`🎯 Global sorting applied: ${sortBy || 'title'}`);
+        
+        return { items: allItems, totalResults };
+        
+      } catch (error) {
+        console.error('❌ Critical error in global search:', error);
+        const fallbackItems = await tryFallbackSearch();
+        return { items: fallbackItems, totalResults: fallbackItems.length };
+      }
+    };
+    
+    // FALLBACK: Busca simplificada quando a busca global falha
+    const tryFallbackSearch = async (): Promise<any[]> => {
+      console.log('🔄 Trying fallback search for "Todos" filter');
+      
+      const fallbackItems: any[] = [];
+      
+      for (const tipo of ['livro', 'aula', 'podcast']) {
+        try {
+          const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=10`;
+          console.log(`🌐 Fallback fetch for ${tipo}:`, url);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          const response = await fetch(url, {
+            signal: controller.signal,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'User-Agent': 'LSB-Search/1.0'
+            }
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            const rawData = await response.json();
+            const items = rawData.conteudo || [];
+            const transformedItems = items.map((item: any) => transformToSearchResult(item, tipo));
+            fallbackItems.push(...transformedItems);
+            console.log(`✅ Fallback ${tipo}: ${transformedItems.length} items`);
+          }
+        } catch (error) {
+          console.error(`❌ Fallback failed for ${tipo}:`, error);
+        }
       }
       
-      console.log(`📋 Total items fetched: ${allItems.length}`);
-      
-      allItems = applySorting(allItems, sortBy || 'title');
-      
-      console.log(`🎯 Global sorting applied: ${sortBy || 'title'}`);
-      
-      return { items: allItems, totalResults };
+      console.log(`🔄 Fallback search completed: ${fallbackItems.length} items`);
+      return fallbackItems;
     };
 
     const fetchContentFromType = async (tipo: string, maxItems: number): Promise<any[]> => {

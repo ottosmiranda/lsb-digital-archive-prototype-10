@@ -3,63 +3,57 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SearchFilters } from '@/types/searchTypes';
 import { useSearchAnalytics } from '@/hooks/useSearchAnalytics';
-import { isShowingAllResourceTypes } from '@/utils/searchUtils';
 
 export const useSearchState = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { trackSearch } = useSearchAnalytics();
   
   const [filters, setFilters] = useState<SearchFilters>({
-    resourceType: ['all'], // CORRIGIDO: Inicializar com 'all' por padrão
+    resourceType: [],
     subject: [],
-    author: [],
+    author: '',
     year: '',
     duration: '',
     language: [],
-    documentType: [],
+    documentType: [], // Initialize new document type filter
   });
   
-  const [sortBy, setSortByState] = useState('title'); // CORRIGIDO: Padrão para ordenação alfabética
+  const [sortBy, setSortByState] = useState('relevance');
   const [currentPage, setCurrentPage] = useState(1);
 
   const query = searchParams.get('q') || '';
   
   const appliedFilters = useMemo(() => {
+    // This needs to be more robust if we add more array-type filters to URL params.
+    // For now, it's only used for resourceType from URL params.
+    // Let's assume this part is specific to how `filtros` URL param was initially designed
+    // for resourceType and doesn't need to change for sidebar-managed filters unless explicitly required.
     return searchParams.getAll('filtros') || [];
   }, [searchParams]);
 
-  // CORRIGIDO: Inicialização mais robusta
+  // Initialize filters and sorting from URL params only once
   useEffect(() => {
-    console.log('🔄 Initializing filters from URL params:', { 
-      appliedFilters,
-      currentFilters: filters 
-    });
-    
+    // This useEffect populates filters.resourceType from the 'filtros' URL search parameter.
+    // This is related to how the tabs might set the URL.
+    // The new language filter will be managed by the sidebar, not directly by this 'filtros' param.
     const resourceTypesFromUrl = searchParams.getAll('filtros');
-    const sortParam = searchParams.get('ordenar');
 
-    // Só atualizar se há filtros específicos na URL
+    // For now, let's stick to initializing resourceType as it was.
+    // The new filters will be initialized as empty and set by user interaction.
     if (resourceTypesFromUrl.length > 0) {
-      console.log('📍 Setting resourceType from URL:', resourceTypesFromUrl);
       setFilters(prev => ({
         ...prev,
         resourceType: resourceTypesFromUrl
       }));
-    } else {
-      // Manter 'all' como padrão se não há filtros na URL
-      console.log('📍 Keeping default resourceType as ["all"]');
     }
 
-    // Configurar ordenação baseada na URL
+    const sortParam = searchParams.get('ordenar');
     if (sortParam === 'recentes') {
       setSortByState('recent');
     } else if (sortParam === 'mais-acessados') {
       setSortByState('accessed');
-    } else if (!resourceTypesFromUrl.length) {
-      // Se não há filtros específicos, usar ordenação alfabética
-      setSortByState('title');
     }
-  }, []); // Apenas na inicialização
+  }, []); // Removed searchParams from dependency array to ensure it runs only once for initial setup.
 
   // Track searches when query changes (from URL navigation)
   useEffect(() => {
@@ -75,6 +69,9 @@ export const useSearchState = () => {
     } else {
       newSearchParams.delete('q');
     }
+    // Reset page to 1 when query changes
+    // newSearchParams.delete('pagina'); // Or set to 1, depending on desired behavior.
+    // setCurrentPage(1); // This hook does not set searchParams for page, SearchResults.tsx does.
     setSearchParams(newSearchParams);
   };
 
@@ -91,34 +88,9 @@ export const useSearchState = () => {
     setSearchParams(newSearchParams);
   };
 
-  // CORRIGIDO: Função para sincronizar filtros com URL
+  // Function to update filters and URL search params accordingly
   const updateFilters = (newFilters: SearchFilters) => {
-    console.log('🔧 Updating filters and URL:', { 
-      newFilters,
-      isShowingAll: isShowingAllResourceTypes(newFilters.resourceType)
-    });
-    
     setFilters(newFilters);
-    
-    // Atualizar URL params
-    const newSearchParams = new URLSearchParams(searchParams);
-    
-    // Remover filtros existentes
-    newSearchParams.delete('filtros');
-    
-    // CORRIGIDO: Lógica para URL params baseada no estado dos filtros
-    if (isShowingAllResourceTypes(newFilters.resourceType)) {
-      // Para "Todos", não adicionar parâmetro filtros na URL
-      console.log('📍 Showing all resources - removing filtros param');
-    } else if (newFilters.resourceType.length > 0) {
-      // Para filtros específicos, adicionar na URL
-      newFilters.resourceType.forEach(type => {
-        newSearchParams.append('filtros', type);
-      });
-      console.log('📍 Setting specific filters in URL:', newFilters.resourceType);
-    }
-    
-    setSearchParams(newSearchParams);
   };
 
   return {

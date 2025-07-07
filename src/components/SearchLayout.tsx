@@ -12,14 +12,6 @@ import FilterChips from '@/components/FilterChips';
 import DataRefreshButton from '@/components/DataRefreshButton';
 import Footer from '@/components/Footer';
 import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
-import { isShowingAllResourceTypes } from '@/utils/searchUtils';
-import { 
-  UIState, 
-  calculateUIState, 
-  getUIStateDebugInfo, 
-  validateUIState,
-  isBrowsingMode 
-} from '@/utils/uiStateManager';
 
 interface SearchLayoutProps {
   query: string;
@@ -59,53 +51,29 @@ const SearchLayout = ({
   onRefreshData
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  // activeContentType reflects the state of the resourceType filter driven by tabs
   const [activeContentType, setActiveContentType] = useState('all');
 
-  // CORRIGIDO: Sincronizar activeContentType com filters.resourceType
+  // Sync activeContentType with filters.resourceType
   useEffect(() => {
-    console.log('🔄 Syncing activeContentType with filters:', { 
-      resourceType: filters.resourceType,
-      currentActiveContentType: activeContentType,
-      isShowingAll: isShowingAllResourceTypes(filters.resourceType)
-    });
-    
-    if (isShowingAllResourceTypes(filters.resourceType)) {
-      setActiveContentType('all');
-      console.log('📍 Set activeContentType to "all" (showing all resources)');
-    } else if (filters.resourceType.length === 1) {
-      const resourceType = filters.resourceType[0];
-      if (['titulo', 'video', 'podcast'].includes(resourceType)) {
-        setActiveContentType(resourceType);
-        console.log('📍 Set activeContentType to:', resourceType);
+    if (filters.resourceType.length === 1) {
+      if (['titulo', 'video', 'podcast'].includes(filters.resourceType[0])) {
+        setActiveContentType(filters.resourceType[0]);
+      } else if (filters.resourceType[0] === 'all') {
+        setActiveContentType('all');
       }
-    } else if (filters.resourceType.length > 1) {
-      // Multiple specific resourceTypes selected
+    } else if (filters.resourceType.length === 0) {
+      setActiveContentType('all');
+    } else {
+      // Multiple resourceTypes selected, or an unknown one. Default to 'all'.
       setActiveContentType('all'); 
-      console.log('📍 Set activeContentType to "all" (multiple specific filters)');
     }
   }, [filters.resourceType]);
   
   const hasResults = currentResults.length > 0;
   
-  // REFATORADO: Usar lógica centralizada de estados (SSOT + SRP)
-  const uiState = calculateUIState(query, filters, hasResults, loading);
-  const debugInfo = getUIStateDebugInfo(query, filters, hasResults, loading);
-  const validationIssues = validateUIState(debugInfo);
-  
-  // Debug detalhado (modo desenvolvimento)
-  console.log('🎯 UI State Manager Debug:', debugInfo);
-  
-  // Fail Fast: alertar sobre problemas críticos
-  if (validationIssues.length > 0) {
-    console.error('❌ Problemas críticos detectados:', validationIssues);
-    validationIssues.forEach(issue => console.error('⚠️', issue));
-  }
-  
-  // Estados derivados usando composição (DRY)
-  const showWelcomeState = uiState === UIState.WELCOME;
-  const showEmptyState = uiState === UIState.EMPTY;
-  const showResults = uiState === UIState.RESULTS;
-  const isLoading = uiState === UIState.LOADING;
+  const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
+  const showWelcomeState = !loading && !query && !hasActiveFilters && !hasResults;
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
     const newFilters = { ...filters };
@@ -113,25 +81,17 @@ const SearchLayout = ({
     switch (filterType) {
       case 'resourceType':
         if (value === 'all') {
-          // Se removendo "all", volta para estado sem filtros
+          // Se removendo "all", volta para estado inicial sem filtros
           newFilters.resourceType = [];
-        } else if (value) {
+        } else {
           newFilters.resourceType = newFilters.resourceType.filter(type => type !== value);
-          // Se não há mais filtros específicos, volta para "all"
-          if (newFilters.resourceType.length === 0) {
-            newFilters.resourceType = ['all'];
-          }
         }
         break;
       case 'subject':
         newFilters.subject = newFilters.subject.filter(subject => subject !== value);
         break;
       case 'author':
-        if (value) {
-          newFilters.author = newFilters.author.filter(author => author !== value);
-        } else {
-          newFilters.author = [];
-        }
+        newFilters.author = '';
         break;
       case 'year':
         newFilters.year = '';
@@ -151,20 +111,18 @@ const SearchLayout = ({
   };
 
   const handleContentTypeChange = (type: string) => {
-    console.log('🎯 Content type changed to:', type);
+    // This function is called when a tab is clicked (Todos, Livros, Vídeos, Podcasts)
     setActiveContentType(type); 
     const newFilters = { ...filters };
     
     if (type === 'all') {
-      // Para "Todos", usar estado especial
+      // Usar 'all' como valor especial para indicar "Todos"
       newFilters.resourceType = ['all'];
-      // Aplicar ordenação alfabética automaticamente
+      // Automatically apply alphabetical sorting when "Todos" is selected
       onSortChange('title');
-      console.log('📍 Setting resourceType to ["all"] and sort to "title"');
-    } else if (['titulo', 'video', 'podcast'].includes(type)) {
-      // Para tipos específicos
+    } else {
+      // Ensure only valid types are pushed. This assumes `type` is one of 'titulo', 'video', 'podcast'.
       newFilters.resourceType = [type]; 
-      console.log('📍 Setting resourceType to:', [type]);
     }
     
     onFiltersChange(newFilters);
@@ -189,7 +147,7 @@ const SearchLayout = ({
             resultCount={totalResults}
             sortBy={sortBy}
             view={view}
-            activeContentType={activeContentType}
+            activeContentType={activeContentType} // Ensure this reflects current filter state
             onSortChange={onSortChange}
             onViewChange={setView}
             onContentTypeChange={handleContentTypeChange}

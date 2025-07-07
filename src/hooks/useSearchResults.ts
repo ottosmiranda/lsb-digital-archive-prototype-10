@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
 import { useApiSearch } from '@/hooks/useApiSearch';
-import { shouldPerformSearch, checkHasActiveFilters } from '@/utils/searchUtils';
+import { checkHasActiveFilters } from '@/utils/searchUtils';
 
 interface SearchResponse {
   results: SearchResult[];
@@ -54,7 +54,7 @@ export const useSearchResults = () => {
       appliedFilters: {
         resourceType: [],
         subject: [],
-        author: [],
+        author: '',
         year: '',
         duration: '',
         language: [],
@@ -66,28 +66,15 @@ export const useSearchResults = () => {
 
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // CORRIGIDO: Usar nova função para verificar se há filtros ativos
+  // Verificar se há filtros ativos - incluindo estado "Todos"
   const hasActiveFilters = useMemo((): boolean => {
-    const result = checkHasActiveFilters(filters);
-    console.log('🔍 Checking active filters for UI:', { filters, hasActiveFilters: result });
-    return result;
+    return checkHasActiveFilters(filters);
   }, [filters]);
 
-  // CORRIGIDA: Função para executar busca
+  // Função para executar busca
   const performSearch = async () => {
-    const shouldSearch = shouldPerformSearch(query, filters);
-    
-    console.log('🚀 Performing search analysis:', { 
-      query: query.trim(), 
-      filters, 
-      sortBy, 
-      currentPage,
-      hasActiveFilters,
-      shouldSearch
-    });
-    
-    if (!shouldSearch) {
-      console.log('❌ No search needed - clearing results');
+    // Buscar se houver query, filtros ativos (incluindo 'all' para "Todos")
+    if (!query.trim() && !hasActiveFilters) {
       setSearchResponse({
         results: [],
         pagination: {
@@ -106,12 +93,12 @@ export const useSearchResults = () => {
       return;
     }
 
-    console.log('🚀 Executing search with params:', { 
+    console.log('🚀 Performing search:', { 
       query, 
       filters, 
       sortBy, 
       currentPage,
-      shouldSearch
+      hasActiveFilters
     });
 
     try {
@@ -133,7 +120,7 @@ export const useSearchResults = () => {
           currentPage: response.pagination.currentPage,
           totalPages: response.pagination.totalPages,
           resultsInPage: response.results.length,
-          appliedFilters: response.searchInfo.appliedFilters
+          isRealPagination: response.pagination.totalResults > 0
         });
         
         // Prefetch da próxima página se houver
@@ -166,7 +153,6 @@ export const useSearchResults = () => {
 
   // Executar busca quando parâmetros mudarem
   useEffect(() => {
-    console.log('🔄 Search params changed, triggering search:', { query, filters, sortBy, currentPage });
     performSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, filters, sortBy, currentPage]);

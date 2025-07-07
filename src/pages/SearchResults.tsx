@@ -24,9 +24,9 @@ const SearchResults = () => {
 
   const handleClearFilters = () => {
     handleFilterChange({
-      resourceType: ['all'], // CORRIGIDO: Voltar para "Todos" ao limpar filtros
+      resourceType: [],
       subject: [],
-      author: [],
+      author: [], // CORRIGIDO: Array vazio para múltiplos autores
       year: '',
       duration: '',
       language: [],

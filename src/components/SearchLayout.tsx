@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -11,6 +10,7 @@ import SearchPagination from '@/components/SearchPagination';
 import FilterChips from '@/components/FilterChips';
 import DataRefreshButton from '@/components/DataRefreshButton';
 import SearchDebugInfo from '@/components/SearchDebugInfo';
+import PerformanceIndicator from '@/components/PerformanceIndicator';
 import Footer from '@/components/Footer';
 import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
 
@@ -53,6 +53,12 @@ const SearchLayout = ({
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [activeContentType, setActiveContentType] = useState('all');
+
+  // Determine if optimized search is being used
+  const isOptimizedSearch = filters.resourceType.length > 0 && !filters.resourceType.includes('all') || 
+                           filters.subject.length > 0 || filters.author.length > 0 || filters.year || 
+                           filters.duration || filters.language.length > 0 || filters.documentType.length > 0 || 
+                           filters.program.length > 0 || filters.channel.length > 0;
 
   // Sync activeContentType with filters.resourceType
   useEffect(() => {
@@ -140,11 +146,18 @@ const SearchLayout = ({
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {onRefreshData && (
-          <DataRefreshButton
-            onRefresh={onRefreshData}
-            loading={loading}
-            usingFallback={usingFallback}
-          />
+          <div className="flex items-center justify-between mb-4">
+            <DataRefreshButton
+              onRefresh={onRefreshData}
+              loading={loading}
+              usingFallback={usingFallback}
+            />
+            <PerformanceIndicator
+              isOptimized={isOptimizedSearch}
+              loading={loading}
+              className="ml-4"
+            />
+          </div>
         )}
 
         {/* Debug Info - apenas em desenvolvimento */}

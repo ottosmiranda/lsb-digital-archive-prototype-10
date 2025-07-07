@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
 import { useApiSearch } from '@/hooks/useApiSearch';
+import { useFilteredSearch } from '@/hooks/useFilteredSearch';
 import { checkHasActiveFilters } from '@/utils/searchUtils';
 
 interface SearchResponse {
@@ -35,7 +36,9 @@ export const useSearchResults = () => {
     setQuery
   } = useSearchState();
 
-  const { search, loading, error, clearCache, prefetchNextPage } = useApiSearch({ resultsPerPage });
+  // Use both regular and filtered search hooks
+  const { search: regularSearch, loading: regularLoading, error: regularError, clearCache: clearRegularCache } = useApiSearch({ resultsPerPage });
+  const { search: filteredSearch, loading: filteredLoading, error: filteredError, clearCache: clearFilteredCache, cancelSearch } = useFilteredSearch({ resultsPerPage });
   
   const [searchResponse, setSearchResponse] = useState<SearchResponse>({
     results: [],
@@ -65,35 +68,49 @@ export const useSearchResults = () => {
 
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // Memoizar verificação de filtros ativos
+  // Determine if we should use optimized filtered search
+  const shouldUseOptimizedSearch = useMemo((): boolean => {
+    const hasSpecificFilters = filters.resourceType.length > 0 && !filters.resourceType.includes('all');
+    const hasOtherFilters = filters.subject.length > 0 || filters.author.length > 0 || 
+                           filters.year || filters.duration || filters.language.length > 0 ||
+                           filters.documentType.length > 0 || filters.program.length > 0 || 
+                           filters.channel.length > 0;
+    
+    return hasSpecificFilters || hasOtherFilters;
+  }, [filters]);
+
   const hasActiveFilters = useMemo((): boolean => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
-  // CORREÇÃO CRÍTICA: Verificar se deve executar busca
   const shouldSearch = useMemo((): boolean => {
     const hasQuery = query.trim() !== '';
     const hasResourceTypeFilters = filters.resourceType.length > 0;
     const hasOtherFilters = hasActiveFilters;
     
-    console.log('🔍 Should search evaluation:', { 
-      hasQuery, 
-      hasResourceTypeFilters, 
-      hasOtherFilters,
-      resourceType: filters.resourceType,
-      result: hasQuery || hasResourceTypeFilters || hasOtherFilters
-    });
-    
     return hasQuery || hasResourceTypeFilters || hasOtherFilters;
   }, [query, filters.resourceType, hasActiveFilters]);
 
-  // Função memoizada para executar busca
+  // Get current loading state based on which service is being used
+  const loading = shouldUseOptimizedSearch ? filteredLoading : regularLoading;
+  const error = shouldUseOptimizedSearch ? filteredError : regularError;
+
   const performSearch = useCallback(async () => {
     const requestId = `search_${Date.now()}`;
-    console.group(`🔍 ${requestId} - Performing search`);
-    console.log('📋 Search params:', { query, filters, sortBy, currentPage, shouldSearch });
+    console.group(`🔍 ${requestId} - Search Decision`);
+    console.log('📋 Search params:', { 
+      query, 
+      filters, 
+      sortBy, 
+      currentPage, 
+      shouldSearch,
+      shouldUseOptimizedSearch,
+      hasActiveFilters
+    });
 
-    // CORREÇÃO: Limpar resultados se não deve buscar
+    // Cancel any ongoing filtered search
+    cancelSearch();
+
     if (!shouldSearch) {
       console.log('❌ Should not search - clearing results');
       setSearchResponse({
@@ -116,10 +133,16 @@ export const useSearchResults = () => {
     }
 
     try {
-      console.log('🚀 Executing search via API...');
-      const response = await search(query, filters, sortBy, currentPage);
+      let response;
+
+      if (shouldUseOptimizedSearch) {
+        console.log('🚀 Using OPTIMIZED filtered search for better performance');
+        response = await filteredSearch(query, filters, sortBy, currentPage);
+      } else {
+        console.log('📡 Using regular search');
+        response = await regularSearch(query, filters, sortBy, currentPage);
+      }
       
-      // VALIDAÇÃO CRÍTICA: Verificar resposta
       if (!response.results || !Array.isArray(response.results)) {
         console.error('❌ Invalid search response:', response);
         throw new Error('Invalid search response structure');
@@ -140,16 +163,18 @@ export const useSearchResults = () => {
           results: response.results.length,
           totalResults: response.pagination.totalResults,
           currentPage: response.pagination.currentPage,
-          totalPages: response.pagination.totalPages
+          totalPages: response.pagination.totalPages,
+          optimized: shouldUseOptimizedSearch ? '🚀 YES' : '📡 NO'
         });
-        
-        // Prefetch se houver próxima página
-        if (response.pagination.hasNextPage) {
-          prefetchNextPage(query, filters, sortBy, currentPage);
-        }
       }
 
     } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log('🚫 Search was cancelled');
+        console.groupEnd();
+        return;
+      }
+      
       console.error('❌ Search failed:', err);
       setUsingFallback(true);
       
@@ -171,14 +196,12 @@ export const useSearchResults = () => {
     }
     
     console.groupEnd();
-  }, [query, filters, sortBy, currentPage, shouldSearch, search, prefetchNextPage]);
+  }, [query, filters, sortBy, currentPage, shouldSearch, shouldUseOptimizedSearch, regularSearch, filteredSearch, cancelSearch]);
 
-  // CORREÇÃO: useEffect com dependências estabilizadas
   useEffect(() => {
     performSearch();
   }, [performSearch]);
 
-  // Handlers memoizados
   const handleFilterChange = useCallback((newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
     console.log('🔄 Filter change:', { newFilters, options });
     setFilters(newFilters);
@@ -201,10 +224,11 @@ export const useSearchResults = () => {
   }, [setCurrentPage]);
 
   const forceRefresh = useCallback(async () => {
-    console.log('🔄 Force refresh requested - clearing cache');
-    clearCache();
+    console.log('🔄 Force refresh requested - clearing all caches');
+    clearRegularCache();
+    clearFilteredCache();
     await performSearch();
-  }, [clearCache, performSearch]);
+  }, [clearRegularCache, clearFilteredCache, performSearch]);
 
   return {
     query,

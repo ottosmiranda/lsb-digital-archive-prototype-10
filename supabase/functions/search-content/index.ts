@@ -24,6 +24,8 @@ interface SearchRequest {
   sortBy: string;
   page: number;
   resultsPerPage: number;
+  optimized?: boolean; // New flag for optimized search
+  prefetch?: boolean; // New flag for prefetch requests
 }
 
 interface SearchResult {
@@ -80,6 +82,29 @@ const TIMEOUTS = {
   chunkParallel: 15000, // Aumentado para números exatos
   totalOperation: 60000, // 60s para carregar números exatos
   healthCheck: 3000
+};
+
+// OPTIMIZED CONFIGURATION FOR FILTERS (NEW)
+const OPTIMIZED_CONFIG = {
+  // Faster timeouts for filter operations
+  singleRequest: 3000, // 3s for individual requests
+  chunkParallel: 5000, // 5s for chunk processing
+  totalOperation: 8000, // 8s max for filter operations
+  prefetchTimeout: 2000, // 2s for prefetch
+  
+  // Smaller chunks for faster response
+  chunkSizes: {
+    podcast: 25, // Reduced from 50
+    aula: 25,    // Reduced from 50
+    livro: 15    // Reduced from 25
+  },
+  
+  // Reduced concurrency for stability
+  maxConcurrency: {
+    podcast: 3, // Reduced from 5
+    aula: 3,    // Reduced from 4
+    livro: 2    // Same
+  }
 };
 
 // Cache helpers com validação aprimorada para alta escalabilidade
@@ -809,6 +834,230 @@ const sortResults = (results: SearchResult[], sortBy: string, query?: string): S
   }
 };
 
+// NEW: Optimized filtered search for better performance
+const performOptimizedFilteredSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage, prefetch } = searchParams;
+  const requestId = `optimized_filter_${Date.now()}`;
+  
+  console.group(`🚀 ${requestId} - OPTIMIZED Filter Search`);
+  console.log('📋 Parameters:', { query: query || '(empty)', filters, sortBy, page, resultsPerPage, prefetch });
+
+  try {
+    let allData: SearchResult[] = [];
+    const startTime = Date.now();
+
+    // Check if we need to load specific content types
+    if (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) {
+      console.log('🎯 Loading specific content types with optimization');
+      
+      const activeTypes = filters.resourceType.filter(type => type !== 'all');
+      const typePromises = activeTypes.map(async type => {
+        const apiType = type === 'titulo' ? 'livro' : type === 'video' ? 'aula' : 'podcast';
+        
+        // Use optimized limits for faster loading
+        const optimizedLimit = getOptimizedLimit(apiType, page, resultsPerPage);
+        return fetchContentTypeOptimized(apiType, optimizedLimit, prefetch);
+      });
+      
+      const typeResults = await Promise.allSettled(typePromises);
+      typeResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          allData.push(...result.value);
+          console.log(`✅ Optimized ${activeTypes[index]}: ${result.value.length} items`);
+        } else {
+          console.error(`❌ Optimized ${activeTypes[index]} failed:`, result.reason);
+        }
+      });
+    } else {
+      // For global search, use cached fallback for speed
+      console.log('🌐 Global search - using cached fallback');
+      allData = await fetchAllFromSupabaseFallback();
+    }
+
+    // Apply filters efficiently
+    let filteredData = allData;
+    
+    if (query && query.trim()) {
+      const queryLower = query.toLowerCase();
+      filteredData = filteredData.filter(item => {
+        const searchText = `${item.title} ${item.author} ${item.description}`.toLowerCase();
+        return searchText.includes(queryLower);
+      });
+    }
+
+    filteredData = applyFilters(filteredData, filters);
+    filteredData = sortResults(filteredData, sortBy, query);
+
+    // Apply pagination
+    const totalResults = filteredData.length;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    const startIndex = (page - 1) * resultsPerPage;
+    const paginatedResults = filteredData.slice(startIndex, startIndex + resultsPerPage);
+
+    const responseTime = Date.now() - startTime;
+    
+    const response = {
+      success: true,
+      results: paginatedResults,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalResults,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      },
+      performance: {
+        responseTime,
+        optimized: true,
+        prefetch: !!prefetch
+      }
+    };
+
+    console.log(`✅ Optimized filter search completed in ${responseTime}ms:`, {
+      totalFound: totalResults,
+      returned: paginatedResults.length,
+      page: `${page}/${totalPages}`,
+      fastResponse: responseTime < 3000 ? '🚀 FAST' : '⚠️ SLOW'
+    });
+    
+    console.groupEnd();
+    return response;
+
+  } catch (error) {
+    const responseTime = Date.now() - parseInt(requestId.split('_')[2]);
+    console.error(`❌ Optimized filter search failed after ${responseTime}ms:`, error);
+    console.groupEnd();
+    
+    return {
+      success: false,
+      error: error.message,
+      results: [],
+      pagination: {
+        currentPage: page,
+        totalPages: 0,
+        totalResults: 0,
+        hasNextPage: false,
+        hasPreviousPage: false
+      },
+      searchInfo: { query, appliedFilters: filters, sortBy }
+    };
+  }
+};
+
+// NEW: Get optimized limit based on page and results needed
+const getOptimizedLimit = (tipo: string, page: number, resultsPerPage: number): number => {
+  // Calculate minimum items needed for this page
+  const minNeeded = page * resultsPerPage;
+  
+  // Add buffer for filtering
+  const buffer = Math.min(minNeeded * 0.5, 100);
+  const optimizedLimit = minNeeded + buffer;
+  
+  // Cap at reasonable maximum
+  const maxLimits = { podcast: 500, aula: 200, livro: 50 };
+  return Math.min(optimizedLimit, maxLimits[tipo as keyof typeof maxLimits] || 100);
+};
+
+// NEW: Optimized content fetching with smaller chunks
+const fetchContentTypeOptimized = async (tipo: string, targetLimit: number, isPrefetch: boolean = false): Promise<SearchResult[]> => {
+  const config = OPTIMIZED_CONFIG;
+  const allItems: SearchResult[] = [];
+  const chunkSize = config.chunkSizes[tipo as keyof typeof config.chunkSizes] || 25;
+  const maxConcurrency = config.maxConcurrency[tipo as keyof typeof config.maxConcurrency] || 2;
+  const totalChunks = Math.ceil(targetLimit / chunkSize);
+  
+  console.log(`🚀 Optimized ${tipo} fetch: ${totalChunks} chunks of ${chunkSize} items`);
+
+  // Process in smaller concurrent batches for better performance
+  for (let batchStart = 0; batchStart < totalChunks; batchStart += maxConcurrency) {
+    const batchEnd = Math.min(batchStart + maxConcurrency, totalChunks);
+    const chunkPromises: Promise<SearchResult[]>[] = [];
+    
+    for (let chunkIndex = batchStart; chunkIndex < batchEnd; chunkIndex++) {
+      const page = chunkIndex + 1;
+      const timeout = isPrefetch ? config.prefetchTimeout : config.singleRequest;
+      const chunkPromise = fetchSingleChunkOptimized(tipo, page, chunkSize, timeout);
+      chunkPromises.push(chunkPromise);
+    }
+    
+    try {
+      const batchTimeout = isPrefetch ? config.prefetchTimeout : config.chunkParallel;
+      const batchTimeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Batch timeout for ${tipo}`)), batchTimeout);
+      });
+      
+      const batchResults = await Promise.race([
+        Promise.allSettled(chunkPromises),
+        batchTimeoutPromise
+      ]);
+      
+      batchResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          allItems.push(...result.value);
+        } else {
+          console.error(`❌ Optimized chunk ${batchStart + index + 1} failed:`, result.reason?.message);
+        }
+      });
+      
+      // Check if we have enough items
+      if (allItems.length >= targetLimit) {
+        break;
+      }
+      
+      // Short pause between batches
+      if (batchEnd < totalChunks && !isPrefetch) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+    } catch (error) {
+      console.error(`❌ Optimized batch error:`, error);
+    }
+  }
+
+  return allItems.slice(0, targetLimit);
+};
+
+// NEW: Optimized single chunk fetching
+const fetchSingleChunkOptimized = async (tipo: string, page: number, limit: number, timeout: number): Promise<SearchResult[]> => {
+  const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
+  
+  try {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`Optimized chunk timeout ${tipo} page ${page}`)), timeout);
+    });
+    
+    const fetchPromise = fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'LSB-OptimizedFilter-Search/1.0'
+      }
+    });
+
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} for optimized ${tipo} page ${page}`);
+    }
+
+    const data = await response.json();
+    const items = data.conteudo || [];
+    
+    return items.map((item: any) => transformToSearchResult(item, tipo));
+    
+  } catch (error) {
+    console.error(`❌ Optimized chunk error ${tipo} page ${page}:`, error);
+    return [];
+  }
+};
+
+// UPDATED: Main handler with optimization support
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -816,17 +1065,29 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📨 Requisição de busca com números exatos recebida:', requestBody);
+    console.log('📨 Search request received:', { 
+      optimized: requestBody.optimized, 
+      prefetch: requestBody.prefetch 
+    });
     
+    // Use optimized search for filter operations
+    if (requestBody.optimized) {
+      const result = await performOptimizedFilteredSearch(requestBody);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+    
+    // Use regular search for other cases
     const result = await performSearch(requestBody);
-    
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
     
   } catch (error) {
-    console.error('❌ Erro no handler com números exatos:', error);
+    console.error('❌ Search handler error:', error);
     
     return new Response(JSON.stringify({
       success: false,

@@ -1,3 +1,4 @@
+
 import React, { useMemo, useCallback } from 'react';
 import { X, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,9 @@ import AuthorInput from '@/components/AuthorInput';
 import AuthorList from '@/components/AuthorList';
 import { useContentAwareFilters } from '@/hooks/useContentAwareFilters';
 
-const years = Array.from({ length: 10 }, (_, i) => (new Date().getFullYear() - i).toString());
+// MELHORADO: Anos baseados em dados reais, não apenas últimos 10 anos
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 30 }, (_, i) => (currentYear - i).toString()).filter(year => parseInt(year) >= 1990);
 
 interface DynamicFilterContentProps {
   filters: SearchFilters;
@@ -56,6 +59,17 @@ const DynamicFilterContent = React.memo(({
   const selectedAuthors = useMemo(() => {
     return filters.author ? [filters.author] : [];
   }, [filters.author]);
+
+  // MELHORADO: Verificar se há anos válidos nos resultados atuais
+  const availableYears = useMemo(() => {
+    const yearSet = new Set<number>();
+    currentResults.forEach(result => {
+      if (result.year && result.year > 1900 && result.year <= currentYear) {
+        yearSet.add(result.year);
+      }
+    });
+    return Array.from(yearSet).sort((a, b) => b - a);
+  }, [currentResults]);
 
   const handleLanguageChange = useCallback((languageId: string, checked: boolean) => {
     const newLanguages = checked
@@ -219,6 +233,7 @@ const DynamicFilterContent = React.memo(({
         </Collapsible>
       )}
 
+      {/* MELHORADO: Filtro de ano com melhor validação */}
       {filterRelevance.year && (
         <Collapsible open={openSections.year} onOpenChange={() => onToggleSection('year')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -235,6 +250,11 @@ const DynamicFilterContent = React.memo(({
                   Campo não disponível
                 </Badge>
               )}
+              {availableYears.length > 0 && (
+                <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                  {availableYears.length} anos disponíveis
+                </Badge>
+              )}
             </div>
             {openSections.year ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </CollapsibleTrigger>
@@ -244,10 +264,32 @@ const DynamicFilterContent = React.memo(({
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar ano" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-48">
                   <SelectItem value="all">Todos os anos</SelectItem>
+                  {/* Mostrar primeiro os anos disponíveis nos resultados atuais */}
+                  {availableYears.length > 0 && (
+                    <>
+                      <SelectItem disabled value="separator-available" className="text-xs text-gray-500 font-medium">
+                        Disponíveis nesta busca:
+                      </SelectItem>
+                      {availableYears.map((year) => (
+                        <SelectItem key={`available-${year}`} value={year.toString()}>
+                          {year} ✓
+                        </SelectItem>
+                      ))}
+                      <SelectItem disabled value="separator-all" className="text-xs text-gray-500 font-medium">
+                        Todos os anos:
+                      </SelectItem>
+                    </>
+                  )}
                   {years.map((year) => (
-                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                    <SelectItem 
+                      key={year} 
+                      value={year}
+                      className={availableYears.includes(parseInt(year)) ? "font-medium" : ""}
+                    >
+                      {year}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

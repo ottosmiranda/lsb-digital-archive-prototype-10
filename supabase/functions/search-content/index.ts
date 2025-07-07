@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -22,7 +23,7 @@ interface SearchParams {
   sortBy?: string;
   page?: number;
   limit?: number;
-  getAllAuthors?: boolean; // Nova flag para buscar todos os autores
+  getAllAuthors?: boolean;
 }
 
 // Cache para totais da API externa (30 minutos)
@@ -33,9 +34,9 @@ const TOTALS_CACHE_TTL = 30 * 60 * 1000; // 30 minutos
 const contentCache = new Map<string, { items: any[]; timestamp: number }>();
 const CONTENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
-// Cache para autores (30 minutos)
+// Cache para autores (10 minutos - reduzido para atualizações mais frequentes)
 const authorsCache = new Map<string, { authors: any[]; timestamp: number }>();
-const AUTHORS_CACHE_TTL = 30 * 60 * 1000; // 30 minutos
+const AUTHORS_CACHE_TTL = 10 * 60 * 1000; // 10 minutos
 
 // Função para converter duração em minutos totais
 const parseDurationToMinutes = (duration: string): number => {
@@ -282,7 +283,10 @@ serve(async (req) => {
             return titleA.localeCompare(titleB);
             
           case 'recent':
-            return b.year - a.year;
+            // Melhorado: tratar anos nulos corretamente
+            const yearA = a.year && a.year > 1900 ? a.year : 0;
+            const yearB = b.year && b.year > 1900 ? b.year : 0;
+            return yearB - yearA;
             
           case 'accessed':
             const typeOrder = { 'podcast': 3, 'video': 2, 'titulo': 1 };
@@ -461,14 +465,21 @@ serve(async (req) => {
         );
       }
 
+      // CORRIGIDO: Filtro de ano melhorado
       if (filters?.year?.trim()) {
         const yearFilter = parseInt(filters.year);
+        console.log(`🔍 Applying year filter: ${yearFilter}`);
         if (!isNaN(yearFilter)) {
-          filteredItems = filteredItems.filter(item => item.year === yearFilter);
+          filteredItems = filteredItems.filter(item => {
+            const itemYear = item.year;
+            const hasValidYear = itemYear && itemYear > 1900 && itemYear <= new Date().getFullYear();
+            const matches = hasValidYear && itemYear === yearFilter;
+            console.log(`🎯 Item "${item.title}" year ${itemYear} (valid: ${hasValidYear}) matches filter ${yearFilter}: ${matches}`);
+            return matches;
+          });
         }
       }
 
-      // CORRIGIDO: Filtro de duração agora usa a nova lógica
       if (filters?.duration?.trim()) {
         console.log(`🔍 Applying duration filter: ${filters.duration}`);
         filteredItems = filteredItems.filter(item => {
@@ -516,14 +527,19 @@ serve(async (req) => {
           );
         }
 
+        // CORRIGIDO: Aplicar filtro de ano melhorado nos itens para filtragem
         if (filters?.year?.trim()) {
           const yearFilter = parseInt(filters.year);
+          console.log(`🔍 Filtering all items by year: ${yearFilter}`);
           if (!isNaN(yearFilter)) {
-            allItemsForFiltering = allItemsForFiltering.filter(item => item.year === yearFilter);
+            allItemsForFiltering = allItemsForFiltering.filter(item => {
+              const itemYear = item.year;
+              const hasValidYear = itemYear && itemYear > 1900 && itemYear <= new Date().getFullYear();
+              return hasValidYear && itemYear === yearFilter;
+            });
           }
         }
 
-        // CORRIGIDO: Aplicar filtro de duração nos itens para filtragem
         if (filters?.duration?.trim()) {
           console.log(`🔍 Filtering all items by duration: ${filters.duration}`);
           allItemsForFiltering = allItemsForFiltering.filter(item => 
@@ -616,7 +632,7 @@ serve(async (req) => {
   }
 });
 
-// Nova função para buscar todos os autores
+// MELHORADO: Função para buscar todos os autores com mais dados
 async function handleGetAllAuthors() {
   console.log('👥 Fetching all authors request');
   
@@ -635,45 +651,64 @@ async function handleGetAllAuthors() {
       });
     }
     
-    console.log('👥 Fetching all authors from API');
+    console.log('👥 Fetching all authors from API with increased sample size');
     
     const contentTypes = ['livro', 'aula', 'podcast'];
     let allAuthors: { name: string; count: number; type: string }[] = [];
     
-    // Buscar uma amostra representativa de cada tipo para extrair autores
+    // MELHORADO: Buscar mais páginas para ter mais autores
     for (const tipo of contentTypes) {
       try {
         console.log(`👥 Fetching authors from ${tipo}`);
         
-        // Buscar até 200 itens de cada tipo para ter uma boa amostra de autores
-        const maxSampleSize = 200;
+        // AUMENTADO: Buscar até 1000 itens de cada tipo para ter uma amostra muito maior
+        const maxSampleSize = 1000;
         let sampleItems: any[] = [];
         
-        const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=${maxSampleSize}`;
+        // Buscar múltiplas páginas para obter mais dados
+        const itemsPerPage = 100;
+        const maxPages = Math.ceil(maxSampleSize / itemsPerPage);
         
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        
-        const response = await fetch(url, {
-          signal: controller.signal,
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'User-Agent': 'LSB-Search/1.0'
+        for (let page = 1; page <= maxPages; page++) {
+          const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${itemsPerPage}`;
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
+          
+          const response = await fetch(url, {
+            signal: controller.signal,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'User-Agent': 'LSB-Search/1.0'
+            }
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            console.warn(`⚠️ Failed to fetch ${tipo} page ${page} for authors: ${response.status}`);
+            break;
           }
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          console.warn(`⚠️ Failed to fetch ${tipo} for authors: ${response.status}`);
-          continue;
+          
+          const rawData = await response.json();
+          const items = rawData.conteudo || [];
+          
+          if (items.length === 0) {
+            console.log(`📄 No more items for ${tipo} at page ${page}`);
+            break;
+          }
+          
+          sampleItems = sampleItems.concat(items);
+          console.log(`👥 Page ${page}: Got ${items.length} items from ${tipo}, total so far: ${sampleItems.length}`);
+          
+          // Se pegou menos itens que o esperado, não há mais páginas
+          if (items.length < itemsPerPage) {
+            break;
+          }
         }
         
-        const rawData = await response.json();
-        sampleItems = rawData.conteudo || [];
-        
-        console.log(`👥 Got ${sampleItems.length} items from ${tipo} for author extraction`);
+        console.log(`👥 Total sample from ${tipo}: ${sampleItems.length} items`);
         
         // Extrair autores únicos deste tipo
         const typeAuthors = new Map<string, number>();
@@ -683,19 +718,26 @@ async function handleGetAllAuthors() {
           
           switch (tipo) {
             case 'livro':
-              authorName = item.autor || 'Autor desconhecido';
+              authorName = item.autor || '';
               break;
             case 'aula':
-              authorName = item.canal || 'Canal desconhecido';
+              authorName = item.canal || '';
               break;
             case 'podcast':
-              authorName = item.publicador || 'Publicador desconhecido';
+              authorName = item.publicador || '';
               break;
           }
           
-          if (authorName && authorName !== 'Autor desconhecido' && 
-              authorName !== 'Canal desconhecido' && authorName !== 'Publicador desconhecido') {
-            typeAuthors.set(authorName, (typeAuthors.get(authorName) || 0) + 1);
+          // MELHORADO: Filtros mais rigorosos para excluir autores inválidos
+          if (authorName && 
+              authorName.trim() !== '' &&
+              authorName !== 'Autor desconhecido' && 
+              authorName !== 'Canal desconhecido' && 
+              authorName !== 'Publicador desconhecido' &&
+              authorName.toLowerCase() !== 'null' &&
+              authorName.toLowerCase() !== 'undefined' &&
+              authorName.length > 1) {
+            typeAuthors.set(authorName.trim(), (typeAuthors.get(authorName.trim()) || 0) + 1);
           }
         });
         
@@ -734,12 +776,11 @@ async function handleGetAllAuthors() {
       }
     });
     
-    // Converter para array e ordenar por contagem
+    // REMOVIDO: Limite de 100 autores - agora retorna todos
     const finalAuthors = Array.from(consolidatedAuthors.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 100); // Limitar a 100 autores mais relevantes
+      .sort((a, b) => b.count - a.count);
     
-    console.log(`👥 Final consolidated authors: ${finalAuthors.length}`);
+    console.log(`👥 Final consolidated authors: ${finalAuthors.length} (was limited to 100 before)`);
     
     // Cachear resultado
     authorsCache.set(cacheKey, { authors: finalAuthors, timestamp: Date.now() });
@@ -772,13 +813,13 @@ function transformToSearchResult(item: any, tipo: string): any {
     originalId: item.id,
     title: item.titulo || item.podcast_titulo || item.title || 'Título não disponível',
     author: getAuthorByType(item, tipo),
-    year: getYearByType(item, tipo),
+    year: getYearByType(item, tipo), // MELHORADO: função atualizada
     description: item.descricao || 'Descrição não disponível',
     subject: getSubjectByType(item, tipo),
     type: tipo === 'livro' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast',
     thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
     language: getLanguageByType(item, tipo),
-    pais: item.pais // Para mapear país -> idioma em vídeos
+    pais: item.pais
   };
 
   if (tipo === 'livro') {
@@ -817,21 +858,36 @@ function getAuthorByType(item: any, tipo: string): string {
   }
 }
 
-function getYearByType(item: any, tipo: string): number {
+// MELHORADO: Função getYearByType para lidar melhor com anos inválidos
+function getYearByType(item: any, tipo: string): number | null {
+  let year: number = 0;
+  
   switch (tipo) {
     case 'livro':
-      return item.ano || new Date().getFullYear();
+      year = item.ano ? parseInt(item.ano) : 0;
+      break;
     case 'podcast':
       if (item.data_lancamento) {
-        const year = parseInt(item.data_lancamento.split('-')[0]);
-        return isNaN(year) ? new Date().getFullYear() : year;
+        const yearFromDate = parseInt(item.data_lancamento.split('-')[0]);
+        year = isNaN(yearFromDate) ? 0 : yearFromDate;
       }
-      return new Date().getFullYear();
+      break;
     case 'aula':
-      return new Date().getFullYear();
+      // Vídeos normalmente não têm ano na API
+      year = 0;
+      break;
     default:
-      return new Date().getFullYear();
+      year = 0;
   }
+  
+  // MELHORADO: Retornar null se o ano não for válido
+  const currentYear = new Date().getFullYear();
+  if (year > 1900 && year <= currentYear) {
+    return year;
+  }
+  
+  // Retornar null em vez de ano atual como fallback
+  return null;
 }
 
 function getSubjectByType(item: any, tipo: string): string {

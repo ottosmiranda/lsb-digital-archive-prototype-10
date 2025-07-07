@@ -51,22 +51,28 @@ const SearchLayout = ({
   onRefreshData
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  // activeContentType reflects the state of the resourceType filter driven by tabs
   const [activeContentType, setActiveContentType] = useState('all');
 
-  // Sync activeContentType with filters.resourceType
+  // CORRIGIDO: Sincronizar activeContentType com filters.resourceType
   useEffect(() => {
+    console.log('🔄 Syncing activeContentType with filters:', { 
+      resourceType: filters.resourceType,
+      currentActiveContentType: activeContentType 
+    });
+    
     if (filters.resourceType.length === 1) {
-      if (['titulo', 'video', 'podcast'].includes(filters.resourceType[0])) {
-        setActiveContentType(filters.resourceType[0]);
-      } else if (filters.resourceType[0] === 'all') {
-        setActiveContentType('all');
+      const resourceType = filters.resourceType[0];
+      if (['titulo', 'video', 'podcast', 'all'].includes(resourceType)) {
+        setActiveContentType(resourceType);
+        console.log('📍 Set activeContentType to:', resourceType);
       }
     } else if (filters.resourceType.length === 0) {
       setActiveContentType('all');
+      console.log('📍 Set activeContentType to "all" (no filters)');
     } else {
-      // Multiple resourceTypes selected, or an unknown one. Default to 'all'.
+      // Multiple resourceTypes selected
       setActiveContentType('all'); 
+      console.log('📍 Set activeContentType to "all" (multiple filters)');
     }
   }, [filters.resourceType]);
   
@@ -91,7 +97,6 @@ const SearchLayout = ({
         newFilters.subject = newFilters.subject.filter(subject => subject !== value);
         break;
       case 'author':
-        // CORRIGIDO: Agora é array, remove autor específico ou limpa todos
         if (value) {
           newFilters.author = newFilters.author.filter(author => author !== value);
         } else {
@@ -116,18 +121,20 @@ const SearchLayout = ({
   };
 
   const handleContentTypeChange = (type: string) => {
-    // This function is called when a tab is clicked (Todos, Livros, Vídeos, Podcasts)
+    console.log('🎯 Content type changed to:', type);
     setActiveContentType(type); 
     const newFilters = { ...filters };
     
     if (type === 'all') {
-      // Usar 'all' como valor especial para indicar "Todos"
+      // CORRIGIDO: Usar 'all' como valor especial para indicar "Todos"
       newFilters.resourceType = ['all'];
       // Automatically apply alphabetical sorting when "Todos" is selected
       onSortChange('title');
+      console.log('📍 Setting resourceType to ["all"] and sort to "title"');
     } else {
-      // Ensure only valid types are pushed. This assumes `type` is one of 'titulo', 'video', 'podcast'.
+      // Ensure only valid types are pushed
       newFilters.resourceType = [type]; 
+      console.log('📍 Setting resourceType to:', [type]);
     }
     
     onFiltersChange(newFilters);
@@ -152,7 +159,7 @@ const SearchLayout = ({
             resultCount={totalResults}
             sortBy={sortBy}
             view={view}
-            activeContentType={activeContentType} // Ensure this reflects current filter state
+            activeContentType={activeContentType}
             onSortChange={onSortChange}
             onViewChange={setView}
             onContentTypeChange={handleContentTypeChange}

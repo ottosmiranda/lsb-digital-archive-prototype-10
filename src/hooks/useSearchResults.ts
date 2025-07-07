@@ -68,7 +68,9 @@ export const useSearchResults = () => {
 
   // Verificar se há filtros ativos - incluindo estado "Todos"
   const hasActiveFilters = useMemo((): boolean => {
-    return checkHasActiveFilters(filters);
+    const result = checkHasActiveFilters(filters);
+    console.log('🔍 Checking active filters:', { filters, hasActiveFilters: result });
+    return result;
   }, [filters]);
 
   // Função para executar busca
@@ -77,7 +79,18 @@ export const useSearchResults = () => {
     // O filtro "Todos" deve sempre executar busca para mostrar todos os resultados
     const shouldSearch = query.trim() || hasActiveFilters;
     
+    console.log('🚀 Performing search analysis:', { 
+      query: query.trim(), 
+      filters, 
+      sortBy, 
+      currentPage,
+      hasActiveFilters,
+      shouldSearch,
+      resourceTypeContainsAll: filters.resourceType.includes('all')
+    });
+    
     if (!shouldSearch) {
+      console.log('❌ No search needed - clearing results');
       setSearchResponse({
         results: [],
         pagination: {
@@ -96,7 +109,7 @@ export const useSearchResults = () => {
       return;
     }
 
-    console.log('🚀 Performing search:', { 
+    console.log('🚀 Executing search with params:', { 
       query, 
       filters, 
       sortBy, 
@@ -124,7 +137,8 @@ export const useSearchResults = () => {
           currentPage: response.pagination.currentPage,
           totalPages: response.pagination.totalPages,
           resultsInPage: response.results.length,
-          isRealPagination: response.pagination.totalResults > 0
+          isRealPagination: response.pagination.totalResults > 0,
+          appliedFilters: response.searchInfo.appliedFilters
         });
         
         // Prefetch da próxima página se houver
@@ -157,6 +171,7 @@ export const useSearchResults = () => {
 
   // Executar busca quando parâmetros mudarem
   useEffect(() => {
+    console.log('🔄 Search params changed, triggering search:', { query, filters, sortBy, currentPage });
     performSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, filters, sortBy, currentPage]);

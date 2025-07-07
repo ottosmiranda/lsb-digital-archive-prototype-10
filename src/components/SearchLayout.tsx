@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -10,6 +9,7 @@ import SearchWelcomeState from '@/components/SearchWelcomeState';
 import SearchPagination from '@/components/SearchPagination';
 import FilterChips from '@/components/FilterChips';
 import DataRefreshButton from '@/components/DataRefreshButton';
+import SearchDebugInfo from '@/components/SearchDebugInfo';
 import Footer from '@/components/Footer';
 import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
 
@@ -51,7 +51,6 @@ const SearchLayout = ({
   onRefreshData
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  // activeContentType reflects the state of the resourceType filter driven by tabs
   const [activeContentType, setActiveContentType] = useState('all');
 
   // Sync activeContentType with filters.resourceType
@@ -65,13 +64,11 @@ const SearchLayout = ({
     } else if (filters.resourceType.length === 0) {
       setActiveContentType('all');
     } else {
-      // Multiple resourceTypes selected, or an unknown one. Default to 'all'.
       setActiveContentType('all'); 
     }
   }, [filters.resourceType]);
   
   const hasResults = currentResults.length > 0;
-  
   const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
   const showWelcomeState = !loading && !query && !hasActiveFilters && !hasResults;
 
@@ -81,7 +78,6 @@ const SearchLayout = ({
     switch (filterType) {
       case 'resourceType':
         if (value === 'all') {
-          // Se removendo "all", volta para estado inicial sem filtros
           newFilters.resourceType = [];
         } else {
           newFilters.resourceType = newFilters.resourceType.filter(type => type !== value);
@@ -91,7 +87,7 @@ const SearchLayout = ({
         newFilters.subject = newFilters.subject.filter(subject => subject !== value);
         break;
       case 'author':
-        newFilters.author = newFilters.author.filter(author => author !== value); // CORRIGIDO: Array filter
+        newFilters.author = newFilters.author.filter(author => author !== value);
         break;
       case 'program':
         newFilters.program = newFilters.program.filter(program => program !== value);
@@ -117,17 +113,16 @@ const SearchLayout = ({
   };
 
   const handleContentTypeChange = (type: string) => {
-    // This function is called when a tab is clicked (Todos, Livros, Vídeos, Podcasts)
+    console.log('🏷️ Content type changed to:', type);
+    
     setActiveContentType(type); 
     const newFilters = { ...filters };
     
     if (type === 'all') {
-      // Usar 'all' como valor especial para indicar "Todos"
       newFilters.resourceType = ['all'];
-      // Automatically apply alphabetical sorting when "Todos" is selected
       onSortChange('title');
+      console.log('📋 "Todos" selected - applying alphabetical sorting');
     } else {
-      // Ensure only valid types are pushed. This assumes `type` is one of 'titulo', 'video', 'podcast'.
       newFilters.resourceType = [type]; 
     }
     
@@ -147,13 +142,22 @@ const SearchLayout = ({
           />
         )}
 
+        {/* Debug Info - apenas em desenvolvimento */}
+        <SearchDebugInfo
+          filters={filters}
+          totalResults={totalResults}
+          loading={loading}
+          hasActiveFilters={hasActiveFilters}
+          usingFallback={usingFallback}
+        />
+
         {!showWelcomeState && (
           <SearchHeaderWithTabs 
             query={query}
             resultCount={totalResults}
             sortBy={sortBy}
             view={view}
-            activeContentType={activeContentType} // Ensure this reflects current filter state
+            activeContentType={activeContentType}
             onSortChange={onSortChange}
             onViewChange={setView}
             onContentTypeChange={handleContentTypeChange}

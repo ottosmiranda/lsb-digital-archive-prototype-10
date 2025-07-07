@@ -143,7 +143,7 @@ export const filterResults = (
       }
     }
 
-    // Resource type filter
+    // Resource type filter - CORRIGIDO: Ignorar 'all' como filtro ativo
     if (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) {
       if (!filters.resourceType.includes(item.type)) {
         return false;
@@ -267,11 +267,12 @@ export const sortResults = (results: SearchResult[], sortBy: string, query?: str
   }
 };
 
+// CORRIGIDO: Função para verificar filtros ativos - "all" não é considerado filtro ativo
 export const checkHasActiveFilters = (filters: SearchFilters): boolean => {
   return (
-    filters.resourceType.length > 0 ||
+    (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) || // Ignora 'all'
     filters.subject.length > 0 ||
-    filters.author.length > 0 || // CORRIGIDO: Array length
+    filters.author.length > 0 ||
     filters.year !== '' ||
     filters.duration !== '' ||
     filters.language.length > 0 ||

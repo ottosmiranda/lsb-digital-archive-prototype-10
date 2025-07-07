@@ -22,6 +22,7 @@ interface SearchParams {
   sortBy?: string;
   page?: number;
   limit?: number;
+  getAllAuthors?: boolean; // Nova flag para buscar todos os autores
 }
 
 // Cache para totais da API externa (30 minutos)
@@ -32,46 +33,97 @@ const TOTALS_CACHE_TTL = 30 * 60 * 1000; // 30 minutos
 const contentCache = new Map<string, { items: any[]; timestamp: number }>();
 const CONTENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
+// Cache para autores (30 minutos)
+const authorsCache = new Map<string, { authors: any[]; timestamp: number }>();
+const AUTHORS_CACHE_TTL = 30 * 60 * 1000; // 30 minutos
+
+// Função para converter duração em minutos totais
+const parseDurationToMinutes = (duration: string): number => {
+  if (!duration) return 0;
+  
+  let totalMinutes = 0;
+  const durationStr = duration.toLowerCase().trim();
+  
+  // Extrair horas
+  const hoursMatch = durationStr.match(/(\d+)h/);
+  if (hoursMatch) {
+    totalMinutes += parseInt(hoursMatch[1]) * 60;
+  }
+  
+  // Extrair minutos
+  const minutesMatch = durationStr.match(/(\d+)m/);
+  if (minutesMatch) {
+    totalMinutes += parseInt(minutesMatch[1]);
+  }
+  
+  // Se só tem número (assumir minutos)
+  if (!hoursMatch && !minutesMatch) {
+    const numberMatch = durationStr.match(/(\d+)/);
+    if (numberMatch) {
+      totalMinutes = parseInt(numberMatch[1]);
+    }
+  }
+  
+  return totalMinutes;
+};
+
+// Função para aplicar filtro de duração
+const matchesDurationFilter = (itemDuration: string, filterDuration: string): boolean => {
+  if (!itemDuration || !filterDuration) return true;
+  
+  const minutes = parseDurationToMinutes(itemDuration);
+  
+  switch (filterDuration.toLowerCase()) {
+    case 'short':
+      return minutes > 0 && minutes <= 10;
+    case 'medium':
+      return minutes > 10 && minutes <= 30;
+    case 'long':
+      return minutes > 30;
+    default:
+      return true;
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { query, filters, sortBy, page = 1, limit = 9 }: SearchParams = await req.json();
+    const { query, filters, sortBy, page = 1, limit = 9, getAllAuthors }: SearchParams = await req.json();
     
-    console.log('🔍 Search request:', { query, filters, sortBy, page, limit });
+    console.log('🔍 Search request:', { query, filters, sortBy, page, limit, getAllAuthors });
 
-    // Determinar quais tipos de conteúdo buscar - FIXED: Handle 'all' correctly
+    // Se é uma requisição para buscar todos os autores
+    if (getAllAuthors) {
+      return await handleGetAllAuthors();
+    }
+
     let contentTypes: string[];
     let isMultiTypeSearch = false;
     
     if (filters?.resourceType?.length) {
-      // Se contém 'all', buscar todos os tipos
       if (filters.resourceType.includes('all')) {
         contentTypes = ['livro', 'aula', 'podcast'];
         isMultiTypeSearch = true;
       } else {
-        // Mapear tipos específicos
         contentTypes = filters.resourceType.map(type => 
           type === 'titulo' ? 'livro' : type === 'video' ? 'aula' : type
         );
         isMultiTypeSearch = contentTypes.length > 1;
       }
     } else {
-      // Padrão: buscar todos os tipos
       contentTypes = ['livro', 'aula', 'podcast'];
       isMultiTypeSearch = true;
     }
 
     console.log('📋 Content types to search:', contentTypes, '| Multi-type:', isMultiTypeSearch);
 
-    // Função para obter total real da API externa
     const getRealTotal = async (tipo: string): Promise<number> => {
       const cacheKey = `total_${tipo}`;
       const cached = totalsCache.get(cacheKey);
       
-      // Verificar cache
       if (cached && (Date.now() - cached.timestamp) < TOTALS_CACHE_TTL) {
         console.log(`📊 Cache HIT for ${tipo} total: ${cached.total}`);
         return cached.total;
@@ -102,7 +154,6 @@ serve(async (req) => {
         const rawData = await response.json();
         const total = rawData.total || 0;
         
-        // Cachear o total
         totalsCache.set(cacheKey, { total, timestamp: Date.now() });
         
         console.log(`✅ Real total for ${tipo}: ${total}`);
@@ -114,11 +165,9 @@ serve(async (req) => {
       }
     };
 
-    // Nova função para buscar e ordenar globalmente
     const fetchAllContentForGlobalSorting = async (): Promise<{ items: any[], totalResults: number }> => {
       console.log('🌍 Starting GLOBAL sorting with real pagination');
       
-      // Primeiro, obter totais de cada tipo
       const totals = await Promise.all(
         contentTypes.map(async (tipo) => ({
           tipo,
@@ -133,13 +182,10 @@ serve(async (req) => {
         return { items: [], totalResults: 0 };
       }
       
-      // Para ordenação global, precisamos buscar mais dados
-      // Determinar quantos itens buscar de cada tipo baseado na página solicitada
-      const maxItemsToFetch = Math.max(500, page * limit * 2); // Buscar pelo menos o suficiente para a página atual
+      const maxItemsToFetch = Math.max(500, page * limit * 2);
       
       console.log(`🎯 Will fetch up to ${maxItemsToFetch} items from each type for global sorting`);
       
-      // Buscar conteúdo de todos os tipos
       let allItems: any[] = [];
       
       for (const { tipo, total } of totals) {
@@ -148,7 +194,6 @@ serve(async (req) => {
         const cacheKey = `content_${tipo}_${maxItemsToFetch}`;
         let typeItems: any[] = [];
         
-        // Verificar cache de conteúdo
         const cached = contentCache.get(cacheKey);
         if (cached && (Date.now() - cached.timestamp) < CONTENT_CACHE_TTL) {
           console.log(`📦 Content cache HIT for ${tipo}: ${cached.items.length} items`);
@@ -157,7 +202,6 @@ serve(async (req) => {
           console.log(`🌐 Fetching content for ${tipo}`);
           typeItems = await fetchContentFromType(tipo, Math.min(maxItemsToFetch, total));
           
-          // Cachear o conteúdo
           contentCache.set(cacheKey, { items: typeItems, timestamp: Date.now() });
         }
         
@@ -167,7 +211,6 @@ serve(async (req) => {
       
       console.log(`📋 Total items fetched: ${allItems.length}`);
       
-      // Aplicar ordenação GLOBAL
       allItems = applySorting(allItems, sortBy || 'title');
       
       console.log(`🎯 Global sorting applied: ${sortBy || 'title'}`);
@@ -175,7 +218,6 @@ serve(async (req) => {
       return { items: allItems, totalResults };
     };
 
-    // Função para buscar conteúdo de um tipo específico
     const fetchContentFromType = async (tipo: string, maxItems: number): Promise<any[]> => {
       console.log(`🔍 Fetching ${maxItems} items from ${tipo}`);
       
@@ -212,13 +254,11 @@ serve(async (req) => {
           
           console.log(`📄 ${tipo} page ${apiPage}: ${items.length} items, total so far: ${allItems.length}`);
           
-          // Se não há mais itens ou atingimos o limite, parar
           if (items.length < itemsPerPage || allItems.length >= maxItems) {
             break;
           }
         }
         
-        // Transformar para SearchResult
         const transformedItems = allItems.slice(0, maxItems).map((item: any) => transformToSearchResult(item, tipo));
         
         console.log(`✅ ${tipo}: ${transformedItems.length} items transformed`);
@@ -230,7 +270,6 @@ serve(async (req) => {
       }
     };
 
-    // Função para aplicar ordenação
     const applySorting = (items: any[], sortType: string): any[] => {
       console.log(`🔄 Applying sorting: ${sortType}`);
       
@@ -250,7 +289,6 @@ serve(async (req) => {
             const orderA = typeOrder[a.type] || 0;
             const orderB = typeOrder[b.type] || 0;
             if (orderA !== orderB) return orderB - orderA;
-            // Se mesmo tipo, ordenar por título
             return (a.title || '').toLowerCase().localeCompare((b.title || '').toLowerCase());
             
           default:
@@ -259,10 +297,8 @@ serve(async (req) => {
       });
     };
 
-    // Função para buscar dados paginados de um tipo específico (busca single-type)
     const fetchContentType = async (tipo: string, requestedPage: number, requestedLimit: number) => {
       try {
-        // Primeiro, obter o total real
         const realTotal = await getRealTotal(tipo);
         
         if (realTotal === 0) {
@@ -270,11 +306,9 @@ serve(async (req) => {
           return { items: [], total: 0 };
         }
 
-        // Calcular quais itens buscar baseado na página solicitada
         const startItem = (requestedPage - 1) * requestedLimit;
         const endItem = startItem + requestedLimit;
         
-        // Verificar se a página solicitada existe
         if (startItem >= realTotal) {
           console.log(`📄 Page ${requestedPage} is beyond available content for ${tipo} (total: ${realTotal})`);
           return { items: [], total: realTotal };
@@ -283,14 +317,12 @@ serve(async (req) => {
         let allItems: any[] = [];
         
         if (tipo === 'podcast') {
-          // Para podcasts, implementar paginação real da API externa
-          const apiPageSize = 100; // Buscar em chunks de 100
+          const apiPageSize = 100;
           const startApiPage = Math.floor(startItem / apiPageSize) + 1;
           const endApiPage = Math.floor((endItem - 1) / apiPageSize) + 1;
           
           console.log(`📄 ${tipo} pagination: requesting items ${startItem}-${endItem}, API pages ${startApiPage}-${endApiPage}`);
           
-          // Buscar as páginas necessárias da API externa
           for (let apiPage = startApiPage; apiPage <= endApiPage; apiPage++) {
             const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${apiPage}&limit=${apiPageSize}`;
             console.log(`🌐 Fetching ${tipo} page ${apiPage} from:`, url);
@@ -320,14 +352,12 @@ serve(async (req) => {
             
             console.log(`✅ ${tipo} page ${apiPage}: ${items.length} items fetched, total so far: ${allItems.length}`);
             
-            // Se não há mais itens, parar
             if (items.length < apiPageSize) {
               console.log(`📄 Reached end of ${tipo} data at page ${apiPage}`);
               break;
             }
           }
           
-          // Extrair apenas os itens necessários para a página solicitada
           const itemsInAllPages = allItems.length;
           const localStartIndex = startItem % (apiPageSize * (endApiPage - startApiPage + 1));
           const localEndIndex = localStartIndex + requestedLimit;
@@ -336,7 +366,6 @@ serve(async (req) => {
           console.log(`📊 Final ${tipo} items for page ${requestedPage}: ${allItems.length} of ${itemsInAllPages} loaded, total available: ${realTotal}`);
           
         } else {
-          // Para tipos com poucos itens (livro, aula), buscar tudo de uma vez se necessário
           if (realTotal <= 100) {
             const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=100`;
             console.log(`🌐 Fetching all ${tipo} from:`, url);
@@ -362,12 +391,10 @@ serve(async (req) => {
             const rawData = await response.json();
             const allContentItems = rawData.conteudo || [];
             
-            // Paginar localmente
             allItems = allContentItems.slice(startItem, endItem);
             console.log(`📊 ${tipo} local pagination: ${allItems.length} items for page ${requestedPage}`);
             
           } else {
-            // Se há muitos itens, usar paginação da API
             const apiPage = Math.ceil(endItem / 100);
             const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${apiPage}&limit=100`;
             
@@ -399,22 +426,18 @@ serve(async (req) => {
     let allItems: any[] = [];
     let totalFromAllTypes = 0;
 
-    // Implementar paginação inteligente com ordenação global para busca multi-tipo
     if (isMultiTypeSearch) {
       console.log('🌍 Using GLOBAL sorting with real pagination for multi-type search');
       
       const { items: allSortedItems, totalResults } = await fetchAllContentForGlobalSorting();
       totalFromAllTypes = totalResults;
       
-      // Aplicar paginação nos itens já ordenados globalmente
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
       let pagedItems = allSortedItems.slice(startIndex, endIndex);
 
-      // Aplicar filtros localmente se necessário
       let filteredItems = pagedItems;
 
-      // Filtro por query (busca no título, autor e descrição)
       if (query?.trim()) {
         const searchTerms = query.toLowerCase().trim().split(' ');
         filteredItems = filteredItems.filter(item => {
@@ -423,7 +446,6 @@ serve(async (req) => {
         });
       }
 
-      // Aplicar outros filtros
       if (filters?.author?.trim()) {
         const authorFilter = filters.author.toLowerCase().trim();
         filteredItems = filteredItems.filter(item => 
@@ -446,17 +468,13 @@ serve(async (req) => {
         }
       }
 
+      // CORRIGIDO: Filtro de duração agora usa a nova lógica
       if (filters?.duration?.trim()) {
+        console.log(`🔍 Applying duration filter: ${filters.duration}`);
         filteredItems = filteredItems.filter(item => {
-          if (!item.duration) return false;
-          const duration = item.duration.toLowerCase();
-          const filter = filters.duration!.toLowerCase();
-          
-          if (filter === 'short') return duration.includes('m') && !duration.includes('h');
-          if (filter === 'medium') return duration.includes('h') && parseInt(duration) <= 2;
-          if (filter === 'long') return duration.includes('h') && parseInt(duration) > 2;
-          
-          return duration.includes(filter);
+          const matches = matchesDurationFilter(item.duration, filters.duration!);
+          console.log(`🎯 Item "${item.title}" duration "${item.duration}" matches filter "${filters.duration}": ${matches}`);
+          return matches;
         });
       }
 
@@ -469,15 +487,12 @@ serve(async (req) => {
         );
       }
 
-      // Se aplicamos filtros que mudaram o total, recalcular
       if (query?.trim() || filters?.author?.trim() || filters?.subject?.length || 
           filters?.year?.trim() || filters?.duration?.trim() || filters?.language?.length) {
-        // Para filtros, precisamos buscar todos os itens e filtrar
         console.log('🔍 Applying filters to all content...');
         
         let allItemsForFiltering = allSortedItems;
         
-        // Aplicar todos os filtros
         if (query?.trim()) {
           const searchTerms = query.toLowerCase().trim().split(' ');
           allItemsForFiltering = allItemsForFiltering.filter(item => {
@@ -508,18 +523,12 @@ serve(async (req) => {
           }
         }
 
+        // CORRIGIDO: Aplicar filtro de duração nos itens para filtragem
         if (filters?.duration?.trim()) {
-          allItemsForFiltering = allItemsForFiltering.filter(item => {
-            if (!item.duration) return false;
-            const duration = item.duration.toLowerCase();
-            const filter = filters.duration!.toLowerCase();
-            
-            if (filter === 'short') return duration.includes('m') && !duration.includes('h');
-            if (filter === 'medium') return duration.includes('h') && parseInt(duration) <= 2;
-            if (filter === 'long') return duration.includes('h') && parseInt(duration) > 2;
-            
-            return duration.includes(filter);
-          });
+          console.log(`🔍 Filtering all items by duration: ${filters.duration}`);
+          allItemsForFiltering = allItemsForFiltering.filter(item => 
+            matchesDurationFilter(item.duration, filters.duration!)
+          );
         }
 
         if (filters?.language?.length) {
@@ -531,7 +540,6 @@ serve(async (req) => {
           );
         }
         
-        // Atualizar total e aplicar paginação nos itens filtrados
         totalFromAllTypes = allItemsForFiltering.length;
         filteredItems = allItemsForFiltering.slice(startIndex, endIndex);
       }
@@ -541,7 +549,6 @@ serve(async (req) => {
       console.log(`🌍 Global sorting result: ${allItems.length} items for page ${page}, total: ${totalFromAllTypes}`);
       
     } else {
-      // Busca single-type (comportamento original)
       console.log('📄 Using single-type search pagination');
       
       const results = await Promise.all(
@@ -555,7 +562,6 @@ serve(async (req) => {
         })
       );
 
-      // Combinar resultados
       for (const result of results) {
         allItems = allItems.concat(result.items);
         totalFromAllTypes += result.total;
@@ -610,6 +616,156 @@ serve(async (req) => {
   }
 });
 
+// Nova função para buscar todos os autores
+async function handleGetAllAuthors() {
+  console.log('👥 Fetching all authors request');
+  
+  try {
+    const cacheKey = 'all_authors';
+    const cached = authorsCache.get(cacheKey);
+    
+    // Verificar cache
+    if (cached && (Date.now() - cached.timestamp) < AUTHORS_CACHE_TTL) {
+      console.log(`👥 Authors cache HIT: ${cached.authors.length} authors`);
+      return new Response(JSON.stringify({
+        success: true,
+        authors: cached.authors
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    console.log('👥 Fetching all authors from API');
+    
+    const contentTypes = ['livro', 'aula', 'podcast'];
+    let allAuthors: { name: string; count: number; type: string }[] = [];
+    
+    // Buscar uma amostra representativa de cada tipo para extrair autores
+    for (const tipo of contentTypes) {
+      try {
+        console.log(`👥 Fetching authors from ${tipo}`);
+        
+        // Buscar até 200 itens de cada tipo para ter uma boa amostra de autores
+        const maxSampleSize = 200;
+        let sampleItems: any[] = [];
+        
+        const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=${maxSampleSize}`;
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'LSB-Search/1.0'
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          console.warn(`⚠️ Failed to fetch ${tipo} for authors: ${response.status}`);
+          continue;
+        }
+        
+        const rawData = await response.json();
+        sampleItems = rawData.conteudo || [];
+        
+        console.log(`👥 Got ${sampleItems.length} items from ${tipo} for author extraction`);
+        
+        // Extrair autores únicos deste tipo
+        const typeAuthors = new Map<string, number>();
+        
+        sampleItems.forEach(item => {
+          let authorName = '';
+          
+          switch (tipo) {
+            case 'livro':
+              authorName = item.autor || 'Autor desconhecido';
+              break;
+            case 'aula':
+              authorName = item.canal || 'Canal desconhecido';
+              break;
+            case 'podcast':
+              authorName = item.publicador || 'Publicador desconhecido';
+              break;
+          }
+          
+          if (authorName && authorName !== 'Autor desconhecido' && 
+              authorName !== 'Canal desconhecido' && authorName !== 'Publicador desconhecido') {
+            typeAuthors.set(authorName, (typeAuthors.get(authorName) || 0) + 1);
+          }
+        });
+        
+        // Adicionar ao array final
+        typeAuthors.forEach((count, name) => {
+          allAuthors.push({
+            name,
+            count,
+            type: tipo === 'livro' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast'
+          });
+        });
+        
+        console.log(`👥 Extracted ${typeAuthors.size} unique authors from ${tipo}`);
+        
+      } catch (error) {
+        console.error(`❌ Error fetching authors from ${tipo}:`, error);
+      }
+    }
+    
+    // Consolidar autores com mesmo nome mas de tipos diferentes
+    const consolidatedAuthors = new Map<string, { name: string; count: number; types: string[] }>();
+    
+    allAuthors.forEach(author => {
+      const existing = consolidatedAuthors.get(author.name);
+      if (existing) {
+        existing.count += author.count;
+        if (!existing.types.includes(author.type)) {
+          existing.types.push(author.type);
+        }
+      } else {
+        consolidatedAuthors.set(author.name, {
+          name: author.name,
+          count: author.count,
+          types: [author.type]
+        });
+      }
+    });
+    
+    // Converter para array e ordenar por contagem
+    const finalAuthors = Array.from(consolidatedAuthors.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 100); // Limitar a 100 autores mais relevantes
+    
+    console.log(`👥 Final consolidated authors: ${finalAuthors.length}`);
+    
+    // Cachear resultado
+    authorsCache.set(cacheKey, { authors: finalAuthors, timestamp: Date.now() });
+    
+    return new Response(JSON.stringify({
+      success: true,
+      authors: finalAuthors
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching all authors:', error);
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch authors',
+      authors: []
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// Função para transformar item em resultado de busca
 function transformToSearchResult(item: any, tipo: string): any {
   const baseResult = {
     id: Math.floor(Math.random() * 10000) + 1000,
@@ -666,14 +822,12 @@ function getYearByType(item: any, tipo: string): number {
     case 'livro':
       return item.ano || new Date().getFullYear();
     case 'podcast':
-      // Extrair ano de data_lancamento (formato: YYYY-MM-DD)
       if (item.data_lancamento) {
         const year = parseInt(item.data_lancamento.split('-')[0]);
         return isNaN(year) ? new Date().getFullYear() : year;
       }
       return new Date().getFullYear();
     case 'aula':
-      // Vídeos não têm ano na API
       return new Date().getFullYear();
     default:
       return new Date().getFullYear();
@@ -686,7 +840,6 @@ function getSubjectByType(item: any, tipo: string): string {
     case 'aula':
       return getSubjectFromCategories(item.categorias) || getDefaultSubject(tipo);
     case 'podcast':
-      // Podcasts não têm categorias na API por enquanto
       return getDefaultSubject(tipo);
     default:
       return getDefaultSubject(tipo);
@@ -698,10 +851,8 @@ function getLanguageByType(item: any, tipo: string): string | undefined {
     case 'livro':
       return item.language;
     case 'aula':
-      // Vídeos usam país, será mapeado posteriormente
       return undefined;
     case 'podcast':
-      // Podcasts não têm idioma na API por enquanto
       return undefined;
     default:
       return undefined;
@@ -735,7 +886,6 @@ function formatPodcastDuration(durationMs: number): string {
 }
 
 function formatVideoDuration(duration: number): string {
-  // Assumindo que 'duracao' dos vídeos já vem em minutos
   const hours = Math.floor(duration / 60);
   const minutes = duration % 60;
   

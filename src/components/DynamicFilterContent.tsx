@@ -1,4 +1,3 @@
-
 import React, { useMemo, useCallback } from 'react';
 import { X, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -58,7 +57,6 @@ const DynamicFilterContent = React.memo(({
     return filters.author ? [filters.author] : [];
   }, [filters.author]);
 
-  // Handlers
   const handleLanguageChange = useCallback((languageId: string, checked: boolean) => {
     const newLanguages = checked
       ? [...filters.language, languageId]
@@ -94,13 +92,13 @@ const DynamicFilterContent = React.memo(({
 
   const clearFilters = useCallback(() => {
     onFiltersChange({
-      resourceType: filters.resourceType, // Manter o tipo de recurso
+      resourceType: filters.resourceType,
       subject: [],
       author: '',
       year: '',
       duration: '',
       language: [],
-      documentType: [] // Será removido gradualmente
+      documentType: []
     });
   }, [onFiltersChange, filters.resourceType]);
 
@@ -119,7 +117,6 @@ const DynamicFilterContent = React.memo(({
         </div>
       )}
 
-      {/* Subject Filter - Apenas quando há assuntos disponíveis */}
       {filterRelevance.subject && contentStats.availableSubjects.length > 0 && (
         <Collapsible open={openSections.subject} onOpenChange={() => onToggleSection('subject')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -150,7 +147,6 @@ const DynamicFilterContent = React.memo(({
         </Collapsible>
       )}
 
-      {/* Author Filter */}
       <Collapsible open={openSections.author} onOpenChange={() => onToggleSection('author')}>
         <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">
@@ -176,7 +172,7 @@ const DynamicFilterContent = React.memo(({
             </div>
             
             <div className="p-3 border border-gray-200 rounded-lg bg-white">
-              <Label className="text-xs text-gray-600 mb-3 block">Autores nos resultados</Label>
+              <Label className="text-xs text-gray-600 mb-3 block">Autores disponíveis</Label>
               <AuthorList
                 currentResults={currentResults}
                 selectedAuthors={selectedAuthors}
@@ -187,7 +183,6 @@ const DynamicFilterContent = React.memo(({
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Language Filter - Apenas quando há idiomas disponíveis */}
       {filterRelevance.language && contentStats.availableLanguages.length > 0 && (
         <Collapsible open={openSections.language} onOpenChange={() => onToggleSection('language')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -224,7 +219,6 @@ const DynamicFilterContent = React.memo(({
         </Collapsible>
       )}
 
-      {/* Year Filter - Apenas para livros e podcasts */}
       {filterRelevance.year && (
         <Collapsible open={openSections.year} onOpenChange={() => onToggleSection('year')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -262,7 +256,6 @@ const DynamicFilterContent = React.memo(({
         </Collapsible>
       )}
 
-      {/* Duration Filter - Apenas para vídeos e podcasts */}
       {filterRelevance.duration && (
         <Collapsible open={openSections.duration} onOpenChange={() => onToggleSection('duration')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -287,9 +280,9 @@ const DynamicFilterContent = React.memo(({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Qualquer duração</SelectItem>
-                  <SelectItem value="short">Até 10 minutos</SelectItem>
-                  <SelectItem value="medium">10 - 30 minutos</SelectItem>
-                  <SelectItem value="long">Mais de 30 minutos</SelectItem>
+                  <SelectItem value="short">Curta (até 10 min)</SelectItem>
+                  <SelectItem value="medium">Média (10-30 min)</SelectItem>
+                  <SelectItem value="long">Longa (mais de 30 min)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

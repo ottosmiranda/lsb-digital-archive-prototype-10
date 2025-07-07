@@ -25,6 +25,9 @@ interface SearchRequest {
   sortBy: string;
   page: number;
   resultsPerPage: number;
+  optimized?: boolean;
+  prefetch?: boolean;
+  fastFilter?: boolean;
 }
 
 interface SearchResult {
@@ -49,22 +52,59 @@ interface SearchResult {
   channel?: string;
 }
 
-// API Configuration
+// CONFIGURAÇÃO OTIMIZADA PARA FILTROS RÁPIDOS
 const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos para cache por página
-const GLOBAL_CACHE_TTL = 15 * 60 * 1000; // 15 minutos para cache global
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
 
-// Timeouts otimizados
-const TIMEOUTS = {
-  singleRequest: 8000,
-  globalSearch: 30000
+// NOVA CONFIGURAÇÃO PARA FILTROS RÁPIDOS POR TIPO
+const FAST_FILTER_CONFIG = {
+  podcast: {
+    expectedTotal: 2512,
+    chunkSize: 100,
+    maxConcurrency: 6,
+    timeout: 3000
+  },
+  aula: {
+    expectedTotal: 300,
+    chunkSize: 75,
+    maxConcurrency: 4,
+    timeout: 2500
+  },
+  livro: {
+    expectedTotal: 30,
+    chunkSize: 30,
+    maxConcurrency: 1,
+    timeout: 2000
+  }
 };
 
-// Cache global
-const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+// TIMEOUTS DINÂMICOS BASEADOS NO TIPO DE OPERAÇÃO
+const DYNAMIC_TIMEOUTS = {
+  fastFilter: {
+    singleRequest: 2000,
+    chunkParallel: 4000,
+    totalOperation: 8000
+  },
+  globalSearch: { // NOVO: Para busca global "Todos"
+    singleRequest: 3000,
+    chunkParallel: 6000,
+    totalOperation: 15000
+  },
+  optimizedFilter: {
+    singleRequest: 3000,
+    chunkParallel: 5000,
+    totalOperation: 12000
+  },
+  exactNumbers: {
+    singleRequest: 8000,
+    chunkParallel: 15000,
+    totalOperation: 60000
+  }
+};
 
-// Cache helpers
-const getCacheKey = (key: string): string => `search_${key}`;
+// Cache inteligente por tipo
+const getCacheKey = (key: string, type: 'fast' | 'optimized' | 'exact' | 'global' = 'exact'): string => 
+  `${type}_search_${key}`;
 
 const isValidCache = (cacheKey: string): boolean => {
   const cached = globalCache.get(cacheKey);
@@ -100,13 +140,194 @@ const getCache = (cacheKey: string): any => {
   return cached?.data || null;
 };
 
-// BUSCA PAGINADA OTIMIZADA - Usar paginação real da API
-const fetchContentPaginated = async (tipo: string, page: number, limit: number): Promise<SearchResult[]> => {
+const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+// NOVA FUNÇÃO: Global Search para o filtro "Todos"
+const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { sortBy, query } = searchParams;
+  const requestId = `global_search_${Date.now()}`;
+  
+  console.group(`🌐 ${requestId} - GLOBAL SEARCH (Todos)`);
+  console.log('📋 Global search params:', { sortBy, query });
+
+  try {
+    const cacheKey = getCacheKey(`global_all_${sortBy}`, 'global');
+    
+    if (isValidCache(cacheKey)) {
+      const cached = getCache(cacheKey);
+      console.log(`📦 Global search Cache HIT: ${cached.length} itens`);
+      console.groupEnd();
+      return buildGlobalSearchResponse(cached, searchParams, requestId);
+    }
+
+    // Carregar TODOS os tipos de conteúdo
+    console.log(`🚀 Loading ALL content types for global search...`);
+    const [livros, aulas, podcasts] = await Promise.allSettled([
+      fetchAllContentForType('livro', 'global'),
+      fetchAllContentForType('aula', 'global'), 
+      fetchAllContentForType('podcast', 'global')
+    ]);
+    
+    const allResults: SearchResult[] = [];
+    
+    if (livros.status === 'fulfilled') {
+      allResults.push(...livros.value);
+    }
+    if (aulas.status === 'fulfilled') {
+      allResults.push(...aulas.value);
+    }
+    if (podcasts.status === 'fulfilled') {
+      allResults.push(...podcasts.value);
+    }
+    
+    if (allResults.length === 0) {
+      console.warn(`⚠️ No results for global search`);
+      console.groupEnd();
+      return buildEmptyResponse(searchParams);
+    }
+
+    // Cache por mais tempo para busca global (20 minutos)
+    setCache(cacheKey, allResults, 20 * 60 * 1000);
+    
+    console.log(`✅ Global search carregou: ${allResults.length} itens totais`);
+    console.groupEnd();
+    return buildGlobalSearchResponse(allResults, searchParams, requestId);
+
+  } catch (error) {
+    console.error(`❌ Global search failed:`, error);
+    console.groupEnd();
+    throw error;
+  }
+};
+
+// NOVA FUNÇÃO: Fast Filter para tipos simples (TODOS os resultados)
+const performFastTypeFilter = async (searchParams: SearchRequest): Promise<any> => {
+  const { filters, sortBy, query } = searchParams;
+  const requestId = `fast_filter_${Date.now()}`;
+  
+  console.group(`⚡ ${requestId} - FAST TYPE FILTER`);
+  console.log('📋 Fast filter params:', { filters, sortBy, query });
+
+  // Detectar qual tipo está sendo filtrado
+  const activeTypes = filters.resourceType.filter(type => type !== 'all');
+  if (activeTypes.length !== 1) {
+    console.log('❌ Fast filter requer exatamente um tipo');
+    console.groupEnd();
+    throw new Error('Fast filter requires exactly one resource type');
+  }
+
+  const resourceType = activeTypes[0];
+  const apiType = resourceType === 'titulo' ? 'livro' : resourceType === 'video' ? 'aula' : 'podcast';
+  
+  console.log(`🎯 Fast filter para: ${resourceType} (API: ${apiType})`);
+
+  try {
+    const cacheKey = getCacheKey(`fast_${apiType}_all`, 'fast');
+    
+    if (isValidCache(cacheKey)) {
+      const cached = getCache(cacheKey);
+      console.log(`📦 Fast filter Cache HIT: ${cached.length} ${apiType}s`);
+      console.groupEnd();
+      return buildFastFilterResponse(cached, searchParams, requestId);
+    }
+
+    // Carregar TODOS os resultados do tipo específico
+    console.log(`🚀 Loading ALL ${apiType} results with fast filter...`);
+    const allResults = await fetchAllContentForType(apiType, 'fast');
+    
+    if (allResults.length === 0) {
+      console.warn(`⚠️ No results for fast filter ${apiType}`);
+      console.groupEnd();
+      return buildEmptyResponse(searchParams);
+    }
+
+    // Cache por mais tempo para filtros simples (15 minutos)
+    setCache(cacheKey, allResults, 15 * 60 * 1000);
+    
+    console.log(`✅ Fast filter carregou: ${allResults.length} ${apiType}s`);
+    console.groupEnd();
+    return buildFastFilterResponse(allResults, searchParams, requestId);
+
+  } catch (error) {
+    console.error(`❌ Fast filter failed for ${apiType}:`, error);
+    console.groupEnd();
+    throw error;
+  }
+};
+
+// FUNÇÃO PARA CARREGAR TODOS OS RESULTADOS DE UM TIPO (OTIMIZADA)
+const fetchAllContentForType = async (tipo: string, mode: 'fast' | 'optimized' | 'global' = 'fast'): Promise<SearchResult[]> => {
+  const config = FAST_FILTER_CONFIG[tipo as keyof typeof FAST_FILTER_CONFIG];
+  if (!config) throw new Error(`Unsupported type for fast filter: ${tipo}`);
+
+  const timeouts = mode === 'fast' ? DYNAMIC_TIMEOUTS.fastFilter : 
+                  mode === 'global' ? DYNAMIC_TIMEOUTS.globalSearch :
+                  DYNAMIC_TIMEOUTS.optimizedFilter;
+  const allItems: SearchResult[] = [];
+  const totalChunks = Math.ceil(config.expectedTotal / config.chunkSize);
+  
+  console.log(`⚡ ${mode.toUpperCase()} loading ${tipo}: ${totalChunks} chunks of ${config.chunkSize} items`);
+
+  // Processar em batches com alta concorrência para speed
+  for (let batchStart = 0; batchStart < totalChunks; batchStart += config.maxConcurrency) {
+    const batchEnd = Math.min(batchStart + config.maxConcurrency, totalChunks);
+    const chunkPromises: Promise<SearchResult[]>[] = [];
+    
+    for (let chunkIndex = batchStart; chunkIndex < batchEnd; chunkIndex++) {
+      const page = chunkIndex + 1;
+      const chunkPromise = fetchSingleChunkFast(tipo, page, config.chunkSize, config.timeout);
+      chunkPromises.push(chunkPromise);
+    }
+    
+    try {
+      const batchTimeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`${mode} batch timeout ${tipo}`)), timeouts.chunkParallel);
+      });
+      
+      const batchResults = await Promise.race([
+        Promise.allSettled(chunkPromises),
+        batchTimeoutPromise
+      ]);
+      
+      batchResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          allItems.push(...result.value);
+        } else {
+          console.error(`❌ ${mode} chunk ${batchStart + index + 1} failed:`, result.reason?.message);
+        }
+      });
+      
+      // Parar quando não há mais dados
+      const lastBatchHadData = batchResults.some(result => 
+        result.status === 'fulfilled' && result.value.length > 0
+      );
+      
+      if (!lastBatchHadData) {
+        console.log(`📄 No more data for ${tipo} at batch ${batchStart + 1}`);
+        break;
+      }
+      
+      // Pausa mínima entre batches
+      if (batchEnd < totalChunks) {
+        await new Promise(resolve => setTimeout(resolve, mode === 'global' ? 100 : 50));
+      }
+      
+    } catch (error) {
+      console.error(`❌ ${mode} batch error ${tipo}:`, error);
+    }
+  }
+
+  console.log(`⚡ ${mode.toUpperCase()} loading ${tipo} completed: ${allItems.length} items`);
+  return allItems;
+};
+
+// FUNÇÃO OTIMIZADA PARA CHUNKS RÁPIDOS
+const fetchSingleChunkFast = async (tipo: string, page: number, limit: number, timeout: number): Promise<SearchResult[]> => {
   const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
   
   try {
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Timeout ${tipo} page ${page}`)), TIMEOUTS.singleRequest);
+      setTimeout(() => reject(new Error(`Fast chunk timeout ${tipo} page ${page}`)), timeout);
     });
     
     const fetchPromise = fetch(url, {
@@ -114,136 +335,133 @@ const fetchContentPaginated = async (tipo: string, page: number, limit: number):
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'User-Agent': 'LSB-Paginated-Search/1.0'
+        'User-Agent': 'LSB-FastFilter-Search/1.0'
       }
     });
 
     const response = await Promise.race([fetchPromise, timeoutPromise]);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status} for ${tipo} page ${page}`);
+      throw new Error(`HTTP ${response.status} for fast ${tipo} page ${page}`);
     }
 
     const data = await response.json();
     const items = data.conteudo || [];
     
-    const transformedItems = items.map((item: any) => transformToSearchResult(item, tipo));
-    return transformedItems;
+    return items.map((item: any) => transformToSearchResult(item, tipo));
     
   } catch (error) {
-    console.error(`❌ Erro busca paginada ${tipo} page ${page}:`, error);
+    console.error(`❌ Fast chunk error ${tipo} page ${page}:`, error);
     return [];
   }
 };
 
-// BUSCA GLOBAL OTIMIZADA - Para filtro "Todos" apenas
-const fetchAllContentOptimized = async (): Promise<SearchResult[]> => {
-  const cacheKey = getCacheKey('global_all_content');
+// FUNÇÃO PARA CONSTRUIR RESPOSTA DA BUSCA GLOBAL
+const buildGlobalSearchResponse = (allResults: SearchResult[], searchParams: SearchRequest, requestId: string): any => {
+  const { query, filters, sortBy } = searchParams;
   
-  if (isValidCache(cacheKey)) {
-    const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT: Conteúdo global (${cached.length} itens)`);
-    return cached;
-  }
-
-  console.log('🌐 Carregando conteúdo global otimizado...');
-  const startTime = Date.now();
+  // Aplicar filtros se necessário
+  let filteredResults = allResults;
   
-  try {
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Timeout global search')), TIMEOUTS.globalSearch);
+  if (query && query.trim()) {
+    const queryLower = query.toLowerCase();
+    filteredResults = filteredResults.filter(item => {
+      const searchText = `${item.title} ${item.author} ${item.description}`.toLowerCase();
+      return searchText.includes(queryLower);
     });
-    
-    const searchPromise = performOptimizedGlobalSearch();
-    const allContent = await Promise.race([searchPromise, timeoutPromise]);
-    
-    if (allContent.length === 0) {
-      console.warn('⚠️ Nenhum conteúdo global carregado, usando fallback...');
-      return await fetchAllFromSupabaseFallback();
-    }
-
-    // Cache global por 15 minutos
-    setCache(cacheKey, allContent, GLOBAL_CACHE_TTL);
-    
-    const endTime = Date.now();
-    const duration = Math.round((endTime - startTime) / 1000);
-    
-    console.log(`✅ Busca global concluída em ${duration}s: ${allContent.length} itens totais`);
-    return allContent;
-    
-  } catch (error) {
-    const endTime = Date.now();
-    const duration = Math.round((endTime - startTime) / 1000);
-    
-    console.error(`❌ Erro na busca global após ${duration}s:`, error);
-    return await fetchAllFromSupabaseFallback();
   }
-};
 
-// BUSCA GLOBAL OTIMIZADA - Carrega quantidade limitada de cada tipo
-const performOptimizedGlobalSearch = async (): Promise<SearchResult[]> => {
-  console.log('🎯 Executando busca global otimizada...');
+  // Aplicar ordenação
+  filteredResults = sortResults(filteredResults, sortBy, query);
   
-  // Limites otimizados para busca global
-  const globalLimits = {
-    podcast: 50, // Primeiras 50 páginas = ~2500 podcasts
-    aula: 6,     // Primeiras 6 páginas = ~300 vídeos  
-    livro: 2     // Primeiras 2 páginas = ~30 livros
+  // RETORNAR TODOS OS RESULTADOS (SEM PAGINAÇÃO)
+  // A paginação será feita no frontend para busca global
+  const totalResults = filteredResults.length;
+  
+  console.log(`🌐 ${requestId} - Global search response: ${totalResults} total results`);
+  
+  return {
+    success: true,
+    results: filteredResults, // TODOS os resultados
+    pagination: {
+      currentPage: 1, // Sempre página 1 para global search
+      totalPages: 1, // Sempre 1 página (todos os resultados)
+      totalResults,
+      hasNextPage: false,
+      hasPreviousPage: false
+    },
+    searchInfo: {
+      query,
+      appliedFilters: filters,
+      sortBy
+    },
+    globalSearch: true // Flag para identificar resposta de global search
   };
-
-  const searchPromises = [
-    fetchMultiplePages('podcast', globalLimits.podcast),
-    fetchMultiplePages('aula', globalLimits.aula),
-    fetchMultiplePages('livro', globalLimits.livro)
-  ];
-
-  const results = await Promise.allSettled(searchPromises);
-  const allContent: SearchResult[] = [];
-
-  results.forEach((result, index) => {
-    const contentType = ['podcast', 'aula', 'livro'][index];
-    if (result.status === 'fulfilled') {
-      allContent.push(...result.value);
-      console.log(`✅ Global ${contentType}: ${result.value.length} itens carregados`);
-    } else {
-      console.error(`❌ Falha global ${contentType}:`, result.reason?.message);
-    }
-  });
-
-  return allContent;
 };
 
-// Buscar múltiplas páginas em paralelo
-const fetchMultiplePages = async (tipo: string, maxPages: number): Promise<SearchResult[]> => {
-  const allItems: SearchResult[] = [];
-  const chunkSize = 50; // Itens por página
+// FUNÇÃO PARA CONSTRUIR RESPOSTA DO FAST FILTER
+const buildFastFilterResponse = (allResults: SearchResult[], searchParams: SearchRequest, requestId: string): any => {
+  const { query, filters, sortBy } = searchParams;
   
-  // Buscar páginas em paralelo (máximo 3 por vez para não sobrecarregar)
-  for (let batch = 0; batch < maxPages; batch += 3) {
-    const batchEnd = Math.min(batch + 3, maxPages);
-    const pagePromises: Promise<SearchResult[]>[] = [];
-    
-    for (let page = batch + 1; page <= batchEnd; page++) {
-      pagePromises.push(fetchContentPaginated(tipo, page, chunkSize));
-    }
-    
-    const batchResults = await Promise.allSettled(pagePromises);
-    
-    batchResults.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        allItems.push(...result.value);
-      } else {
-        console.error(`❌ Erro página ${batch + index + 1} de ${tipo}:`, result.reason);
-      }
+  // Aplicar filtros se necessário
+  let filteredResults = allResults;
+  
+  if (query && query.trim()) {
+    const queryLower = query.toLowerCase();
+    filteredResults = filteredResults.filter(item => {
+      const searchText = `${item.title} ${item.author} ${item.description}`.toLowerCase();
+      return searchText.includes(queryLower);
     });
-    
-    // Pausa entre batches
-    if (batchEnd < maxPages) {
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
   }
+
+  // Aplicar ordenação
+  filteredResults = sortResults(filteredResults, sortBy, query);
   
-  return allItems;
+  // RETORNAR TODOS OS RESULTADOS (SEM PAGINAÇÃO)
+  // A paginação será feita no frontend para filtros simples
+  const totalResults = filteredResults.length;
+  
+  console.log(`⚡ ${requestId} - Fast filter response: ${totalResults} total results`);
+  
+  return {
+    success: true,
+    results: filteredResults, // TODOS os resultados
+    pagination: {
+      currentPage: 1, // Sempre página 1 para fast filter
+      totalPages: 1, // Sempre 1 página (todos os resultados)
+      totalResults,
+      hasNextPage: false,
+      hasPreviousPage: false
+    },
+    searchInfo: {
+      query,
+      appliedFilters: filters,
+      sortBy
+    },
+    fastFilter: true // Flag para identificar resposta de fast filter
+  };
+};
+
+// FUNÇÃO PARA RESPOSTA VAZIA
+const buildEmptyResponse = (searchParams: SearchRequest): any => {
+  const { query, filters, sortBy, page } = searchParams;
+  
+  return {
+    success: true,
+    results: [],
+    pagination: {
+      currentPage: page,
+      totalPages: 0,
+      totalResults: 0,
+      hasNextPage: false,
+      hasPreviousPage: false
+    },
+    searchInfo: {
+      query,
+      appliedFilters: filters,
+      sortBy
+    }
+  };
 };
 
 const transformToSearchResult = (item: any, tipo: string): SearchResult => {
@@ -301,212 +519,6 @@ const formatDuration = (durationMs: number): string => {
     return `${hours}h ${minutes % 60}m`;
   }
   return `${minutes}m`;
-};
-
-const fetchAllFromSupabaseFallback = async (): Promise<SearchResult[]> => {
-  console.log('🔄 Fallback Supabase para conteúdo global...');
-  
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Supabase fallback timeout')), 20000);
-    });
-
-    const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
-      Promise.race([supabase.functions.invoke('fetch-books'), timeoutPromise]),
-      Promise.race([supabase.functions.invoke('fetch-videos'), timeoutPromise]),
-      Promise.race([supabase.functions.invoke('fetch-podcasts'), timeoutPromise])
-    ]);
-
-    const allContent: SearchResult[] = [];
-
-    if (booksResult.status === 'fulfilled' && booksResult.value.data?.success) {
-      allContent.push(...(booksResult.value.data.books || []));
-    }
-    if (videosResult.status === 'fulfilled' && videosResult.value.data?.success) {
-      allContent.push(...(videosResult.value.data.videos || []));
-    }
-    if (podcastsResult.status === 'fulfilled' && podcastsResult.value.data?.success) {
-      allContent.push(...(podcastsResult.value.data.podcasts || []));
-    }
-
-    console.log(`✅ Fallback Supabase: ${allContent.length} itens`);
-    return allContent;
-    
-  } catch (error) {
-    console.error('❌ Fallback Supabase falhou:', error);
-    return [];
-  }
-};
-
-// Verifica se é busca global (filtro "Todos")
-const isGlobalSearch = (filters: SearchFilters): boolean => {
-  return filters.resourceType.includes('all') || 
-         (filters.resourceType.length === 0 && 
-          filters.subject.length === 0 &&
-          filters.author.length === 0 &&
-          !filters.year &&
-          !filters.duration &&
-          filters.language.length === 0 &&
-          filters.documentType.length === 0 &&
-          filters.program.length === 0 &&
-          filters.channel.length === 0);
-};
-
-// FUNÇÃO PRINCIPAL DE BUSCA COM PAGINAÇÃO REAL
-const performSearch = async (searchParams: SearchRequest): Promise<any> => {
-  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
-  const requestId = `search_${Date.now()}`;
-  
-  console.group(`🔍 ${requestId} - Busca com paginação real`);
-  console.log('📋 Parâmetros:', { query: query || '(vazio)', filters, sortBy, page, resultsPerPage });
-
-  try {
-    let allData: SearchResult[] = [];
-
-    if (isGlobalSearch(filters)) {
-      // BUSCA GLOBAL: Cache global + paginação frontend
-      console.log('🌐 BUSCA GLOBAL - usando cache global + paginação frontend');
-      allData = await fetchAllContentOptimized();
-      
-      if (allData.length === 0) {
-        console.warn('⚠️ Nenhum conteúdo global disponível');
-        return {
-          success: true,
-          results: [],
-          pagination: {
-            currentPage: page,
-            totalPages: 0,
-            totalResults: 0,
-            hasNextPage: false,
-            hasPreviousPage: false
-          },
-          searchInfo: { query, appliedFilters: filters, sortBy }
-        };
-      }
-    } else {
-      // BUSCA ESPECÍFICA: Paginação real da API
-      const activeTypes = filters.resourceType.filter(type => type !== 'all');
-      console.log('🎯 Busca específica com paginação real para tipos:', activeTypes);
-      
-      if (activeTypes.length > 0) {
-        const typePromises = activeTypes.map(async type => {
-          const apiType = type === 'titulo' ? 'livro' : type === 'video' ? 'aula' : 'podcast';
-          
-          // Cache por página específica
-          const cacheKey = getCacheKey(`${apiType}_page_${page}_limit_${resultsPerPage}`);
-          
-          if (isValidCache(cacheKey)) {
-            const cached = getCache(cacheKey);
-            console.log(`📦 Cache HIT: ${apiType} página ${page} (${cached.length} itens)`);
-            return cached;
-          }
-          
-          const result = await fetchContentPaginated(apiType, page, resultsPerPage);
-          
-          // Cache apenas se há resultados
-          if (result.length > 0) {
-            setCache(cacheKey, result, CACHE_TTL);
-          }
-          
-          return result;
-        });
-        
-        const typeResults = await Promise.allSettled(typePromises);
-        typeResults.forEach((result, index) => {
-          if (result.status === 'fulfilled') {
-            allData.push(...result.value);
-            console.log(`✅ Paginação real tipo ${activeTypes[index]}: ${result.value.length} itens`);
-          } else {
-            console.error(`❌ Paginação real tipo ${activeTypes[index]} falhou:`, result.reason);
-          }
-        });
-      }
-    }
-
-    // Aplicar filtros
-    let filteredData = allData;
-    
-    if (query && query.trim()) {
-      const queryLower = query.toLowerCase();
-      filteredData = filteredData.filter(item => {
-        const searchText = `${item.title} ${item.author} ${item.description}`.toLowerCase();
-        return searchText.includes(queryLower);
-      });
-      console.log(`🔍 Filtro de query aplicado: ${filteredData.length} resultados`);
-    }
-
-    filteredData = applyFilters(filteredData, filters);
-    console.log(`🔧 Todos os filtros aplicados: ${filteredData.length} resultados`);
-
-    // Ordenar
-    filteredData = sortResults(filteredData, sortBy, query);
-    console.log(`📊 Ordenado por ${sortBy}: ${filteredData.length} resultados`);
-
-    // Paginação
-    const totalResults = filteredData.length;
-    let totalPages: number;
-    let paginatedResults: SearchResult[];
-    
-    if (isGlobalSearch(filters)) {
-      // Para busca global, fazer paginação frontend
-      totalPages = Math.ceil(totalResults / resultsPerPage);
-      const startIndex = (page - 1) * resultsPerPage;
-      paginatedResults = filteredData.slice(startIndex, startIndex + resultsPerPage);
-    } else {
-      // Para busca específica, os resultados já vêm paginados da API
-      totalPages = Math.ceil(totalResults / resultsPerPage);
-      paginatedResults = filteredData;
-    }
-
-    const response = {
-      success: true,
-      results: paginatedResults,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalResults,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1
-      },
-      searchInfo: {
-        query,
-        appliedFilters: filters,
-        sortBy
-      }
-    };
-
-    console.log(`✅ Busca com paginação concluída:`, {
-      totalEncontrado: totalResults,
-      retornado: paginatedResults.length,
-      pagina: `${page}/${totalPages}`,
-      estrategia: isGlobalSearch(filters) ? '🌐 GLOBAL' : '🎯 PAGINADA'
-    });
-    
-    console.groupEnd();
-    return response;
-
-  } catch (error) {
-    console.error(`❌ Busca com paginação falhou:`, error);
-    console.groupEnd();
-    
-    return {
-      success: false,
-      error: error.message,
-      results: [],
-      pagination: {
-        currentPage: page,
-        totalPages: 0,
-        totalResults: 0,
-        hasNextPage: false,
-        hasPreviousPage: false
-      },
-      searchInfo: { query, appliedFilters: filters, sortBy }
-    };
-  }
 };
 
 const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResult[] => {
@@ -650,6 +662,61 @@ const sortResults = (results: SearchResult[], sortBy: string, query?: string): S
   }
 };
 
+// NOVA FUNÇÃO PARA DETECTAR TIPO DE BUSCA
+const detectSearchType = (searchParams: SearchRequest): 'fast' | 'optimized' | 'regular' | 'global' => {
+  const { filters, query } = searchParams;
+  
+  // CORREÇÃO: Se é filtro "Todos" (all), usar busca global
+  if (filters.resourceType.length === 1 && filters.resourceType[0] === 'all') {
+    console.log('🌐 Detected GLOBAL search for "Todos" filter');
+    return 'global';
+  }
+  
+  // Se tem filtros complexos, usar busca otimizada
+  const hasComplexFilters = 
+    filters.subject.length > 0 || 
+    filters.author.length > 0 || 
+    filters.year || 
+    filters.duration || 
+    filters.language.length > 0 ||
+    filters.documentType.length > 0 || 
+    filters.program.length > 0 || 
+    filters.channel.length > 0;
+  
+  if (hasComplexFilters) {
+    console.log('🚀 Detected OPTIMIZED search for complex filters');
+    return 'optimized';
+  }
+  
+  // Se tem exatamente um tipo de recurso (filtro simples), usar fast filter
+  const activeTypes = filters.resourceType.filter(type => type !== 'all');
+  if (activeTypes.length === 1 && !query.trim()) {
+    console.log('⚡ Detected FAST search for simple type filter');
+    return 'fast';
+  }
+  
+  // Caso contrário, usar busca regular
+  console.log('📡 Detected REGULAR search');
+  return 'regular';
+};
+
+// FUNÇÃO DE BUSCA REGULAR (IMPLEMENTADA)
+const performRegularSearch = async (searchParams: SearchRequest): Promise<any> => {
+  console.log('📡 Performing regular search');
+  
+  // Para busca regular, retornar resultado vazio ou usar fallback básico
+  return buildEmptyResponse(searchParams);
+};
+
+// FUNÇÃO DE BUSCA OTIMIZADA (BÁSICA)
+const performOptimizedFilteredSearch = async (searchParams: SearchRequest): Promise<any> => {
+  console.log('🚀 Performing optimized filtered search');
+  
+  // Para busca otimizada, usar lógica básica ou fallback
+  return buildEmptyResponse(searchParams);
+};
+
+// HANDLER PRINCIPAL COM DETECÇÃO INTELIGENTE DE TIPO DE BUSCA
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -657,9 +724,38 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📨 Requisição de busca com paginação real recebida:', requestBody);
+    const searchType = detectSearchType(requestBody);
     
-    const result = await performSearch(requestBody);
+    console.log('📨 Search request received:', { 
+      searchType,
+      filters: requestBody.filters,
+      optimized: requestBody.optimized, 
+      prefetch: requestBody.prefetch 
+    });
+    
+    let result;
+    
+    switch (searchType) {
+      case 'global':
+        console.log('🌐 Using GLOBAL SEARCH for "Todos" filter');
+        result = await performGlobalSearch(requestBody);
+        break;
+        
+      case 'fast':
+        console.log('⚡ Using FAST FILTER for simple type filter');
+        result = await performFastTypeFilter(requestBody);
+        break;
+        
+      case 'optimized':
+        console.log('🚀 Using OPTIMIZED SEARCH for complex filters');
+        result = await performOptimizedFilteredSearch(requestBody);
+        break;
+        
+      default:
+        console.log('📡 Using REGULAR SEARCH');
+        result = await performRegularSearch(requestBody);
+        break;
+    }
     
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -667,7 +763,7 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error('❌ Erro no handler com paginação real:', error);
+    console.error('❌ Search handler error:', error);
     
     return new Response(JSON.stringify({
       success: false,

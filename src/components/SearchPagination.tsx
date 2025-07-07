@@ -17,14 +17,7 @@ interface SearchPaginationProps {
 }
 
 const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPaginationProps) => {
-  // Debug info
-  console.log('SearchPagination render:', { currentPage, totalPages, shouldRender: totalPages > 1 });
-  
-  // Não mostrar paginação se há apenas 1 página ou menos
-  if (totalPages <= 1) {
-    console.log('❌ Paginação não renderizada: totalPages <=1');
-    return null;
-  }
+  if (totalPages <= 1) return null;
 
   // Mostrar input de navegação direta apenas quando há muitas páginas
   const showPageJump = totalPages > 10;
@@ -72,13 +65,6 @@ const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPagin
 
   const visiblePages = getVisiblePages();
 
-  console.log('✅ Renderizando paginação:', { 
-    currentPage, 
-    totalPages, 
-    visiblePages: visiblePages.length,
-    showPageJump
-  });
-
   return (
     <div className="mt-8 flex flex-col items-center gap-4">
       {showPageJump && (
@@ -95,8 +81,8 @@ const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPagin
         <PaginationContent>
           <PaginationItem>
             <PaginationPrevious 
-              onClick={() => currentPage > 1 && onPageChange(Math.max(1, currentPage - 1))}
-              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-gray-100"}
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
             />
           </PaginationItem>
           
@@ -108,11 +94,7 @@ const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPagin
                 <PaginationLink
                   onClick={() => onPageChange(page)}
                   isActive={currentPage === page}
-                  className={`cursor-pointer ${
-                    currentPage === page 
-                      ? 'bg-lsb-primary text-white hover:bg-lsb-primary/90' 
-                      : 'hover:bg-gray-100'
-                  }`}
+                  className="cursor-pointer"
                 >
                   {page}
                 </PaginationLink>
@@ -122,16 +104,12 @@ const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPagin
           
           <PaginationItem>
             <PaginationNext 
-              onClick={() => currentPage < totalPages && onPageChange(Math.min(totalPages, currentPage + 1))}
-              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-gray-100"}
+              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
             />
           </PaginationItem>
         </PaginationContent>
       </Pagination>
-      
-      <div className="text-sm text-gray-600">
-        Página {currentPage} de {totalPages}
-      </div>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import React, { useMemo, useCallback } from 'react';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -47,7 +48,7 @@ const FilterContent = React.memo(({
     filters.documentType.length > 0 ||
     filters.language.length > 0 ||
     filters.subject.length > 0 || 
-    filters.author || 
+    filters.author.length > 0 || // CORRIGIDO: Array de autores
     filters.year || 
     filters.duration,
     [filters]
@@ -57,16 +58,14 @@ const FilterContent = React.memo(({
     filters.documentType.length +
     filters.language.length +
     filters.subject.length + 
-    (filters.author ? 1 : 0) + 
+    filters.author.length + // CORRIGIDO: Array de autores
     (filters.year ? 1 : 0) + 
     (filters.duration ? 1 : 0),
     [filters]
   );
 
-  // Convert single author string to array for compatibility
-  const selectedAuthors = useMemo(() => {
-    return filters.author ? [filters.author] : [];
-  }, [filters.author]);
+  // Use authors array directly
+  const selectedAuthors = filters.author;
 
   const handleDocumentTypeChange = useCallback((documentTypeId: string, checked: boolean) => {
     const newDocumentTypes = checked
@@ -100,24 +99,28 @@ const FilterContent = React.memo(({
   }, [filters, onFiltersChange]);
 
   const handleAuthorChange = useCallback((value: string) => {
-    onFiltersChange({ ...filters, author: value }, { authorTyping: true });
+    // For typing in author input, add to existing authors if not already present
+    const newAuthors = value.trim() 
+      ? [...new Set([...filters.author, value.trim()])]
+      : filters.author;
+    onFiltersChange({ ...filters, author: newAuthors }, { authorTyping: true });
   }, [filters, onFiltersChange]);
 
   const handleAuthorsListChange = useCallback((authors: string[]) => {
-    // For now, we'll take the first selected author to maintain compatibility
-    const authorValue = authors.length > 0 ? authors[0] : '';
-    onFiltersChange({ ...filters, author: authorValue });
+    onFiltersChange({ ...filters, author: authors });
   }, [filters, onFiltersChange]);
 
   const clearFilters = useCallback(() => {
     onFiltersChange({
       resourceType: [],
       subject: [],
-      author: '',
+      author: [], // CORRIGIDO: Array vazio
       year: '',
       duration: '',
       language: [],
-      documentType: []
+      documentType: [],
+      program: [], // NOVO: Array vazio para programas
+      channel: [], // NOVO: Array vazio para canais
     });
   }, [onFiltersChange]);
 
@@ -201,9 +204,9 @@ const FilterContent = React.memo(({
         <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium">Autor</Label>
-            {filters.author && (
+            {filters.author.length > 0 && (
               <Badge variant="secondary" className="text-xs">
-                1
+                {filters.author.length}
               </Badge>
             )}
           </div>
@@ -215,7 +218,7 @@ const FilterContent = React.memo(({
             <div className="p-3 border border-gray-200 rounded-lg bg-white">
               <Label className="text-xs text-gray-600 mb-2 block">Buscar por nome</Label>
               <AuthorInput
-                value={filters.author}
+                value={filters.author.length > 0 ? filters.author[filters.author.length - 1] : ''}
                 onChange={handleAuthorChange}
                 placeholder="Nome do autor"
                 currentResults={currentResults}

@@ -23,7 +23,7 @@ interface SearchRequest {
   filters: SearchFilters;
   sortBy: string;
   page: number;
-  resultsPerPage: number; // CORRIGIDO: era 'limit'
+  resultsPerPage: number;
 }
 
 interface SearchResult {
@@ -48,26 +48,43 @@ interface SearchResult {
   channel?: string;
 }
 
+// CONFIGURAÇÃO DE ALTA ESCALABILIDADE
 const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
-const CACHE_TTL = 3 * 60 * 1000; // 3 minutos para debugging
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutos para alta performance
 const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 
-// Função para verificar se filtro "all" está ativo
-const isGlobalSearch = (filters: SearchFilters): boolean => {
-  return filters.resourceType.includes('all') || 
-         (filters.resourceType.length === 0 && 
-          filters.subject.length === 0 &&
-          filters.author.length === 0 &&
-          !filters.year &&
-          !filters.duration &&
-          filters.language.length === 0 &&
-          filters.documentType.length === 0 &&
-          filters.program.length === 0 &&
-          filters.channel.length === 0);
+// CONFIGURAÇÃO DINÂMICA DE LIMITES ESCALÁVEIS
+const SCALABLE_LIMITS = {
+  podcast: {
+    maxItems: parseInt(Deno.env.get('PODCAST_MAX_ITEMS') || '1500'), // 60% de 2512
+    percentage: 0.6, // Buscar 60% do total disponível
+    chunkSize: 50,
+    maxConcurrency: 5
+  },
+  aula: {
+    maxItems: parseInt(Deno.env.get('VIDEO_MAX_ITEMS') || '300'), // 100% dos vídeos
+    percentage: 1.0, // Buscar todos os vídeos disponíveis
+    chunkSize: 50,
+    maxConcurrency: 4
+  },
+  livro: {
+    maxItems: parseInt(Deno.env.get('BOOK_MAX_ITEMS') || '50'), // Todos os livros
+    percentage: 1.0, // Buscar todos os livros disponíveis
+    chunkSize: 25,
+    maxConcurrency: 2
+  }
 };
 
-// Cache helpers com validação aprimorada
-const getCacheKey = (key: string): string => `search_${key}`;
+// TIMEOUTS OTIMIZADOS PARA ALTA ESCALABILIDADE
+const TIMEOUTS = {
+  singleRequest: 8000, // 8s por requisição individual
+  chunkParallel: 12000, // 12s para chunks paralelos
+  totalOperation: 45000, // 45s para operação completa
+  healthCheck: 3000 // 3s para health check
+};
+
+// Cache helpers com validação aprimorada para alta escalabilidade
+const getCacheKey = (key: string): string => `scalable_search_${key}`;
 
 const isValidCache = (cacheKey: string): boolean => {
   const cached = globalCache.get(cacheKey);
@@ -75,7 +92,7 @@ const isValidCache = (cacheKey: string): boolean => {
   
   const isValid = (Date.now() - cached.timestamp) < cached.ttl;
   
-  // VALIDAÇÃO CRÍTICA: Cache corrompido
+  // VALIDAÇÃO CRÍTICA: Não usar cache corrompido
   if (isValid && Array.isArray(cached.data) && cached.data.length === 0) {
     console.warn(`🚨 Cache corrompido detectado: ${cacheKey}`);
     globalCache.delete(cacheKey);
@@ -86,7 +103,7 @@ const isValidCache = (cacheKey: string): boolean => {
 };
 
 const setCache = (cacheKey: string, data: any, ttl: number = CACHE_TTL): void => {
-  // Não cachear resultados vazios
+  // Cache apenas resultados significativos
   if (Array.isArray(data) && data.length === 0) {
     console.warn(`⚠️ Não cacheando resultado vazio: ${cacheKey}`);
     return;
@@ -105,121 +122,273 @@ const getCache = (cacheKey: string): any => {
   return cached?.data || null;
 };
 
-// Função otimizada para buscar todo conteúdo com timeout melhorado
-const fetchAllContentForGlobalSorting = async (): Promise<SearchResult[]> => {
-  const cacheKey = getCacheKey('global_content');
+// FUNÇÃO ESCALÁVEL PARA DESCOBRIR TOTAL DISPONÍVEL NA API
+const discoverTotalContent = async (tipo: string): Promise<number> => {
+  const cacheKey = getCacheKey(`total_${tipo}`);
   
   if (isValidCache(cacheKey)) {
-    console.log('📦 Cache HIT: Global content');
-    return getCache(cacheKey);
+    const cached = getCache(cacheKey);
+    console.log(`📊 Total ${tipo} (cache): ${cached}`);
+    return cached;
   }
 
-  console.log('🌐 Fetching ALL content with improved timeout handling...');
-  
   try {
-    // Timeout agressivo de 15 segundos para API externa
+    console.log(`🔍 Descobrindo total de ${tipo}...`);
+    const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=1`;
+    
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('API timeout after 15 seconds')), 15000);
+      setTimeout(() => reject(new Error(`Timeout descobrindo total ${tipo}`)), TIMEOUTS.singleRequest);
     });
     
-    const fetchPromises = [
-      Promise.race([fetchContentType('livro', 50), timeoutPromise]),
-      Promise.race([fetchContentType('aula', 50), timeoutPromise]),
-      Promise.race([fetchContentType('podcast', 50), timeoutPromise])
-    ];
-
-    const results = await Promise.allSettled(fetchPromises);
-    
-    const allContent: SearchResult[] = [];
-    
-    results.forEach((result, index) => {
-      const contentType = ['livro', 'aula', 'podcast'][index];
-      if (result.status === 'fulfilled') {
-        allContent.push(...result.value);
-        console.log(`✅ ${contentType}: ${result.value.length} items loaded`);
-      } else {
-        console.error(`❌ Failed to load ${contentType}:`, result.reason?.message);
+    const fetchPromise = fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'LSB-Scalable-Search/2.0'
       }
     });
 
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const total = data.total || 0;
+    
+    // Cache do total por 30 minutos
+    setCache(cacheKey, total, 30 * 60 * 1000);
+    
+    console.log(`📊 Total ${tipo} descoberto: ${total}`);
+    return total;
+    
+  } catch (error) {
+    console.error(`❌ Erro descobrindo total ${tipo}:`, error);
+    // Retornar estimativa baseada na configuração
+    const config = SCALABLE_LIMITS[tipo as keyof typeof SCALABLE_LIMITS];
+    return config ? Math.ceil(config.maxItems / config.percentage) : 100;
+  }
+};
+
+// FUNÇÃO DE AUTO-SCALING INTELIGENTE
+const calculateOptimalLimit = async (tipo: string): Promise<number> => {
+  const config = SCALABLE_LIMITS[tipo as keyof typeof SCALABLE_LIMITS];
+  if (!config) return 50;
+
+  try {
+    const totalAvailable = await discoverTotalContent(tipo);
+    const calculatedLimit = Math.min(
+      Math.ceil(totalAvailable * config.percentage),
+      config.maxItems
+    );
+    
+    console.log(`🎯 Auto-scaling ${tipo}: ${calculatedLimit} de ${totalAvailable} (${Math.round(config.percentage * 100)}%)`);
+    return calculatedLimit;
+    
+  } catch (error) {
+    console.error(`❌ Erro no auto-scaling ${tipo}:`, error);
+    return config.maxItems;
+  }
+};
+
+// BUSCA PARALELA POR CHUNKS - ALTA PERFORMANCE
+const fetchContentTypeScalable = async (tipo: string, targetLimit: number): Promise<SearchResult[]> => {
+  const config = SCALABLE_LIMITS[tipo as keyof typeof SCALABLE_LIMITS];
+  if (!config) return [];
+
+  const allItems: SearchResult[] = [];
+  const chunkSize = config.chunkSize;
+  const totalChunks = Math.ceil(targetLimit / chunkSize);
+  const maxConcurrency = config.maxConcurrency;
+  
+  console.log(`🚀 Busca escalável ${tipo}: ${totalChunks} chunks de ${chunkSize} itens (concorrência: ${maxConcurrency})`);
+
+  // Processar chunks em batches paralelos
+  for (let batchStart = 0; batchStart < totalChunks; batchStart += maxConcurrency) {
+    const batchEnd = Math.min(batchStart + maxConcurrency, totalChunks);
+    const chunkPromises: Promise<SearchResult[]>[] = [];
+    
+    // Criar promises para o batch atual
+    for (let chunkIndex = batchStart; chunkIndex < batchEnd; chunkIndex++) {
+      const page = chunkIndex + 1;
+      const chunkPromise = fetchSingleChunk(tipo, page, chunkSize);
+      chunkPromises.push(chunkPromise);
+    }
+    
+    console.log(`📦 Processando batch ${Math.ceil(batchStart / maxConcurrency) + 1}: chunks ${batchStart + 1}-${batchEnd}`);
+    
+    try {
+      // Timeout para todo o batch
+      const batchTimeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Batch timeout ${tipo}`)), TIMEOUTS.chunkParallel);
+      });
+      
+      const batchResults = await Promise.race([
+        Promise.allSettled(chunkPromises),
+        batchTimeoutPromise
+      ]);
+      
+      // Processar resultados do batch
+      batchResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          allItems.push(...result.value);
+          console.log(`✅ Chunk ${batchStart + index + 1}: ${result.value.length} itens`);
+        } else {
+          console.error(`❌ Chunk ${batchStart + index + 1} falhou:`, result.reason?.message);
+        }
+      });
+      
+      // Verificar se já temos itens suficientes
+      if (allItems.length >= targetLimit) {
+        console.log(`🎯 Limite atingido: ${allItems.length}/${targetLimit} itens`);
+        break;
+      }
+      
+      // Pausa entre batches para não sobrecarregar a API
+      if (batchEnd < totalChunks) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+    } catch (error) {
+      console.error(`❌ Erro no batch ${batchStart}-${batchEnd}:`, error);
+      // Continuar com próximo batch mesmo se este falhar
+    }
+  }
+
+  const finalItems = allItems.slice(0, targetLimit);
+  console.log(`✅ Busca escalável ${tipo} concluída: ${finalItems.length} itens`);
+  
+  return finalItems;
+};
+
+// BUSCA DE UM CHUNK INDIVIDUAL
+const fetchSingleChunk = async (tipo: string, page: number, limit: number): Promise<SearchResult[]> => {
+  const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
+  
+  try {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`Chunk timeout ${tipo} page ${page}`)), TIMEOUTS.singleRequest);
+    });
+    
+    const fetchPromise = fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'LSB-Scalable-Search/2.0'
+      }
+    });
+
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} for ${tipo} page ${page}`);
+    }
+
+    const data = await response.json();
+    const items = data.conteudo || [];
+    
+    if (items.length === 0) {
+      console.log(`📄 Fim dos dados ${tipo} na página ${page}`);
+      return [];
+    }
+
+    const transformedItems = items.map((item: any) => transformToSearchResult(item, tipo));
+    return transformedItems;
+    
+  } catch (error) {
+    console.error(`❌ Erro chunk ${tipo} page ${page}:`, error);
+    return [];
+  }
+};
+
+// FUNÇÃO PRINCIPAL ESCALÁVEL PARA BUSCAR TODO CONTEÚDO
+const fetchAllContentScalable = async (): Promise<SearchResult[]> => {
+  const cacheKey = getCacheKey('global_scalable_content');
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT: Conteúdo global escalável (${cached.length} itens)`);
+    return cached;
+  }
+
+  console.log('🌐 Iniciando busca escalável de TODOS os conteúdos...');
+  const startTime = Date.now();
+  
+  try {
+    // Timeout global para toda a operação
+    const globalTimeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout global da busca escalável')), TIMEOUTS.totalOperation);
+    });
+    
+    const searchPromise = performScalableSearch();
+    const allContent = await Promise.race([searchPromise, globalTimeoutPromise]);
+    
     if (allContent.length === 0) {
-      console.warn('⚠️ No content from API, using Supabase fallback...');
+      console.warn('⚠️ Nenhum conteúdo escalável carregado, usando fallback...');
       return await fetchAllFromSupabaseFallback();
     }
 
-    // Cache apenas se tiver conteúdo válido
+    // Cache o resultado por tempo otimizado
     setCache(cacheKey, allContent, CACHE_TTL);
     
-    console.log(`✅ Global content loaded: ${allContent.length} total items`);
+    const endTime = Date.now();
+    const duration = Math.round((endTime - startTime) / 1000);
+    
+    console.log(`✅ Busca escalável concluída em ${duration}s: ${allContent.length} itens totais`);
     return allContent;
     
   } catch (error) {
-    console.error('❌ Error in fetchAllContentForGlobalSorting:', error);
+    const endTime = Date.now();
+    const duration = Math.round((endTime - startTime) / 1000);
+    
+    console.error(`❌ Erro na busca escalável após ${duration}s:`, error);
     return await fetchAllFromSupabaseFallback();
   }
 };
 
-// Função para buscar um tipo de conteúdo com retry e timeout
-const fetchContentType = async (tipo: string, maxItems: number = 50): Promise<SearchResult[]> => {
-  const allItems: SearchResult[] = [];
-  let page = 1;
-  const limit = 10;
+// EXECUTAR BUSCA ESCALÁVEL PARALELA
+const performScalableSearch = async (): Promise<SearchResult[]> => {
+  console.log('🎯 Executando auto-scaling para descobrir limites ótimos...');
   
-  try {
-    while (allItems.length < maxItems) {
-      const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
-      
-      console.log(`📡 Fetching ${tipo} page ${page} with 8s timeout...`);
-      
-      // Timeout de 8 segundos por requisição
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Timeout fetching ${tipo} page ${page}`)), 8000);
-      });
-      
-      const fetchPromise = fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'LSB-Search/1.0'
-        }
-      });
+  // Descobrir limites ótimos para cada tipo
+  const [podcastLimit, aulaLimit, livroLimit] = await Promise.allSettled([
+    calculateOptimalLimit('podcast'),
+    calculateOptimalLimit('aula'),
+    calculateOptimalLimit('livro')
+  ]);
 
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
+  const limits = {
+    podcast: podcastLimit.status === 'fulfilled' ? podcastLimit.value : SCALABLE_LIMITS.podcast.maxItems,
+    aula: aulaLimit.status === 'fulfilled' ? aulaLimit.value : SCALABLE_LIMITS.aula.maxItems,
+    livro: livroLimit.status === 'fulfilled' ? livroLimit.value : SCALABLE_LIMITS.livro.maxItems
+  };
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+  console.log('📊 Limites calculados:', limits);
+  
+  // Executar buscas paralelas com limites otimizados
+  const searchPromises = [
+    fetchContentTypeScalable('podcast', limits.podcast),
+    fetchContentTypeScalable('aula', limits.aula),
+    fetchContentTypeScalable('livro', limits.livro)
+  ];
 
-      const data = await response.json();
-      const items = data.conteudo || [];
-      
-      if (items.length === 0) {
-        console.log(`📄 No more ${tipo} items (page ${page})`);
-        break;
-      }
+  const results = await Promise.allSettled(searchPromises);
+  const allContent: SearchResult[] = [];
 
-      const transformedItems = items.map((item: any) => transformToSearchResult(item, tipo));
-      allItems.push(...transformedItems);
-      
-      console.log(`📦 ${tipo} page ${page}: ${items.length} items (total: ${allItems.length})`);
-      
-      if (items.length < limit) break;
-      
-      page++;
-      
-      // Pausa entre requisições
-      if (page > 1) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
+  results.forEach((result, index) => {
+    const contentType = ['podcast', 'aula', 'livro'][index];
+    if (result.status === 'fulfilled') {
+      allContent.push(...result.value);
+      console.log(`✅ ${contentType}: ${result.value.length} itens carregados`);
+    } else {
+      console.error(`❌ Falha ${contentType}:`, result.reason?.message);
     }
-    
-  } catch (error) {
-    console.error(`❌ Error fetching ${tipo}:`, error);
-    return await fetchFromSupabaseFallback(tipo);
-  }
-  
-  return allItems.slice(0, maxItems);
+  });
+
+  return allContent;
 };
 
 const transformToSearchResult = (item: any, tipo: string): SearchResult => {
@@ -280,7 +449,7 @@ const formatDuration = (durationMs: number): string => {
 };
 
 const fetchAllFromSupabaseFallback = async (): Promise<SearchResult[]> => {
-  console.log('🔄 Using Supabase fallback for global content...');
+  console.log('🔄 Fallback Supabase para conteúdo global...');
   
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -288,7 +457,7 @@ const fetchAllFromSupabaseFallback = async (): Promise<SearchResult[]> => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Supabase timeout')), 15000);
+      setTimeout(() => reject(new Error('Supabase fallback timeout')), 20000);
     });
 
     const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
@@ -300,20 +469,20 @@ const fetchAllFromSupabaseFallback = async (): Promise<SearchResult[]> => {
     const allContent: SearchResult[] = [];
 
     if (booksResult.status === 'fulfilled' && booksResult.value.data?.success) {
-      allContent.push(...(booksResult.value.data.books || []).slice(0, 25));
+      allContent.push(...(booksResult.value.data.books || []));
     }
     if (videosResult.status === 'fulfilled' && videosResult.value.data?.success) {
-      allContent.push(...(videosResult.value.data.videos || []).slice(0, 25));
+      allContent.push(...(videosResult.value.data.videos || []));
     }
-    if (podcastsResult.status === 'fulfilled' && videosResult.value.data?.success) {
-      allContent.push(...(podcastsResult.value.data.podcasts || []).slice(0, 25));
+    if (podcastsResult.status === 'fulfilled' && podcastsResult.value.data?.success) {
+      allContent.push(...(podcastsResult.value.data.podcasts || []));
     }
 
-    console.log(`✅ Supabase fallback: ${allContent.length} items`);
+    console.log(`✅ Fallback Supabase: ${allContent.length} itens`);
     return allContent;
     
   } catch (error) {
-    console.error('❌ Supabase fallback failed:', error);
+    console.error('❌ Fallback Supabase falhou:', error);
     return [];
   }
 };
@@ -348,24 +517,38 @@ const fetchFromSupabaseFallback = async (tipo: string): Promise<SearchResult[]> 
   }
 };
 
-// Função principal de busca com logs detalhados
+// Verificação se é busca global
+const isGlobalSearch = (filters: SearchFilters): boolean => {
+  return filters.resourceType.includes('all') || 
+         (filters.resourceType.length === 0 && 
+          filters.subject.length === 0 &&
+          filters.author.length === 0 &&
+          !filters.year &&
+          !filters.duration &&
+          filters.language.length === 0 &&
+          filters.documentType.length === 0 &&
+          filters.program.length === 0 &&
+          filters.channel.length === 0);
+};
+
+// FUNÇÃO PRINCIPAL DE BUSCA COM SISTEMA ESCALÁVEL
 const performSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
-  const requestId = `search_${Date.now()}`;
+  const requestId = `scalable_search_${Date.now()}`;
   
-  console.group(`🔍 ${requestId} - EDGE FUNCTION SEARCH`);
-  console.log('📋 Request params:', { query: query || '(empty)', filters, sortBy, page, resultsPerPage });
-  console.log('🌐 Is global search:', isGlobalSearch(filters));
+  console.group(`🔍 ${requestId} - BUSCA ESCALÁVEL`);
+  console.log('📋 Parâmetros:', { query: query || '(vazio)', filters, sortBy, page, resultsPerPage });
+  console.log('🌐 Busca global:', isGlobalSearch(filters));
 
   try {
     let allData: SearchResult[] = [];
 
     if (isGlobalSearch(filters)) {
-      console.log('🌐 GLOBAL SEARCH - fetching all content');
-      allData = await fetchAllContentForGlobalSorting();
+      console.log('🌐 BUSCA GLOBAL ESCALÁVEL - carregando todo conteúdo');
+      allData = await fetchAllContentScalable();
       
       if (allData.length === 0) {
-        console.warn('⚠️ No global content available');
+        console.warn('⚠️ Nenhum conteúdo global disponível');
         return {
           success: true,
           results: [],
@@ -380,23 +563,24 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
         };
       }
     } else {
-      // Busca específica por tipo
+      // Busca específica escalável por tipo
       const activeTypes = filters.resourceType.filter(type => type !== 'all');
-      console.log('🎯 Specific search for types:', activeTypes);
+      console.log('🎯 Busca específica escalável para tipos:', activeTypes);
       
       if (activeTypes.length > 0) {
-        const typePromises = activeTypes.map(type => {
+        const typePromises = activeTypes.map(async type => {
           const apiType = type === 'titulo' ? 'livro' : type === 'video' ? 'aula' : 'podcast';
-          return fetchContentType(apiType, 100);
+          const targetLimit = await calculateOptimalLimit(apiType);
+          return fetchContentTypeScalable(apiType, targetLimit);
         });
         
         const typeResults = await Promise.allSettled(typePromises);
         typeResults.forEach((result, index) => {
           if (result.status === 'fulfilled') {
             allData.push(...result.value);
-            console.log(`✅ Type ${activeTypes[index]}: ${result.value.length} items`);
+            console.log(`✅ Tipo ${activeTypes[index]}: ${result.value.length} itens`);
           } else {
-            console.error(`❌ Type ${activeTypes[index]} failed:`, result.reason);
+            console.error(`❌ Tipo ${activeTypes[index]} falhou:`, result.reason);
           }
         });
       }
@@ -411,15 +595,15 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
         const searchText = `${item.title} ${item.author} ${item.description}`.toLowerCase();
         return searchText.includes(queryLower);
       });
-      console.log(`🔍 Query filter applied: ${filteredData.length} results`);
+      console.log(`🔍 Filtro de query aplicado: ${filteredData.length} resultados`);
     }
 
     filteredData = applyFilters(filteredData, filters);
-    console.log(`🔧 All filters applied: ${filteredData.length} results`);
+    console.log(`🔧 Todos os filtros aplicados: ${filteredData.length} resultados`);
 
     // Ordenar
     filteredData = sortResults(filteredData, sortBy, query);
-    console.log(`📊 Sorted by ${sortBy}: ${filteredData.length} results`);
+    console.log(`📊 Ordenado por ${sortBy}: ${filteredData.length} resultados`);
 
     // Paginação
     const totalResults = filteredData.length;
@@ -444,17 +628,17 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
       }
     };
 
-    console.log(`✅ Search completed successfully:`, {
-      totalFound: totalResults,
-      returned: paginatedResults.length,
-      page: `${page}/${totalPages}`
+    console.log(`✅ Busca escalável concluída:`, {
+      totalEncontrado: totalResults,
+      retornado: paginatedResults.length,
+      pagina: `${page}/${totalPages}`
     });
     
     console.groupEnd();
     return response;
 
   } catch (error) {
-    console.error(`❌ Search failed:`, error);
+    console.error(`❌ Busca escalável falhou:`, error);
     console.groupEnd();
     
     return {
@@ -621,7 +805,7 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📨 Search request received:', requestBody);
+    console.log('📨 Requisição de busca escalável recebida:', requestBody);
     
     const result = await performSearch(requestBody);
     
@@ -631,7 +815,7 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error('❌ Handler error:', error);
+    console.error('❌ Erro no handler escalável:', error);
     
     return new Response(JSON.stringify({
       success: false,

@@ -18,6 +18,28 @@ interface ContentCounts {
   podcasts: number;
 }
 
+// CONFIGURAÇÃO DE ALTA ESCALABILIDADE
+const SCALABLE_CONFIG = {
+  podcast: {
+    maxItems: 1500, // 60% de 2512 podcasts
+    percentage: 0.6,
+    chunkSize: 50,
+    maxConcurrency: 5
+  },
+  aula: {
+    maxItems: 300, // 100% dos vídeos
+    percentage: 1.0,
+    chunkSize: 50,
+    maxConcurrency: 4
+  },
+  livro: {
+    maxItems: 50, // Todos os livros
+    percentage: 1.0,
+    chunkSize: 25,
+    maxConcurrency: 2
+  }
+};
+
 export class NewApiService {
   private static instance: NewApiService;
   private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
@@ -27,68 +49,250 @@ export class NewApiService {
     failures: 0,
     lastFailTime: 0,
     breakerOpen: false,
-    openDuration: 15000 // Increased to 15 seconds
+    openDuration: 20000 // Aumentado para 20 segundos
   };
   private healthStatus: 'unknown' | 'healthy' | 'unhealthy' = 'unknown';
 
   private constructor() {
-    console.log('🔧 NewApiService - Constructor with enhanced timeout system');
+    console.log('🔧 NewApiService - Constructor com sistema escalável');
     this.startHealthMonitoring();
   }
 
   static getInstance(): NewApiService {
     if (!NewApiService.instance) {
-      console.log('🆕 NewApiService - Creating instance with enhanced timeout system');
+      console.log('🆕 NewApiService - Criando instância escalável');
       NewApiService.instance = new NewApiService();
     }
     return NewApiService.instance;
   }
 
   private startHealthMonitoring(): void {
-    // Monitor health every 30 seconds with enhanced timeout
+    // Monitor de saúde a cada 45 segundos
     setInterval(async () => {
       if (!this.circuitBreaker.breakerOpen) {
         const isHealthy = await this.healthCheck();
-        console.log(`🔄 Background health: ${isHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY'}`);
+        console.log(`🔄 Saúde em background: ${isHealthy ? '✅ SAUDÁVEL' : '❌ INDISPONÍVEL'}`);
       }
-    }, 30000);
+    }, 45000);
   }
 
   private getCacheKey(tipo: string, page: number, limit: number): string {
-    return `${tipo}_${page}_${limit}`;
+    return `scalable_${tipo}_${page}_${limit}`;
   }
 
   private isValidCache(cacheKey: string): boolean {
     const cached = this.cache.get(cacheKey);
     if (!cached) {
-      console.log(`📦 Cache MISS for ${cacheKey}`);
+      console.log(`📦 Cache MISS para ${cacheKey}`);
       return false;
     }
     
     const now = Date.now();
     const isValid = (now - cached.timestamp) < cached.ttl;
-    console.log(`📦 Cache ${isValid ? 'HIT' : 'EXPIRED'} for ${cacheKey}:`, {
-      age: Math.round((now - cached.timestamp) / 1000),
+    console.log(`📦 Cache ${isValid ? 'HIT' : 'EXPIRADO'} para ${cacheKey}:`, {
+      idade: Math.round((now - cached.timestamp) / 1000),
       ttl: Math.round(cached.ttl / 1000),
-      itemCount: cached.data?.length || 0
+      itens: cached.data?.length || 0
     });
     return isValid;
   }
 
-  private setCache(cacheKey: string, data: any, ttl: number = 10 * 60 * 1000): void {
+  private setCache(cacheKey: string, data: any, ttl: number = 15 * 60 * 1000): void {
     this.cache.set(cacheKey, {
       data,
       timestamp: Date.now(),
       ttl
     });
     console.log(`📦 Cache SET: ${cacheKey}`, {
-      itemCount: data.length,
-      ttlMinutes: Math.round(ttl / 60000)
+      itens: data.length,
+      ttlMinutos: Math.round(ttl / 60000)
     });
   }
 
+  // DESCOBRIR TOTAL DISPONÍVEL NA API COM ESCALABILIDADE
+  private async discoverTotalContent(tipo: 'livro' | 'aula' | 'podcast'): Promise<number> {
+    const cacheKey = `total_${tipo}`;
+    
+    if (this.isValidCache(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      console.log(`📊 Total ${tipo} (cache): ${cached!.data}`);
+      return cached!.data;
+    }
+
+    try {
+      console.log(`🔍 Descobrindo total escalável de ${tipo}...`);
+      const { controller, timeoutPromise, cleanup } = this.timeoutManager.createAbortableRequest(`discover_${tipo}`, 5000);
+      
+      const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=1`;
+      const fetchPromise = fetch(url, {
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' }
+      });
+
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      const data: APIResponse = await response.json();
+      const total = data.total || 0;
+      
+      // Cache por 30 minutos
+      this.setCache(cacheKey, total, 30 * 60 * 1000);
+      
+      console.log(`📊 Total ${tipo} descoberto: ${total}`);
+      cleanup();
+      return total;
+      
+    } catch (error) {
+      console.error(`❌ Erro descobrindo total ${tipo}:`, error);
+      // Retornar estimativa baseada na configuração
+      const config = SCALABLE_CONFIG[tipo];
+      return Math.ceil(config.maxItems / config.percentage);
+    }
+  }
+
+  // AUTO-SCALING INTELIGENTE
+  private async calculateOptimalLimit(tipo: 'livro' | 'aula' | 'podcast'): Promise<number> {
+    const config = SCALABLE_CONFIG[tipo];
+    
+    try {
+      const totalAvailable = await this.discoverTotalContent(tipo);
+      const calculatedLimit = Math.min(
+        Math.ceil(totalAvailable * config.percentage),
+        config.maxItems
+      );
+      
+      console.log(`🎯 Auto-scaling ${tipo}: ${calculatedLimit} de ${totalAvailable} (${Math.round(config.percentage * 100)}%)`);
+      return calculatedLimit;
+      
+    } catch (error) {
+      console.error(`❌ Erro auto-scaling ${tipo}:`, error);
+      return config.maxItems;
+    }
+  }
+
+  // BUSCA ESCALÁVEL POR CHUNKS PARALELOS
+  private async fetchContentScalable(tipo: 'livro' | 'aula' | 'podcast', targetLimit?: number): Promise<SearchResult[]> {
+    const cacheKey = this.getCacheKey(`scalable_${tipo}`, 1, targetLimit || 1000);
+    
+    if (this.isValidCache(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      console.log(`📦 Cache HIT escalável: ${cached!.data.length} ${tipo}s`);
+      return cached!.data;
+    }
+
+    const requestId = `scalable_${tipo}_${Date.now()}`;
+    console.group(`🚀 ${requestId} - Busca escalável ${tipo}`);
+    
+    try {
+      // Descobrir limite ótimo se não fornecido
+      const finalLimit = targetLimit || await this.calculateOptimalLimit(tipo);
+      const config = SCALABLE_CONFIG[tipo];
+      
+      console.log(`🎯 Buscando ${finalLimit} ${tipo}s em chunks de ${config.chunkSize}`);
+      
+      const allItems: SearchResult[] = [];
+      const totalChunks = Math.ceil(finalLimit / config.chunkSize);
+      
+      // Processar em batches paralelos
+      for (let batchStart = 0; batchStart < totalChunks; batchStart += config.maxConcurrency) {
+        const batchEnd = Math.min(batchStart + config.maxConcurrency, totalChunks);
+        const chunkPromises: Promise<SearchResult[]>[] = [];
+        
+        // Criar promises para o batch
+        for (let chunkIndex = batchStart; chunkIndex < batchEnd; chunkIndex++) {
+          const page = chunkIndex + 1;
+          const chunkPromise = this.fetchSingleChunk(tipo, page, config.chunkSize, requestId);
+          chunkPromises.push(chunkPromise);
+        }
+        
+        console.log(`📦 Processando batch ${Math.ceil(batchStart / config.maxConcurrency) + 1}: chunks ${batchStart + 1}-${batchEnd}`);
+        
+        try {
+          const batchResults = await Promise.allSettled(chunkPromises);
+          
+          batchResults.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+              allItems.push(...result.value);
+              console.log(`✅ Chunk ${batchStart + index + 1}: ${result.value.length} itens`);
+            } else {
+              console.error(`❌ Chunk ${batchStart + index + 1} falhou:`, result.reason?.message);
+            }
+          });
+          
+          // Verificar se já temos itens suficientes
+          if (allItems.length >= finalLimit) {
+            console.log(`🎯 Limite atingido: ${allItems.length}/${finalLimit}`);
+            break;
+          }
+          
+          // Pausa entre batches
+          if (batchEnd < totalChunks) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+          
+        } catch (error) {
+          console.error(`❌ Erro no batch:`, error);
+        }
+      }
+
+      const finalItems = allItems.slice(0, finalLimit);
+      
+      // Cache por 15 minutos
+      this.setCache(cacheKey, finalItems, 15 * 60 * 1000);
+      
+      console.log(`✅ Busca escalável concluída: ${finalItems.length} ${tipo}s`);
+      console.groupEnd();
+      
+      return finalItems;
+      
+    } catch (error) {
+      console.error(`❌ Erro busca escalável ${tipo}:`, error);
+      console.groupEnd();
+      return await this.fetchFromSupabaseFallback(tipo);
+    }
+  }
+
+  // BUSCA DE CHUNK INDIVIDUAL
+  private async fetchSingleChunk(tipo: string, page: number, limit: number, requestId: string): Promise<SearchResult[]> {
+    const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
+    
+    try {
+      const { controller, timeoutPromise, cleanup } = this.timeoutManager.createAbortableRequest(`${requestId}_chunk${page}`, 8000);
+      
+      const fetchPromise = fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'LSB-Scalable-Search/2.0'
+        }
+      });
+
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} para ${tipo} página ${page}`);
+      }
+
+      const data: APIResponse = await response.json();
+      const items = data.conteudo || [];
+      
+      if (items.length === 0) {
+        console.log(`📄 Fim dos dados ${tipo} na página ${page}`);
+        cleanup();
+        return [];
+      }
+
+      const transformedItems = items.map((item: any) => this.transformToSearchResult(item, tipo));
+      cleanup();
+      return transformedItems;
+      
+    } catch (error) {
+      console.error(`❌ Erro chunk ${tipo} página ${page}:`, error);
+      return [];
+    }
+  }
+
   private transformToSearchResult(item: any, tipo: string): SearchResult {
-    console.log(`🔄 Transforming item:`, {
+    console.log(`🔄 Transformando item:`, {
       tipo,
       id: item.id,
       titulo: item.titulo || item.podcast_titulo || item.title
@@ -114,11 +318,11 @@ export class NewApiService {
     } else if (tipo === 'aula') {
       baseResult.embedUrl = item.embed_url;
       baseResult.duration = item.duracao_ms ? this.formatDuration(item.duracao_ms) : undefined;
-      baseResult.channel = item.canal || 'Canal desconhecido'; // Extract channel for videos
+      baseResult.channel = item.canal || 'Canal desconhecido';
     } else if (tipo === 'podcast') {
       baseResult.duration = item.duracao_ms ? this.formatDuration(item.duracao_ms) : undefined;
       baseResult.embedUrl = item.embed_url;
-      baseResult.program = item.podcast_titulo || 'Programa desconhecido'; // Extract program for podcasts
+      baseResult.program = item.podcast_titulo || 'Programa desconhecido';
     }
 
     return baseResult;
@@ -152,10 +356,10 @@ export class NewApiService {
 
   private async healthCheck(): Promise<boolean> {
     const requestId = `health_${Date.now()}`;
-    console.log(`🏥 ${requestId} - Starting enhanced health check (3s timeout)`);
+    console.log(`🏥 ${requestId} - Verificação de saúde escalável (5s timeout)`);
     
     try {
-      const { controller, timeoutPromise, cleanup } = this.timeoutManager.createAbortableRequest(requestId, 3000); // Increased to 3s
+      const { controller, timeoutPromise, cleanup } = this.timeoutManager.createAbortableRequest(requestId, 5000);
       
       const healthUrl = `${API_BASE_URL}/health`;
       const fetchPromise = fetch(healthUrl, {
@@ -167,14 +371,14 @@ export class NewApiService {
       const isHealthy = response.ok;
       
       this.healthStatus = isHealthy ? 'healthy' : 'unhealthy';
-      console.log(`🏥 ${requestId} - Health check: ${isHealthy ? '✅ SUCCESS' : '❌ FAILED'}`);
+      console.log(`🏥 ${requestId} - Verificação: ${isHealthy ? '✅ SUCESSO' : '❌ FALHOU'}`);
       
       cleanup();
       return isHealthy;
       
     } catch (error) {
       this.healthStatus = 'unhealthy';
-      console.error(`🏥 ${requestId} - Health check FAILED:`, error instanceof Error ? error.message : 'Unknown');
+      console.error(`🏥 ${requestId} - Verificação FALHOU:`, error instanceof Error ? error.message : 'Desconhecido');
       return false;
     }
   }
@@ -184,13 +388,13 @@ export class NewApiService {
     
     const now = Date.now();
     if (now - this.circuitBreaker.lastFailTime > this.circuitBreaker.openDuration) {
-      console.log('🔄 Circuit breaker reset - trying again');
+      console.log('🔄 Circuit breaker resetado - tentando novamente');
       this.circuitBreaker.breakerOpen = false;
       this.circuitBreaker.failures = 0;
       return false;
     }
     
-    console.log('⚡ Circuit breaker OPEN - fast-failing requests');
+    console.log('⚡ Circuit breaker ABERTO - falha rápida');
     return true;
   }
 
@@ -198,10 +402,9 @@ export class NewApiService {
     this.circuitBreaker.failures++;
     this.circuitBreaker.lastFailTime = Date.now();
     
-    // Increased threshold to 4 failures
-    if (this.circuitBreaker.failures >= 4) {
+    if (this.circuitBreaker.failures >= 5) { // Aumentado threshold
       this.circuitBreaker.breakerOpen = true;
-      console.log('⚡ Circuit breaker OPENED - too many failures');
+      console.log('⚡ Circuit breaker ABERTO - muitas falhas');
     }
   }
 
@@ -210,186 +413,75 @@ export class NewApiService {
     this.circuitBreaker.breakerOpen = false;
   }
 
-  private async fetchWithForcedTimeout(url: string, requestId: string, timeoutMs: number = 5000): Promise<Response> { // Increased default to 5s
-    console.log(`🚀 ${requestId} - Fetch with ENHANCED timeout (${timeoutMs}ms)`);
-    
-    const { controller, timeoutPromise, cleanup } = this.timeoutManager.createAbortableRequest(requestId, timeoutMs);
-    
-    try {
-      const fetchPromise = fetch(url, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'LSB-Digital-Archive/1.0'
-        }
-      });
-
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
-      
-      if (response.ok) {
-        console.log(`✅ ${requestId} - Request successful`);
-        this.recordSuccess();
-        cleanup();
-        return response;
-      }
-      
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      
-    } catch (error) {
-      this.recordFailure();
-      cleanup();
-      
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.error(`⚡ ${requestId} - Request ABORTED by enhanced timeout`);
-        throw new Error(`Request forcefully aborted after ${timeoutMs}ms`);
-      }
-      
-      console.error(`❌ ${requestId} - Request failed:`, error instanceof Error ? error.message : 'Unknown');
-      throw error;
+  // MÉTODO PÚBLICO ESCALÁVEL PARA BUSCAR CONTEÚDO
+  async fetchContent(tipo: 'livro' | 'aula' | 'podcast', page: number = 1, limit: number = 10): Promise<SearchResult[]> {
+    // Para manter compatibilidade, usar busca escalável quando limite for alto
+    if (limit > 50 || page === 1) {
+      const targetLimit = limit > 50 ? await this.calculateOptimalLimit(tipo) : limit;
+      return this.fetchContentScalable(tipo, targetLimit);
     }
+    
+    // Busca padrão para casos específicos
+    return this.performStandardFetch(tipo, page, limit);
   }
 
-  async fetchContent(tipo: 'livro' | 'aula' | 'podcast', page: number = 1, limit: number = 10): Promise<SearchResult[]> {
+  // BUSCA PADRÃO PARA COMPATIBILIDADE
+  private async performStandardFetch(tipo: string, page: number, limit: number): Promise<SearchResult[]> {
     const cacheKey = this.getCacheKey(tipo, page, limit);
-    const requestId = `${tipo}_${Date.now()}`;
+    const requestId = `standard_${tipo}_${Date.now()}`;
     
-    console.group(`🚀 ${requestId} - fetchContent with forced timeout`);
-    
-    // Check cache first
     if (this.isValidCache(cacheKey)) {
       const cached = this.cache.get(cacheKey);
-      console.log(`📦 Cache HIT: ${cached!.data.length} items`);
-      console.groupEnd();
+      console.log(`📦 Cache HIT padrão: ${cached!.data.length} itens`);
       return cached!.data;
     }
 
-    // Fast-fail if circuit breaker is open
     if (this.isCircuitBreakerOpen()) {
-      console.log(`⚡ Circuit breaker OPEN - using Supabase fallback`);
-      console.groupEnd();
+      console.log(`⚡ Circuit breaker ABERTO - usando fallback Supabase`);
       return this.fetchFromSupabaseFallback(tipo);
     }
 
-    // Check for active requests
-    if (this.activeRequests.has(cacheKey)) {
-      console.log(`⏳ Request already in progress`);
-      const result = await this.activeRequests.get(cacheKey)!;
-      console.groupEnd();
-      return result;
-    }
-
-    const requestPromise = this.performForcedFetch(tipo, page, limit, requestId);
-    this.activeRequests.set(cacheKey, requestPromise);
-
     try {
-      const result = await requestPromise;
-      console.log(`✅ Success: ${result.length} items`);
-      console.groupEnd();
+      const result = await this.fetchSingleChunk(tipo, page, limit, requestId);
+      this.setCache(cacheKey, result, 10 * 60 * 1000);
       return result;
     } catch (error) {
-      console.error(`❌ Failed, using Supabase fallback:`, error);
-      console.groupEnd();
+      console.error(`❌ Busca padrão falhou:`, error);
       return this.fetchFromSupabaseFallback(tipo);
-    } finally {
-      this.activeRequests.delete(cacheKey);
     }
   }
 
-  private async performForcedFetch(tipo: string, page: number, limit: number, requestId: string): Promise<SearchResult[]> {
-    const cacheKey = this.getCacheKey(tipo, page, limit);
-    const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
-    
-    console.log(`🌐 ${requestId} - Attempting forced fetch`);
-    
-    try {
-      // Primeira tentativa: 2 segundos
-      const response = await this.fetchWithForcedTimeout(url, `${requestId}_attempt1`, 2000);
-      
-      console.log(`📄 ${requestId} - Parsing JSON response`);
-      const rawData: APIResponse = await response.json();
-      
-      const dataArray = rawData.conteudo || [];
-      if (dataArray.length === 0) {
-        console.warn(`⚠️ ${requestId} - No content found`);
-        return [];
-      }
-      
-      const transformedData = dataArray.map((item: any) => this.transformToSearchResult(item, tipo));
-      this.setCache(cacheKey, transformedData, 5 * 60 * 1000);
-      
-      console.log(`✅ ${requestId} - SUCCESS: ${transformedData.length} items`);
-      return transformedData;
-      
-    } catch (error) {
-      console.error(`❌ ${requestId} - Forced fetch failed:`, error);
-      throw error;
-    }
-  }
-
-  private async fetchFromSupabaseFallback(tipo: 'livro' | 'aula' | 'podcast'): Promise<SearchResult[]> {
-    console.log(`🔄 Using Supabase fallback for ${tipo}`);
-    
-    try {
-      const { supabase } = await import('@/integrations/supabase/client');
-      
-      let functionName: string;
-      switch (tipo) {
-        case 'livro': functionName = 'fetch-books'; break;
-        case 'aula': functionName = 'fetch-videos'; break;
-        case 'podcast': functionName = 'fetch-podcasts'; break;
-        default: throw new Error(`Unsupported tipo: ${tipo}`);
-      }
-      
-      console.log(`📡 Calling Supabase function: ${functionName}`);
-      const { data, error } = await supabase.functions.invoke(functionName);
-      
-      if (error || !data.success) {
-        console.error(`❌ Supabase ${functionName} error:`, error || data.error);
-        return [];
-      }
-      
-      const items = tipo === 'livro' ? data.books : tipo === 'aula' ? data.videos : data.podcasts;
-      console.log(`✅ Supabase success: ${items.length} ${tipo}s`);
-      return items;
-      
-    } catch (error) {
-      console.error(`❌ Supabase fallback failed for ${tipo}:`, error);
-      return [];
-    }
-  }
-
+  // HOMEPAGE ESCALÁVEL COM ALTA PERFORMANCE
   async fetchHomepageContent(): Promise<{
     videos: SearchResult[];
     books: SearchResult[];
     podcasts: SearchResult[];
   }> {
-    const requestId = `homepage_${Date.now()}`;
+    const requestId = `homepage_scalable_${Date.now()}`;
     
-    console.group(`🏠 ${requestId} - fetchHomepageContent with forced timeouts`);
-    console.log(`⏰ Started: ${new Date().toISOString()}`);
-    console.log(`🌡️ Health: ${this.healthStatus}`);
-    console.log(`⚡ Circuit breaker: ${this.circuitBreaker.breakerOpen ? 'OPEN' : 'CLOSED'}`);
+    console.group(`🏠 ${requestId} - Conteúdo homepage escalável`);
+    console.log(`⏰ Iniciado: ${new Date().toISOString()}`);
+    console.log(`🌡️ Saúde: ${this.healthStatus}`);
+    console.log(`⚡ Circuit breaker: ${this.circuitBreaker.breakerOpen ? 'ABERTO' : 'FECHADO'}`);
     
     try {
-      // Health check com timeout forçado
-      console.log(`🏥 ${requestId} - Forced health check (1s)`);
+      // Verificação de saúde rápida
       const isHealthy = await this.healthCheck();
       
       if (!isHealthy) {
-        console.warn(`⚠️ ${requestId} - Health failed, emergency fallback`);
+        console.warn(`⚠️ ${requestId} - Saúde falhou, fallback de emergência`);
         const result = await this.fetchAllFromSupabase();
         console.groupEnd();
         return result;
       }
       
-      // Carregamento progressivo com timeouts forçados
-      console.log(`📡 ${requestId} - Progressive loading with forced timeouts`);
+      // Carregamento escalável e paralelo
+      console.log(`📡 ${requestId} - Carregamento escalável paralelo`);
       
       const results = await Promise.allSettled([
-        this.fetchContent('livro', 1, 6),
-        this.fetchContent('aula', 1, 6),
-        this.fetchContent('podcast', 1, 6)
+        this.fetchContentScalable('livro', 8), // Mais livros
+        this.fetchContentScalable('aula', 8),  // Mais vídeos  
+        this.fetchContentScalable('podcast', 8) // Mais podcasts
       ]);
 
       const books = results[0].status === 'fulfilled' ? results[0].value : [];
@@ -398,17 +490,16 @@ export class NewApiService {
 
       const totalItems = books.length + videos.length + podcasts.length;
       
-      console.group('📋 FINAL REPORT');
+      console.group('📋 RELATÓRIO FINAL ESCALÁVEL');
       console.log(`📊 Total: ${totalItems}`);
-      console.log(`📚 Books: ${books.length}`);
-      console.log(`🎬 Videos: ${videos.length}`);
+      console.log(`📚 Livros: ${books.length}`);
+      console.log(`🎬 Vídeos: ${videos.length}`);
       console.log(`🎧 Podcasts: ${podcasts.length}`);
-      console.log(`🎯 Result: ${totalItems > 0 ? '✅ SUCCESS' : '❌ FALLBACK NEEDED'}`);
+      console.log(`🎯 Resultado: ${totalItems > 0 ? '✅ SUCESSO' : '❌ FALLBACK NECESSÁRIO'}`);
       console.groupEnd();
 
-      // Se nenhum conteúdo foi carregado, usar fallback
       if (totalItems === 0) {
-        console.log(`🔄 ${requestId} - No content, using emergency fallback`);
+        console.log(`🔄 ${requestId} - Nenhum conteúdo, fallback de emergência`);
         const fallbackResult = await this.fetchAllFromSupabase();
         console.groupEnd();
         return fallbackResult;
@@ -418,7 +509,7 @@ export class NewApiService {
       return { videos, books, podcasts };
       
     } catch (error) {
-      console.error(`❌ ${requestId} - Complete failure, emergency fallback:`, error);
+      console.error(`❌ ${requestId} - Falha completa, fallback de emergência:`, error);
       const fallbackResult = await this.fetchAllFromSupabase();
       console.groupEnd();
       return fallbackResult;
@@ -430,7 +521,7 @@ export class NewApiService {
     books: SearchResult[];
     podcasts: SearchResult[];
   }> {
-    console.log('🔄 Emergency: All content from Supabase');
+    console.log('🔄 Emergência: Todo conteúdo do Supabase');
     
     try {
       const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
@@ -439,11 +530,11 @@ export class NewApiService {
         this.fetchFromSupabaseFallback('podcast')
       ]);
 
-      const books = booksResult.status === 'fulfilled' ? booksResult.value.slice(0, 6) : [];
-      const videos = videosResult.status === 'fulfilled' ? videosResult.value.slice(0, 6) : [];
-      const podcasts = podcastsResult.status === 'fulfilled' ? podcastsResult.value.slice(0, 6) : [];
+      const books = booksResult.status === 'fulfilled' ? booksResult.value.slice(0, 8) : [];
+      const videos = videosResult.status === 'fulfilled' ? videosResult.value.slice(0, 8) : [];
+      const podcasts = podcastsResult.status === 'fulfilled' ? podcastsResult.value.slice(0, 8) : [];
 
-      console.log('✅ Supabase emergency complete:', {
+      console.log('✅ Emergência Supabase completa:', {
         books: books.length,
         videos: videos.length,
         podcasts: podcasts.length
@@ -452,192 +543,149 @@ export class NewApiService {
       return { videos, books, podcasts };
       
     } catch (error) {
-      console.error('❌ Supabase emergency failed:', error);
+      console.error('❌ Emergência Supabase falhou:', error);
       return { videos: [], books: [], podcasts: [] };
     }
   }
 
+  private async fetchFromSupabaseFallback(tipo: 'livro' | 'aula' | 'podcast'): Promise<SearchResult[]> {
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      let functionName: string;
+      switch (tipo) {
+        case 'livro': functionName = 'fetch-books'; break;
+        case 'aula': functionName = 'fetch-videos'; break;
+        case 'podcast': functionName = 'fetch-podcasts'; break;
+        default: throw new Error(`Tipo não suportado: ${tipo}`);
+      }
+      
+      console.log(`📡 Chamando função Supabase: ${functionName}`);
+      const { data, error } = await supabase.functions.invoke(functionName);
+      
+      if (error || !data.success) {
+        console.error(`❌ Supabase ${functionName} erro:`, error || data.error);
+        return [];
+      }
+      
+      const items = tipo === 'livro' ? data.books : tipo === 'aula' ? data.videos : data.podcasts;
+      console.log(`✅ Supabase sucesso: ${items.length} ${tipo}s`);
+      return items;
+      
+    } catch (error) {
+      console.error(`❌ Fallback Supabase falhou para ${tipo}:`, error);
+      return [];
+    }
+  }
+
+  // CONTAGENS ESCALÁVEIS COM TOTAIS REAIS
   async fetchContentCounts(): Promise<ContentCounts> {
-    const requestId = `counts_${Date.now()}`;
+    const requestId = `counts_scalable_${Date.now()}`;
     
-    console.group(`📊 ${requestId} - fetchContentCounts with ENHANCED strategy`);
-    console.log(`⏰ Started: ${new Date().toISOString()}`);
+    console.group(`📊 ${requestId} - Contagens escaláveis com totais reais`);
+    console.log(`⏰ Iniciado: ${new Date().toISOString()}`);
     
-    // Check cache first (30 min TTL for counts)
-    const cacheKey = 'content_counts';
+    const cacheKey = 'scalable_content_counts';
     if (this.isValidCache(cacheKey)) {
       const cached = this.cache.get(cacheKey);
-      console.log(`📦 Cache HIT: Content counts from cache`);
+      console.log(`📦 Cache HIT: Contagens do cache`);
       console.groupEnd();
       return cached!.data;
     }
 
-    // Fast-fail if circuit breaker is open, go directly to fallback
     if (this.isCircuitBreakerOpen()) {
-      console.log(`⚡ Circuit breaker OPEN - using enhanced fallback counts`);
+      console.log(`⚡ Circuit breaker ABERTO - usando contagens de fallback escaláveis`);
       console.groupEnd();
-      return this.getEnhancedFallbackCounts();
+      return this.getScalableFallbackCounts();
     }
 
     try {
-      // Try external API with retry logic
-      let lastError: any = null;
-      
-      for (let attempt = 1; attempt <= 2; attempt++) { // Added retry logic
-        try {
-          console.log(`🚀 ${requestId} - Attempt ${attempt}/2 for external API counts`);
-          
-          // Fetch counts in parallel with increased timeout
-          const results = await Promise.allSettled([
-            this.fetchContentCount('livro', `${requestId}_attempt${attempt}`),
-            this.fetchContentCount('aula', `${requestId}_attempt${attempt}`),
-            this.fetchContentCount('podcast', `${requestId}_attempt${attempt}`)
-          ]);
+      // Descobrir totais reais em paralelo
+      const results = await Promise.allSettled([
+        this.discoverTotalContent('livro'),
+        this.discoverTotalContent('aula'),
+        this.discoverTotalContent('podcast')
+      ]);
 
-          const books = results[0].status === 'fulfilled' ? results[0].value : 0;
-          const videos = results[1].status === 'fulfilled' ? results[1].value : 0;
-          const podcasts = results[2].status === 'fulfilled' ? results[2].value : 0;
+      const books = results[0].status === 'fulfilled' ? results[0].value : 30;
+      const videos = results[1].status === 'fulfilled' ? results[1].value : 300;
+      const podcasts = results[2].status === 'fulfilled' ? results[2].value : 2512;
 
-          // If we got at least some counts, consider it successful
-          if (books > 0 || videos > 0 || podcasts > 0) {
-            const counts: ContentCounts = { videos, books, podcasts };
-            
-            // Cache for 30 minutes
-            this.setCache(cacheKey, counts, 30 * 60 * 1000);
-            
-            console.log(`✅ ${requestId} - External API counts fetched (attempt ${attempt}):`, counts);
-            console.groupEnd();
-            return counts;
-          }
-          
-          throw new Error(`No content counts returned from external API (attempt ${attempt})`);
-          
-        } catch (error) {
-          lastError = error;
-          console.warn(`⚠️ ${requestId} - Attempt ${attempt} failed:`, error);
-          
-          if (attempt < 2) {
-            // Wait 1 second before retry
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        }
-      }
+      const counts: ContentCounts = { videos, books, podcasts };
       
-      throw lastError;
+      // Cache por 45 minutos (contagens mudam pouco)
+      this.setCache(cacheKey, counts, 45 * 60 * 1000);
       
-    } catch (error) {
-      console.error(`❌ ${requestId} - All external API attempts failed, using enhanced fallback:`, error);
+      console.log(`✅ ${requestId} - Contagens reais descobertas:`, counts);
       console.groupEnd();
-      return this.getEnhancedFallbackCounts();
-    }
-  }
-
-  private async fetchContentCount(tipo: 'livro' | 'aula' | 'podcast', requestId: string): Promise<number> {
-    const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=1`;
-    
-    console.log(`🔢 ${requestId} - Fetching ${tipo} count`);
-    
-    try {
-      const response = await this.fetchWithForcedTimeout(url, `${requestId}_${tipo}`, 5000); // Increased to 5s
-      const rawData: APIResponse = await response.json();
-      
-      const total = rawData.total || 0;
-      console.log(`✅ ${requestId} - ${tipo} count: ${total}`);
-      return total;
+      return counts;
       
     } catch (error) {
-      console.error(`❌ ${requestId} - Failed to fetch ${tipo} count:`, error);
-      return 0;
+      console.error(`❌ ${requestId} - Falha nas contagens, usando fallback escalável:`, error);
+      console.groupEnd();
+      return this.getScalableFallbackCounts();
     }
   }
 
-  private async getEnhancedFallbackCounts(): Promise<ContentCounts> {
-    console.log('🔄 Using ENHANCED Supabase fallback for content counts');
+  private async getScalableFallbackCounts(): Promise<ContentCounts> {
+    console.log('🔄 Usando contagens de fallback escaláveis');
     
-    // Check fallback cache first (10 min TTL)
-    const fallbackCacheKey = 'fallback_content_counts';
+    const fallbackCacheKey = 'scalable_fallback_counts';
     if (this.isValidCache(fallbackCacheKey)) {
       const cached = this.cache.get(fallbackCacheKey);
-      console.log(`📦 Fallback cache HIT: Using cached fallback counts`);
+      console.log(`📦 Cache HIT fallback: Usando contagens de fallback cacheadas`);
       return cached!.data;
     }
     
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       
-      // Enhanced timeout for Supabase calls
-      const supabaseTimeout = 8000; // 8 seconds
-      
+      const timeoutMs = 10000; // 10 segundos para Supabase
       const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
         return Promise.race([
           promise,
           new Promise<T>((_, reject) => 
-            setTimeout(() => reject(new Error(`Supabase timeout after ${ms}ms`)), ms)
+            setTimeout(() => reject(new Error(`Timeout Supabase após ${ms}ms`)), ms)
           )
         ]);
       };
 
       const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
-        withTimeout(supabase.functions.invoke('fetch-books'), supabaseTimeout),
-        withTimeout(supabase.functions.invoke('fetch-videos'), supabaseTimeout),
-        withTimeout(supabase.functions.invoke('fetch-podcasts'), supabaseTimeout)
+        withTimeout(supabase.functions.invoke('fetch-books'), timeoutMs),
+        withTimeout(supabase.functions.invoke('fetch-videos'), timeoutMs),
+        withTimeout(supabase.functions.invoke('fetch-podcasts'), timeoutMs)
       ]);
 
-      // FIXED: Use the 'total' field from Supabase functions instead of counting items
+      // Usar totais reais do Supabase quando disponível
       const books = booksResult.status === 'fulfilled' && booksResult.value.data?.success 
-        ? (booksResult.value.data.total || booksResult.value.data.books?.length || 0) : 0;
+        ? (booksResult.value.data.total || booksResult.value.data.books?.length || 30) : 30;
       const videos = videosResult.status === 'fulfilled' && videosResult.value.data?.success 
-        ? (videosResult.value.data.total || videosResult.value.data.videos?.length || 0) : 0;
+        ? (videosResult.value.data.total || videosResult.value.data.videos?.length || 300) : 300;
       const podcasts = podcastsResult.status === 'fulfilled' && podcastsResult.value.data?.success 
-        ? (podcastsResult.value.data.total || podcastsResult.value.data.podcasts?.length || 0) : 0;
+        ? (podcastsResult.value.data.total || podcastsResult.value.data.podcasts?.length || 2512) : 2512;
 
       const counts = { videos, books, podcasts };
       
-      // Cache fallback for 10 minutes
-      this.setCache(fallbackCacheKey, counts, 10 * 60 * 1000);
+      // Cache fallback por 20 minutos
+      this.setCache(fallbackCacheKey, counts, 20 * 60 * 1000);
       
-      console.log('✅ Enhanced Supabase fallback counts:', counts);
+      console.log('✅ Contagens de fallback escaláveis:', counts);
       return counts;
       
     } catch (error) {
-      console.error('❌ Enhanced Supabase fallback failed for counts:', error);
+      console.error('❌ Fallback escalável falhou para contagens:', error);
       
-      // Emergency fallback: estimate based on homepage content
-      return this.getEmergencyEstimatedCounts();
-    }
-  }
-
-  private async getEmergencyEstimatedCounts(): Promise<ContentCounts> {
-    console.log('🆘 Using EMERGENCY estimated counts based on homepage content');
-    
-    try {
-      // Try to get current homepage content to estimate
-      const homepageContent = await this.fetchAllFromSupabase();
-      
-      // Estimate based on loaded content (multiply by reasonable factor)
-      const estimatedBooks = homepageContent.books.length > 0 ? homepageContent.books.length * 50 : 100;
-      const estimatedVideos = homepageContent.videos.length > 0 ? homepageContent.videos.length * 25 : 50;
-      const estimatedPodcasts = homepageContent.podcasts.length > 0 ? homepageContent.podcasts.length * 200 : 500;
-      
-      const estimatedCounts = { 
-        videos: estimatedVideos, 
-        books: estimatedBooks, 
-        podcasts: estimatedPodcasts 
+      // Contagens de emergência baseadas na descoberta de escalabilidade
+      return { 
+        videos: 300,    // Total conhecido dos vídeos
+        books: 30,      // Total conhecido dos livros  
+        podcasts: 2512  // Total conhecido dos podcasts
       };
-      
-      console.log('🆘 Emergency estimated counts:', estimatedCounts);
-      return estimatedCounts;
-      
-    } catch (error) {
-      console.error('❌ Emergency estimation failed:', error);
-      
-      // Final fallback: reasonable defaults
-      return { videos: 50, books: 100, podcasts: 500 };
     }
   }
 
   clearCache(): void {
-    console.log('🧹 Clearing cache and cancelling requests');
+    console.log('🧹 Limpando cache escalável e cancelando requisições');
     this.timeoutManager.cancelAll();
     this.cache.clear();
     this.activeRequests.clear();
@@ -645,10 +693,10 @@ export class NewApiService {
       failures: 0,
       lastFailTime: 0,
       breakerOpen: false,
-      openDuration: 10000
+      openDuration: 20000
     };
     this.healthStatus = 'unknown';
-    console.log('✅ Complete cleanup done');
+    console.log('✅ Limpeza completa escalável realizada');
   }
 
   getStatus() {
@@ -657,7 +705,8 @@ export class NewApiService {
       circuitBreaker: { ...this.circuitBreaker },
       cacheSize: this.cache.size,
       activeRequests: this.activeRequests.size,
-      abortableRequests: this.timeoutManager.getActiveRequests()
+      abortableRequests: this.timeoutManager.getActiveRequests(),
+      scalableConfig: SCALABLE_CONFIG
     };
   }
 }

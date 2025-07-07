@@ -54,11 +54,13 @@ export const useSearchResults = () => {
       appliedFilters: {
         resourceType: [],
         subject: [],
-        author: '',
+        author: [], // CORRIGIDO: Array vazio
         year: '',
         duration: '',
         language: [],
-        documentType: []
+        documentType: [],
+        program: [],
+        channel: []
       },
       sortBy: 'relevance'
     }

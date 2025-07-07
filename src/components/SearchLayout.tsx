@@ -11,7 +11,6 @@ import SearchPagination from '@/components/SearchPagination';
 import FilterChips from '@/components/FilterChips';
 import DataRefreshButton from '@/components/DataRefreshButton';
 import SearchDebugInfo from '@/components/SearchDebugInfo';
-import PerformanceIndicator from '@/components/PerformanceIndicator';
 import Footer from '@/components/Footer';
 import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
 
@@ -54,35 +53,6 @@ const SearchLayout = ({
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [activeContentType, setActiveContentType] = useState('all');
-
-  // CORRIGIDO: Lógica para detectar busca otimizada vs filtro simples rápido
-  const hasComplexFilters = Boolean(
-    filters.subject.length > 0 || 
-    filters.author.length > 0 || 
-    filters.year || 
-    filters.duration || 
-    filters.language.length > 0 || 
-    filters.documentType.length > 0 || 
-    filters.program.length > 0 || 
-    filters.channel.length > 0
-  );
-
-  const hasSimpleTypeFilter = Boolean(
-    filters.resourceType.length > 0 && 
-    !filters.resourceType.includes('all') && 
-    !hasComplexFilters
-  );
-
-  // NOVO: Detectar filtro global "Todos"
-  const isGlobalFilter = Boolean(
-    filters.resourceType.length === 1 && 
-    filters.resourceType[0] === 'all'
-  );
-
-  // Determinar o tipo de busca sendo usado
-  const isOptimizedSearch = hasComplexFilters;
-  const isFastFilter = hasSimpleTypeFilter;
-  const isGlobalSearch = isGlobalFilter;
 
   // Sync activeContentType with filters.resourceType
   useEffect(() => {
@@ -170,20 +140,11 @@ const SearchLayout = ({
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {onRefreshData && (
-          <div className="flex items-center justify-between mb-4">
-            <DataRefreshButton
-              onRefresh={onRefreshData}
-              loading={loading}
-              usingFallback={usingFallback}
-            />
-            <PerformanceIndicator
-              isOptimized={isOptimizedSearch || isFastFilter}
-              loading={loading}
-              className="ml-4"
-              isFastFilter={isFastFilter}
-              isGlobalSearch={isGlobalSearch}
-            />
-          </div>
+          <DataRefreshButton
+            onRefresh={onRefreshData}
+            loading={loading}
+            usingFallback={usingFallback}
+          />
         )}
 
         {/* Debug Info - apenas em desenvolvimento */}

@@ -5,24 +5,30 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
-import FilterContent from '@/components/FilterContent';
+import DynamicFilterContent from '@/components/DynamicFilterContent';
+import { useContentAwareFilters } from '@/hooks/useContentAwareFilters';
 
 interface StreamlinedSearchFiltersProps {
   filters: SearchFilters;
   onFiltersChange: (filters: SearchFilters, options?: { authorTyping?: boolean }) => void;
   currentResults?: SearchResult[];
+  activeContentType?: string;
 }
 
-const StreamlinedSearchFilters = React.memo(({ filters, onFiltersChange, currentResults = [] }: StreamlinedSearchFiltersProps) => {
+const StreamlinedSearchFilters = React.memo(({ 
+  filters, 
+  onFiltersChange, 
+  currentResults = [],
+  activeContentType = 'all'
+}: StreamlinedSearchFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [openSections, setOpenSections] = useState({
-    subject: true,
-    itemType: true,
-    author: false,
-    language: true,
-    year: false,
-    duration: false
+  
+  const { defaultOpenSections } = useContentAwareFilters({
+    currentResults,
+    activeContentType
   });
+
+  const [openSections, setOpenSections] = useState(defaultOpenSections);
 
   const hasActiveFilters = 
     filters.documentType.length > 0 ||
@@ -56,12 +62,13 @@ const StreamlinedSearchFilters = React.memo(({ filters, onFiltersChange, current
             <Filter className="h-5 w-5" />
             Filtros
           </h3>
-          <FilterContent
+          <DynamicFilterContent
             filters={filters}
             onFiltersChange={onFiltersChange}
             currentResults={currentResults}
             openSections={openSections}
             onToggleSection={toggleSection}
+            activeContentType={activeContentType}
           />
         </div>
       </div>
@@ -88,12 +95,13 @@ const StreamlinedSearchFilters = React.memo(({ filters, onFiltersChange, current
               </SheetTitle>
             </SheetHeader>
             <div className="mt-6">
-              <FilterContent
+              <DynamicFilterContent
                 filters={filters}
                 onFiltersChange={onFiltersChange}
                 currentResults={currentResults}
                 openSections={openSections}
                 onToggleSection={toggleSection}
+                activeContentType={activeContentType}
               />
             </div>
           </SheetContent>

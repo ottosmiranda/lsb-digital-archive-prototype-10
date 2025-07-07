@@ -159,7 +159,8 @@ const SearchLayout = ({
             <StreamlinedSearchFilters 
               filters={filters}
               onFiltersChange={onFiltersChange}
-              currentResults={currentResults} // Pass current results to check for books
+              currentResults={currentResults}
+              activeContentType={activeContentType}
             />
           )}
           

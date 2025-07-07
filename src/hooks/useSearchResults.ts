@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
@@ -53,7 +54,7 @@ export const useSearchResults = () => {
       appliedFilters: {
         resourceType: [],
         subject: [],
-        author: [], // CORRIGIDO: Array vazio
+        author: [],
         year: '',
         duration: '',
         language: [],
@@ -72,8 +73,11 @@ export const useSearchResults = () => {
 
   // Função para executar busca
   const performSearch = async () => {
-    // Buscar se houver query, filtros ativos (incluindo 'all' para "Todos")
-    if (!query.trim() && !hasActiveFilters) {
+    // CORRIGIDO: Buscar se houver query OU filtros ativos (incluindo 'all' para "Todos")
+    // O filtro "Todos" deve sempre executar busca para mostrar todos os resultados
+    const shouldSearch = query.trim() || hasActiveFilters;
+    
+    if (!shouldSearch) {
       setSearchResponse({
         results: [],
         pagination: {
@@ -97,7 +101,8 @@ export const useSearchResults = () => {
       filters, 
       sortBy, 
       currentPage,
-      hasActiveFilters
+      hasActiveFilters,
+      shouldSearch
     });
 
     try {

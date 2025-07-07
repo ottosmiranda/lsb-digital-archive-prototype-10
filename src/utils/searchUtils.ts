@@ -1,3 +1,4 @@
+
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
 // Função para converter duração em minutos totais
@@ -206,9 +207,9 @@ export const sortResults = (results: SearchResult[], sortBy: string, query?: str
 
 export const checkHasActiveFilters = (filters: SearchFilters): boolean => {
   return (
-    filters.resourceType.length > 0 ||
+    filters.resourceType.length > 0 ||  // CORRIGIDO: Considera qualquer resourceType como filtro ativo, incluindo ['all']
     filters.subject.length > 0 ||
-    filters.author.length > 0 || // CORRIGIDO: Agora é array
+    filters.author.length > 0 ||
     filters.year !== '' ||
     filters.duration !== '' ||
     filters.language.length > 0 ||

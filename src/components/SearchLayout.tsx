@@ -130,6 +130,7 @@ const SearchLayout = ({
       newFilters.resourceType = [type]; 
     }
     
+    console.log('🔄 Calling onFiltersChange with:', newFilters);
     onFiltersChange(newFilters);
   };
 

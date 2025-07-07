@@ -29,24 +29,28 @@ export const useSearchState = () => {
     return searchParams.getAll('filtros') || [];
   }, [searchParams]);
 
-  // Initialize filters and sorting from URL params only once
+  // Initialize filters from URL params
   useEffect(() => {
     const resourceTypesFromUrl = searchParams.getAll('filtros');
+    console.log('🔗 URL filters detected:', resourceTypesFromUrl);
 
-    if (resourceTypesFromUrl.length > 0) {
-      setFilters(prev => ({
-        ...prev,
-        resourceType: resourceTypesFromUrl
-      }));
-    }
+    // Always update filters to match URL (even if empty)
+    setFilters(prev => ({
+      ...prev,
+      resourceType: resourceTypesFromUrl
+    }));
 
     const sortParam = searchParams.get('ordenar');
     if (sortParam === 'recentes') {
       setSortByState('recent');
     } else if (sortParam === 'mais-acessados') {
       setSortByState('accessed');
+    } else {
+      setSortByState('relevance');
     }
-  }, []); // Removed searchParams from dependency array to ensure it runs only once for initial setup.
+    
+    console.log('✅ State synchronized with URL:', { resourceType: resourceTypesFromUrl, sortBy: sortParam || 'relevance' });
+  }, [searchParams]);
 
   // Track searches when query changes (from URL navigation)
   useEffect(() => {
@@ -80,7 +84,23 @@ export const useSearchState = () => {
 
   // Function to update filters and URL search params accordingly
   const updateFilters = (newFilters: SearchFilters) => {
+    console.log('🔄 Updating filters:', newFilters);
     setFilters(newFilters);
+    
+    // Update URL to match new filters
+    const newSearchParams = new URLSearchParams(searchParams);
+    
+    // Clear existing filtros
+    newSearchParams.delete('filtros');
+    
+    // Add new resource type filters
+    if (newFilters.resourceType.length > 0) {
+      newFilters.resourceType.forEach(type => {
+        newSearchParams.append('filtros', type);
+      });
+    }
+    
+    setSearchParams(newSearchParams);
   };
 
   return {

@@ -270,18 +270,13 @@ export const sortResults = (results: SearchResult[], sortBy: string, query?: str
 
 // NOVA FUNÇÃO: Verificar se deve executar busca
 export const shouldPerformSearch = (query: string, filters: SearchFilters): boolean => {
-  return (
-    query.trim() !== '' ||
-    filters.resourceType.length > 0 ||
-    filters.subject.length > 0 ||
-    filters.author.length > 0 ||
-    filters.year !== '' ||
-    filters.duration !== '' ||
-    filters.language.length > 0 ||
-    filters.documentType.length > 0 ||
-    filters.program.length > 0 ||
-    filters.channel.length > 0
-  );
+  const hasQuery = query.trim() !== '';
+  const hasResourceTypeFilters = filters.resourceType.length > 0;
+  const hasOtherFilters = checkHasActiveFilters(filters);
+  
+  console.log('🔍 shouldPerformSearch:', { hasQuery, hasResourceTypeFilters, hasOtherFilters, resourceType: filters.resourceType });
+  
+  return hasQuery || hasResourceTypeFilters || hasOtherFilters;
 };
 
 // CORRIGIDO: Função para verificar filtros ativos - Para exibição na UI

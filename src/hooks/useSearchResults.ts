@@ -75,7 +75,10 @@ export const useSearchResults = () => {
 
   // NOVA: Verificar se deve executar busca
   const shouldSearch = useMemo((): boolean => {
-    return shouldPerformSearch(query, filters);
+    const hasQuery = query.trim() !== '';
+    const hasFilters = filters.resourceType.length > 0 || checkHasActiveFilters(filters);
+    console.log('🔍 Should search check:', { hasQuery, hasFilters, filters: filters.resourceType });
+    return hasQuery || hasFilters;
   }, [query, filters]);
 
   // Função para executar busca

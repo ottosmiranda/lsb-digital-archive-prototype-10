@@ -1,3 +1,4 @@
+
 import { SearchResult } from '@/types/searchTypes';
 import { ApiTimeoutManager } from './apiTimeoutManager';
 
@@ -17,6 +18,9 @@ interface ContentCounts {
   books: number;
   podcasts: number;
 }
+
+// Definir o tipo para conteúdo
+type ContentType = 'livro' | 'aula' | 'podcast';
 
 // CONFIGURAÇÃO DE ALTA ESCALABILIDADE
 const SCALABLE_CONFIG = {
@@ -110,7 +114,7 @@ export class NewApiService {
   }
 
   // DESCOBRIR TOTAL DISPONÍVEL NA API COM ESCALABILIDADE
-  private async discoverTotalContent(tipo: 'livro' | 'aula' | 'podcast'): Promise<number> {
+  private async discoverTotalContent(tipo: ContentType): Promise<number> {
     const cacheKey = `total_${tipo}`;
     
     if (this.isValidCache(cacheKey)) {
@@ -149,7 +153,7 @@ export class NewApiService {
   }
 
   // AUTO-SCALING INTELIGENTE
-  private async calculateOptimalLimit(tipo: 'livro' | 'aula' | 'podcast'): Promise<number> {
+  private async calculateOptimalLimit(tipo: ContentType): Promise<number> {
     const config = SCALABLE_CONFIG[tipo];
     
     try {
@@ -169,7 +173,7 @@ export class NewApiService {
   }
 
   // BUSCA ESCALÁVEL POR CHUNKS PARALELOS
-  private async fetchContentScalable(tipo: 'livro' | 'aula' | 'podcast', targetLimit?: number): Promise<SearchResult[]> {
+  private async fetchContentScalable(tipo: ContentType, targetLimit?: number): Promise<SearchResult[]> {
     const cacheKey = this.getCacheKey(`scalable_${tipo}`, 1, targetLimit || 1000);
     
     if (this.isValidCache(cacheKey)) {
@@ -414,7 +418,7 @@ export class NewApiService {
   }
 
   // MÉTODO PÚBLICO ESCALÁVEL PARA BUSCAR CONTEÚDO
-  async fetchContent(tipo: 'livro' | 'aula' | 'podcast', page: number = 1, limit: number = 10): Promise<SearchResult[]> {
+  async fetchContent(tipo: ContentType, page: number = 1, limit: number = 10): Promise<SearchResult[]> {
     // Para manter compatibilidade, usar busca escalável quando limite for alto
     if (limit > 50 || page === 1) {
       const targetLimit = limit > 50 ? await this.calculateOptimalLimit(tipo) : limit;
@@ -438,7 +442,7 @@ export class NewApiService {
 
     if (this.isCircuitBreakerOpen()) {
       console.log(`⚡ Circuit breaker ABERTO - usando fallback Supabase`);
-      return this.fetchFromSupabaseFallback(tipo);
+      return this.fetchFromSupabaseFallback(tipo as ContentType);
     }
 
     try {
@@ -447,7 +451,7 @@ export class NewApiService {
       return result;
     } catch (error) {
       console.error(`❌ Busca padrão falhou:`, error);
-      return this.fetchFromSupabaseFallback(tipo);
+      return this.fetchFromSupabaseFallback(tipo as ContentType);
     }
   }
 
@@ -548,7 +552,7 @@ export class NewApiService {
     }
   }
 
-  private async fetchFromSupabaseFallback(tipo: 'livro' | 'aula' | 'podcast'): Promise<SearchResult[]> {
+  private async fetchFromSupabaseFallback(tipo: ContentType): Promise<SearchResult[]> {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       

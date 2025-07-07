@@ -69,7 +69,7 @@ const AuthorList = React.memo(({ currentResults, selectedAuthors, onAuthorsChang
         <div className="flex items-center gap-2">
           <Button
             variant={useGlobalAuthors ? "secondary" : "ghost"}
-            size="xs"
+            size="sm"
             onClick={toggleGlobalAuthors}
             disabled={loadingAllAuthors || (errorAllAuthors && allAuthors.length === 0)}
             className="h-6 text-xs"
@@ -79,7 +79,7 @@ const AuthorList = React.memo(({ currentResults, selectedAuthors, onAuthorsChang
           </Button>
           <Button
             variant={!useGlobalAuthors ? "secondary" : "ghost"}
-            size="xs"
+            size="sm"
             onClick={toggleGlobalAuthors}
             className="h-6 text-xs"
           >

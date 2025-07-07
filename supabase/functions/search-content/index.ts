@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -14,7 +13,7 @@ interface SearchParams {
   filters?: {
     resourceType?: string[];
     subject?: string[];
-    author?: string;
+    author?: string | string[]; // CORRIGIDO: Suportar múltiplos autores
     year?: string;
     duration?: string;
     language?: string[];
@@ -84,6 +83,18 @@ const matchesDurationFilter = (itemDuration: string, filterDuration: string): bo
     default:
       return true;
   }
+};
+
+// CORRIGIDO: Função para aplicar filtro de múltiplos autores
+const matchesAuthorFilter = (itemAuthor: string, authorFilters: string | string[]): boolean => {
+  if (!authorFilters) return true;
+  
+  const authors = Array.isArray(authorFilters) ? authorFilters : [authorFilters];
+  const itemAuthorLower = itemAuthor.toLowerCase();
+  
+  return authors.some(author => 
+    author.trim() && itemAuthorLower.includes(author.toLowerCase().trim())
+  );
 };
 
 serve(async (req) => {
@@ -450,10 +461,11 @@ serve(async (req) => {
         });
       }
 
-      if (filters?.author?.trim()) {
-        const authorFilter = filters.author.toLowerCase().trim();
+      // CORRIGIDO: Aplicar filtro de múltiplos autores
+      if (filters?.author) {
+        console.log(`🔍 Applying author filter:`, filters.author);
         filteredItems = filteredItems.filter(item => 
-          item.author.toLowerCase().includes(authorFilter)
+          matchesAuthorFilter(item.author, filters.author!)
         );
       }
 
@@ -469,12 +481,15 @@ serve(async (req) => {
       if (filters?.year?.trim()) {
         const yearFilter = parseInt(filters.year);
         console.log(`🔍 Applying year filter: ${yearFilter}`);
-        if (!isNaN(yearFilter)) {
+        if (!isNaN(yearFilter) && yearFilter > 1900) {
           filteredItems = filteredItems.filter(item => {
             const itemYear = item.year;
+            // CORRIGIDO: Filtrar apenas itens com ano válido e que correspondam ao filtro
             const hasValidYear = itemYear && itemYear > 1900 && itemYear <= new Date().getFullYear();
             const matches = hasValidYear && itemYear === yearFilter;
-            console.log(`🎯 Item "${item.title}" year ${itemYear} (valid: ${hasValidYear}) matches filter ${yearFilter}: ${matches}`);
+            if (hasValidYear) {
+              console.log(`🎯 Item "${item.title}" year ${itemYear} matches filter ${yearFilter}: ${matches}`);
+            }
             return matches;
           });
         }
@@ -498,7 +513,7 @@ serve(async (req) => {
         );
       }
 
-      if (query?.trim() || filters?.author?.trim() || filters?.subject?.length || 
+      if (query?.trim() || filters?.author || filters?.subject?.length || 
           filters?.year?.trim() || filters?.duration?.trim() || filters?.language?.length) {
         console.log('🔍 Applying filters to all content...');
         
@@ -512,10 +527,11 @@ serve(async (req) => {
           });
         }
 
-        if (filters?.author?.trim()) {
-          const authorFilter = filters.author.toLowerCase().trim();
+        // CORRIGIDO: Aplicar filtro de múltiplos autores na filtragem geral
+        if (filters?.author) {
+          console.log(`🔍 Filtering all items by authors:`, filters.author);
           allItemsForFiltering = allItemsForFiltering.filter(item => 
-            item.author.toLowerCase().includes(authorFilter)
+            matchesAuthorFilter(item.author, filters.author!)
           );
         }
 
@@ -531,7 +547,7 @@ serve(async (req) => {
         if (filters?.year?.trim()) {
           const yearFilter = parseInt(filters.year);
           console.log(`🔍 Filtering all items by year: ${yearFilter}`);
-          if (!isNaN(yearFilter)) {
+          if (!isNaN(yearFilter) && yearFilter > 1900) {
             allItemsForFiltering = allItemsForFiltering.filter(item => {
               const itemYear = item.year;
               const hasValidYear = itemYear && itemYear > 1900 && itemYear <= new Date().getFullYear();

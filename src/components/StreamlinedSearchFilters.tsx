@@ -34,7 +34,7 @@ const StreamlinedSearchFilters = React.memo(({
     filters.documentType.length > 0 ||
     filters.language.length > 0 ||
     filters.subject.length > 0 || 
-    filters.author || 
+    filters.author.length > 0 || // CORRIGIDO: Múltiplos autores
     filters.year || 
     filters.duration;
 
@@ -42,7 +42,7 @@ const StreamlinedSearchFilters = React.memo(({
     filters.documentType.length +
     filters.language.length +
     filters.subject.length + 
-    (filters.author ? 1 : 0) + 
+    filters.author.length + // CORRIGIDO: Múltiplos autores
     (filters.year ? 1 : 0) + 
     (filters.duration ? 1 : 0);
 

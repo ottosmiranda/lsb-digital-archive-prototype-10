@@ -10,7 +10,7 @@ export interface SearchResult {
   episodes?: string | number;
   thumbnail?: string;
   description: string;
-  year: number;
+  year: number | null; // CORRIGIDO: Permitir null para anos inválidos
   subject: string;
   embedUrl?: string;
   pdfUrl?: string;
@@ -22,7 +22,7 @@ export interface SearchResult {
 export interface SearchFilters {
   resourceType: string[];
   subject: string[];
-  author: string;
+  author: string[]; // CORRIGIDO: Múltiplos autores
   year: string;
   duration: string;
   language: string[];

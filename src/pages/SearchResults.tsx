@@ -26,7 +26,7 @@ const SearchResults = () => {
     handleFilterChange({
       resourceType: [],
       subject: [],
-      author: '',
+      author: [], // CORRIGIDO: Array vazio para múltiplos autores
       year: '',
       duration: '',
       language: [],

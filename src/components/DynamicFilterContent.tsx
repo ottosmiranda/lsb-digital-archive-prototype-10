@@ -9,8 +9,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Badge } from '@/components/ui/badge';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import AuthorInput from '@/components/AuthorInput';
-import AuthorList from '@/components/AuthorList';
 import { useContentAwareFilters } from '@/hooks/useContentAwareFilters';
+import { useAllAuthors } from '@/hooks/useAllAuthors';
+import { extractAuthorsFromResults } from '@/utils/searchUtils';
 
 // MELHORADO: Anos baseados em dados reais, não apenas últimos 10 anos
 const currentYear = new Date().getFullYear();
@@ -38,10 +39,12 @@ const DynamicFilterContent = React.memo(({
     activeContentType
   });
 
+  const { authors: allAuthors, loading: loadingAllAuthors } = useAllAuthors();
+
   const hasActiveFilters = useMemo(() => 
     filters.language.length > 0 ||
     filters.subject.length > 0 || 
-    filters.author || 
+    filters.author.length > 0 || // CORRIGIDO: Múltiplos autores
     filters.year || 
     filters.duration,
     [filters]
@@ -50,15 +53,17 @@ const DynamicFilterContent = React.memo(({
   const activeFilterCount = useMemo(() => 
     filters.language.length +
     filters.subject.length + 
-    (filters.author ? 1 : 0) + 
+    filters.author.length + // CORRIGIDO: Múltiplos autores
     (filters.year ? 1 : 0) + 
     (filters.duration ? 1 : 0),
     [filters]
   );
 
-  const selectedAuthors = useMemo(() => {
-    return filters.author ? [filters.author] : [];
-  }, [filters.author]);
+  // CORRIGIDO: Autores da página atual para comparação
+  const currentPageAuthors = useMemo(() => {
+    return extractAuthorsFromResults(currentResults)
+      .sort((a, b) => b.count - a.count);
+  }, [currentResults]);
 
   // MELHORADO: Verificar se há anos válidos nos resultados atuais
   const availableYears = useMemo(() => {
@@ -96,19 +101,25 @@ const DynamicFilterContent = React.memo(({
   }, [filters, onFiltersChange]);
 
   const handleAuthorChange = useCallback((value: string) => {
-    onFiltersChange({ ...filters, author: value }, { authorTyping: true });
+    // CORRIGIDO: Suportar múltiplos autores
+    const authors = value ? [value] : [];
+    onFiltersChange({ ...filters, author: authors }, { authorTyping: true });
   }, [filters, onFiltersChange]);
 
-  const handleAuthorsListChange = useCallback((authors: string[]) => {
-    const authorValue = authors.length > 0 ? authors[0] : '';
-    onFiltersChange({ ...filters, author: authorValue });
+  // NOVO: Função para selecionar autores via dropdown
+  const handleAuthorSelect = useCallback((authorName: string) => {
+    const isSelected = filters.author.includes(authorName);
+    const newAuthors = isSelected
+      ? filters.author.filter(a => a !== authorName)
+      : [...filters.author, authorName];
+    onFiltersChange({ ...filters, author: newAuthors });
   }, [filters, onFiltersChange]);
 
   const clearFilters = useCallback(() => {
     onFiltersChange({
       resourceType: filters.resourceType,
       subject: [],
-      author: '',
+      author: [], // CORRIGIDO: Array vazio
       year: '',
       duration: '',
       language: [],
@@ -128,6 +139,26 @@ const DynamicFilterContent = React.memo(({
             <X className="h-4 w-4 mr-1" />
             Limpar
           </Button>
+        </div>
+      )}
+
+      {/* CORRIGIDO: Mostrar autores selecionados como tags */}
+      {filters.author.length > 0 && (
+        <div className="flex flex-wrap gap-2 p-3 bg-blue-50 rounded-lg">
+          <span className="text-sm font-medium text-blue-700">Autores selecionados:</span>
+          {filters.author.map((author, index) => (
+            <Badge key={index} variant="secondary" className="text-xs">
+              {author}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto w-auto p-0 ml-1"
+                onClick={() => handleAuthorSelect(author)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </Badge>
+          ))}
         </div>
       )}
 
@@ -161,13 +192,19 @@ const DynamicFilterContent = React.memo(({
         </Collapsible>
       )}
 
+      {/* NOVO: Filtro de Autor com Dropdown */}
       <Collapsible open={openSections.author} onOpenChange={() => onToggleSection('author')}>
         <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium">Autor</Label>
-            {filters.author && (
+            {filters.author.length > 0 && (
               <Badge variant="secondary" className="text-xs">
-                1
+                {filters.author.length}
+              </Badge>
+            )}
+            {loadingAllAuthors && (
+              <Badge variant="outline" className="text-xs">
+                Carregando...
               </Badge>
             )}
           </div>
@@ -175,23 +212,51 @@ const DynamicFilterContent = React.memo(({
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
           <div className="space-y-4">
+            {/* Busca por nome */}
             <div className="p-3 border border-gray-200 rounded-lg bg-white">
               <Label className="text-xs text-gray-600 mb-2 block">Buscar por nome</Label>
               <AuthorInput
-                value={filters.author}
+                value={filters.author.length > 0 ? filters.author[0] : ''}
                 onChange={handleAuthorChange}
                 placeholder="Nome do autor"
                 currentResults={currentResults}
               />
             </div>
             
+            {/* NOVO: Dropdown de autores */}
             <div className="p-3 border border-gray-200 rounded-lg bg-white">
-              <Label className="text-xs text-gray-600 mb-3 block">Autores disponíveis</Label>
-              <AuthorList
-                currentResults={currentResults}
-                selectedAuthors={selectedAuthors}
-                onAuthorsChange={handleAuthorsListChange}
-              />
+              <Label className="text-xs text-gray-600 mb-3 block">
+                Selecionar autores ({allAuthors.length} disponíveis)
+              </Label>
+              <Select value="" onValueChange={handleAuthorSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar autor" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {allAuthors.map((author) => (
+                    <SelectItem 
+                      key={author.name} 
+                      value={author.name}
+                      className={filters.author.includes(author.name) ? "font-medium bg-blue-50" : ""}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span>{author.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">({author.count})</span>
+                          {filters.author.includes(author.name) && (
+                            <span className="text-xs text-blue-600">✓</span>
+                          )}
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Indicador de comparação */}
+              <div className="text-xs text-gray-500 mt-2 pt-2 border-t">
+                🌍 Autores globais: {allAuthors.length} | 📄 Autores nesta página: {currentPageAuthors.length}
+              </div>
             </div>
           </div>
         </CollapsibleContent>
@@ -233,7 +298,7 @@ const DynamicFilterContent = React.memo(({
         </Collapsible>
       )}
 
-      {/* MELHORADO: Filtro de ano com melhor validação */}
+      {/* MELHORADO: Filtro de ano com validação aprimorada */}
       {filterRelevance.year && (
         <Collapsible open={openSections.year} onOpenChange={() => onToggleSection('year')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">

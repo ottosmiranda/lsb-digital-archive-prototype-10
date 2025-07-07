@@ -15,9 +15,9 @@ export class CacheStrategyService {
       description: 'Cache específico por página'
     },
     global: {
-      ttl: 15 * 60 * 1000, // 15 minutos
+      ttl: 20 * 60 * 1000, // 20 minutos (aumentado para dataset completo)
       keyPrefix: 'global',
-      description: 'Cache global de longa duração'
+      description: 'Cache global completo de todos os tipos'
     },
     filtered: {
       ttl: 2 * 60 * 1000, // 2 minutos
@@ -37,6 +37,13 @@ export class CacheStrategyService {
     additionalParams?: Record<string, any>
   ): string {
     const config = this.getConfig(strategy);
+    
+    if (strategy === 'global') {
+      // Para estratégia global, criar chave única para todo o dataset
+      const totalItems = additionalParams?.totalItems || 'unknown';
+      return `${config.keyPrefix}_${contentType}_total${totalItems}`;
+    }
+    
     const baseKey = `${config.keyPrefix}_${contentType}_page${page}`;
     
     if (additionalParams && Object.keys(additionalParams).length > 0) {
@@ -51,11 +58,15 @@ export class CacheStrategyService {
   }
 
   static shouldUseCache(strategy: CacheStrategy): boolean {
-    // Strategies que sempre usam cache
-    return ['paginated', 'global'].includes(strategy);
+    // Todas as estratégias usam cache
+    return ['paginated', 'global', 'filtered'].includes(strategy);
   }
 
   static getDescription(strategy: CacheStrategy): string {
     return this.getConfig(strategy).description;
+  }
+
+  static getCacheTTL(strategy: CacheStrategy): number {
+    return this.getConfig(strategy).ttl;
   }
 }

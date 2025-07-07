@@ -242,26 +242,28 @@ const performPaginatedSearch = async (
   }
 };
 
-// BUSCA GLOBAL OTIMIZADA (CACHE DE LONGA DURAÇÃO)
+// BUSCA GLOBAL COMPLETA REFATORADA
 const performGlobalSearch = async (
   searchParams: SearchRequest
 ): Promise<any> => {
   const { sortBy, page, resultsPerPage } = searchParams;
   
-  console.log(`🌐 Busca Global: página ${page}, cache otimizado`);
+  console.log(`🌍 Busca Global COMPLETA: página ${page}, aggregando TODOS os itens disponíveis`);
   
-  const cacheKey = getCacheKey('global', 'all_content');
+  const cacheKey = getCacheKey('global', 'all_content_complete');
   
   if (isValidCache(cacheKey)) {
     const cached = getCache(cacheKey);
     console.log(`📦 Cache HIT Global: ${cached.length} itens totais`);
     
-    // Aplicar paginação no dataset cacheado
+    // Aplicar paginação no dataset completo cacheado
     const sorted = sortResults(cached, sortBy);
     const totalResults = sorted.length;
     const totalPages = Math.ceil(totalResults / resultsPerPage);
     const startIndex = (page - 1) * resultsPerPage;
     const paginatedResults = sorted.slice(startIndex, startIndex + resultsPerPage);
+    
+    console.log(`📊 Paginação Global: ${paginatedResults.length} itens da página ${page}/${totalPages} (total: ${totalResults})`);
     
     return {
       success: true,
@@ -281,27 +283,41 @@ const performGlobalSearch = async (
     };
   }
   
-  // Carregar dataset global otimizado (uma única vez)
-  console.log(`🔄 Carregando dataset global...`);
+  // Carregar dataset global COMPLETO (não limitado)
+  console.log(`🔄 Carregando dataset global COMPLETO (sem limites)...`);
   
   try {
-    const [podcastsResult, videosResult, booksResult] = await Promise.allSettled([
-      fetchPaginatedContent('podcast', 1, 50), // Limitar para performance
-      fetchPaginatedContent('aula', 1, 50),
-      fetchPaginatedContent('livro', 1, 30)
-    ]);
+    // Estratégia agressiva: carregar TODOS os itens disponíveis
+    const allContentPromises = [
+      loadAllContentOfType('podcast'),
+      loadAllContentOfType('aula'), 
+      loadAllContentOfType('livro')
+    ];
 
-    const allContent: SearchResult[] = [];
+    const results = await Promise.allSettled(allContentPromises);
     
-    if (podcastsResult.status === 'fulfilled') {
-      allContent.push(...podcastsResult.value.items);
-    }
-    if (videosResult.status === 'fulfilled') {
-      allContent.push(...videosResult.value.items);
-    }
-    if (booksResult.status === 'fulfilled') {
-      allContent.push(...booksResult.value.items);
-    }
+    const allContent: SearchResult[] = [];
+    let loadedStats = { podcasts: 0, videos: 0, books: 0 };
+    
+    // Agregar resultados de todos os tipos
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        allContent.push(...result.value);
+        
+        const typeNames = ['podcasts', 'videos', 'books'];
+        const typeName = typeNames[index] as keyof typeof loadedStats;
+        loadedStats[typeName] = result.value.length;
+      } else {
+        console.error(`❌ Falha ao carregar tipo ${['podcast', 'aula', 'livro'][index]}:`, result.reason);
+      }
+    });
+    
+    console.group('📊 DATASET GLOBAL CARREGADO');
+    console.log(`🎧 Podcasts: ${loadedStats.podcasts}`);
+    console.log(`🎬 Vídeos: ${loadedStats.videos}`);
+    console.log(`📚 Livros: ${loadedStats.books}`);
+    console.log(`🎯 TOTAL: ${allContent.length} itens`);
+    console.groupEnd();
     
     if (allContent.length === 0) {
       console.warn('⚠️ Nenhum conteúdo global carregado');
@@ -323,7 +339,7 @@ const performGlobalSearch = async (
       };
     }
     
-    // Cache do dataset global
+    // Cache do dataset global COMPLETO (20 minutos)
     setCache(cacheKey, allContent, 'global');
     
     // Aplicar paginação
@@ -333,7 +349,7 @@ const performGlobalSearch = async (
     const startIndex = (page - 1) * resultsPerPage;
     const paginatedResults = sorted.slice(startIndex, startIndex + resultsPerPage);
     
-    console.log(`✅ Dataset Global carregado: ${allContent.length} itens, retornando página ${page}`);
+    console.log(`✅ Dataset Global COMPLETO carregado: ${allContent.length} itens, página ${page}/${totalPages}`);
     
     return {
       success: true,
@@ -353,9 +369,48 @@ const performGlobalSearch = async (
     };
     
   } catch (error) {
-    console.error('❌ Erro na busca global:', error);
+    console.error('❌ Erro na busca global completa:', error);
     throw error;
   }
+};
+
+// FUNÇÃO AUXILIAR: Carregar TODOS os itens de um tipo específico
+const loadAllContentOfType = async (contentType: string): Promise<SearchResult[]> => {
+  const allItems: SearchResult[] = [];
+  let currentPage = 1;
+  let hasMore = true;
+  
+  // Limites aumentados para carregamento completo
+  const batchSize = 100; // Itens por batch
+  const maxPages = 100; // Limite de segurança
+  
+  console.log(`🔍 Carregando TODOS os ${contentType}s disponíveis...`);
+  
+  while (hasMore && currentPage <= maxPages) {
+    try {
+      const { items, total } = await fetchPaginatedContent(contentType, currentPage, batchSize);
+      
+      if (items.length === 0) {
+        console.log(`📄 ${contentType} página ${currentPage}: Sem mais itens`);
+        hasMore = false;
+        break;
+      }
+      
+      allItems.push(...items);
+      console.log(`📄 ${contentType} página ${currentPage}: +${items.length} itens (total: ${allItems.length})`);
+      
+      // Continuar se há mais itens e não atingimos o total
+      hasMore = items.length === batchSize && allItems.length < total;
+      currentPage++;
+      
+    } catch (error) {
+      console.error(`❌ Erro carregando ${contentType} página ${currentPage}:`, error);
+      hasMore = false;
+    }
+  }
+  
+  console.log(`✅ ${contentType} completo: ${allItems.length} itens carregados`);
+  return allItems;
 };
 
 // BUSCA FILTRADA COM CACHE TEMPORÁRIO

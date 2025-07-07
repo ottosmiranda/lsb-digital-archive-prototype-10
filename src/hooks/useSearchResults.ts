@@ -54,13 +54,11 @@ export const useSearchResults = () => {
       appliedFilters: {
         resourceType: [],
         subject: [],
-        author: [], // CORRIGIDO: Array para múltiplos autores
+        author: '',
         year: '',
         duration: '',
         language: [],
-        documentType: [],
-        program: [], // NOVO: Filtro de programa
-        channel: [], // NOVO: Filtro de canal
+        documentType: []
       },
       sortBy: 'relevance'
     }

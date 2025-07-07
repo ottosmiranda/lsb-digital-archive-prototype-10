@@ -31,8 +31,6 @@ const SearchResults = () => {
       duration: '',
       language: [],
       documentType: [],
-      program: [], // NOVO: Array vazio para programas
-      channel: [], // NOVO: Array vazio para canais
     });
   };
 

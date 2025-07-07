@@ -80,8 +80,22 @@ const SearchLayout = ({
   
   const hasResults = currentResults.length > 0;
   
-  const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
-  const showWelcomeState = !loading && !query && !hasActiveFilters && !hasResults;
+  // CORRIGIDO: Reformular lógica de estados
+  const isBrowsingMode = isShowingAllResourceTypes(filters.resourceType);
+  const shouldShowResults = query || hasActiveFilters || isBrowsingMode;
+  
+  console.log('🎯 UI State Analysis:', {
+    query,
+    hasActiveFilters,
+    isBrowsingMode,
+    shouldShowResults,
+    hasResults,
+    loading,
+    resourceType: filters.resourceType
+  });
+  
+  const showEmptyState = !loading && !hasResults && shouldShowResults;
+  const showWelcomeState = !loading && !shouldShowResults;
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
     const newFilters = { ...filters };

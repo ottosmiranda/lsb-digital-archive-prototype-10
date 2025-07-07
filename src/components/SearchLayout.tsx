@@ -91,7 +91,12 @@ const SearchLayout = ({
         newFilters.subject = newFilters.subject.filter(subject => subject !== value);
         break;
       case 'author':
-        newFilters.author = '';
+        // CORRIGIDO: Agora é array, remove autor específico ou limpa todos
+        if (value) {
+          newFilters.author = newFilters.author.filter(author => author !== value);
+        } else {
+          newFilters.author = [];
+        }
         break;
       case 'year':
         newFilters.year = '';

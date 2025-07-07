@@ -11,7 +11,7 @@ export const useSearchState = () => {
   const [filters, setFilters] = useState<SearchFilters>({
     resourceType: [],
     subject: [],
-    author: '',
+    author: [], // CORRIGIDO: Array vazio ao invés de string
     year: '',
     duration: '',
     language: [],

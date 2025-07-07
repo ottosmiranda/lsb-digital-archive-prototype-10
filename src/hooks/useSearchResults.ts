@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
@@ -54,7 +53,7 @@ export const useSearchResults = () => {
       appliedFilters: {
         resourceType: [],
         subject: [],
-        author: '',
+        author: [], // CORRIGIDO: Array vazio
         year: '',
         duration: '',
         language: [],

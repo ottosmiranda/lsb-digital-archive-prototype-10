@@ -123,9 +123,12 @@ export const filterResults = (
       }
     }
 
-    // Author filter
-    if (filters.author.trim()) {
-      if (!item.author.toLowerCase().includes(filters.author.toLowerCase())) {
+    // Author filter - CORRIGIDO: Agora é array
+    if (filters.author.length > 0) {
+      const matchesAuthor = filters.author.some(filterAuthor =>
+        item.author.toLowerCase().includes(filterAuthor.toLowerCase())
+      );
+      if (!matchesAuthor) {
         return false;
       }
     }
@@ -205,7 +208,7 @@ export const checkHasActiveFilters = (filters: SearchFilters): boolean => {
   return (
     filters.resourceType.length > 0 ||
     filters.subject.length > 0 ||
-    filters.author !== '' ||
+    filters.author.length > 0 || // CORRIGIDO: Agora é array
     filters.year !== '' ||
     filters.duration !== '' ||
     filters.language.length > 0 ||

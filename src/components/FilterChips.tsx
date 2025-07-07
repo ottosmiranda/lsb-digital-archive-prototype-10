@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +15,7 @@ const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) 
   const hasFilters = 
     filters.resourceType.length > 0 ||
     filters.subject.length > 0 ||
-    filters.author ||
+    filters.author.length > 0 || // CORRIGIDO: Agora é array
     filters.year ||
     filters.duration ||
     filters.language.length > 0 ||
@@ -71,18 +72,18 @@ const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) 
         </Badge>
       ))}
 
-      {/* Author filter */}
-      {filters.author && (
-        <Badge variant="secondary" className="flex items-center gap-1">
-          Autor: {filters.author}
+      {/* Author filters - CORRIGIDO: Agora é array */}
+      {filters.author.map(author => (
+        <Badge key={author} variant="secondary" className="flex items-center gap-1">
+          Autor: {author}
           <button
-            onClick={() => onRemoveFilter('author')}
+            onClick={() => onRemoveFilter('author', author)}
             className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
           >
             <X className="h-3 w-3" />
           </button>
         </Badge>
-      )}
+      ))}
 
       {/* Year filter */}
       {filters.year && (

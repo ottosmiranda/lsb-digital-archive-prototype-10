@@ -1,3 +1,4 @@
+
 import React, { useMemo, useCallback } from 'react';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Badge } from '@/components/ui/badge';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import AuthorInput from '@/components/AuthorInput';
-import AuthorList from '@/components/AuthorList';
 
 // Static data moved outside component to prevent re-creation
 const languages = ['Português', 'English', 'Espanhol'];
@@ -47,7 +47,7 @@ const FilterContent = React.memo(({
     filters.documentType.length > 0 ||
     filters.language.length > 0 ||
     filters.subject.length > 0 || 
-    filters.author || 
+    filters.author.length > 0 || // CORRIGIDO: Agora é array
     filters.year || 
     filters.duration,
     [filters]
@@ -57,16 +57,11 @@ const FilterContent = React.memo(({
     filters.documentType.length +
     filters.language.length +
     filters.subject.length + 
-    (filters.author ? 1 : 0) + 
+    filters.author.length + // CORRIGIDO: Agora é array
     (filters.year ? 1 : 0) + 
     (filters.duration ? 1 : 0),
     [filters]
   );
-
-  // Convert single author string to array for compatibility
-  const selectedAuthors = useMemo(() => {
-    return filters.author ? [filters.author] : [];
-  }, [filters.author]);
 
   const handleDocumentTypeChange = useCallback((documentTypeId: string, checked: boolean) => {
     const newDocumentTypes = checked
@@ -100,20 +95,16 @@ const FilterContent = React.memo(({
   }, [filters, onFiltersChange]);
 
   const handleAuthorChange = useCallback((value: string) => {
-    onFiltersChange({ ...filters, author: value }, { authorTyping: true });
-  }, [filters, onFiltersChange]);
-
-  const handleAuthorsListChange = useCallback((authors: string[]) => {
-    // For now, we'll take the first selected author to maintain compatibility
-    const authorValue = authors.length > 0 ? authors[0] : '';
-    onFiltersChange({ ...filters, author: authorValue });
+    // CORRIGIDO: Suportar múltiplos autores
+    const authors = value ? [value] : [];
+    onFiltersChange({ ...filters, author: authors }, { authorTyping: true });
   }, [filters, onFiltersChange]);
 
   const clearFilters = useCallback(() => {
     onFiltersChange({
       resourceType: [],
       subject: [],
-      author: '',
+      author: [], // CORRIGIDO: Array vazio
       year: '',
       duration: '',
       language: [],
@@ -133,6 +124,29 @@ const FilterContent = React.memo(({
             <X className="h-4 w-4 mr-1" />
             Limpar
           </Button>
+        </div>
+      )}
+
+      {/* CORRIGIDO: Mostrar autores selecionados como tags */}
+      {filters.author.length > 0 && (
+        <div className="flex flex-wrap gap-2 p-3 bg-blue-50 rounded-lg">
+          <span className="text-sm font-medium text-blue-700">Autores selecionados:</span>
+          {filters.author.map((author, index) => (
+            <Badge key={index} variant="secondary" className="text-xs">
+              {author}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto w-auto p-0 ml-1"
+                onClick={() => {
+                  const newAuthors = filters.author.filter(a => a !== author);
+                  onFiltersChange({ ...filters, author: newAuthors });
+                }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </Badge>
+          ))}
         </div>
       )}
 
@@ -201,36 +215,23 @@ const FilterContent = React.memo(({
         <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium">Autor</Label>
-            {filters.author && (
+            {filters.author.length > 0 && (
               <Badge variant="secondary" className="text-xs">
-                1
+                {filters.author.length}
               </Badge>
             )}
           </div>
           {openSections.author ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
-          <div className="space-y-4">
-            {/* Author Input */}
-            <div className="p-3 border border-gray-200 rounded-lg bg-white">
-              <Label className="text-xs text-gray-600 mb-2 block">Buscar por nome</Label>
-              <AuthorInput
-                value={filters.author}
-                onChange={handleAuthorChange}
-                placeholder="Nome do autor"
-                currentResults={currentResults}
-              />
-            </div>
-            
-            {/* Author List */}
-            <div className="p-3 border border-gray-200 rounded-lg bg-white">
-              <Label className="text-xs text-gray-600 mb-3 block">Autores nos resultados</Label>
-              <AuthorList
-                currentResults={currentResults}
-                selectedAuthors={selectedAuthors}
-                onAuthorsChange={handleAuthorsListChange}
-              />
-            </div>
+          <div className="p-3 border border-gray-200 rounded-lg bg-white">
+            <Label className="text-xs text-gray-600 mb-2 block">Buscar por nome</Label>
+            <AuthorInput
+              value={filters.author.length > 0 ? filters.author[0] : ''}
+              onChange={handleAuthorChange}
+              placeholder="Nome do autor"
+              currentResults={currentResults}
+            />
           </div>
         </CollapsibleContent>
       </Collapsible>

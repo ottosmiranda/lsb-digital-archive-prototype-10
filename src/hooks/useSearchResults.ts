@@ -70,7 +70,7 @@ export const useSearchResults = () => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
-  // CORREÇÃO CRÍTICA: Verificar se deve executar busca
+  // CORREÇÃO: Verificar se deve executar busca
   const shouldSearch = useMemo((): boolean => {
     const hasQuery = query.trim() !== '';
     const hasResourceTypeFilters = filters.resourceType.length > 0;
@@ -90,7 +90,7 @@ export const useSearchResults = () => {
   // Função memoizada para executar busca
   const performSearch = useCallback(async () => {
     const requestId = `search_${Date.now()}`;
-    console.group(`🔍 ${requestId} - Performing search`);
+    console.group(`🔍 ${requestId} - Performing paginated search`);
     console.log('📋 Search params:', { query, filters, sortBy, currentPage, shouldSearch });
 
     // CORREÇÃO: Limpar resultados se não deve buscar
@@ -116,7 +116,7 @@ export const useSearchResults = () => {
     }
 
     try {
-      console.log('🚀 Executing search via API...');
+      console.log('🚀 Executing paginated search via API...');
       const response = await search(query, filters, sortBy, currentPage);
       
       // VALIDAÇÃO CRÍTICA: Verificar resposta
@@ -136,11 +136,12 @@ export const useSearchResults = () => {
       if (response.error) {
         console.warn('⚠️ Search completed with errors:', response.error);
       } else {
-        console.log('✅ Search successful:', {
+        console.log('✅ Paginated search successful:', {
           results: response.results.length,
           totalResults: response.pagination.totalResults,
           currentPage: response.pagination.currentPage,
-          totalPages: response.pagination.totalPages
+          totalPages: response.pagination.totalPages,
+          paginationEnabled: response.pagination.totalPages > 1
         });
         
         // Prefetch se houver próxima página
@@ -150,7 +151,7 @@ export const useSearchResults = () => {
       }
 
     } catch (err) {
-      console.error('❌ Search failed:', err);
+      console.error('❌ Paginated search failed:', err);
       setUsingFallback(true);
       
       setSearchResponse({
@@ -173,7 +174,7 @@ export const useSearchResults = () => {
     console.groupEnd();
   }, [query, filters, sortBy, currentPage, shouldSearch, search, prefetchNextPage]);
 
-  // CORREÇÃO: useEffect com dependências estabilizadas
+  // useEffect com dependências estabilizadas
   useEffect(() => {
     performSearch();
   }, [performSearch]);

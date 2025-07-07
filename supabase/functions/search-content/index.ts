@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -48,42 +49,22 @@ interface SearchResult {
   channel?: string;
 }
 
-// CONFIGURAÇÃO DE ALTA ESCALABILIDADE PARA NÚMEROS EXATOS
+// API Configuration
 const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutos para alta performance
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos para cache por página
+const GLOBAL_CACHE_TTL = 15 * 60 * 1000; // 15 minutos para cache global
 
-// CONFIGURAÇÃO DINÂMICA PARA NÚMEROS EXATOS
-const EXACT_NUMBERS_LIMITS = {
-  podcast: {
-    maxItems: parseInt(Deno.env.get('PODCAST_MAX_ITEMS') || '2512'), // Número EXATO
-    percentage: 1.0, // 100% para números exatos
-    chunkSize: 50,
-    maxConcurrency: 5
-  },
-  aula: {
-    maxItems: parseInt(Deno.env.get('VIDEO_MAX_ITEMS') || '300'), // Número EXATO
-    percentage: 1.0, // 100% para números exatos
-    chunkSize: 50,
-    maxConcurrency: 4
-  },
-  livro: {
-    maxItems: parseInt(Deno.env.get('BOOK_MAX_ITEMS') || '30'), // Número EXATO
-    percentage: 1.0, // 100% para números exatos
-    chunkSize: 25,
-    maxConcurrency: 2
-  }
-};
-
-// TIMEOUTS OTIMIZADOS PARA NÚMEROS EXATOS
+// Timeouts otimizados
 const TIMEOUTS = {
-  singleRequest: 8000, 
-  chunkParallel: 15000, // Aumentado para números exatos
-  totalOperation: 60000, // 60s para carregar números exatos
-  healthCheck: 3000
+  singleRequest: 8000,
+  globalSearch: 30000
 };
 
-// Cache helpers com validação aprimorada para alta escalabilidade
-const getCacheKey = (key: string): string => `exact_numbers_search_${key}`;
+// Cache global
+const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+// Cache helpers
+const getCacheKey = (key: string): string => `search_${key}`;
 
 const isValidCache = (cacheKey: string): boolean => {
   const cached = globalCache.get(cacheKey);
@@ -91,7 +72,6 @@ const isValidCache = (cacheKey: string): boolean => {
   
   const isValid = (Date.now() - cached.timestamp) < cached.ttl;
   
-  // VALIDAÇÃO CRÍTICA: Não usar cache corrompido
   if (isValid && Array.isArray(cached.data) && cached.data.length === 0) {
     console.warn(`🚨 Cache corrompido detectado: ${cacheKey}`);
     globalCache.delete(cacheKey);
@@ -102,7 +82,6 @@ const isValidCache = (cacheKey: string): boolean => {
 };
 
 const setCache = (cacheKey: string, data: any, ttl: number = CACHE_TTL): void => {
-  // Cache apenas resultados significativos
   if (Array.isArray(data) && data.length === 0) {
     console.warn(`⚠️ Não cacheando resultado vazio: ${cacheKey}`);
     return;
@@ -121,153 +100,13 @@ const getCache = (cacheKey: string): any => {
   return cached?.data || null;
 };
 
-const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
-
-// FUNÇÃO PARA DESCOBRIR NÚMEROS EXATOS
-const discoverExactTotal = async (tipo: string): Promise<number> => {
-  const cacheKey = getCacheKey(`exact_total_${tipo}`);
-  
-  if (isValidCache(cacheKey)) {
-    const cached = getCache(cacheKey);
-    console.log(`📊 Total EXATO ${tipo} (cache): ${cached}`);
-    return cached;
-  }
-
-  try {
-    console.log(`🔍 Descobrindo número EXATO de ${tipo}...`);
-    const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=1`;
-    
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Timeout descobrindo total exato ${tipo}`)), TIMEOUTS.singleRequest);
-    });
-    
-    const fetchPromise = fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'LSB-ExactNumbers-Search/2.0'
-      }
-    });
-
-    const response = await Promise.race([fetchPromise, timeoutPromise]);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const total = data.total || 0;
-    
-    // Cache do total EXATO por 30 minutos
-    setCache(cacheKey, total, 30 * 60 * 1000);
-    
-    console.log(`📊 Número EXATO ${tipo} descoberto: ${total}`);
-    return total;
-    
-  } catch (error) {
-    console.error(`❌ Erro descobrindo número exato ${tipo}:`, error);
-    // Números EXATOS conhecidos como fallback
-    const exactNumbers = { podcast: 2512, aula: 300, livro: 30 };
-    return exactNumbers[tipo as keyof typeof exactNumbers] || 100;
-  }
-};
-
-// FUNÇÃO DE AUTO-SCALING PARA NÚMEROS EXATOS
-const calculateExactLimit = async (tipo: string): Promise<number> => {
-  const config = EXACT_NUMBERS_LIMITS[tipo as keyof typeof EXACT_NUMBERS_LIMITS];
-  if (!config) return 50;
-
-  try {
-    const totalAvailable = await discoverExactTotal(tipo);
-    const exactLimit = Math.min(totalAvailable, config.maxItems);
-    
-    console.log(`🎯 Número EXATO ${tipo}: ${exactLimit} de ${totalAvailable}`);
-    return exactLimit;
-    
-  } catch (error) {
-    console.error(`❌ Erro calculando número exato ${tipo}:`, error);
-    return config.maxItems;
-  }
-};
-
-// BUSCA PARALELA PARA NÚMEROS EXATOS
-const fetchContentTypeWithExactNumbers = async (tipo: string, targetLimit: number): Promise<SearchResult[]> => {
-  const config = EXACT_NUMBERS_LIMITS[tipo as keyof typeof EXACT_NUMBERS_LIMITS];
-  if (!config) return [];
-
-  const allItems: SearchResult[] = [];
-  const chunkSize = config.chunkSize;
-  const totalChunks = Math.ceil(targetLimit / chunkSize);
-  const maxConcurrency = config.maxConcurrency;
-  
-  console.log(`🚀 Busca números exatos ${tipo}: ${totalChunks} chunks de ${chunkSize} itens (concorrência: ${maxConcurrency})`);
-
-  // Processar chunks em batches paralelos
-  for (let batchStart = 0; batchStart < totalChunks; batchStart += maxConcurrency) {
-    const batchEnd = Math.min(batchStart + maxConcurrency, totalChunks);
-    const chunkPromises: Promise<SearchResult[]>[] = [];
-    
-    // Criar promises para o batch atual
-    for (let chunkIndex = batchStart; chunkIndex < batchEnd; chunkIndex++) {
-      const page = chunkIndex + 1;
-      const chunkPromise = fetchSingleChunk(tipo, page, chunkSize);
-      chunkPromises.push(chunkPromise);
-    }
-    
-    console.log(`📦 Batch números exatos ${Math.ceil(batchStart / maxConcurrency) + 1}: chunks ${batchStart + 1}-${batchEnd}`);
-    
-    try {
-      // Timeout aumentado para números exatos
-      const batchTimeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Batch timeout números exatos ${tipo}`)), TIMEOUTS.chunkParallel);
-      });
-      
-      const batchResults = await Promise.race([
-        Promise.allSettled(chunkPromises),
-        batchTimeoutPromise
-      ]);
-      
-      // Processar resultados do batch
-      batchResults.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          allItems.push(...result.value);
-          console.log(`✅ Chunk exato ${batchStart + index + 1}: ${result.value.length} itens`);
-        } else {
-          console.error(`❌ Chunk exato ${batchStart + index + 1} falhou:`, result.reason?.message);
-        }
-      });
-      
-      // Verificar se já temos números suficientes
-      if (allItems.length >= targetLimit) {
-        console.log(`🎯 Número exato atingido: ${allItems.length}/${targetLimit} itens`);
-        break;
-      }
-      
-      // Pausa menor entre batches para números exatos
-      if (batchEnd < totalChunks) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-      
-    } catch (error) {
-      console.error(`❌ Erro no batch números exatos ${batchStart}-${batchEnd}:`, error);
-      // Continuar com próximo batch mesmo se este falhar
-    }
-  }
-
-  const finalItems = allItems.slice(0, targetLimit);
-  console.log(`✅ Busca números exatos ${tipo} concluída: ${finalItems.length} itens`);
-  
-  return finalItems;
-};
-
-// BUSCA DE UM CHUNK INDIVIDUAL
-const fetchSingleChunk = async (tipo: string, page: number, limit: number): Promise<SearchResult[]> => {
+// BUSCA PAGINADA OTIMIZADA - Usar paginação real da API
+const fetchContentPaginated = async (tipo: string, page: number, limit: number): Promise<SearchResult[]> => {
   const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
   
   try {
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Chunk timeout ${tipo} page ${page}`)), TIMEOUTS.singleRequest);
+      setTimeout(() => reject(new Error(`Timeout ${tipo} page ${page}`)), TIMEOUTS.singleRequest);
     });
     
     const fetchPromise = fetch(url, {
@@ -275,7 +114,7 @@ const fetchSingleChunk = async (tipo: string, page: number, limit: number): Prom
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'User-Agent': 'LSB-ExactNumbers-Search/2.0'
+        'User-Agent': 'LSB-Paginated-Search/1.0'
       }
     });
 
@@ -288,90 +127,74 @@ const fetchSingleChunk = async (tipo: string, page: number, limit: number): Prom
     const data = await response.json();
     const items = data.conteudo || [];
     
-    if (items.length === 0) {
-      console.log(`📄 Fim dos dados ${tipo} na página ${page}`);
-      return [];
-    }
-
     const transformedItems = items.map((item: any) => transformToSearchResult(item, tipo));
     return transformedItems;
     
   } catch (error) {
-    console.error(`❌ Erro chunk ${tipo} page ${page}:`, error);
+    console.error(`❌ Erro busca paginada ${tipo} page ${page}:`, error);
     return [];
   }
 };
 
-// FUNÇÃO PRINCIPAL PARA CARREGAR NÚMEROS EXATOS
-const fetchAllContentWithExactNumbers = async (): Promise<SearchResult[]> => {
-  const cacheKey = getCacheKey('global_exact_numbers_content');
+// BUSCA GLOBAL OTIMIZADA - Para filtro "Todos" apenas
+const fetchAllContentOptimized = async (): Promise<SearchResult[]> => {
+  const cacheKey = getCacheKey('global_all_content');
   
   if (isValidCache(cacheKey)) {
     const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT: Números exatos globais (${cached.length} itens)`);
+    console.log(`📦 Cache HIT: Conteúdo global (${cached.length} itens)`);
     return cached;
   }
 
-  console.log('🌐 Iniciando busca com NÚMEROS EXATOS de todos os conteúdos...');
+  console.log('🌐 Carregando conteúdo global otimizado...');
   const startTime = Date.now();
   
   try {
-    // Timeout global para operação de números exatos
-    const globalTimeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Timeout global números exatos')), TIMEOUTS.totalOperation);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout global search')), TIMEOUTS.globalSearch);
     });
     
-    const searchPromise = performExactNumbersSearch();
-    const allContent = await Promise.race([searchPromise, globalTimeoutPromise]);
+    const searchPromise = performOptimizedGlobalSearch();
+    const allContent = await Promise.race([searchPromise, timeoutPromise]);
     
     if (allContent.length === 0) {
-      console.warn('⚠️ Nenhum conteúdo com números exatos carregado, usando fallback...');
+      console.warn('⚠️ Nenhum conteúdo global carregado, usando fallback...');
       return await fetchAllFromSupabaseFallback();
     }
 
-    // Cache o resultado por tempo otimizado para números exatos
-    setCache(cacheKey, allContent, 20 * 60 * 1000); // 20 minutos para números exatos
+    // Cache global por 15 minutos
+    setCache(cacheKey, allContent, GLOBAL_CACHE_TTL);
     
     const endTime = Date.now();
     const duration = Math.round((endTime - startTime) / 1000);
     
-    console.log(`✅ Busca números exatos concluída em ${duration}s: ${allContent.length} itens totais`);
+    console.log(`✅ Busca global concluída em ${duration}s: ${allContent.length} itens totais`);
     return allContent;
     
   } catch (error) {
     const endTime = Date.now();
     const duration = Math.round((endTime - startTime) / 1000);
     
-    console.error(`❌ Erro na busca números exatos após ${duration}s:`, error);
+    console.error(`❌ Erro na busca global após ${duration}s:`, error);
     return await fetchAllFromSupabaseFallback();
   }
 };
 
-// EXECUTAR BUSCA COM NÚMEROS EXATOS
-const performExactNumbersSearch = async (): Promise<SearchResult[]> => {
-  console.log('🎯 Executando cálculo de números EXATOS para descobrir limites reais...');
+// BUSCA GLOBAL OTIMIZADA - Carrega quantidade limitada de cada tipo
+const performOptimizedGlobalSearch = async (): Promise<SearchResult[]> => {
+  console.log('🎯 Executando busca global otimizada...');
   
-  // Descobrir números exatos para cada tipo
-  const [podcastLimit, aulaLimit, livroLimit] = await Promise.allSettled([
-    calculateExactLimit('podcast'),
-    calculateExactLimit('aula'), 
-    calculateExactLimit('livro')
-  ]);
-
-  const exactLimits = {
-    podcast: podcastLimit.status === 'fulfilled' ? podcastLimit.value : 2512,
-    aula: aulaLimit.status === 'fulfilled' ? aulaLimit.value : 300,
-    livro: livroLimit.status === 'fulfilled' ? livroLimit.value : 30
+  // Limites otimizados para busca global
+  const globalLimits = {
+    podcast: 50, // Primeiras 50 páginas = ~2500 podcasts
+    aula: 6,     // Primeiras 6 páginas = ~300 vídeos  
+    livro: 2     // Primeiras 2 páginas = ~30 livros
   };
 
-  console.log('📊 Números EXATOS calculados:', exactLimits);
-  console.log(`🎯 GARANTINDO: ${exactLimits.podcast} podcasts, ${exactLimits.aula} vídeos, ${exactLimits.livro} livros`);
-  
-  // Executar buscas paralelas com números exatos
   const searchPromises = [
-    fetchContentTypeWithExactNumbers('podcast', exactLimits.podcast),
-    fetchContentTypeWithExactNumbers('aula', exactLimits.aula),
-    fetchContentTypeWithExactNumbers('livro', exactLimits.livro)
+    fetchMultiplePages('podcast', globalLimits.podcast),
+    fetchMultiplePages('aula', globalLimits.aula),
+    fetchMultiplePages('livro', globalLimits.livro)
   ];
 
   const results = await Promise.allSettled(searchPromises);
@@ -381,13 +204,46 @@ const performExactNumbersSearch = async (): Promise<SearchResult[]> => {
     const contentType = ['podcast', 'aula', 'livro'][index];
     if (result.status === 'fulfilled') {
       allContent.push(...result.value);
-      console.log(`✅ NÚMEROS EXATOS ${contentType}: ${result.value.length} itens carregados`);
+      console.log(`✅ Global ${contentType}: ${result.value.length} itens carregados`);
     } else {
-      console.error(`❌ Falha números exatos ${contentType}:`, result.reason?.message);
+      console.error(`❌ Falha global ${contentType}:`, result.reason?.message);
     }
   });
 
   return allContent;
+};
+
+// Buscar múltiplas páginas em paralelo
+const fetchMultiplePages = async (tipo: string, maxPages: number): Promise<SearchResult[]> => {
+  const allItems: SearchResult[] = [];
+  const chunkSize = 50; // Itens por página
+  
+  // Buscar páginas em paralelo (máximo 3 por vez para não sobrecarregar)
+  for (let batch = 0; batch < maxPages; batch += 3) {
+    const batchEnd = Math.min(batch + 3, maxPages);
+    const pagePromises: Promise<SearchResult[]>[] = [];
+    
+    for (let page = batch + 1; page <= batchEnd; page++) {
+      pagePromises.push(fetchContentPaginated(tipo, page, chunkSize));
+    }
+    
+    const batchResults = await Promise.allSettled(pagePromises);
+    
+    batchResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        allItems.push(...result.value);
+      } else {
+        console.error(`❌ Erro página ${batch + index + 1} de ${tipo}:`, result.reason);
+      }
+    });
+    
+    // Pausa entre batches
+    if (batchEnd < maxPages) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+  
+  return allItems;
 };
 
 const transformToSearchResult = (item: any, tipo: string): SearchResult => {
@@ -486,37 +342,7 @@ const fetchAllFromSupabaseFallback = async (): Promise<SearchResult[]> => {
   }
 };
 
-const fetchFromSupabaseFallback = async (tipo: string): Promise<SearchResult[]> => {
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    
-    let functionName: string;
-    switch (tipo) {
-      case 'livro': functionName = 'fetch-books'; break;
-      case 'aula': functionName = 'fetch-videos'; break;
-      case 'podcast': functionName = 'fetch-podcasts'; break;
-      default: return [];
-    }
-    
-    const { data, error } = await supabase.functions.invoke(functionName);
-    
-    if (error || !data.success) {
-      console.error(`❌ Supabase ${functionName} error:`, error || data.error);
-      return [];
-    }
-    
-    const items = tipo === 'livro' ? data.books : tipo === 'aula' ? data.videos : data.podcasts;
-    return items || [];
-    
-  } catch (error) {
-    console.error(`❌ Supabase fallback failed for ${tipo}:`, error);
-    return [];
-  }
-};
-
-// Verificação se é busca global
+// Verifica se é busca global (filtro "Todos")
 const isGlobalSearch = (filters: SearchFilters): boolean => {
   return filters.resourceType.includes('all') || 
          (filters.resourceType.length === 0 && 
@@ -530,31 +356,24 @@ const isGlobalSearch = (filters: SearchFilters): boolean => {
           filters.channel.length === 0);
 };
 
-// Verifica se precisa de números exatos (filtros específicos)
-const needsExactNumbers = (filters: SearchFilters): boolean => {
-  // Se tem filtro específico por tipo, precisa de números exatos
-  return filters.resourceType.length > 0 && 
-         !filters.resourceType.includes('all');
-};
-
-// FUNÇÃO PRINCIPAL DE BUSCA COM SISTEMA DE NÚMEROS EXATOS
+// FUNÇÃO PRINCIPAL DE BUSCA COM PAGINAÇÃO REAL
 const performSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
-  const requestId = `exact_search_${Date.now()}`;
+  const requestId = `search_${Date.now()}`;
   
-  console.group(`🔍 ${requestId} - BUSCA COM NÚMEROS EXATOS`);
+  console.group(`🔍 ${requestId} - Busca com paginação real`);
   console.log('📋 Parâmetros:', { query: query || '(vazio)', filters, sortBy, page, resultsPerPage });
-  console.log('🎯 Precisa números exatos:', needsExactNumbers(filters));
 
   try {
     let allData: SearchResult[] = [];
 
     if (isGlobalSearch(filters)) {
-      console.log('🌐 BUSCA GLOBAL COM NÚMEROS EXATOS - carregando todo conteúdo');
-      allData = await fetchAllContentWithExactNumbers();
+      // BUSCA GLOBAL: Cache global + paginação frontend
+      console.log('🌐 BUSCA GLOBAL - usando cache global + paginação frontend');
+      allData = await fetchAllContentOptimized();
       
       if (allData.length === 0) {
-        console.warn('⚠️ Nenhum conteúdo global com números exatos disponível');
+        console.warn('⚠️ Nenhum conteúdo global disponível');
         return {
           success: true,
           results: [],
@@ -568,32 +387,44 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
           searchInfo: { query, appliedFilters: filters, sortBy }
         };
       }
-    } else if (needsExactNumbers(filters)) {
-      // Busca específica com números exatos por tipo
+    } else {
+      // BUSCA ESPECÍFICA: Paginação real da API
       const activeTypes = filters.resourceType.filter(type => type !== 'all');
-      console.log('🎯 Busca específica com NÚMEROS EXATOS para tipos:', activeTypes);
+      console.log('🎯 Busca específica com paginação real para tipos:', activeTypes);
       
       if (activeTypes.length > 0) {
         const typePromises = activeTypes.map(async type => {
           const apiType = type === 'titulo' ? 'livro' : type === 'video' ? 'aula' : 'podcast';
-          const exactLimit = await calculateExactLimit(apiType);
-          return fetchContentTypeWithExactNumbers(apiType, exactLimit);
+          
+          // Cache por página específica
+          const cacheKey = getCacheKey(`${apiType}_page_${page}_limit_${resultsPerPage}`);
+          
+          if (isValidCache(cacheKey)) {
+            const cached = getCache(cacheKey);
+            console.log(`📦 Cache HIT: ${apiType} página ${page} (${cached.length} itens)`);
+            return cached;
+          }
+          
+          const result = await fetchContentPaginated(apiType, page, resultsPerPage);
+          
+          // Cache apenas se há resultados
+          if (result.length > 0) {
+            setCache(cacheKey, result, CACHE_TTL);
+          }
+          
+          return result;
         });
         
         const typeResults = await Promise.allSettled(typePromises);
         typeResults.forEach((result, index) => {
           if (result.status === 'fulfilled') {
             allData.push(...result.value);
-            console.log(`✅ NÚMEROS EXATOS tipo ${activeTypes[index]}: ${result.value.length} itens`);
+            console.log(`✅ Paginação real tipo ${activeTypes[index]}: ${result.value.length} itens`);
           } else {
-            console.error(`❌ NÚMEROS EXATOS tipo ${activeTypes[index]} falhou:`, result.reason);
+            console.error(`❌ Paginação real tipo ${activeTypes[index]} falhou:`, result.reason);
           }
         });
       }
-    } else {
-      // Busca padrão para casos específicos (homepage, etc)
-      console.log('📄 Busca padrão (não precisa números exatos)');
-      allData = await fetchAllContentWithExactNumbers();
     }
 
     // Aplicar filtros
@@ -617,9 +448,19 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
 
     // Paginação
     const totalResults = filteredData.length;
-    const totalPages = Math.ceil(totalResults / resultsPerPage);
-    const startIndex = (page - 1) * resultsPerPage;
-    const paginatedResults = filteredData.slice(startIndex, startIndex + resultsPerPage);
+    let totalPages: number;
+    let paginatedResults: SearchResult[];
+    
+    if (isGlobalSearch(filters)) {
+      // Para busca global, fazer paginação frontend
+      totalPages = Math.ceil(totalResults / resultsPerPage);
+      const startIndex = (page - 1) * resultsPerPage;
+      paginatedResults = filteredData.slice(startIndex, startIndex + resultsPerPage);
+    } else {
+      // Para busca específica, os resultados já vêm paginados da API
+      totalPages = Math.ceil(totalResults / resultsPerPage);
+      paginatedResults = filteredData;
+    }
 
     const response = {
       success: true,
@@ -638,18 +479,18 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
       }
     };
 
-    console.log(`✅ Busca com números exatos concluída:`, {
+    console.log(`✅ Busca com paginação concluída:`, {
       totalEncontrado: totalResults,
       retornado: paginatedResults.length,
       pagina: `${page}/${totalPages}`,
-      numerosExatos: needsExactNumbers(filters) ? '🎯 SIM' : '📄 NÃO'
+      estrategia: isGlobalSearch(filters) ? '🌐 GLOBAL' : '🎯 PAGINADA'
     });
     
     console.groupEnd();
     return response;
 
   } catch (error) {
-    console.error(`❌ Busca com números exatos falhou:`, error);
+    console.error(`❌ Busca com paginação falhou:`, error);
     console.groupEnd();
     
     return {
@@ -816,7 +657,7 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📨 Requisição de busca com números exatos recebida:', requestBody);
+    console.log('📨 Requisição de busca com paginação real recebida:', requestBody);
     
     const result = await performSearch(requestBody);
     
@@ -826,7 +667,7 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error('❌ Erro no handler com números exatos:', error);
+    console.error('❌ Erro no handler com paginação real:', error);
     
     return new Response(JSON.stringify({
       success: false,

@@ -119,17 +119,22 @@ serve(async (req) => {
     
     if (filters?.resourceType?.length) {
       if (filters.resourceType.includes('all')) {
+        // CORRIGIDO: Para filtro "Todos", buscar TODOS os tipos de conteúdo disponíveis na API externa
         contentTypes = ['livro', 'aula', 'podcast'];
         isMultiTypeSearch = true;
+        console.log('🌍 Filter "Todos" detected - searching ALL content types:', contentTypes);
       } else {
         contentTypes = filters.resourceType.map(type => 
           type === 'titulo' ? 'livro' : type === 'video' ? 'aula' : type
         );
         isMultiTypeSearch = contentTypes.length > 1;
+        console.log('🎯 Specific content types selected:', contentTypes);
       }
     } else {
+      // CORRIGIDO: Quando não há filtros, usar todos os tipos (comportamento de "Todos")
       contentTypes = ['livro', 'aula', 'podcast'];
       isMultiTypeSearch = true;
+      console.log('📂 No specific filters - defaulting to ALL types:', contentTypes);
     }
 
     console.log('📋 Content types to search:', contentTypes, '| Multi-type:', isMultiTypeSearch);

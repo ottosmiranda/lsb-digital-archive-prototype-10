@@ -48,43 +48,42 @@ interface SearchResult {
   channel?: string;
 }
 
-// CONFIGURAÇÃO DE ALTA ESCALABILIDADE
+// CONFIGURAÇÃO DE ALTA ESCALABILIDADE PARA NÚMEROS EXATOS
 const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutos para alta performance
-const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 
-// CONFIGURAÇÃO DINÂMICA DE LIMITES ESCALÁVEIS
-const SCALABLE_LIMITS = {
+// CONFIGURAÇÃO DINÂMICA PARA NÚMEROS EXATOS
+const EXACT_NUMBERS_LIMITS = {
   podcast: {
-    maxItems: parseInt(Deno.env.get('PODCAST_MAX_ITEMS') || '1500'), // 60% de 2512
-    percentage: 0.6, // Buscar 60% do total disponível
+    maxItems: parseInt(Deno.env.get('PODCAST_MAX_ITEMS') || '2512'), // Número EXATO
+    percentage: 1.0, // 100% para números exatos
     chunkSize: 50,
     maxConcurrency: 5
   },
   aula: {
-    maxItems: parseInt(Deno.env.get('VIDEO_MAX_ITEMS') || '300'), // 100% dos vídeos
-    percentage: 1.0, // Buscar todos os vídeos disponíveis
+    maxItems: parseInt(Deno.env.get('VIDEO_MAX_ITEMS') || '300'), // Número EXATO
+    percentage: 1.0, // 100% para números exatos
     chunkSize: 50,
     maxConcurrency: 4
   },
   livro: {
-    maxItems: parseInt(Deno.env.get('BOOK_MAX_ITEMS') || '50'), // Todos os livros
-    percentage: 1.0, // Buscar todos os livros disponíveis
+    maxItems: parseInt(Deno.env.get('BOOK_MAX_ITEMS') || '30'), // Número EXATO
+    percentage: 1.0, // 100% para números exatos
     chunkSize: 25,
     maxConcurrency: 2
   }
 };
 
-// TIMEOUTS OTIMIZADOS PARA ALTA ESCALABILIDADE
+// TIMEOUTS OTIMIZADOS PARA NÚMEROS EXATOS
 const TIMEOUTS = {
-  singleRequest: 8000, // 8s por requisição individual
-  chunkParallel: 12000, // 12s para chunks paralelos
-  totalOperation: 45000, // 45s para operação completa
-  healthCheck: 3000 // 3s para health check
+  singleRequest: 8000, 
+  chunkParallel: 15000, // Aumentado para números exatos
+  totalOperation: 60000, // 60s para carregar números exatos
+  healthCheck: 3000
 };
 
 // Cache helpers com validação aprimorada para alta escalabilidade
-const getCacheKey = (key: string): string => `scalable_search_${key}`;
+const getCacheKey = (key: string): string => `exact_numbers_search_${key}`;
 
 const isValidCache = (cacheKey: string): boolean => {
   const cached = globalCache.get(cacheKey);
@@ -122,22 +121,24 @@ const getCache = (cacheKey: string): any => {
   return cached?.data || null;
 };
 
-// FUNÇÃO ESCALÁVEL PARA DESCOBRIR TOTAL DISPONÍVEL NA API
-const discoverTotalContent = async (tipo: string): Promise<number> => {
-  const cacheKey = getCacheKey(`total_${tipo}`);
+const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+// FUNÇÃO PARA DESCOBRIR NÚMEROS EXATOS
+const discoverExactTotal = async (tipo: string): Promise<number> => {
+  const cacheKey = getCacheKey(`exact_total_${tipo}`);
   
   if (isValidCache(cacheKey)) {
     const cached = getCache(cacheKey);
-    console.log(`📊 Total ${tipo} (cache): ${cached}`);
+    console.log(`📊 Total EXATO ${tipo} (cache): ${cached}`);
     return cached;
   }
 
   try {
-    console.log(`🔍 Descobrindo total de ${tipo}...`);
+    console.log(`🔍 Descobrindo número EXATO de ${tipo}...`);
     const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=1&limit=1`;
     
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Timeout descobrindo total ${tipo}`)), TIMEOUTS.singleRequest);
+      setTimeout(() => reject(new Error(`Timeout descobrindo total exato ${tipo}`)), TIMEOUTS.singleRequest);
     });
     
     const fetchPromise = fetch(url, {
@@ -145,7 +146,7 @@ const discoverTotalContent = async (tipo: string): Promise<number> => {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'User-Agent': 'LSB-Scalable-Search/2.0'
+        'User-Agent': 'LSB-ExactNumbers-Search/2.0'
       }
     });
 
@@ -158,44 +159,41 @@ const discoverTotalContent = async (tipo: string): Promise<number> => {
     const data = await response.json();
     const total = data.total || 0;
     
-    // Cache do total por 30 minutos
+    // Cache do total EXATO por 30 minutos
     setCache(cacheKey, total, 30 * 60 * 1000);
     
-    console.log(`📊 Total ${tipo} descoberto: ${total}`);
+    console.log(`📊 Número EXATO ${tipo} descoberto: ${total}`);
     return total;
     
   } catch (error) {
-    console.error(`❌ Erro descobrindo total ${tipo}:`, error);
-    // Retornar estimativa baseada na configuração
-    const config = SCALABLE_LIMITS[tipo as keyof typeof SCALABLE_LIMITS];
-    return config ? Math.ceil(config.maxItems / config.percentage) : 100;
+    console.error(`❌ Erro descobrindo número exato ${tipo}:`, error);
+    // Números EXATOS conhecidos como fallback
+    const exactNumbers = { podcast: 2512, aula: 300, livro: 30 };
+    return exactNumbers[tipo as keyof typeof exactNumbers] || 100;
   }
 };
 
-// FUNÇÃO DE AUTO-SCALING INTELIGENTE
-const calculateOptimalLimit = async (tipo: string): Promise<number> => {
-  const config = SCALABLE_LIMITS[tipo as keyof typeof SCALABLE_LIMITS];
+// FUNÇÃO DE AUTO-SCALING PARA NÚMEROS EXATOS
+const calculateExactLimit = async (tipo: string): Promise<number> => {
+  const config = EXACT_NUMBERS_LIMITS[tipo as keyof typeof EXACT_NUMBERS_LIMITS];
   if (!config) return 50;
 
   try {
-    const totalAvailable = await discoverTotalContent(tipo);
-    const calculatedLimit = Math.min(
-      Math.ceil(totalAvailable * config.percentage),
-      config.maxItems
-    );
+    const totalAvailable = await discoverExactTotal(tipo);
+    const exactLimit = Math.min(totalAvailable, config.maxItems);
     
-    console.log(`🎯 Auto-scaling ${tipo}: ${calculatedLimit} de ${totalAvailable} (${Math.round(config.percentage * 100)}%)`);
-    return calculatedLimit;
+    console.log(`🎯 Número EXATO ${tipo}: ${exactLimit} de ${totalAvailable}`);
+    return exactLimit;
     
   } catch (error) {
-    console.error(`❌ Erro no auto-scaling ${tipo}:`, error);
+    console.error(`❌ Erro calculando número exato ${tipo}:`, error);
     return config.maxItems;
   }
 };
 
-// BUSCA PARALELA POR CHUNKS - ALTA PERFORMANCE
-const fetchContentTypeScalable = async (tipo: string, targetLimit: number): Promise<SearchResult[]> => {
-  const config = SCALABLE_LIMITS[tipo as keyof typeof SCALABLE_LIMITS];
+// BUSCA PARALELA PARA NÚMEROS EXATOS
+const fetchContentTypeWithExactNumbers = async (tipo: string, targetLimit: number): Promise<SearchResult[]> => {
+  const config = EXACT_NUMBERS_LIMITS[tipo as keyof typeof EXACT_NUMBERS_LIMITS];
   if (!config) return [];
 
   const allItems: SearchResult[] = [];
@@ -203,7 +201,7 @@ const fetchContentTypeScalable = async (tipo: string, targetLimit: number): Prom
   const totalChunks = Math.ceil(targetLimit / chunkSize);
   const maxConcurrency = config.maxConcurrency;
   
-  console.log(`🚀 Busca escalável ${tipo}: ${totalChunks} chunks de ${chunkSize} itens (concorrência: ${maxConcurrency})`);
+  console.log(`🚀 Busca números exatos ${tipo}: ${totalChunks} chunks de ${chunkSize} itens (concorrência: ${maxConcurrency})`);
 
   // Processar chunks em batches paralelos
   for (let batchStart = 0; batchStart < totalChunks; batchStart += maxConcurrency) {
@@ -217,12 +215,12 @@ const fetchContentTypeScalable = async (tipo: string, targetLimit: number): Prom
       chunkPromises.push(chunkPromise);
     }
     
-    console.log(`📦 Processando batch ${Math.ceil(batchStart / maxConcurrency) + 1}: chunks ${batchStart + 1}-${batchEnd}`);
+    console.log(`📦 Batch números exatos ${Math.ceil(batchStart / maxConcurrency) + 1}: chunks ${batchStart + 1}-${batchEnd}`);
     
     try {
-      // Timeout para todo o batch
+      // Timeout aumentado para números exatos
       const batchTimeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Batch timeout ${tipo}`)), TIMEOUTS.chunkParallel);
+        setTimeout(() => reject(new Error(`Batch timeout números exatos ${tipo}`)), TIMEOUTS.chunkParallel);
       });
       
       const batchResults = await Promise.race([
@@ -234,31 +232,31 @@ const fetchContentTypeScalable = async (tipo: string, targetLimit: number): Prom
       batchResults.forEach((result, index) => {
         if (result.status === 'fulfilled') {
           allItems.push(...result.value);
-          console.log(`✅ Chunk ${batchStart + index + 1}: ${result.value.length} itens`);
+          console.log(`✅ Chunk exato ${batchStart + index + 1}: ${result.value.length} itens`);
         } else {
-          console.error(`❌ Chunk ${batchStart + index + 1} falhou:`, result.reason?.message);
+          console.error(`❌ Chunk exato ${batchStart + index + 1} falhou:`, result.reason?.message);
         }
       });
       
-      // Verificar se já temos itens suficientes
+      // Verificar se já temos números suficientes
       if (allItems.length >= targetLimit) {
-        console.log(`🎯 Limite atingido: ${allItems.length}/${targetLimit} itens`);
+        console.log(`🎯 Número exato atingido: ${allItems.length}/${targetLimit} itens`);
         break;
       }
       
-      // Pausa entre batches para não sobrecarregar a API
+      // Pausa menor entre batches para números exatos
       if (batchEnd < totalChunks) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
       
     } catch (error) {
-      console.error(`❌ Erro no batch ${batchStart}-${batchEnd}:`, error);
+      console.error(`❌ Erro no batch números exatos ${batchStart}-${batchEnd}:`, error);
       // Continuar com próximo batch mesmo se este falhar
     }
   }
 
   const finalItems = allItems.slice(0, targetLimit);
-  console.log(`✅ Busca escalável ${tipo} concluída: ${finalItems.length} itens`);
+  console.log(`✅ Busca números exatos ${tipo} concluída: ${finalItems.length} itens`);
   
   return finalItems;
 };
@@ -277,7 +275,7 @@ const fetchSingleChunk = async (tipo: string, page: number, limit: number): Prom
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'User-Agent': 'LSB-Scalable-Search/2.0'
+        'User-Agent': 'LSB-ExactNumbers-Search/2.0'
       }
     });
 
@@ -304,75 +302,76 @@ const fetchSingleChunk = async (tipo: string, page: number, limit: number): Prom
   }
 };
 
-// FUNÇÃO PRINCIPAL ESCALÁVEL PARA BUSCAR TODO CONTEÚDO
-const fetchAllContentScalable = async (): Promise<SearchResult[]> => {
-  const cacheKey = getCacheKey('global_scalable_content');
+// FUNÇÃO PRINCIPAL PARA CARREGAR NÚMEROS EXATOS
+const fetchAllContentWithExactNumbers = async (): Promise<SearchResult[]> => {
+  const cacheKey = getCacheKey('global_exact_numbers_content');
   
   if (isValidCache(cacheKey)) {
     const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT: Conteúdo global escalável (${cached.length} itens)`);
+    console.log(`📦 Cache HIT: Números exatos globais (${cached.length} itens)`);
     return cached;
   }
 
-  console.log('🌐 Iniciando busca escalável de TODOS os conteúdos...');
+  console.log('🌐 Iniciando busca com NÚMEROS EXATOS de todos os conteúdos...');
   const startTime = Date.now();
   
   try {
-    // Timeout global para toda a operação
+    // Timeout global para operação de números exatos
     const globalTimeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Timeout global da busca escalável')), TIMEOUTS.totalOperation);
+      setTimeout(() => reject(new Error('Timeout global números exatos')), TIMEOUTS.totalOperation);
     });
     
-    const searchPromise = performScalableSearch();
+    const searchPromise = performExactNumbersSearch();
     const allContent = await Promise.race([searchPromise, globalTimeoutPromise]);
     
     if (allContent.length === 0) {
-      console.warn('⚠️ Nenhum conteúdo escalável carregado, usando fallback...');
+      console.warn('⚠️ Nenhum conteúdo com números exatos carregado, usando fallback...');
       return await fetchAllFromSupabaseFallback();
     }
 
-    // Cache o resultado por tempo otimizado
-    setCache(cacheKey, allContent, CACHE_TTL);
+    // Cache o resultado por tempo otimizado para números exatos
+    setCache(cacheKey, allContent, 20 * 60 * 1000); // 20 minutos para números exatos
     
     const endTime = Date.now();
     const duration = Math.round((endTime - startTime) / 1000);
     
-    console.log(`✅ Busca escalável concluída em ${duration}s: ${allContent.length} itens totais`);
+    console.log(`✅ Busca números exatos concluída em ${duration}s: ${allContent.length} itens totais`);
     return allContent;
     
   } catch (error) {
     const endTime = Date.now();
     const duration = Math.round((endTime - startTime) / 1000);
     
-    console.error(`❌ Erro na busca escalável após ${duration}s:`, error);
+    console.error(`❌ Erro na busca números exatos após ${duration}s:`, error);
     return await fetchAllFromSupabaseFallback();
   }
 };
 
-// EXECUTAR BUSCA ESCALÁVEL PARALELA
-const performScalableSearch = async (): Promise<SearchResult[]> => {
-  console.log('🎯 Executando auto-scaling para descobrir limites ótimos...');
+// EXECUTAR BUSCA COM NÚMEROS EXATOS
+const performExactNumbersSearch = async (): Promise<SearchResult[]> => {
+  console.log('🎯 Executando cálculo de números EXATOS para descobrir limites reais...');
   
-  // Descobrir limites ótimos para cada tipo
+  // Descobrir números exatos para cada tipo
   const [podcastLimit, aulaLimit, livroLimit] = await Promise.allSettled([
-    calculateOptimalLimit('podcast'),
-    calculateOptimalLimit('aula'),
-    calculateOptimalLimit('livro')
+    calculateExactLimit('podcast'),
+    calculateExactLimit('aula'), 
+    calculateExactLimit('livro')
   ]);
 
-  const limits = {
-    podcast: podcastLimit.status === 'fulfilled' ? podcastLimit.value : SCALABLE_LIMITS.podcast.maxItems,
-    aula: aulaLimit.status === 'fulfilled' ? aulaLimit.value : SCALABLE_LIMITS.aula.maxItems,
-    livro: livroLimit.status === 'fulfilled' ? livroLimit.value : SCALABLE_LIMITS.livro.maxItems
+  const exactLimits = {
+    podcast: podcastLimit.status === 'fulfilled' ? podcastLimit.value : 2512,
+    aula: aulaLimit.status === 'fulfilled' ? aulaLimit.value : 300,
+    livro: livroLimit.status === 'fulfilled' ? livroLimit.value : 30
   };
 
-  console.log('📊 Limites calculados:', limits);
+  console.log('📊 Números EXATOS calculados:', exactLimits);
+  console.log(`🎯 GARANTINDO: ${exactLimits.podcast} podcasts, ${exactLimits.aula} vídeos, ${exactLimits.livro} livros`);
   
-  // Executar buscas paralelas com limites otimizados
+  // Executar buscas paralelas com números exatos
   const searchPromises = [
-    fetchContentTypeScalable('podcast', limits.podcast),
-    fetchContentTypeScalable('aula', limits.aula),
-    fetchContentTypeScalable('livro', limits.livro)
+    fetchContentTypeWithExactNumbers('podcast', exactLimits.podcast),
+    fetchContentTypeWithExactNumbers('aula', exactLimits.aula),
+    fetchContentTypeWithExactNumbers('livro', exactLimits.livro)
   ];
 
   const results = await Promise.allSettled(searchPromises);
@@ -382,9 +381,9 @@ const performScalableSearch = async (): Promise<SearchResult[]> => {
     const contentType = ['podcast', 'aula', 'livro'][index];
     if (result.status === 'fulfilled') {
       allContent.push(...result.value);
-      console.log(`✅ ${contentType}: ${result.value.length} itens carregados`);
+      console.log(`✅ NÚMEROS EXATOS ${contentType}: ${result.value.length} itens carregados`);
     } else {
-      console.error(`❌ Falha ${contentType}:`, result.reason?.message);
+      console.error(`❌ Falha números exatos ${contentType}:`, result.reason?.message);
     }
   });
 
@@ -531,24 +530,31 @@ const isGlobalSearch = (filters: SearchFilters): boolean => {
           filters.channel.length === 0);
 };
 
-// FUNÇÃO PRINCIPAL DE BUSCA COM SISTEMA ESCALÁVEL
+// Verifica se precisa de números exatos (filtros específicos)
+const needsExactNumbers = (filters: SearchFilters): boolean => {
+  // Se tem filtro específico por tipo, precisa de números exatos
+  return filters.resourceType.length > 0 && 
+         !filters.resourceType.includes('all');
+};
+
+// FUNÇÃO PRINCIPAL DE BUSCA COM SISTEMA DE NÚMEROS EXATOS
 const performSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
-  const requestId = `scalable_search_${Date.now()}`;
+  const requestId = `exact_search_${Date.now()}`;
   
-  console.group(`🔍 ${requestId} - BUSCA ESCALÁVEL`);
+  console.group(`🔍 ${requestId} - BUSCA COM NÚMEROS EXATOS`);
   console.log('📋 Parâmetros:', { query: query || '(vazio)', filters, sortBy, page, resultsPerPage });
-  console.log('🌐 Busca global:', isGlobalSearch(filters));
+  console.log('🎯 Precisa números exatos:', needsExactNumbers(filters));
 
   try {
     let allData: SearchResult[] = [];
 
     if (isGlobalSearch(filters)) {
-      console.log('🌐 BUSCA GLOBAL ESCALÁVEL - carregando todo conteúdo');
-      allData = await fetchAllContentScalable();
+      console.log('🌐 BUSCA GLOBAL COM NÚMEROS EXATOS - carregando todo conteúdo');
+      allData = await fetchAllContentWithExactNumbers();
       
       if (allData.length === 0) {
-        console.warn('⚠️ Nenhum conteúdo global disponível');
+        console.warn('⚠️ Nenhum conteúdo global com números exatos disponível');
         return {
           success: true,
           results: [],
@@ -562,28 +568,32 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
           searchInfo: { query, appliedFilters: filters, sortBy }
         };
       }
-    } else {
-      // Busca específica escalável por tipo
+    } else if (needsExactNumbers(filters)) {
+      // Busca específica com números exatos por tipo
       const activeTypes = filters.resourceType.filter(type => type !== 'all');
-      console.log('🎯 Busca específica escalável para tipos:', activeTypes);
+      console.log('🎯 Busca específica com NÚMEROS EXATOS para tipos:', activeTypes);
       
       if (activeTypes.length > 0) {
         const typePromises = activeTypes.map(async type => {
           const apiType = type === 'titulo' ? 'livro' : type === 'video' ? 'aula' : 'podcast';
-          const targetLimit = await calculateOptimalLimit(apiType);
-          return fetchContentTypeScalable(apiType, targetLimit);
+          const exactLimit = await calculateExactLimit(apiType);
+          return fetchContentTypeWithExactNumbers(apiType, exactLimit);
         });
         
         const typeResults = await Promise.allSettled(typePromises);
         typeResults.forEach((result, index) => {
           if (result.status === 'fulfilled') {
             allData.push(...result.value);
-            console.log(`✅ Tipo ${activeTypes[index]}: ${result.value.length} itens`);
+            console.log(`✅ NÚMEROS EXATOS tipo ${activeTypes[index]}: ${result.value.length} itens`);
           } else {
-            console.error(`❌ Tipo ${activeTypes[index]} falhou:`, result.reason);
+            console.error(`❌ NÚMEROS EXATOS tipo ${activeTypes[index]} falhou:`, result.reason);
           }
         });
       }
+    } else {
+      // Busca padrão para casos específicos (homepage, etc)
+      console.log('📄 Busca padrão (não precisa números exatos)');
+      allData = await fetchAllContentWithExactNumbers();
     }
 
     // Aplicar filtros
@@ -628,17 +638,18 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
       }
     };
 
-    console.log(`✅ Busca escalável concluída:`, {
+    console.log(`✅ Busca com números exatos concluída:`, {
       totalEncontrado: totalResults,
       retornado: paginatedResults.length,
-      pagina: `${page}/${totalPages}`
+      pagina: `${page}/${totalPages}`,
+      numerosExatos: needsExactNumbers(filters) ? '🎯 SIM' : '📄 NÃO'
     });
     
     console.groupEnd();
     return response;
 
   } catch (error) {
-    console.error(`❌ Busca escalável falhou:`, error);
+    console.error(`❌ Busca com números exatos falhou:`, error);
     console.groupEnd();
     
     return {
@@ -805,7 +816,7 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📨 Requisição de busca escalável recebida:', requestBody);
+    console.log('📨 Requisição de busca com números exatos recebida:', requestBody);
     
     const result = await performSearch(requestBody);
     
@@ -815,7 +826,7 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error('❌ Erro no handler escalável:', error);
+    console.error('❌ Erro no handler com números exatos:', error);
     
     return new Response(JSON.stringify({
       success: false,

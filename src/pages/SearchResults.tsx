@@ -31,6 +31,8 @@ const SearchResults = () => {
       duration: '',
       language: [],
       documentType: [],
+      program: [], // Add program filter
+      channel: [], // Add channel filter
     });
   };
 

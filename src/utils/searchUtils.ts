@@ -1,3 +1,4 @@
+
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
 // Função para converter duração em minutos totais
@@ -76,6 +77,42 @@ export const extractAuthorsFromResults = (results: SearchResult[]): { name: stri
   }));
 };
 
+// Extract unique programs with counts from search results
+export const extractProgramsFromResults = (results: SearchResult[]): { name: string; count: number }[] => {
+  const programMap = new Map<string, number>();
+  
+  results.forEach(result => {
+    if (result.type === 'podcast' && result.program && result.program.trim() !== '' && 
+        result.program !== 'Programa desconhecido') {
+      const currentCount = programMap.get(result.program) || 0;
+      programMap.set(result.program, currentCount + 1);
+    }
+  });
+  
+  return Array.from(programMap.entries()).map(([name, count]) => ({
+    name,
+    count
+  }));
+};
+
+// Extract unique channels with counts from search results
+export const extractChannelsFromResults = (results: SearchResult[]): { name: string; count: number }[] => {
+  const channelMap = new Map<string, number>();
+  
+  results.forEach(result => {
+    if (result.type === 'video' && result.channel && result.channel.trim() !== '' && 
+        result.channel !== 'Canal desconhecido') {
+      const currentCount = channelMap.get(result.channel) || 0;
+      channelMap.set(result.channel, currentCount + 1);
+    }
+  });
+  
+  return Array.from(channelMap.entries()).map(([name, count]) => ({
+    name,
+    count
+  }));
+};
+
 // Mapping for pais (country code) to language.
 // This is a simplified example. A more comprehensive mapping might be needed.
 const countryToLanguage: Record<string, string> = {
@@ -123,9 +160,38 @@ export const filterResults = (
       }
     }
 
-    // Author filter
-    if (filters.author.trim()) {
-      if (!item.author.toLowerCase().includes(filters.author.toLowerCase())) {
+    // Author filter - CORRIGIDO: Trabalhar com array
+    if (filters.author.length > 0) {
+      const matchesAuthor = filters.author.some(filterAuthor =>
+        item.author.toLowerCase().includes(filterAuthor.toLowerCase())
+      );
+      if (!matchesAuthor) {
+        return false;
+      }
+    }
+
+    // Program filter (for podcasts)
+    if (filters.program.length > 0) {
+      if (item.type !== 'podcast' || !item.program) {
+        return false;
+      }
+      const matchesProgram = filters.program.some(filterProgram =>
+        item.program!.toLowerCase().includes(filterProgram.toLowerCase())
+      );
+      if (!matchesProgram) {
+        return false;
+      }
+    }
+
+    // Channel filter (for videos)
+    if (filters.channel.length > 0) {
+      if (item.type !== 'video' || !item.channel) {
+        return false;
+      }
+      const matchesChannel = filters.channel.some(filterChannel =>
+        item.channel!.toLowerCase().includes(filterChannel.toLowerCase())
+      );
+      if (!matchesChannel) {
         return false;
       }
     }
@@ -205,10 +271,12 @@ export const checkHasActiveFilters = (filters: SearchFilters): boolean => {
   return (
     filters.resourceType.length > 0 ||
     filters.subject.length > 0 ||
-    filters.author !== '' ||
+    filters.author.length > 0 || // CORRIGIDO: Array length
     filters.year !== '' ||
     filters.duration !== '' ||
     filters.language.length > 0 ||
-    filters.documentType.length > 0
+    filters.documentType.length > 0 ||
+    filters.program.length > 0 ||
+    filters.channel.length > 0
   );
 };

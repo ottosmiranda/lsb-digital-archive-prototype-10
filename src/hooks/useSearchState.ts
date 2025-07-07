@@ -11,11 +11,13 @@ export const useSearchState = () => {
   const [filters, setFilters] = useState<SearchFilters>({
     resourceType: [],
     subject: [],
-    author: '',
+    author: [], // CORRIGIDO: Array vazio para múltiplos autores
     year: '',
     duration: '',
     language: [],
-    documentType: [], // Initialize new document type filter
+    documentType: [],
+    program: [], // Add program filter
+    channel: [], // Add channel filter
   });
   
   const [sortBy, setSortByState] = useState('relevance');
@@ -24,22 +26,13 @@ export const useSearchState = () => {
   const query = searchParams.get('q') || '';
   
   const appliedFilters = useMemo(() => {
-    // This needs to be more robust if we add more array-type filters to URL params.
-    // For now, it's only used for resourceType from URL params.
-    // Let's assume this part is specific to how `filtros` URL param was initially designed
-    // for resourceType and doesn't need to change for sidebar-managed filters unless explicitly required.
     return searchParams.getAll('filtros') || [];
   }, [searchParams]);
 
   // Initialize filters and sorting from URL params only once
   useEffect(() => {
-    // This useEffect populates filters.resourceType from the 'filtros' URL search parameter.
-    // This is related to how the tabs might set the URL.
-    // The new language filter will be managed by the sidebar, not directly by this 'filtros' param.
     const resourceTypesFromUrl = searchParams.getAll('filtros');
 
-    // For now, let's stick to initializing resourceType as it was.
-    // The new filters will be initialized as empty and set by user interaction.
     if (resourceTypesFromUrl.length > 0) {
       setFilters(prev => ({
         ...prev,
@@ -69,9 +62,6 @@ export const useSearchState = () => {
     } else {
       newSearchParams.delete('q');
     }
-    // Reset page to 1 when query changes
-    // newSearchParams.delete('pagina'); // Or set to 1, depending on desired behavior.
-    // setCurrentPage(1); // This hook does not set searchParams for page, SearchResults.tsx does.
     setSearchParams(newSearchParams);
   };
 

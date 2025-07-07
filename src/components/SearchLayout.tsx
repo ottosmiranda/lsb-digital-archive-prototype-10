@@ -91,7 +91,13 @@ const SearchLayout = ({
         newFilters.subject = newFilters.subject.filter(subject => subject !== value);
         break;
       case 'author':
-        newFilters.author = '';
+        newFilters.author = newFilters.author.filter(author => author !== value); // CORRIGIDO: Array filter
+        break;
+      case 'program':
+        newFilters.program = newFilters.program.filter(program => program !== value);
+        break;
+      case 'channel':
+        newFilters.channel = newFilters.channel.filter(channel => channel !== value);
         break;
       case 'year':
         newFilters.year = '';

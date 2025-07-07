@@ -1,4 +1,3 @@
-
 import React, { useMemo, useCallback } from 'react';
 import { X, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,7 @@ import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import AuthorInput from '@/components/AuthorInput';
 import { useContentAwareFilters } from '@/hooks/useContentAwareFilters';
 import { useAllAuthors } from '@/hooks/useAllAuthors';
-import { extractAuthorsFromResults } from '@/utils/searchUtils';
+import { extractAuthorsFromResults, extractProgramsFromResults, extractChannelsFromResults } from '@/utils/searchUtils';
 
 // MELHORADO: Anos baseados em dados reais, não apenas últimos 10 anos
 const currentYear = new Date().getFullYear();
@@ -46,7 +45,9 @@ const DynamicFilterContent = React.memo(({
     filters.subject.length > 0 || 
     filters.author.length > 0 || // CORRIGIDO: Múltiplos autores
     filters.year || 
-    filters.duration,
+    filters.duration ||
+    filters.program.length > 0 ||
+    filters.channel.length > 0,
     [filters]
   );
 
@@ -55,9 +56,23 @@ const DynamicFilterContent = React.memo(({
     filters.subject.length + 
     filters.author.length + // CORRIGIDO: Múltiplos autores
     (filters.year ? 1 : 0) + 
-    (filters.duration ? 1 : 0),
+    (filters.duration ? 1 : 0) +
+    filters.program.length +
+    filters.channel.length,
     [filters]
   );
+
+  // NOVO: Extrair programas disponíveis nos resultados atuais
+  const availablePrograms = useMemo(() => {
+    return extractProgramsFromResults(currentResults)
+      .sort((a, b) => b.count - a.count);
+  }, [currentResults]);
+
+  // NOVO: Extrair canais disponíveis nos resultados atuais
+  const availableChannels = useMemo(() => {
+    return extractChannelsFromResults(currentResults)
+      .sort((a, b) => b.count - a.count);
+  }, [currentResults]);
 
   // CORRIGIDO: Autores da página atual para comparação
   const currentPageAuthors = useMemo(() => {
@@ -88,6 +103,20 @@ const DynamicFilterContent = React.memo(({
       ? [...filters.subject, subjectId]
       : filters.subject.filter((s: string) => s !== subjectId);
     onFiltersChange({ ...filters, subject: newSubjects });
+  }, [filters, onFiltersChange]);
+
+  const handleProgramChange = useCallback((programId: string, checked: boolean) => {
+    const newPrograms = checked 
+      ? [...filters.program, programId]
+      : filters.program.filter((p: string) => p !== programId);
+    onFiltersChange({ ...filters, program: newPrograms });
+  }, [filters, onFiltersChange]);
+
+  const handleChannelChange = useCallback((channelId: string, checked: boolean) => {
+    const newChannels = checked 
+      ? [...filters.channel, channelId]
+      : filters.channel.filter((c: string) => c !== channelId);
+    onFiltersChange({ ...filters, channel: newChannels });
   }, [filters, onFiltersChange]);
 
   const handleYearChange = useCallback((value: string) => {
@@ -123,7 +152,9 @@ const DynamicFilterContent = React.memo(({
       year: '',
       duration: '',
       language: [],
-      documentType: []
+      documentType: [],
+      program: [],
+      channel: []
     });
   }, [onFiltersChange, filters.resourceType]);
 
@@ -160,6 +191,84 @@ const DynamicFilterContent = React.memo(({
             </Badge>
           ))}
         </div>
+      )}
+
+      {/* NOVO: Filtro de Programa (apenas para podcasts) */}
+      {(activeContentType === 'podcast' || activeContentType === 'all') && availablePrograms.length > 0 && (
+        <Collapsible open={openSections.program} onOpenChange={() => onToggleSection('program')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium">Programa</Label>
+              {filters.program.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {filters.program.length}
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
+                Podcasts ({availablePrograms.length})
+              </Badge>
+            </div>
+            {openSections.program ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
+              {availablePrograms.map((program) => (
+                <div key={program.name} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`program-${program.name}`}
+                    checked={filters.program.includes(program.name)}
+                    onCheckedChange={(checked) => handleProgramChange(program.name, !!checked)}
+                  />
+                  <Label htmlFor={`program-${program.name}`} className="text-sm cursor-pointer flex-1">
+                    <div className="flex justify-between items-center">
+                      <span>{program.name}</span>
+                      <span className="text-xs text-gray-500">({program.count})</span>
+                    </div>
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* NOVO: Filtro de Canal (apenas para vídeos) */}
+      {(activeContentType === 'video' || activeContentType === 'all') && availableChannels.length > 0 && (
+        <Collapsible open={openSections.channel} onOpenChange={() => onToggleSection('channel')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium">Canal</Label>
+              {filters.channel.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {filters.channel.length}
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-xs bg-red-50 text-red-700">
+                Vídeos ({availableChannels.length})
+              </Badge>
+            </div>
+            {openSections.channel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
+              {availableChannels.map((channel) => (
+                <div key={channel.name} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`channel-${channel.name}`}
+                    checked={filters.channel.includes(channel.name)}
+                    onCheckedChange={(checked) => handleChannelChange(channel.name, !!checked)}
+                  />
+                  <Label htmlFor={`channel-${channel.name}`} className="text-sm cursor-pointer flex-1">
+                    <div className="flex justify-between items-center">
+                      <span>{channel.name}</span>
+                      <span className="text-xs text-gray-500">({channel.count})</span>
+                    </div>
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {filterRelevance.subject && contentStats.availableSubjects.length > 0 && (

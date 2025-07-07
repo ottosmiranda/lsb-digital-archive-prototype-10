@@ -114,9 +114,11 @@ export class NewApiService {
     } else if (tipo === 'aula') {
       baseResult.embedUrl = item.embed_url;
       baseResult.duration = item.duracao_ms ? this.formatDuration(item.duracao_ms) : undefined;
+      baseResult.channel = item.canal || 'Canal desconhecido'; // Extract channel for videos
     } else if (tipo === 'podcast') {
       baseResult.duration = item.duracao_ms ? this.formatDuration(item.duracao_ms) : undefined;
       baseResult.embedUrl = item.embed_url;
+      baseResult.program = item.podcast_titulo || 'Programa desconhecido'; // Extract program for podcasts
     }
 
     return baseResult;

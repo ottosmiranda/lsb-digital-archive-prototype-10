@@ -65,18 +65,18 @@ export const useSearchResults = () => {
 
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // Memoizar verificação de filtros ativos
+  // Verificação de filtros ativos
   const hasActiveFilters = useMemo((): boolean => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
-  // CORREÇÃO CRÍTICA: Verificar se deve executar busca
+  // NOVA LÓGICA: Verificar se deve executar busca
   const shouldSearch = useMemo((): boolean => {
     const hasQuery = query.trim() !== '';
     const hasResourceTypeFilters = filters.resourceType.length > 0;
     const hasOtherFilters = hasActiveFilters;
     
-    console.log('🔍 Should search evaluation:', { 
+    console.log('🔍 Nova lógica shouldSearch:', { 
       hasQuery, 
       hasResourceTypeFilters, 
       hasOtherFilters,
@@ -87,15 +87,15 @@ export const useSearchResults = () => {
     return hasQuery || hasResourceTypeFilters || hasOtherFilters;
   }, [query, filters.resourceType, hasActiveFilters]);
 
-  // Função memoizada para executar busca
+  // NOVA IMPLEMENTAÇÃO: Busca com paginação real
   const performSearch = useCallback(async () => {
     const requestId = `search_${Date.now()}`;
-    console.group(`🔍 ${requestId} - Performing search`);
-    console.log('📋 Search params:', { query, filters, sortBy, currentPage, shouldSearch });
+    console.group(`🔍 ${requestId} - Nova Arquitetura de Busca`);
+    console.log('📋 Parâmetros:', { query, filters, sortBy, currentPage, shouldSearch });
 
-    // CORREÇÃO: Limpar resultados se não deve buscar
+    // Se não deve buscar, limpar resultados
     if (!shouldSearch) {
-      console.log('❌ Should not search - clearing results');
+      console.log('❌ Não deve buscar - limpando resultados');
       setSearchResponse({
         results: [],
         pagination: {
@@ -116,13 +116,13 @@ export const useSearchResults = () => {
     }
 
     try {
-      console.log('🚀 Executing search via API...');
+      console.log('🚀 Executando busca com paginação real via Nova API...');
       const response = await search(query, filters, sortBy, currentPage);
       
-      // VALIDAÇÃO CRÍTICA: Verificar resposta
+      // Validação da resposta
       if (!response.results || !Array.isArray(response.results)) {
-        console.error('❌ Invalid search response:', response);
-        throw new Error('Invalid search response structure');
+        console.error('❌ Resposta inválida da Nova API:', response);
+        throw new Error('Estrutura de resposta inválida da Nova API');
       }
       
       setSearchResponse({
@@ -134,23 +134,25 @@ export const useSearchResults = () => {
       setUsingFallback(!response.success);
 
       if (response.error) {
-        console.warn('⚠️ Search completed with errors:', response.error);
+        console.warn('⚠️ Nova API com erros:', response.error);
       } else {
-        console.log('✅ Search successful:', {
+        console.log('✅ Nova API bem-sucedida:', {
           results: response.results.length,
           totalResults: response.pagination.totalResults,
           currentPage: response.pagination.currentPage,
-          totalPages: response.pagination.totalPages
+          totalPages: response.pagination.totalPages,
+          paginaçãoReal: '🎯 SIM'
         });
         
-        // Prefetch se houver próxima página
+        // Prefetch da próxima página se disponível
         if (response.pagination.hasNextPage) {
+          console.log('🔮 Prefetching próxima página...');
           prefetchNextPage(query, filters, sortBy, currentPage);
         }
       }
 
     } catch (err) {
-      console.error('❌ Search failed:', err);
+      console.error('❌ Nova API falhou:', err);
       setUsingFallback(true);
       
       setSearchResponse({
@@ -173,35 +175,35 @@ export const useSearchResults = () => {
     console.groupEnd();
   }, [query, filters, sortBy, currentPage, shouldSearch, search, prefetchNextPage]);
 
-  // CORREÇÃO: useEffect com dependências estabilizadas
+  // Effect para executar busca quando parâmetros mudarem
   useEffect(() => {
     performSearch();
   }, [performSearch]);
 
-  // Handlers memoizados
+  // Handlers otimizados
   const handleFilterChange = useCallback((newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
-    console.log('🔄 Filter change:', { newFilters, options });
+    console.log('🔄 Mudança de filtro (Nova API):', { newFilters, options });
     setFilters(newFilters);
     
     if (!options?.authorTyping) {
-      setCurrentPage(1);
+      setCurrentPage(1); // Reset para página 1 em nova busca
     }
   }, [setFilters, setCurrentPage]);
 
   const handleSortChange = useCallback((newSort: string) => {
-    console.log('📊 Sort changed to:', newSort);
+    console.log('📊 Mudança de ordenação (Nova API):', newSort);
     setSortBy(newSort);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset para página 1
   }, [setSortBy, setCurrentPage]);
 
   const handlePageChange = useCallback((page: number) => {
-    console.log('📄 Page changed to:', page);
+    console.log('📄 Mudança de página (PAGINAÇÃO REAL):', page);
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [setCurrentPage]);
 
   const forceRefresh = useCallback(async () => {
-    console.log('🔄 Force refresh requested - clearing cache');
+    console.log('🔄 Refresh forçado (Nova API) - limpando cache');
     clearCache();
     await performSearch();
   }, [clearCache, performSearch]);

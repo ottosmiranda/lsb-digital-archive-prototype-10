@@ -71,10 +71,20 @@ const SearchLayout = ({
   
   const hasResults = currentResults.length > 0;
   
-  // CORRIGIDO: Lógica para mostrar estados
+  // NOVA LÓGICA: Estados de exibição otimizados
   const shouldShowSearch = query || filters.resourceType.length > 0 || hasActiveFilters;
   const showEmptyState = !loading && !hasResults && shouldShowSearch;
   const showWelcomeState = !loading && !shouldShowSearch;
+  const showPagination = hasResults && totalPages > 1; // CRÍTICO: Sempre mostrar quando há páginas
+
+  console.log('🎭 SearchLayout render:', {
+    hasResults,
+    totalPages,
+    showPagination,
+    shouldShowSearch,
+    showEmptyState,
+    showWelcomeState
+  });
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
     const newFilters = { ...filters };
@@ -117,7 +127,7 @@ const SearchLayout = ({
   };
 
   const handleContentTypeChange = (type: string) => {
-    console.log('🏷️ Content type changed to:', type);
+    console.log('🏷️ Mudança de tipo de conteúdo (Nova API):', type);
     
     setActiveContentType(type); 
     const newFilters = { ...filters };
@@ -125,12 +135,12 @@ const SearchLayout = ({
     if (type === 'all') {
       newFilters.resourceType = ['all'];
       onSortChange('title');
-      console.log('📋 "Todos" selected - applying alphabetical sorting');
+      console.log('📋 "Todos" selecionado - aplicando ordenação alfabética');
     } else {
       newFilters.resourceType = [type]; 
     }
     
-    console.log('🔄 Calling onFiltersChange with:', newFilters);
+    console.log('🔄 Chamando onFiltersChange com:', newFilters);
     onFiltersChange(newFilters);
   };
 
@@ -210,11 +220,14 @@ const SearchLayout = ({
                       />
                     )}
                     
-                    <SearchPagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={onPageChange}
-                    />
+                    {/* CRÍTICO: Paginação sempre mostrada quando há resultados paginados */}
+                    {showPagination && (
+                      <SearchPagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={onPageChange}
+                      />
+                    )}
                   </>
                 )}
               </>

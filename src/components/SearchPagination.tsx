@@ -17,23 +17,31 @@ interface SearchPaginationProps {
 }
 
 const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPaginationProps) => {
-  if (totalPages <= 1) return null;
+  // CORREÇÃO CRÍTICA: Sempre mostrar paginação quando há mais de 1 página
+  console.log('🔄 SearchPagination render:', { currentPage, totalPages, shouldShow: totalPages > 1 });
+  
+  if (totalPages <= 1) {
+    console.log('📄 Ocultando paginação: apenas 1 página');
+    return null;
+  }
 
-  // Mostrar input de navegação direta apenas quando há muitas páginas
+  console.log('📊 Renderizando paginação REAL:', { currentPage, totalPages });
+
+  // Input de navegação direta para muitas páginas
   const showPageJump = totalPages > 10;
 
-  // Função para determinar quais páginas mostrar
+  // Função para determinar páginas visíveis
   const getVisiblePages = (): (number | 'ellipsis')[] => {
     const pages: (number | 'ellipsis')[] = [];
     const showEllipsis = totalPages > 7;
 
     if (!showEllipsis) {
-      // Se tem 7 páginas ou menos, mostrar todas
+      // 7 páginas ou menos: mostrar todas
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Lógica para mostrar páginas com ellipsis
+      // Lógica com ellipsis
       if (currentPage <= 4) {
         // Início: 1, 2, 3, 4, 5, ..., last
         for (let i = 1; i <= 5; i++) {
@@ -65,6 +73,29 @@ const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPagin
 
   const visiblePages = getVisiblePages();
 
+  const handlePageClick = (page: number) => {
+    console.log('🔄 Clique na página (PAGINAÇÃO REAL):', { from: currentPage, to: page });
+    if (page !== currentPage && page >= 1 && page <= totalPages) {
+      onPageChange(page);
+    }
+  };
+
+  const handlePreviousClick = () => {
+    const prevPage = Math.max(1, currentPage - 1);
+    console.log('⬅️ Página anterior (PAGINAÇÃO REAL):', { from: currentPage, to: prevPage });
+    if (prevPage !== currentPage) {
+      onPageChange(prevPage);
+    }
+  };
+
+  const handleNextClick = () => {
+    const nextPage = Math.min(totalPages, currentPage + 1);
+    console.log('➡️ Próxima página (PAGINAÇÃO REAL):', { from: currentPage, to: nextPage });
+    if (nextPage !== currentPage) {
+      onPageChange(nextPage);
+    }
+  };
+
   return (
     <div className="mt-8 flex flex-col items-center gap-4">
       {showPageJump && (
@@ -72,7 +103,7 @@ const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPagin
           <PageJumpInput
             currentPage={currentPage}
             totalPages={totalPages}
-            onPageChange={onPageChange}
+            onPageChange={handlePageClick}
           />
         </div>
       )}
@@ -81,8 +112,8 @@ const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPagin
         <PaginationContent>
           <PaginationItem>
             <PaginationPrevious 
-              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              onClick={handlePreviousClick}
+              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-gray-100"}
             />
           </PaginationItem>
           
@@ -92,9 +123,9 @@ const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPagin
                 <PaginationEllipsis />
               ) : (
                 <PaginationLink
-                  onClick={() => onPageChange(page)}
+                  onClick={() => handlePageClick(page)}
                   isActive={currentPage === page}
-                  className="cursor-pointer"
+                  className="cursor-pointer hover:bg-gray-100"
                 >
                   {page}
                 </PaginationLink>
@@ -104,12 +135,19 @@ const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPagin
           
           <PaginationItem>
             <PaginationNext 
-              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              onClick={handleNextClick}
+              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-gray-100"}
             />
           </PaginationItem>
         </PaginationContent>
       </Pagination>
+      
+      {/* Debug info apenas em desenvolvimento */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="text-xs text-gray-500 mt-2">
+          Página {currentPage} de {totalPages} (Paginação Real da API)
+        </div>
+      )}
     </div>
   );
 };

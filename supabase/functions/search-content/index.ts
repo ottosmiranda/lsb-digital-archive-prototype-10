@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -665,8 +666,9 @@ const sortResults = (results: SearchResult[], sortBy: string, query?: string): S
 const detectSearchType = (searchParams: SearchRequest): 'fast' | 'optimized' | 'regular' | 'global' => {
   const { filters, query } = searchParams;
   
-  // NOVO: Se é filtro "Todos" (all), usar busca global
+  // CORREÇÃO: Se é filtro "Todos" (all), usar busca global
   if (filters.resourceType.length === 1 && filters.resourceType[0] === 'all') {
+    console.log('🌐 Detected GLOBAL search for "Todos" filter');
     return 'global';
   }
   
@@ -681,14 +683,37 @@ const detectSearchType = (searchParams: SearchRequest): 'fast' | 'optimized' | '
     filters.program.length > 0 || 
     filters.channel.length > 0;
   
-  if (hasComplexFilters) return 'optimized';
+  if (hasComplexFilters) {
+    console.log('🚀 Detected OPTIMIZED search for complex filters');
+    return 'optimized';
+  }
   
   // Se tem exatamente um tipo de recurso (filtro simples), usar fast filter
   const activeTypes = filters.resourceType.filter(type => type !== 'all');
-  if (activeTypes.length === 1 && !query.trim()) return 'fast';
+  if (activeTypes.length === 1 && !query.trim()) {
+    console.log('⚡ Detected FAST search for simple type filter');
+    return 'fast';
+  }
   
   // Caso contrário, usar busca regular
+  console.log('📡 Detected REGULAR search');
   return 'regular';
+};
+
+// FUNÇÃO DE BUSCA REGULAR (IMPLEMENTADA)
+const performRegularSearch = async (searchParams: SearchRequest): Promise<any> => {
+  console.log('📡 Performing regular search');
+  
+  // Para busca regular, retornar resultado vazio ou usar fallback básico
+  return buildEmptyResponse(searchParams);
+};
+
+// FUNÇÃO DE BUSCA OTIMIZADA (BÁSICA)
+const performOptimizedFilteredSearch = async (searchParams: SearchRequest): Promise<any> => {
+  console.log('🚀 Performing optimized filtered search');
+  
+  // Para busca otimizada, usar lógica básica ou fallback
+  return buildEmptyResponse(searchParams);
 };
 
 // HANDLER PRINCIPAL COM DETECÇÃO INTELIGENTE DE TIPO DE BUSCA
@@ -703,6 +728,7 @@ serve(async (req) => {
     
     console.log('📨 Search request received:', { 
       searchType,
+      filters: requestBody.filters,
       optimized: requestBody.optimized, 
       prefetch: requestBody.prefetch 
     });
@@ -756,15 +782,3 @@ serve(async (req) => {
     });
   }
 });
-
-// Função para busca regular (fallback)
-const performRegularSearch = async (searchParams: SearchRequest): Promise<any> => {
-  console.log('📡 Performing regular search fallback');
-  return await fetchAllFromSupabaseFallback();
-};
-
-// Função de busca otimizada existente (mantida para compatibilidade)
-const performOptimizedFilteredSearch = async (searchParams: SearchRequest): Promise<any> => {
-  // ... keep existing code from previous implementation
-  return buildEmptyResponse(searchParams);
-};

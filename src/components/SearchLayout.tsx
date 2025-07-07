@@ -13,6 +13,13 @@ import DataRefreshButton from '@/components/DataRefreshButton';
 import Footer from '@/components/Footer';
 import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
 import { isShowingAllResourceTypes } from '@/utils/searchUtils';
+import { 
+  UIState, 
+  calculateUIState, 
+  getUIStateDebugInfo, 
+  validateUIState,
+  isBrowsingMode 
+} from '@/utils/uiStateManager';
 
 interface SearchLayoutProps {
   query: string;
@@ -80,22 +87,25 @@ const SearchLayout = ({
   
   const hasResults = currentResults.length > 0;
   
-  // CORRIGIDO: Reformular lógica de estados
-  const isBrowsingMode = isShowingAllResourceTypes(filters.resourceType);
-  const shouldShowResults = query || hasActiveFilters || isBrowsingMode;
+  // REFATORADO: Usar lógica centralizada de estados (SSOT + SRP)
+  const uiState = calculateUIState(query, filters, hasResults, loading);
+  const debugInfo = getUIStateDebugInfo(query, filters, hasResults, loading);
+  const validationIssues = validateUIState(debugInfo);
   
-  console.log('🎯 UI State Analysis:', {
-    query,
-    hasActiveFilters,
-    isBrowsingMode,
-    shouldShowResults,
-    hasResults,
-    loading,
-    resourceType: filters.resourceType
-  });
+  // Debug detalhado (modo desenvolvimento)
+  console.log('🎯 UI State Manager Debug:', debugInfo);
   
-  const showEmptyState = !loading && !hasResults && shouldShowResults;
-  const showWelcomeState = !loading && !shouldShowResults;
+  // Fail Fast: alertar sobre problemas críticos
+  if (validationIssues.length > 0) {
+    console.error('❌ Problemas críticos detectados:', validationIssues);
+    validationIssues.forEach(issue => console.error('⚠️', issue));
+  }
+  
+  // Estados derivados usando composição (DRY)
+  const showWelcomeState = uiState === UIState.WELCOME;
+  const showEmptyState = uiState === UIState.EMPTY;
+  const showResults = uiState === UIState.RESULTS;
+  const isLoading = uiState === UIState.LOADING;
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
     const newFilters = { ...filters };

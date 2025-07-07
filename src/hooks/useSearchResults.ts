@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
@@ -67,7 +68,7 @@ export const useSearchResults = () => {
 
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // NOVA LÓGICA: Distinguir entre filtros simples (tipo) e complexos (outros)
+  // NOVA LÓGICA: Distinguir entre filtros simples (tipo), complexos (outros) e globais (all)
   const hasComplexFilters = useMemo((): boolean => {
     return Boolean(
       filters.subject.length > 0 || 
@@ -81,6 +82,11 @@ export const useSearchResults = () => {
     );
   }, [filters]);
 
+  // CORRIGIDO: Detectar filtro "Todos" (all) separadamente
+  const isGlobalFilter = useMemo((): boolean => {
+    return filters.resourceType.length === 1 && filters.resourceType[0] === 'all';
+  }, [filters.resourceType]);
+
   const hasSimpleTypeFilter = useMemo((): boolean => {
     return Boolean(
       filters.resourceType.length > 0 && 
@@ -89,7 +95,7 @@ export const useSearchResults = () => {
     );
   }, [filters.resourceType, hasComplexFilters]);
 
-  // CORREÇÃO: Usar busca otimizada APENAS para filtros complexos ou paginação
+  // NOVA LÓGICA: Usar busca otimizada APENAS para filtros complexos ou paginação
   const shouldUseOptimizedSearch = useMemo((): boolean => {
     // Se tem filtros complexos, usar busca otimizada paginada
     if (hasComplexFilters) return true;
@@ -105,13 +111,18 @@ export const useSearchResults = () => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
+  // CORRIGIDO: Lógica para determinar quando buscar
   const shouldSearch = useMemo((): boolean => {
     const hasQuery = query.trim() !== '';
+    // CORREÇÃO: Para filtro "all", sempre buscar (busca global)
     const hasResourceTypeFilters = filters.resourceType.length > 0;
     const hasOtherFilters = hasActiveFilters;
     
+    // Se é filtro "all" (Todos), sempre executar busca global
+    if (isGlobalFilter) return true;
+    
     return hasQuery || hasResourceTypeFilters || hasOtherFilters;
-  }, [query, filters.resourceType, hasActiveFilters]);
+  }, [query, filters.resourceType, hasActiveFilters, isGlobalFilter]);
 
   // Get current loading state based on which service is being used
   const loading = shouldUseOptimizedSearch ? filteredLoading : regularLoading;
@@ -119,13 +130,14 @@ export const useSearchResults = () => {
 
   const performSearch = useCallback(async () => {
     const requestId = `search_${Date.now()}`;
-    console.group(`🔍 ${requestId} - Search Decision (CORRIGIDA)`);
+    console.group(`🔍 ${requestId} - Search Decision (CORRIGIDA - Filtro Todos)`);
     console.log('📋 Search params:', { 
       query, 
       filters, 
       sortBy, 
       currentPage, 
       shouldSearch,
+      isGlobalFilter,
       hasSimpleTypeFilter,
       hasComplexFilters,
       shouldUseOptimizedSearch
@@ -158,7 +170,16 @@ export const useSearchResults = () => {
     try {
       let response;
 
-      if (shouldUseOptimizedSearch) {
+      // NOVA LÓGICA: Tratamento especial para filtro "Todos" (all)
+      if (isGlobalFilter) {
+        console.log('🌐 Using REGULAR search for GLOBAL filter (Todos) - ALL RESULTS');
+        // Para filtro "Todos", usar busca regular sem filtros de tipo
+        const globalFilters = { 
+          ...filters, 
+          resourceType: [] // Remove o filtro 'all' para carregar todos os tipos
+        };
+        response = await regularSearch(query, globalFilters, sortBy, 1);
+      } else if (shouldUseOptimizedSearch) {
         console.log('🚀 Using OPTIMIZED search for complex filters or pagination');
         response = await filteredSearch(query, filters, sortBy, currentPage);
       } else {
@@ -173,9 +194,9 @@ export const useSearchResults = () => {
         throw new Error('Invalid search response structure');
       }
       
-      // Para filtros simples por tipo, aplicar paginação no frontend
+      // Para filtros simples por tipo (não globais), aplicar paginação no frontend
       let finalResponse = response;
-      if (hasSimpleTypeFilter && !shouldUseOptimizedSearch) {
+      if (hasSimpleTypeFilter && !shouldUseOptimizedSearch && !isGlobalFilter) {
         const totalResults = response.results.length;
         const totalPages = Math.ceil(totalResults / resultsPerPage);
         const startIndex = (currentPage - 1) * resultsPerPage;
@@ -196,6 +217,28 @@ export const useSearchResults = () => {
         console.log(`📄 Frontend pagination applied: showing ${paginatedResults.length} of ${totalResults} results (page ${currentPage}/${totalPages})`);
       }
       
+      // CORREÇÃO: Para filtro "Todos", aplicar paginação no frontend também
+      if (isGlobalFilter && !shouldUseOptimizedSearch) {
+        const totalResults = response.results.length;
+        const totalPages = Math.ceil(totalResults / resultsPerPage);
+        const startIndex = (currentPage - 1) * resultsPerPage;
+        const paginatedResults = response.results.slice(startIndex, startIndex + resultsPerPage);
+        
+        finalResponse = {
+          ...response,
+          results: paginatedResults,
+          pagination: {
+            currentPage,
+            totalPages,
+            totalResults,
+            hasNextPage: currentPage < totalPages,
+            hasPreviousPage: currentPage > 1
+          }
+        };
+        
+        console.log(`🌐 Global filter pagination: showing ${paginatedResults.length} of ${totalResults} results (page ${currentPage}/${totalPages})`);
+      }
+      
       setSearchResponse({
         results: finalResponse.results,
         pagination: finalResponse.pagination,
@@ -212,8 +255,11 @@ export const useSearchResults = () => {
           totalResults: finalResponse.pagination.totalResults,
           currentPage: finalResponse.pagination.currentPage,
           totalPages: finalResponse.pagination.totalPages,
-          searchType: shouldUseOptimizedSearch ? '🚀 OPTIMIZED' : '📡 REGULAR (ALL RESULTS)',
-          filterType: hasSimpleTypeFilter ? '🏷️ SIMPLE TYPE' : hasComplexFilters ? '🔧 COMPLEX' : '🌐 GLOBAL'
+          searchType: shouldUseOptimizedSearch ? '🚀 OPTIMIZED' : 
+                     isGlobalFilter ? '🌐 GLOBAL (TODOS)' : '📡 REGULAR (ALL RESULTS)',
+          filterType: isGlobalFilter ? '🌐 GLOBAL (TODOS)' : 
+                     hasSimpleTypeFilter ? '🏷️ SIMPLE TYPE' : 
+                     hasComplexFilters ? '🔧 COMPLEX' : '📄 DEFAULT'
         });
       }
 
@@ -245,7 +291,7 @@ export const useSearchResults = () => {
     }
     
     console.groupEnd();
-  }, [query, filters, sortBy, currentPage, shouldSearch, shouldUseOptimizedSearch, hasSimpleTypeFilter, hasComplexFilters, regularSearch, filteredSearch, cancelSearch, resultsPerPage]);
+  }, [query, filters, sortBy, currentPage, shouldSearch, shouldUseOptimizedSearch, hasSimpleTypeFilter, hasComplexFilters, isGlobalFilter, regularSearch, filteredSearch, cancelSearch, resultsPerPage]);
 
   useEffect(() => {
     performSearch();

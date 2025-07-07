@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -72,9 +73,16 @@ const SearchLayout = ({
     !hasComplexFilters
   );
 
+  // NOVO: Detectar filtro global "Todos"
+  const isGlobalFilter = Boolean(
+    filters.resourceType.length === 1 && 
+    filters.resourceType[0] === 'all'
+  );
+
   // Determinar o tipo de busca sendo usado
   const isOptimizedSearch = hasComplexFilters;
   const isFastFilter = hasSimpleTypeFilter;
+  const isGlobalSearch = isGlobalFilter;
 
   // Sync activeContentType with filters.resourceType
   useEffect(() => {
@@ -172,6 +180,8 @@ const SearchLayout = ({
               isOptimized={isOptimizedSearch || isFastFilter}
               loading={loading}
               className="ml-4"
+              isFastFilter={isFastFilter}
+              isGlobalSearch={isGlobalSearch}
             />
           </div>
         )}

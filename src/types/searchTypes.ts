@@ -17,6 +17,8 @@ export interface SearchResult {
   documentType?: string;
   pais?: string; // Add country code for language filtering
   language?: string; // Add language field for books
+  program?: string; // Nome do programa (para podcasts)
+  channel?: string; // Nome do canal (para vídeos)
 }
 
 export interface SearchFilters {
@@ -27,6 +29,8 @@ export interface SearchFilters {
   duration: string;
   language: string[];
   documentType: string[];
+  program: string[]; // NOVO: Filtro de programa para podcasts
+  channel: string[]; // NOVO: Filtro de canal para vídeos
 }
 
 export interface FilterCounts {
@@ -34,4 +38,6 @@ export interface FilterCounts {
   subject: Record<string, number>;
   language: Record<string, number>;
   documentType: Record<string, number>;
+  program: Record<string, number>; // NOVO: Contagem de programas
+  channel: Record<string, number>; // NOVO: Contagem de canais
 }

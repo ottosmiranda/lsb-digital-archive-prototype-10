@@ -91,7 +91,7 @@ const SearchLayout = ({
         newFilters.subject = newFilters.subject.filter(subject => subject !== value);
         break;
       case 'author':
-        newFilters.author = '';
+        newFilters.author = newFilters.author.filter(author => author !== value); // CORRIGIDO: Filtrar array
         break;
       case 'year':
         newFilters.year = '';
@@ -104,6 +104,12 @@ const SearchLayout = ({
         break;
       case 'documentType':
         newFilters.documentType = newFilters.documentType.filter(docType => docType !== value);
+        break;
+      case 'program':
+        newFilters.program = newFilters.program.filter(prog => prog !== value);
+        break;
+      case 'channel':
+        newFilters.channel = newFilters.channel.filter(chan => chan !== value);
         break;
     }
     

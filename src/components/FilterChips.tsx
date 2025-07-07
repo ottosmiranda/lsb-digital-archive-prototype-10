@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -14,11 +15,13 @@ const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) 
   const hasFilters = 
     filters.resourceType.length > 0 ||
     filters.subject.length > 0 ||
-    filters.author ||
+    filters.author.length > 0 || // CORRIGIDO: Array
     filters.year ||
     filters.duration ||
     filters.language.length > 0 ||
-    filters.documentType.length > 0;
+    filters.documentType.length > 0 ||
+    filters.program.length > 0 || // NOVO: Filtro programa
+    filters.channel.length > 0; // NOVO: Filtro canal
 
   if (!hasFilters) return null;
 
@@ -71,18 +74,18 @@ const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) 
         </Badge>
       ))}
 
-      {/* Author filter */}
-      {filters.author && (
-        <Badge variant="secondary" className="flex items-center gap-1">
-          Autor: {filters.author}
+      {/* Author filters - CORRIGIDO: Usar array */}
+      {filters.author.map(author => (
+        <Badge key={author} variant="secondary" className="flex items-center gap-1">
+          Autor: {author}
           <button
-            onClick={() => onRemoveFilter('author')}
+            onClick={() => onRemoveFilter('author', author)}
             className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
           >
             <X className="h-3 w-3" />
           </button>
         </Badge>
-      )}
+      ))}
 
       {/* Year filter */}
       {filters.year && (
@@ -129,6 +132,32 @@ const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) 
           Tipo de documento: {docType}
           <button
             onClick={() => onRemoveFilter('documentType', docType)}
+            className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      ))}
+
+      {/* NOVO: Program filters */}
+      {filters.program.map(program => (
+        <Badge key={program} variant="secondary" className="flex items-center gap-1">
+          Programa: {program}
+          <button
+            onClick={() => onRemoveFilter('program', program)}
+            className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      ))}
+
+      {/* NOVO: Channel filters */}
+      {filters.channel.map(channel => (
+        <Badge key={channel} variant="secondary" className="flex items-center gap-1">
+          Canal: {channel}
+          <button
+            onClick={() => onRemoveFilter('channel', channel)}
             className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
           >
             <X className="h-3 w-3" />

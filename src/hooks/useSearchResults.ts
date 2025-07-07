@@ -1,9 +1,9 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
 import { useApiSearch } from '@/hooks/useApiSearch';
-import { shouldPerformSearch, checkHasActiveFilters } from '@/utils/searchUtils';
+import { checkHasActiveFilters } from '@/utils/searchUtils';
 
 interface SearchResponse {
   results: SearchResult[];
@@ -24,7 +24,6 @@ interface SearchResponse {
 export const useSearchResults = () => {
   const resultsPerPage = 9;
   
-  // Gerenciar estado de busca e URL params
   const {
     query,
     filters,
@@ -36,10 +35,8 @@ export const useSearchResults = () => {
     setQuery
   } = useSearchState();
 
-  // Hook para busca na API
   const { search, loading, error, clearCache, prefetchNextPage } = useApiSearch({ resultsPerPage });
   
-  // Estado dos resultados
   const [searchResponse, setSearchResponse] = useState<SearchResponse>({
     results: [],
     pagination: {
@@ -68,33 +65,37 @@ export const useSearchResults = () => {
 
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // CORRIGIDO: Verificar se há filtros ativos para exibição na UI
+  // Memoizar verificação de filtros ativos
   const hasActiveFilters = useMemo((): boolean => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
-  // NOVA: Verificar se deve executar busca
+  // CORREÇÃO CRÍTICA: Verificar se deve executar busca
   const shouldSearch = useMemo((): boolean => {
     const hasQuery = query.trim() !== '';
-    const hasFilters = filters.resourceType.length > 0 || checkHasActiveFilters(filters);
-    console.log('🔍 Should search check:', { hasQuery, hasFilters, filters: filters.resourceType });
-    return hasQuery || hasFilters;
-  }, [query, filters]);
-
-  // Função para executar busca
-  const performSearch = async () => {
-    console.log('🔍 Checking if should perform search:', { 
-      query, 
-      filters, 
-      sortBy, 
-      currentPage,
-      shouldSearch,
-      hasActiveFilters
+    const hasResourceTypeFilters = filters.resourceType.length > 0;
+    const hasOtherFilters = hasActiveFilters;
+    
+    console.log('🔍 Should search evaluation:', { 
+      hasQuery, 
+      hasResourceTypeFilters, 
+      hasOtherFilters,
+      resourceType: filters.resourceType,
+      result: hasQuery || hasResourceTypeFilters || hasOtherFilters
     });
+    
+    return hasQuery || hasResourceTypeFilters || hasOtherFilters;
+  }, [query, filters.resourceType, hasActiveFilters]);
 
-    // CORRIGIDO: Usar shouldSearch em vez de hasActiveFilters
+  // Função memoizada para executar busca
+  const performSearch = useCallback(async () => {
+    const requestId = `search_${Date.now()}`;
+    console.group(`🔍 ${requestId} - Performing search`);
+    console.log('📋 Search params:', { query, filters, sortBy, currentPage, shouldSearch });
+
+    // CORREÇÃO: Limpar resultados se não deve buscar
     if (!shouldSearch) {
-      console.log('❌ No search needed - clearing results');
+      console.log('❌ Should not search - clearing results');
       setSearchResponse({
         results: [],
         pagination: {
@@ -110,19 +111,19 @@ export const useSearchResults = () => {
           sortBy
         }
       });
+      console.groupEnd();
       return;
     }
 
-    console.log('🚀 Performing search:', { 
-      query, 
-      filters, 
-      sortBy, 
-      currentPage,
-      shouldSearch
-    });
-
     try {
+      console.log('🚀 Executing search via API...');
       const response = await search(query, filters, sortBy, currentPage);
+      
+      // VALIDAÇÃO CRÍTICA: Verificar resposta
+      if (!response.results || !Array.isArray(response.results)) {
+        console.error('❌ Invalid search response:', response);
+        throw new Error('Invalid search response structure');
+      }
       
       setSearchResponse({
         results: response.results,
@@ -135,15 +136,14 @@ export const useSearchResults = () => {
       if (response.error) {
         console.warn('⚠️ Search completed with errors:', response.error);
       } else {
-        console.log('✅ Search results updated:', {
+        console.log('✅ Search successful:', {
+          results: response.results.length,
           totalResults: response.pagination.totalResults,
           currentPage: response.pagination.currentPage,
-          totalPages: response.pagination.totalPages,
-          resultsInPage: response.results.length,
-          isRealPagination: response.pagination.totalResults > 0
+          totalPages: response.pagination.totalPages
         });
         
-        // Prefetch da próxima página se houver
+        // Prefetch se houver próxima página
         if (response.pagination.hasNextPage) {
           prefetchNextPage(query, filters, sortBy, currentPage);
         }
@@ -169,42 +169,42 @@ export const useSearchResults = () => {
         }
       });
     }
-  };
+    
+    console.groupEnd();
+  }, [query, filters, sortBy, currentPage, shouldSearch, search, prefetchNextPage]);
 
-  // Executar busca quando parâmetros mudarem
+  // CORREÇÃO: useEffect com dependências estabilizadas
   useEffect(() => {
     performSearch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, filters, sortBy, currentPage]);
+  }, [performSearch]);
 
-  // Handlers
-  const handleFilterChange = (newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
+  // Handlers memoizados
+  const handleFilterChange = useCallback((newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
     console.log('🔄 Filter change:', { newFilters, options });
     setFilters(newFilters);
     
-    // Resetar página apenas se não for digitação no autor
     if (!options?.authorTyping) {
       setCurrentPage(1);
     }
-  };
+  }, [setFilters, setCurrentPage]);
 
-  const handleSortChange = (newSort: string) => {
+  const handleSortChange = useCallback((newSort: string) => {
     console.log('📊 Sort changed to:', newSort);
     setSortBy(newSort);
     setCurrentPage(1);
-  };
+  }, [setSortBy, setCurrentPage]);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     console.log('📄 Page changed to:', page);
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [setCurrentPage]);
 
-  const forceRefresh = async () => {
-    console.log('🔄 Force refresh requested');
+  const forceRefresh = useCallback(async () => {
+    console.log('🔄 Force refresh requested - clearing cache');
     clearCache();
     await performSearch();
-  };
+  }, [clearCache, performSearch]);
 
   return {
     query,

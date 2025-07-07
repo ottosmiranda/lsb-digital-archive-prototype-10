@@ -40,9 +40,18 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
     
     const now = Date.now();
     const cacheAge = now - cached.timestamp;
-    const cacheLimit = 5 * 60 * 1000; // Reduzir para 5 minutos para refletir mudanças mais rapidamente
+    const cacheLimit = 2 * 60 * 1000; // Reduzir para 2 minutos para debugging
     
-    return cacheAge < cacheLimit;
+    const isValid = cacheAge < cacheLimit;
+    
+    // VALIDAÇÃO CRÍTICA: Cache corrompido com resultados vazios
+    if (isValid && cached.data.results.length === 0 && cached.data.pagination.totalResults > 0) {
+      console.warn('🚨 CACHE CORROMPIDO detectado - removendo:', cacheKey);
+      searchCache.delete(cacheKey);
+      return false;
+    }
+    
+    return isValid;
   };
 
   const search = useCallback(async (
@@ -51,79 +60,109 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
     sortBy: string,
     page: number = 1
   ): Promise<SearchResponse> => {
+    const requestId = `search_${Date.now()}`;
+    console.group(`🔍 ${requestId} - API Search Request`);
+    console.log('📋 Parameters:', { query, filters, sortBy, page, resultsPerPage });
+    
     const cacheKey = getCacheKey(query, filters, sortBy, page);
     
-    // Verificar cache
+    // Verificar cache válido
     if (isValidCache(cacheKey)) {
       const cached = searchCache.get(cacheKey);
-      console.log('🎯 Cache hit for search:', { 
-        query, 
-        page, 
-        totalResults: cached!.data.pagination.totalResults,
-        totalPages: cached!.data.pagination.totalPages 
+      console.log('📦 Cache HIT:', { 
+        results: cached!.data.results.length,
+        totalResults: cached!.data.pagination.totalResults 
       });
+      console.groupEnd();
       return cached!.data;
     }
 
-    console.log('🔍 API search request:', { query, filters, sortBy, page, resultsPerPage });
+    console.log('🌐 Making API request to edge function...');
     setLoading(true);
     setError(null);
 
     try {
-      const { data, error: searchError } = await supabase.functions.invoke('search-content', {
-        body: {
-          query: query.trim() || undefined,
-          filters,
-          sortBy,
-          page,
-          limit: resultsPerPage
-        }
+      // CORREÇÃO CRÍTICA: Enviar parâmetro correto para edge function
+      const requestBody = {
+        query: query.trim() || '',
+        filters, 
+        sortBy,
+        page,
+        resultsPerPage // CORRIGIDO: estava enviando 'limit'
+      };
+      
+      console.log('📡 Edge function body:', requestBody);
+      
+      // Timeout de 30 segundos para evitar hangs
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Search timeout after 30 seconds')), 30000);
       });
+      
+      const searchPromise = supabase.functions.invoke('search-content', {
+        body: requestBody
+      });
+      
+      const { data, error: searchError } = await Promise.race([searchPromise, timeoutPromise]);
 
       if (searchError) {
+        console.error('❌ Edge function error:', searchError);
         throw new Error(`Search function error: ${searchError.message}`);
       }
 
-      if (!data.success) {
-        throw new Error(data.error || 'Search failed');
+      if (!data || !data.success) {
+        console.error('❌ Edge function returned error:', data);
+        throw new Error(data?.error || 'Search failed - no data returned');
       }
 
       const response: SearchResponse = data;
       
-      // Atualizar cache
-      setSearchCache(prev => {
-        const newCache = new Map(prev);
-        newCache.set(cacheKey, {
-          data: response,
-          timestamp: Date.now()
+      // VALIDAÇÃO CRÍTICA: Verificar se resposta é válida
+      if (!response.results || !Array.isArray(response.results)) {
+        console.error('❌ Invalid response structure:', response);
+        throw new Error('Invalid response structure from search function');
+      }
+      
+      // VALIDAÇÃO: Alertar sobre inconsistências
+      if (response.results.length === 0 && response.pagination.totalResults > 0) {
+        console.warn('⚠️ INCONSISTÊNCIA: 0 results mas totalResults > 0');
+      }
+      
+      // Atualizar cache apenas com respostas válidas
+      if (response.results.length > 0 || response.pagination.totalResults === 0) {
+        setSearchCache(prev => {
+          const newCache = new Map(prev);
+          newCache.set(cacheKey, {
+            data: response,
+            timestamp: Date.now()
+          });
+          
+          // Limitar cache a 20 entradas
+          if (newCache.size > 20) {
+            const firstKey = newCache.keys().next().value;
+            newCache.delete(firstKey);
+          }
+          
+          return newCache;
         });
-        
-        // Limitar cache a 30 entradas para não consumir muita memória
-        if (newCache.size > 30) {
-          const firstKey = newCache.keys().next().value;
-          newCache.delete(firstKey);
-        }
-        
-        return newCache;
-      });
+      }
 
-      console.log('✅ Search completed:', {
-        query,
-        page: `${page}/${response.pagination.totalPages}`,
+      console.log('✅ Search successful:', {
+        results: response.results.length,
         totalResults: response.pagination.totalResults,
-        currentResults: response.results.length,
-        hasMore: response.pagination.hasNextPage
+        currentPage: response.pagination.currentPage,
+        totalPages: response.pagination.totalPages
       });
 
+      console.groupEnd();
       return response;
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Search failed';
-      console.error('❌ Search error:', errorMessage);
+      console.error('❌ Search complete failure:', errorMessage);
       setError(errorMessage);
       
       // Retornar resposta vazia em caso de erro
-      return {
+      const errorResponse: SearchResponse = {
         success: false,
         results: [],
         pagination: {
@@ -140,14 +179,17 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
         },
         error: errorMessage
       };
+      
+      console.groupEnd();
+      return errorResponse;
     } finally {
       setLoading(false);
     }
   }, [resultsPerPage]);
 
   const clearCache = useCallback(() => {
+    console.log('🧹 Clearing search cache completely');
     setSearchCache(new Map());
-    console.log('🧹 Search cache cleared');
   }, []);
 
   const prefetchNextPage = useCallback(async (
@@ -159,10 +201,8 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
     const nextPage = currentPage + 1;
     const cacheKey = getCacheKey(query, filters, sortBy, nextPage);
     
-    // Só fazer prefetch se não estiver em cache
     if (!isValidCache(cacheKey)) {
-      console.log('🔮 Prefetching next page:', nextPage);
-      // Fazer a busca em background sem aguardar
+      console.log('🔮 Prefetching page:', nextPage);
       search(query, filters, sortBy, nextPage).catch(err => {
         console.warn('⚠️ Prefetch failed:', err);
       });

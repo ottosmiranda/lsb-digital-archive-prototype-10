@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -24,7 +23,7 @@ interface SearchRequest {
   filters: SearchFilters;
   sortBy: string;
   page: number;
-  resultsPerPage: number;
+  resultsPerPage: number; // CORRIGIDO: era 'limit'
 }
 
 interface SearchResult {
@@ -50,7 +49,7 @@ interface SearchResult {
 }
 
 const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const CACHE_TTL = 3 * 60 * 1000; // 3 minutos para debugging
 const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 
 // Função para verificar se filtro "all" está ativo
@@ -67,21 +66,38 @@ const isGlobalSearch = (filters: SearchFilters): boolean => {
           filters.channel.length === 0);
 };
 
-// Cache helpers
+// Cache helpers com validação aprimorada
 const getCacheKey = (key: string): string => `search_${key}`;
 
 const isValidCache = (cacheKey: string): boolean => {
   const cached = globalCache.get(cacheKey);
   if (!cached) return false;
-  return (Date.now() - cached.timestamp) < cached.ttl;
+  
+  const isValid = (Date.now() - cached.timestamp) < cached.ttl;
+  
+  // VALIDAÇÃO CRÍTICA: Cache corrompido
+  if (isValid && Array.isArray(cached.data) && cached.data.length === 0) {
+    console.warn(`🚨 Cache corrompido detectado: ${cacheKey}`);
+    globalCache.delete(cacheKey);
+    return false;
+  }
+  
+  return isValid;
 };
 
 const setCache = (cacheKey: string, data: any, ttl: number = CACHE_TTL): void => {
+  // Não cachear resultados vazios
+  if (Array.isArray(data) && data.length === 0) {
+    console.warn(`⚠️ Não cacheando resultado vazio: ${cacheKey}`);
+    return;
+  }
+  
   globalCache.set(cacheKey, {
     data,
     timestamp: Date.now(),
     ttl
   });
+  console.log(`📦 Cache SET: ${cacheKey} (${Array.isArray(data) ? data.length : 'N/A'} items)`);
 };
 
 const getCache = (cacheKey: string): any => {
@@ -89,47 +105,49 @@ const getCache = (cacheKey: string): any => {
   return cached?.data || null;
 };
 
-// Função otimizada para buscar todo conteúdo com paginação inteligente
+// Função otimizada para buscar todo conteúdo com timeout melhorado
 const fetchAllContentForGlobalSorting = async (): Promise<SearchResult[]> => {
   const cacheKey = getCacheKey('global_content');
   
-  // Verificar cache primeiro
   if (isValidCache(cacheKey)) {
-    console.log('📦 Cache HIT: Returning cached global content');
+    console.log('📦 Cache HIT: Global content');
     return getCache(cacheKey);
   }
 
-  console.log('🌐 Fetching ALL content with optimized pagination...');
+  console.log('🌐 Fetching ALL content with improved timeout handling...');
   
   try {
-    // Buscar com paginação otimizada em paralelo
+    // Timeout agressivo de 15 segundos para API externa
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('API timeout after 15 seconds')), 15000);
+    });
+    
     const fetchPromises = [
-      fetchContentType('livro', 100), // Buscar até 100 livros
-      fetchContentType('aula', 100),  // Buscar até 100 aulas
-      fetchContentType('podcast', 100) // Buscar até 100 podcasts
+      Promise.race([fetchContentType('livro', 50), timeoutPromise]),
+      Promise.race([fetchContentType('aula', 50), timeoutPromise]),
+      Promise.race([fetchContentType('podcast', 50), timeoutPromise])
     ];
 
     const results = await Promise.allSettled(fetchPromises);
     
     const allContent: SearchResult[] = [];
     
-    // Processar resultados
     results.forEach((result, index) => {
       const contentType = ['livro', 'aula', 'podcast'][index];
       if (result.status === 'fulfilled') {
         allContent.push(...result.value);
         console.log(`✅ ${contentType}: ${result.value.length} items loaded`);
       } else {
-        console.error(`❌ Failed to load ${contentType}:`, result.reason);
+        console.error(`❌ Failed to load ${contentType}:`, result.reason?.message);
       }
     });
 
     if (allContent.length === 0) {
-      console.warn('⚠️ No content loaded from API, trying Supabase fallback...');
+      console.warn('⚠️ No content from API, using Supabase fallback...');
       return await fetchAllFromSupabaseFallback();
     }
 
-    // Cache o resultado por 5 minutos
+    // Cache apenas se tiver conteúdo válido
     setCache(cacheKey, allContent, CACHE_TTL);
     
     console.log(`✅ Global content loaded: ${allContent.length} total items`);
@@ -141,25 +159,33 @@ const fetchAllContentForGlobalSorting = async (): Promise<SearchResult[]> => {
   }
 };
 
-// Função para buscar um tipo de conteúdo com paginação inteligente
-const fetchContentType = async (tipo: string, maxItems: number = 100): Promise<SearchResult[]> => {
+// Função para buscar um tipo de conteúdo com retry e timeout
+const fetchContentType = async (tipo: string, maxItems: number = 50): Promise<SearchResult[]> => {
   const allItems: SearchResult[] = [];
   let page = 1;
-  const limit = 10; // API limita a 10 por página
+  const limit = 10;
   
   try {
     while (allItems.length < maxItems) {
       const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&page=${page}&limit=${limit}`;
       
-      console.log(`📡 Fetching ${tipo} page ${page}...`);
+      console.log(`📡 Fetching ${tipo} page ${page} with 8s timeout...`);
       
-      const response = await fetch(url, {
+      // Timeout de 8 segundos por requisição
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Timeout fetching ${tipo} page ${page}`)), 8000);
+      });
+      
+      const fetchPromise = fetch(url, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'User-Agent': 'LSB-Search/1.0'
         }
       });
+
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -169,105 +195,33 @@ const fetchContentType = async (tipo: string, maxItems: number = 100): Promise<S
       const items = data.conteudo || [];
       
       if (items.length === 0) {
-        console.log(`📄 No more ${tipo} items available (page ${page})`);
+        console.log(`📄 No more ${tipo} items (page ${page})`);
         break;
       }
 
-      // Transformar items para SearchResult
       const transformedItems = items.map((item: any) => transformToSearchResult(item, tipo));
       allItems.push(...transformedItems);
       
       console.log(`📦 ${tipo} page ${page}: ${items.length} items (total: ${allItems.length})`);
       
-      // Se retornou menos que o limite, chegamos ao fim
-      if (items.length < limit) {
-        break;
-      }
+      if (items.length < limit) break;
       
       page++;
       
-      // Pequena pausa para não sobrecarregar API
+      // Pausa entre requisições
       if (page > 1) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
     
   } catch (error) {
     console.error(`❌ Error fetching ${tipo}:`, error);
-    // Tentar fallback do Supabase para este tipo específico
     return await fetchFromSupabaseFallback(tipo);
   }
   
-  return allItems.slice(0, maxItems); // Garantir que não excede o máximo
+  return allItems.slice(0, maxItems);
 };
 
-// Fallback para Supabase (mantido do código original)
-const fetchAllFromSupabaseFallback = async (): Promise<SearchResult[]> => {
-  console.log('🔄 Using Supabase fallback for global content...');
-  
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
-      supabase.functions.invoke('fetch-books'),
-      supabase.functions.invoke('fetch-videos'),
-      supabase.functions.invoke('fetch-podcasts')
-    ]);
-
-    const allContent: SearchResult[] = [];
-
-    if (booksResult.status === 'fulfilled' && booksResult.value.data?.success) {
-      allContent.push(...(booksResult.value.data.books || []).slice(0, 50));
-    }
-    if (videosResult.status === 'fulfilled' && videosResult.value.data?.success) {
-      allContent.push(...(videosResult.value.data.videos || []).slice(0, 50));
-    }
-    if (podcastsResult.status === 'fulfilled' && podcastsResult.value.data?.success) {
-      allContent.push(...(podcastsResult.value.data.podcasts || []).slice(0, 50));
-    }
-
-    console.log(`✅ Supabase fallback loaded: ${allContent.length} items`);
-    return allContent;
-    
-  } catch (error) {
-    console.error('❌ Supabase fallback failed:', error);
-    return [];
-  }
-};
-
-const fetchFromSupabaseFallback = async (tipo: string): Promise<SearchResult[]> => {
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    
-    let functionName: string;
-    switch (tipo) {
-      case 'livro': functionName = 'fetch-books'; break;
-      case 'aula': functionName = 'fetch-videos'; break;
-      case 'podcast': functionName = 'fetch-podcasts'; break;
-      default: return [];
-    }
-    
-    const { data, error } = await supabase.functions.invoke(functionName);
-    
-    if (error || !data.success) {
-      console.error(`❌ Supabase ${functionName} error:`, error || data.error);
-      return [];
-    }
-    
-    const items = tipo === 'livro' ? data.books : tipo === 'aula' ? data.videos : data.podcasts;
-    return items || [];
-    
-  } catch (error) {
-    console.error(`❌ Supabase fallback failed for ${tipo}:`, error);
-    return [];
-  }
-};
-
-// Função para transformar item da API em SearchResult
 const transformToSearchResult = (item: any, tipo: string): SearchResult => {
   const baseResult: SearchResult = {
     id: Math.floor(Math.random() * 10000) + 1000,
@@ -325,24 +279,89 @@ const formatDuration = (durationMs: number): string => {
   return `${minutes}m`;
 };
 
-// Função principal de busca
+const fetchAllFromSupabaseFallback = async (): Promise<SearchResult[]> => {
+  console.log('🔄 Using Supabase fallback for global content...');
+  
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Supabase timeout')), 15000);
+    });
+
+    const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
+      Promise.race([supabase.functions.invoke('fetch-books'), timeoutPromise]),
+      Promise.race([supabase.functions.invoke('fetch-videos'), timeoutPromise]),
+      Promise.race([supabase.functions.invoke('fetch-podcasts'), timeoutPromise])
+    ]);
+
+    const allContent: SearchResult[] = [];
+
+    if (booksResult.status === 'fulfilled' && booksResult.value.data?.success) {
+      allContent.push(...(booksResult.value.data.books || []).slice(0, 25));
+    }
+    if (videosResult.status === 'fulfilled' && videosResult.value.data?.success) {
+      allContent.push(...(videosResult.value.data.videos || []).slice(0, 25));
+    }
+    if (podcastsResult.status === 'fulfilled' && videosResult.value.data?.success) {
+      allContent.push(...(podcastsResult.value.data.podcasts || []).slice(0, 25));
+    }
+
+    console.log(`✅ Supabase fallback: ${allContent.length} items`);
+    return allContent;
+    
+  } catch (error) {
+    console.error('❌ Supabase fallback failed:', error);
+    return [];
+  }
+};
+
+const fetchFromSupabaseFallback = async (tipo: string): Promise<SearchResult[]> => {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    
+    let functionName: string;
+    switch (tipo) {
+      case 'livro': functionName = 'fetch-books'; break;
+      case 'aula': functionName = 'fetch-videos'; break;
+      case 'podcast': functionName = 'fetch-podcasts'; break;
+      default: return [];
+    }
+    
+    const { data, error } = await supabase.functions.invoke(functionName);
+    
+    if (error || !data.success) {
+      console.error(`❌ Supabase ${functionName} error:`, error || data.error);
+      return [];
+    }
+    
+    const items = tipo === 'livro' ? data.books : tipo === 'aula' ? data.videos : data.podcasts;
+    return items || [];
+    
+  } catch (error) {
+    console.error(`❌ Supabase fallback failed for ${tipo}:`, error);
+    return [];
+  }
+};
+
+// Função principal de busca com logs detalhados
 const performSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  const requestId = `search_${Date.now()}`;
   
-  console.log('🔍 Search request:', {
-    query: query || '(empty)',
-    filters,
-    sortBy,
-    page,
-    isGlobal: isGlobalSearch(filters)
-  });
+  console.group(`🔍 ${requestId} - EDGE FUNCTION SEARCH`);
+  console.log('📋 Request params:', { query: query || '(empty)', filters, sortBy, page, resultsPerPage });
+  console.log('🌐 Is global search:', isGlobalSearch(filters));
 
   try {
     let allData: SearchResult[] = [];
 
-    // CORRIGIDO: Detectar busca global (filtro "Todos")
     if (isGlobalSearch(filters)) {
-      console.log('🌐 GLOBAL SEARCH detected - fetching ALL content');
+      console.log('🌐 GLOBAL SEARCH - fetching all content');
       allData = await fetchAllContentForGlobalSorting();
       
       if (allData.length === 0) {
@@ -360,43 +379,47 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
           searchInfo: { query, appliedFilters: filters, sortBy }
         };
       }
-      
-      console.log(`✅ Global search: ${allData.length} total items available`);
     } else {
-      // Busca específica por tipo de conteúdo
+      // Busca específica por tipo
       const activeTypes = filters.resourceType.filter(type => type !== 'all');
+      console.log('🎯 Specific search for types:', activeTypes);
+      
       if (activeTypes.length > 0) {
         const typePromises = activeTypes.map(type => {
           const apiType = type === 'titulo' ? 'livro' : type === 'video' ? 'aula' : 'podcast';
-          return fetchContentType(apiType, 50); // Limitar para performance
+          return fetchContentType(apiType, 100);
         });
         
         const typeResults = await Promise.allSettled(typePromises);
-        typeResults.forEach(result => {
+        typeResults.forEach((result, index) => {
           if (result.status === 'fulfilled') {
             allData.push(...result.value);
+            console.log(`✅ Type ${activeTypes[index]}: ${result.value.length} items`);
+          } else {
+            console.error(`❌ Type ${activeTypes[index]} failed:`, result.reason);
           }
         });
       }
     }
 
-    // Aplicar filtros se necessário
+    // Aplicar filtros
     let filteredData = allData;
     
-    // Filtrar por query se fornecida
     if (query && query.trim()) {
       const queryLower = query.toLowerCase();
       filteredData = filteredData.filter(item => {
         const searchText = `${item.title} ${item.author} ${item.description}`.toLowerCase();
         return searchText.includes(queryLower);
       });
+      console.log(`🔍 Query filter applied: ${filteredData.length} results`);
     }
 
-    // Aplicar outros filtros
     filteredData = applyFilters(filteredData, filters);
+    console.log(`🔧 All filters applied: ${filteredData.length} results`);
 
-    // Ordenar resultados
+    // Ordenar
     filteredData = sortResults(filteredData, sortBy, query);
+    console.log(`📊 Sorted by ${sortBy}: ${filteredData.length} results`);
 
     // Paginação
     const totalResults = filteredData.length;
@@ -404,9 +427,7 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
     const startIndex = (page - 1) * resultsPerPage;
     const paginatedResults = filteredData.slice(startIndex, startIndex + resultsPerPage);
 
-    console.log(`✅ Search completed: ${paginatedResults.length}/${totalResults} results (page ${page}/${totalPages})`);
-
-    return {
+    const response = {
       success: true,
       results: paginatedResults,
       pagination: {
@@ -423,8 +444,19 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
       }
     };
 
+    console.log(`✅ Search completed successfully:`, {
+      totalFound: totalResults,
+      returned: paginatedResults.length,
+      page: `${page}/${totalPages}`
+    });
+    
+    console.groupEnd();
+    return response;
+
   } catch (error) {
-    console.error('❌ Search failed:', error);
+    console.error(`❌ Search failed:`, error);
+    console.groupEnd();
+    
     return {
       success: false,
       error: error.message,
@@ -435,15 +467,14 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
         totalResults: 0,
         hasNextPage: false,
         hasPreviousPage: false
-      }
+      },
+      searchInfo: { query, appliedFilters: filters, sortBy }
     };
   }
 };
 
-// Função para aplicar filtros
 const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResult[] => {
   return data.filter(item => {
-    // Subject filter
     if (filters.subject.length > 0) {
       const matchesSubject = filters.subject.some(filterSubject =>
         item.subject.toLowerCase().includes(filterSubject.toLowerCase())
@@ -451,7 +482,6 @@ const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResul
       if (!matchesSubject) return false;
     }
 
-    // Author filter
     if (filters.author.length > 0) {
       const matchesAuthor = filters.author.some(filterAuthor =>
         item.author.toLowerCase().includes(filterAuthor.toLowerCase())
@@ -459,18 +489,15 @@ const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResul
       if (!matchesAuthor) return false;
     }
 
-    // Year filter
     if (filters.year.trim()) {
       const filterYear = parseInt(filters.year);
       if (!isNaN(filterYear) && item.year !== filterYear) return false;
     }
 
-    // Duration filter
     if (filters.duration.trim()) {
       if (!matchesDurationFilter(item.duration, filters.duration)) return false;
     }
 
-    // Language filter
     if (filters.language.length > 0) {
       const matchesLanguage = filters.language.some(filterLang =>
         item.language?.toLowerCase().includes(filterLang.toLowerCase()) ||
@@ -479,12 +506,10 @@ const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResul
       if (!matchesLanguage) return false;
     }
 
-    // Document type filter
     if (filters.documentType.length > 0) {
       if (!item.documentType || !filters.documentType.includes(item.documentType)) return false;
     }
 
-    // Program filter (for podcasts)
     if (filters.program.length > 0) {
       if (item.type !== 'podcast' || !item.program) return false;
       const matchesProgram = filters.program.some(filterProgram =>
@@ -493,7 +518,6 @@ const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResul
       if (!matchesProgram) return false;
     }
 
-    // Channel filter (for videos)
     if (filters.channel.length > 0) {
       if (item.type !== 'video' || !item.channel) return false;
       const matchesChannel = filters.channel.some(filterChannel =>
@@ -506,7 +530,6 @@ const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResul
   });
 };
 
-// Função auxiliar para filtro de duração
 const matchesDurationFilter = (itemDuration: string | undefined, filterDuration: string): boolean => {
   if (!itemDuration || !filterDuration) return true;
   
@@ -550,7 +573,6 @@ const parseDurationToMinutes = (duration: string): number => {
   return totalMinutes;
 };
 
-// Função para ordenar resultados
 const sortResults = (results: SearchResult[], sortBy: string, query?: string): SearchResult[] => {
   const sortedResults = [...results];
   
@@ -593,7 +615,6 @@ const sortResults = (results: SearchResult[], sortBy: string, query?: string): S
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }

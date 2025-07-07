@@ -151,5 +151,3 @@ export const useFilteredSearch = ({ resultsPerPage = 9 }: UseFilteredSearchProps
     cancelSearch
   };
 };
-
-export type { FilteredSearchResponse, UseFilteredSearchProps } from './index';

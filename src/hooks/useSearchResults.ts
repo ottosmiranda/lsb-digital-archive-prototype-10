@@ -68,7 +68,7 @@ export const useSearchResults = () => {
 
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // Determine if we should use optimized filtered search
+  // Determine if we should use optimized filtered search - CORRIGIDO: garantir boolean
   const shouldUseOptimizedSearch = useMemo((): boolean => {
     const hasSpecificFilters = filters.resourceType.length > 0 && !filters.resourceType.includes('all');
     const hasOtherFilters = filters.subject.length > 0 || filters.author.length > 0 || 
@@ -76,7 +76,7 @@ export const useSearchResults = () => {
                            filters.documentType.length > 0 || filters.program.length > 0 || 
                            filters.channel.length > 0;
     
-    return hasSpecificFilters || hasOtherFilters;
+    return Boolean(hasSpecificFilters || hasOtherFilters);
   }, [filters]);
 
   const hasActiveFilters = useMemo((): boolean => {

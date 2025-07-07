@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -54,11 +55,18 @@ const SearchLayout = ({
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [activeContentType, setActiveContentType] = useState('all');
 
-  // Determine if optimized search is being used
-  const isOptimizedSearch = filters.resourceType.length > 0 && !filters.resourceType.includes('all') || 
-                           filters.subject.length > 0 || filters.author.length > 0 || filters.year || 
-                           filters.duration || filters.language.length > 0 || filters.documentType.length > 0 || 
-                           filters.program.length > 0 || filters.channel.length > 0;
+  // Determine if optimized search is being used - CORRIGIDO: garantir boolean
+  const isOptimizedSearch = Boolean(
+    (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) || 
+    filters.subject.length > 0 || 
+    filters.author.length > 0 || 
+    filters.year || 
+    filters.duration || 
+    filters.language.length > 0 || 
+    filters.documentType.length > 0 || 
+    filters.program.length > 0 || 
+    filters.channel.length > 0
+  );
 
   // Sync activeContentType with filters.resourceType
   useEffect(() => {

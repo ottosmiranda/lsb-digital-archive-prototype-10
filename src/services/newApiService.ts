@@ -1,7 +1,7 @@
 import { SearchResult } from '@/types/searchTypes';
 import { ApiTimeoutManager } from './apiTimeoutManager';
 
-const API_BASE_URL = 'https://link-business-school.onrender.com/api/v1';
+const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
 
 interface APIResponse {
   tipo: string;

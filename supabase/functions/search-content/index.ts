@@ -2,7 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const API_BASE_URL = 'https://link-business-school.onrender.com/api/v1';
+const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

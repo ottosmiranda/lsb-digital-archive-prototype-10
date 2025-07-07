@@ -87,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
+    const baseUrl = 'https://lbs-src1.onrender.com/api/v1/conteudo-lbs';
     const apiUrl = `${baseUrl}?tipo=aula&page=${page}&limit=${limit}`;
     
     console.log(`📡 Fetching videos from: ${apiUrl}`);

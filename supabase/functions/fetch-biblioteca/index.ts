@@ -30,7 +30,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     console.log('📚 Starting biblioteca API fetch...');
     
-    const baseUrl = 'https://link-business-school.onrender.com/api/v1/conteudo-lbs';
+    const baseUrl = 'https://lbs-src1.onrender.com/api/v1/conteudo-lbs';
     const allResources: ExternalResource[] = [];
     let currentPage = 1;
     let totalPages = 1;

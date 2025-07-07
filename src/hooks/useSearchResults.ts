@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
@@ -68,16 +67,39 @@ export const useSearchResults = () => {
 
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // Determine if we should use optimized filtered search - CORRIGIDO: garantir boolean
-  const shouldUseOptimizedSearch = useMemo((): boolean => {
-    const hasSpecificFilters = filters.resourceType.length > 0 && !filters.resourceType.includes('all');
-    const hasOtherFilters = filters.subject.length > 0 || filters.author.length > 0 || 
-                           filters.year || filters.duration || filters.language.length > 0 ||
-                           filters.documentType.length > 0 || filters.program.length > 0 || 
-                           filters.channel.length > 0;
-    
-    return Boolean(hasSpecificFilters || hasOtherFilters);
+  // NOVA LÓGICA: Distinguir entre filtros simples (tipo) e complexos (outros)
+  const hasComplexFilters = useMemo((): boolean => {
+    return Boolean(
+      filters.subject.length > 0 || 
+      filters.author.length > 0 || 
+      filters.year || 
+      filters.duration || 
+      filters.language.length > 0 ||
+      filters.documentType.length > 0 || 
+      filters.program.length > 0 || 
+      filters.channel.length > 0
+    );
   }, [filters]);
+
+  const hasSimpleTypeFilter = useMemo((): boolean => {
+    return Boolean(
+      filters.resourceType.length > 0 && 
+      !filters.resourceType.includes('all') && 
+      !hasComplexFilters
+    );
+  }, [filters.resourceType, hasComplexFilters]);
+
+  // CORREÇÃO: Usar busca otimizada APENAS para filtros complexos ou paginação
+  const shouldUseOptimizedSearch = useMemo((): boolean => {
+    // Se tem filtros complexos, usar busca otimizada paginada
+    if (hasComplexFilters) return true;
+    
+    // Se é filtro simples por tipo e não está na primeira página, usar paginação
+    if (hasSimpleTypeFilter && currentPage > 1) return true;
+    
+    // Caso contrário, usar busca regular para carregar TODOS os resultados
+    return false;
+  }, [hasComplexFilters, hasSimpleTypeFilter, currentPage]);
 
   const hasActiveFilters = useMemo((): boolean => {
     return checkHasActiveFilters(filters);
@@ -97,15 +119,16 @@ export const useSearchResults = () => {
 
   const performSearch = useCallback(async () => {
     const requestId = `search_${Date.now()}`;
-    console.group(`🔍 ${requestId} - Search Decision`);
+    console.group(`🔍 ${requestId} - Search Decision (CORRIGIDA)`);
     console.log('📋 Search params:', { 
       query, 
       filters, 
       sortBy, 
       currentPage, 
       shouldSearch,
-      shouldUseOptimizedSearch,
-      hasActiveFilters
+      hasSimpleTypeFilter,
+      hasComplexFilters,
+      shouldUseOptimizedSearch
     });
 
     // Cancel any ongoing filtered search
@@ -136,11 +159,13 @@ export const useSearchResults = () => {
       let response;
 
       if (shouldUseOptimizedSearch) {
-        console.log('🚀 Using OPTIMIZED filtered search for better performance');
+        console.log('🚀 Using OPTIMIZED search for complex filters or pagination');
         response = await filteredSearch(query, filters, sortBy, currentPage);
       } else {
-        console.log('📡 Using regular search');
-        response = await regularSearch(query, filters, sortBy, currentPage);
+        console.log('📡 Using REGULAR search for simple type filters (ALL RESULTS)');
+        // Para filtros simples por tipo, usar página 1 para carregar TODOS os resultados
+        const searchPage = hasSimpleTypeFilter ? 1 : currentPage;
+        response = await regularSearch(query, filters, sortBy, searchPage);
       }
       
       if (!response.results || !Array.isArray(response.results)) {
@@ -148,23 +173,47 @@ export const useSearchResults = () => {
         throw new Error('Invalid search response structure');
       }
       
+      // Para filtros simples por tipo, aplicar paginação no frontend
+      let finalResponse = response;
+      if (hasSimpleTypeFilter && !shouldUseOptimizedSearch) {
+        const totalResults = response.results.length;
+        const totalPages = Math.ceil(totalResults / resultsPerPage);
+        const startIndex = (currentPage - 1) * resultsPerPage;
+        const paginatedResults = response.results.slice(startIndex, startIndex + resultsPerPage);
+        
+        finalResponse = {
+          ...response,
+          results: paginatedResults,
+          pagination: {
+            currentPage,
+            totalPages,
+            totalResults,
+            hasNextPage: currentPage < totalPages,
+            hasPreviousPage: currentPage > 1
+          }
+        };
+        
+        console.log(`📄 Frontend pagination applied: showing ${paginatedResults.length} of ${totalResults} results (page ${currentPage}/${totalPages})`);
+      }
+      
       setSearchResponse({
-        results: response.results,
-        pagination: response.pagination,
-        searchInfo: response.searchInfo
+        results: finalResponse.results,
+        pagination: finalResponse.pagination,
+        searchInfo: finalResponse.searchInfo
       });
 
-      setUsingFallback(!response.success);
+      setUsingFallback(!finalResponse.success);
 
       if (response.error) {
         console.warn('⚠️ Search completed with errors:', response.error);
       } else {
         console.log('✅ Search successful:', {
-          results: response.results.length,
-          totalResults: response.pagination.totalResults,
-          currentPage: response.pagination.currentPage,
-          totalPages: response.pagination.totalPages,
-          optimized: shouldUseOptimizedSearch ? '🚀 YES' : '📡 NO'
+          results: finalResponse.results.length,
+          totalResults: finalResponse.pagination.totalResults,
+          currentPage: finalResponse.pagination.currentPage,
+          totalPages: finalResponse.pagination.totalPages,
+          searchType: shouldUseOptimizedSearch ? '🚀 OPTIMIZED' : '📡 REGULAR (ALL RESULTS)',
+          filterType: hasSimpleTypeFilter ? '🏷️ SIMPLE TYPE' : hasComplexFilters ? '🔧 COMPLEX' : '🌐 GLOBAL'
         });
       }
 
@@ -196,7 +245,7 @@ export const useSearchResults = () => {
     }
     
     console.groupEnd();
-  }, [query, filters, sortBy, currentPage, shouldSearch, shouldUseOptimizedSearch, regularSearch, filteredSearch, cancelSearch]);
+  }, [query, filters, sortBy, currentPage, shouldSearch, shouldUseOptimizedSearch, hasSimpleTypeFilter, hasComplexFilters, regularSearch, filteredSearch, cancelSearch, resultsPerPage]);
 
   useEffect(() => {
     performSearch();

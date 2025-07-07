@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -55,9 +54,8 @@ const SearchLayout = ({
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [activeContentType, setActiveContentType] = useState('all');
 
-  // Determine if optimized search is being used - CORRIGIDO: garantir boolean
-  const isOptimizedSearch = Boolean(
-    (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) || 
+  // CORRIGIDO: Lógica para detectar busca otimizada vs filtro simples rápido
+  const hasComplexFilters = Boolean(
     filters.subject.length > 0 || 
     filters.author.length > 0 || 
     filters.year || 
@@ -67,6 +65,16 @@ const SearchLayout = ({
     filters.program.length > 0 || 
     filters.channel.length > 0
   );
+
+  const hasSimpleTypeFilter = Boolean(
+    filters.resourceType.length > 0 && 
+    !filters.resourceType.includes('all') && 
+    !hasComplexFilters
+  );
+
+  // Determinar o tipo de busca sendo usado
+  const isOptimizedSearch = hasComplexFilters;
+  const isFastFilter = hasSimpleTypeFilter;
 
   // Sync activeContentType with filters.resourceType
   useEffect(() => {
@@ -161,7 +169,7 @@ const SearchLayout = ({
               usingFallback={usingFallback}
             />
             <PerformanceIndicator
-              isOptimized={isOptimizedSearch}
+              isOptimized={isOptimizedSearch || isFastFilter}
               loading={loading}
               className="ml-4"
             />

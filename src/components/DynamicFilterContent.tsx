@@ -1,6 +1,6 @@
 
 import React, { useMemo, useCallback } from 'react';
-import { X, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -12,11 +12,6 @@ import AuthorInput from '@/components/AuthorInput';
 import AuthorList from '@/components/AuthorList';
 import { useContentAwareFilters } from '@/hooks/useContentAwareFilters';
 
-// Static data
-const subjects = [
-  'Educação', 'História', 'Linguística', 'Cultura Surda', 'Inclusão', 
-  'Tecnologia', 'Saúde', 'Direitos', 'Arte', 'Literatura'
-];
 const years = Array.from({ length: 10 }, (_, i) => (new Date().getFullYear() - i).toString());
 
 interface DynamicFilterContentProps {
@@ -42,7 +37,6 @@ const DynamicFilterContent = React.memo(({
   });
 
   const hasActiveFilters = useMemo(() => 
-    filters.documentType.length > 0 ||
     filters.language.length > 0 ||
     filters.subject.length > 0 || 
     filters.author || 
@@ -52,7 +46,6 @@ const DynamicFilterContent = React.memo(({
   );
 
   const activeFilterCount = useMemo(() => 
-    filters.documentType.length +
     filters.language.length +
     filters.subject.length + 
     (filters.author ? 1 : 0) + 
@@ -66,13 +59,6 @@ const DynamicFilterContent = React.memo(({
   }, [filters.author]);
 
   // Handlers
-  const handleDocumentTypeChange = useCallback((documentTypeId: string, checked: boolean) => {
-    const newDocumentTypes = checked
-      ? [...filters.documentType, documentTypeId]
-      : filters.documentType.filter((dt: string) => dt !== documentTypeId);
-    onFiltersChange({ ...filters, documentType: newDocumentTypes });
-  }, [filters, onFiltersChange]);
-
   const handleLanguageChange = useCallback((languageId: string, checked: boolean) => {
     const newLanguages = checked
       ? [...filters.language, languageId]
@@ -108,15 +94,15 @@ const DynamicFilterContent = React.memo(({
 
   const clearFilters = useCallback(() => {
     onFiltersChange({
-      resourceType: [],
+      resourceType: filters.resourceType, // Manter o tipo de recurso
       subject: [],
       author: '',
       year: '',
       duration: '',
       language: [],
-      documentType: []
+      documentType: [] // Será removido gradualmente
     });
-  }, [onFiltersChange]);
+  }, [onFiltersChange, filters.resourceType]);
 
   return (
     <div className="space-y-4">
@@ -133,99 +119,32 @@ const DynamicFilterContent = React.memo(({
         </div>
       )}
 
-      {/* Subject Filter - Sempre visível */}
-      <Collapsible open={openSections.subject} onOpenChange={() => onToggleSection('subject')}>
-        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">Assunto</Label>
-            {filters.subject.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {filters.subject.length}
-              </Badge>
-            )}
-          </div>
-          {openSections.subject ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-            {subjects.map((subject) => (
-              <div key={subject} className="flex items-center space-x-2">
-                <Checkbox
-                  id={subject}
-                  checked={filters.subject.includes(subject)}
-                  onCheckedChange={(checked) => handleSubjectChange(subject, !!checked)}
-                />
-                <Label htmlFor={subject} className="text-sm cursor-pointer">{subject}</Label>
-              </div>
-            ))}
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Document Type Filter - Apenas para livros */}
-      {filterRelevance.documentType && contentStats.availableDocumentTypes.length > 0 && (
-        <Collapsible open={openSections.documentType} onOpenChange={() => onToggleSection('documentType')}>
+      {/* Subject Filter - Apenas quando há assuntos disponíveis */}
+      {filterRelevance.subject && contentStats.availableSubjects.length > 0 && (
+        <Collapsible open={openSections.subject} onOpenChange={() => onToggleSection('subject')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium">Tipo de Item</Label>
-              {filters.documentType.length > 0 && (
+              <Label className="text-sm font-medium">Assunto</Label>
+              {filters.subject.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
-                  {filters.documentType.length}
+                  {filters.subject.length}
                 </Badge>
               )}
-              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                Livros ({contentStats.bookCount})
-              </Badge>
             </div>
-            {openSections.documentType ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {openSections.subject ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2">
             <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-              {contentStats.availableDocumentTypes.map((docType) => (
-                <div key={docType} className="flex items-center space-x-2">
+              {contentStats.availableSubjects.map((subject) => (
+                <div key={subject} className="flex items-center space-x-2">
                   <Checkbox
-                    id={`docType-${docType}`}
-                    checked={filters.documentType.includes(docType)}
-                    onCheckedChange={(checked) => handleDocumentTypeChange(docType, !!checked)}
+                    id={subject}
+                    checked={filters.subject.includes(subject)}
+                    onCheckedChange={(checked) => handleSubjectChange(subject, !!checked)}
                   />
-                  <Label htmlFor={`docType-${docType}`} className="text-sm cursor-pointer">{docType}</Label>
+                  <Label htmlFor={subject} className="text-sm cursor-pointer">{subject}</Label>
                 </div>
               ))}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
-      {/* Duration Filter - Apenas para vídeos e podcasts */}
-      {filterRelevance.duration && (
-        <Collapsible open={openSections.duration} onOpenChange={() => onToggleSection('duration')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-            <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium">Duração</Label>
-              {filters.duration && (
-                <Badge variant="secondary" className="text-xs">
-                  1 
-                </Badge>
-              )}
-              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-                Mídia ({contentStats.videoCount + contentStats.podcastCount})
-              </Badge>
-            </div>
-            {openSections.duration ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2">
-            <div className="p-3 border border-gray-200 rounded-lg bg-white">
-              <Select value={filters.duration || 'all'} onValueChange={handleDurationChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Qualquer duração" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Qualquer duração</SelectItem>
-                  <SelectItem value="short">Até 10 minutos</SelectItem>
-                  <SelectItem value="medium">10 - 30 minutos</SelectItem>
-                  <SelectItem value="long">Mais de 30 minutos</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CollapsibleContent>
         </Collapsible>
@@ -268,7 +187,7 @@ const DynamicFilterContent = React.memo(({
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Language Filter - Mostrar apenas se houver idiomas disponíveis */}
+      {/* Language Filter - Apenas quando há idiomas disponíveis */}
       {filterRelevance.language && contentStats.availableLanguages.length > 0 && (
         <Collapsible open={openSections.language} onOpenChange={() => onToggleSection('language')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -277,6 +196,12 @@ const DynamicFilterContent = React.memo(({
               {filters.language.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
                   {filters.language.length}
+                </Badge>
+              )}
+              {activeContentType === 'podcast' && (
+                <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Campo não disponível
                 </Badge>
               )}
             </div>
@@ -299,35 +224,78 @@ const DynamicFilterContent = React.memo(({
         </Collapsible>
       )}
 
-      {/* Year Filter */}
-      <Collapsible open={openSections.year} onOpenChange={() => onToggleSection('year')}>
-        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">Ano</Label>
-            {filters.year && (
-              <Badge variant="secondary" className="text-xs">
-                {filters.year}
+      {/* Year Filter - Apenas para livros e podcasts */}
+      {filterRelevance.year && (
+        <Collapsible open={openSections.year} onOpenChange={() => onToggleSection('year')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium">Ano</Label>
+              {filters.year && (
+                <Badge variant="secondary" className="text-xs">
+                  {filters.year}
+                </Badge>
+              )}
+              {activeContentType === 'video' && (
+                <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Campo não disponível
+                </Badge>
+              )}
+            </div>
+            {openSections.year ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <div className="p-3 border border-gray-200 rounded-lg bg-white">
+              <Select value={filters.year || 'all'} onValueChange={handleYearChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar ano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os anos</SelectItem>
+                  {years.map((year) => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Duration Filter - Apenas para vídeos e podcasts */}
+      {filterRelevance.duration && (
+        <Collapsible open={openSections.duration} onOpenChange={() => onToggleSection('duration')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium">Duração</Label>
+              {filters.duration && (
+                <Badge variant="secondary" className="text-xs">
+                  1 
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                Mídia ({contentStats.videoCount + contentStats.podcastCount})
               </Badge>
-            )}
-          </div>
-          {openSections.year ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <div className="p-3 border border-gray-200 rounded-lg bg-white">
-            <Select value={filters.year || 'all'} onValueChange={handleYearChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecionar ano" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os anos</SelectItem>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+            </div>
+            {openSections.duration ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <div className="p-3 border border-gray-200 rounded-lg bg-white">
+              <Select value={filters.duration || 'all'} onValueChange={handleDurationChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Qualquer duração" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Qualquer duração</SelectItem>
+                  <SelectItem value="short">Até 10 minutos</SelectItem>
+                  <SelectItem value="medium">10 - 30 minutos</SelectItem>
+                  <SelectItem value="long">Mais de 30 minutos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 });

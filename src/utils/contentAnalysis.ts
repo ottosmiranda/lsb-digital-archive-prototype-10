@@ -10,7 +10,7 @@ export interface ContentStats {
   videoCount: number;
   podcastCount: number;
   availableLanguages: string[];
-  availableDocumentTypes: string[];
+  availableSubjects: string[];
   hasItemsWithDuration: boolean;
   hasItemsWithPages: boolean;
 }
@@ -19,7 +19,6 @@ export interface FilterRelevance {
   subject: boolean;
   author: boolean;
   language: boolean;
-  documentType: boolean;
   year: boolean;
   duration: boolean;
   pages: boolean;
@@ -35,13 +34,13 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
     videoCount: 0,
     podcastCount: 0,
     availableLanguages: [],
-    availableDocumentTypes: [],
+    availableSubjects: [],
     hasItemsWithDuration: false,
     hasItemsWithPages: false,
   };
 
   const languageSet = new Set<string>();
-  const documentTypeSet = new Set<string>();
+  const subjectSet = new Set<string>();
 
   results.forEach(item => {
     // Contagem por tipo
@@ -64,14 +63,18 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
     if (item.language) {
       languageSet.add(item.language);
     }
+    
+    // Mapear país para idioma (para vídeos)
     if (item.pais) {
-      // Mapear país para idioma
       const countryToLanguage: Record<string, string> = {
         'BR': 'Português',
-        'PT': 'Português',
+        'PT': 'Português', 
         'US': 'English',
         'GB': 'English',
-        'ES': 'Espanhol',
+        'ES': 'Español',
+        'FR': 'Français',
+        'IT': 'Italiano',
+        'DE': 'Deutsch',
       };
       const language = countryToLanguage[item.pais.toUpperCase()];
       if (language) {
@@ -79,24 +82,24 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
       }
     }
 
-    // Tipos de documento (apenas para livros)
-    if (item.type === 'titulo' && item.documentType) {
-      documentTypeSet.add(item.documentType);
+    // Detectar assuntos disponíveis (categorias)
+    if (item.subject && item.subject.trim()) {
+      subjectSet.add(item.subject.trim());
     }
 
-    // Verificar se há itens com duração (vídeos e podcasts)
+    // Verificar se há itens com duração
     if (item.duration && (item.type === 'video' || item.type === 'podcast')) {
       stats.hasItemsWithDuration = true;
     }
 
-    // Verificar se há itens com páginas (livros)
+    // Verificar se há itens com páginas
     if (item.pages && item.type === 'titulo') {
       stats.hasItemsWithPages = true;
     }
   });
 
   stats.availableLanguages = Array.from(languageSet).sort();
-  stats.availableDocumentTypes = Array.from(documentTypeSet).sort();
+  stats.availableSubjects = Array.from(subjectSet).sort();
 
   return stats;
 };
@@ -108,10 +111,9 @@ export const determineFilterRelevance = (
   // Se activeContentType for específico, usar lógica específica
   if (activeContentType === 'titulo') {
     return {
-      subject: true,
+      subject: stats.availableSubjects.length > 0,
       author: true,
       language: stats.availableLanguages.length > 0,
-      documentType: stats.availableDocumentTypes.length > 0,
       year: true,
       duration: false,
       pages: stats.hasItemsWithPages,
@@ -120,11 +122,10 @@ export const determineFilterRelevance = (
 
   if (activeContentType === 'video') {
     return {
-      subject: true,
+      subject: stats.availableSubjects.length > 0,
       author: true,
       language: stats.availableLanguages.length > 0,
-      documentType: false,
-      year: true,
+      year: false, // API não fornece ano para vídeos
       duration: stats.hasItemsWithDuration,
       pages: false,
     };
@@ -132,23 +133,21 @@ export const determineFilterRelevance = (
 
   if (activeContentType === 'podcast') {
     return {
-      subject: true,
+      subject: false, // API não fornece categorias para podcasts
       author: true,
-      language: stats.availableLanguages.length > 0,
-      documentType: false,
+      language: false, // API não fornece idioma para podcasts
       year: true,
       duration: stats.hasItemsWithDuration,
       pages: false,
     };
   }
 
-  // Para 'all' ou quando há múltiplos tipos, mostrar filtros baseados no conteúdo presente
+  // Para 'all' ou quando há múltiplos tipos
   return {
-    subject: true,
+    subject: stats.availableSubjects.length > 0,
     author: true,
     language: stats.availableLanguages.length > 0,
-    documentType: stats.hasBooks && stats.availableDocumentTypes.length > 0,
-    year: true,
+    year: stats.hasBooks || stats.hasPodcasts, // Apenas livros e podcasts têm ano
     duration: (stats.hasVideos || stats.hasPodcasts) && stats.hasItemsWithDuration,
     pages: stats.hasBooks && stats.hasItemsWithPages,
   };
@@ -163,33 +162,34 @@ export const getFilterPriority = (
   // Prioridades baseadas no tipo de conteúdo ativo
   if (activeContentType === 'titulo') {
     priorities.subject = 1;
-    priorities.documentType = 2;
-    priorities.language = 3;
-    priorities.author = 4;
-    priorities.pages = 5;
-    priorities.year = 6;
-  } else if (activeContentType === 'video' || activeContentType === 'podcast') {
+    priorities.language = 2;
+    priorities.author = 3;
+    priorities.pages = 4;
+    priorities.year = 5;
+  } else if (activeContentType === 'video') {
     priorities.subject = 1;
     priorities.duration = 2;
     priorities.language = 3;
     priorities.author = 4;
-    priorities.year = 5;
+  } else if (activeContentType === 'podcast') {
+    priorities.author = 1;
+    priorities.duration = 2;
+    priorities.year = 3;
   } else {
     // Para 'all', priorizar baseado na quantidade de cada tipo
     priorities.subject = 1;
     
     if (stats.bookCount > stats.videoCount + stats.podcastCount) {
-      priorities.documentType = 2;
+      priorities.language = 2;
       priorities.duration = 4;
     } else {
       priorities.duration = 2;
-      priorities.documentType = 4;
+      priorities.language = 4;
     }
     
-    priorities.language = 3;
-    priorities.author = 5;
-    priorities.year = 6;
-    priorities.pages = 7;
+    priorities.author = 3;
+    priorities.year = 5;
+    priorities.pages = 6;
   }
 
   return priorities;

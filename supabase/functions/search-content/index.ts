@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -453,9 +452,9 @@ serve(async (req) => {
           const duration = item.duration.toLowerCase();
           const filter = filters.duration!.toLowerCase();
           
-          if (filter === 'curta') return duration.includes('m') && !duration.includes('h');
-          if (filter === 'media') return duration.includes('h') && parseInt(duration) <= 2;
-          if (filter === 'longa') return duration.includes('h') && parseInt(duration) > 2;
+          if (filter === 'short') return duration.includes('m') && !duration.includes('h');
+          if (filter === 'medium') return duration.includes('h') && parseInt(duration) <= 2;
+          if (filter === 'long') return duration.includes('h') && parseInt(duration) > 2;
           
           return duration.includes(filter);
         });
@@ -470,18 +469,9 @@ serve(async (req) => {
         );
       }
 
-      if (filters?.documentType?.length) {
-        filteredItems = filteredItems.filter(item =>
-          filters.documentType!.some(docType => 
-            item.documentType?.toLowerCase().includes(docType.toLowerCase())
-          )
-        );
-      }
-
       // Se aplicamos filtros que mudaram o total, recalcular
       if (query?.trim() || filters?.author?.trim() || filters?.subject?.length || 
-          filters?.year?.trim() || filters?.duration?.trim() || filters?.language?.length || 
-          filters?.documentType?.length) {
+          filters?.year?.trim() || filters?.duration?.trim() || filters?.language?.length) {
         // Para filtros, precisamos buscar todos os itens e filtrar
         console.log('🔍 Applying filters to all content...');
         
@@ -524,9 +514,9 @@ serve(async (req) => {
             const duration = item.duration.toLowerCase();
             const filter = filters.duration!.toLowerCase();
             
-            if (filter === 'curta') return duration.includes('m') && !duration.includes('h');
-            if (filter === 'media') return duration.includes('h') && parseInt(duration) <= 2;
-            if (filter === 'longa') return duration.includes('h') && parseInt(duration) > 2;
+            if (filter === 'short') return duration.includes('m') && !duration.includes('h');
+            if (filter === 'medium') return duration.includes('h') && parseInt(duration) <= 2;
+            if (filter === 'long') return duration.includes('h') && parseInt(duration) > 2;
             
             return duration.includes(filter);
           });
@@ -537,14 +527,6 @@ serve(async (req) => {
             filters.language!.some(lang => 
               item.language?.toLowerCase().includes(lang.toLowerCase()) ||
               item.pais?.toLowerCase().includes(lang.toLowerCase())
-            )
-          );
-        }
-
-        if (filters?.documentType?.length) {
-          allItemsForFiltering = allItemsForFiltering.filter(item =>
-            filters.documentType!.some(docType => 
-              item.documentType?.toLowerCase().includes(docType.toLowerCase())
             )
           );
         }
@@ -633,37 +615,97 @@ function transformToSearchResult(item: any, tipo: string): any {
     id: Math.floor(Math.random() * 10000) + 1000,
     originalId: item.id,
     title: item.titulo || item.podcast_titulo || item.title || 'Título não disponível',
-    author: item.autor || item.canal || 'Link Business School',
-    year: item.ano || new Date().getFullYear(),
+    author: getAuthorByType(item, tipo),
+    year: getYearByType(item, tipo),
     description: item.descricao || 'Descrição não disponível',
-    subject: getSubjectFromCategories(item.categorias) || getDefaultSubject(tipo),
+    subject: getSubjectByType(item, tipo),
     type: tipo === 'livro' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast',
-    thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
+    thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
+    language: getLanguageByType(item, tipo),
+    pais: item.pais // Para mapear país -> idioma em vídeos
   };
 
   if (tipo === 'livro') {
     return {
       ...baseResult,
       pdfUrl: item.arquivo,
-      pages: item.paginas,
-      language: item.language,
-      documentType: item.tipo_documento || 'Livro'
+      pages: item.paginas
     };
   } else if (tipo === 'aula') {
     return {
       ...baseResult,
       embedUrl: item.embed_url,
-      duration: item.duracao_ms ? formatDuration(item.duracao_ms) : undefined
+      duration: item.duracao ? formatVideoDuration(item.duracao) : undefined
     };
   } else if (tipo === 'podcast') {
     return {
       ...baseResult,
-      duration: item.duracao_ms ? formatDuration(item.duracao_ms) : undefined,
+      duration: item.duracao_ms ? formatPodcastDuration(item.duracao_ms) : undefined,
       embedUrl: item.embed_url
     };
   }
 
   return baseResult;
+}
+
+function getAuthorByType(item: any, tipo: string): string {
+  switch (tipo) {
+    case 'livro':
+      return item.autor || 'Autor desconhecido';
+    case 'aula':
+      return item.canal || 'Canal desconhecido';
+    case 'podcast':
+      return item.publicador || 'Publicador desconhecido';
+    default:
+      return 'Link Business School';
+  }
+}
+
+function getYearByType(item: any, tipo: string): number {
+  switch (tipo) {
+    case 'livro':
+      return item.ano || new Date().getFullYear();
+    case 'podcast':
+      // Extrair ano de data_lancamento (formato: YYYY-MM-DD)
+      if (item.data_lancamento) {
+        const year = parseInt(item.data_lancamento.split('-')[0]);
+        return isNaN(year) ? new Date().getFullYear() : year;
+      }
+      return new Date().getFullYear();
+    case 'aula':
+      // Vídeos não têm ano na API
+      return new Date().getFullYear();
+    default:
+      return new Date().getFullYear();
+  }
+}
+
+function getSubjectByType(item: any, tipo: string): string {
+  switch (tipo) {
+    case 'livro':
+    case 'aula':
+      return getSubjectFromCategories(item.categorias) || getDefaultSubject(tipo);
+    case 'podcast':
+      // Podcasts não têm categorias na API por enquanto
+      return getDefaultSubject(tipo);
+    default:
+      return getDefaultSubject(tipo);
+  }
+}
+
+function getLanguageByType(item: any, tipo: string): string | undefined {
+  switch (tipo) {
+    case 'livro':
+      return item.language;
+    case 'aula':
+      // Vídeos usam país, será mapeado posteriormente
+      return undefined;
+    case 'podcast':
+      // Podcasts não têm idioma na API por enquanto
+      return undefined;
+    default:
+      return undefined;
+  }
 }
 
 function getSubjectFromCategories(categorias: string[]): string {
@@ -682,12 +724,23 @@ function getDefaultSubject(tipo: string): string {
   }
 }
 
-function formatDuration(durationMs: number): string {
+function formatPodcastDuration(durationMs: number): string {
   const minutes = Math.floor(durationMs / 60000);
   const hours = Math.floor(minutes / 60);
   
   if (hours > 0) {
     return `${hours}h ${minutes % 60}m`;
+  }
+  return `${minutes}m`;
+}
+
+function formatVideoDuration(duration: number): string {
+  // Assumindo que 'duracao' dos vídeos já vem em minutos
+  const hours = Math.floor(duration / 60);
+  const minutes = duration % 60;
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
   }
   return `${minutes}m`;
 }

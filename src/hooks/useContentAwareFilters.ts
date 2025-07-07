@@ -27,13 +27,12 @@ export const useContentAwareFilters = ({
   const defaultOpenSections = useMemo(() => {
     // Abrir seções mais prioritárias por padrão
     const sections: Record<string, boolean> = {
-      subject: true, // Sempre aberto
-      author: false,
-      language: filterRelevance.language && filterPriorities.language <= 3,
-      documentType: filterRelevance.documentType && filterPriorities.documentType <= 3,
-      year: false,
-      duration: filterRelevance.duration && filterPriorities.duration <= 3,
-      pages: filterRelevance.pages && filterPriorities.pages <= 3,
+      subject: filterRelevance.subject && filterPriorities.subject <= 2,
+      author: filterPriorities.author <= 2,
+      language: filterRelevance.language && filterPriorities.language <= 2,
+      year: filterRelevance.year && filterPriorities.year <= 2,
+      duration: filterRelevance.duration && filterPriorities.duration <= 2,
+      pages: filterRelevance.pages && filterPriorities.pages <= 2,
     };
 
     return sections;

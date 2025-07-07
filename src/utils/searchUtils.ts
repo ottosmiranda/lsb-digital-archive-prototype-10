@@ -107,8 +107,8 @@ export const filterResults = (
       }
     }
 
-    // Resource type filter
-    if (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) {
+    // Resource type filter - CORRIGIDO: Tratar 'all' como "sem filtros de tipo"
+    if (filters.resourceType.length > 0 && !isShowingAllResourceTypes(filters.resourceType)) {
       if (!filters.resourceType.includes(item.type)) {
         return false;
       }
@@ -124,7 +124,7 @@ export const filterResults = (
       }
     }
 
-    // Author filter - CORRIGIDO: Agora é array
+    // Author filter
     if (filters.author.length > 0) {
       const matchesAuthor = filters.author.some(filterAuthor =>
         item.author.toLowerCase().includes(filterAuthor.toLowerCase())
@@ -142,7 +142,7 @@ export const filterResults = (
       }
     }
 
-    // CORRIGIDO: Duration filter usando nova lógica
+    // Duration filter
     if (filters.duration.trim()) {
       if (!matchesDurationFilter(item.duration, filters.duration)) {
         return false;
@@ -205,14 +205,70 @@ export const sortResults = (results: SearchResult[], sortBy: string, query?: str
   }
 };
 
-export const checkHasActiveFilters = (filters: SearchFilters): boolean => {
+// NOVA FUNÇÃO: Verifica se está mostrando todos os tipos de recursos
+export const isShowingAllResourceTypes = (resourceTypes: string[]): boolean => {
+  return resourceTypes.length === 0 || resourceTypes.includes('all');
+};
+
+// NOVA FUNÇÃO: Verifica se deve executar busca (diferente de ter filtros ativos)
+export const shouldPerformSearch = (query: string, filters: SearchFilters): boolean => {
+  console.log('🔍 Checking if should perform search:', { 
+    query: query.trim(), 
+    filters,
+    hasQuery: !!query.trim(),
+    hasNonResourceTypeFilters: hasNonResourceTypeFilters(filters),
+    isShowingAll: isShowingAllResourceTypes(filters.resourceType)
+  });
+  
+  // Sempre buscar se há query
+  if (query.trim()) {
+    return true;
+  }
+  
+  // Sempre buscar se está mostrando "Todos" (para listar todos os recursos)
+  if (isShowingAllResourceTypes(filters.resourceType)) {
+    return true;
+  }
+  
+  // Buscar se há filtros específicos de tipo de recurso
+  if (filters.resourceType.length > 0) {
+    return true;
+  }
+  
+  // Buscar se há outros filtros
+  if (hasNonResourceTypeFilters(filters)) {
+    return true;
+  }
+  
+  return false;
+};
+
+// NOVA FUNÇÃO: Verifica se há filtros ativos além do tipo de recurso
+export const hasNonResourceTypeFilters = (filters: SearchFilters): boolean => {
   return (
-    filters.resourceType.length > 0 ||  // CORRIGIDO: Considera qualquer resourceType como filtro ativo, incluindo ['all']
     filters.subject.length > 0 ||
     filters.author.length > 0 ||
     filters.year !== '' ||
     filters.duration !== '' ||
     filters.language.length > 0 ||
     filters.documentType.length > 0
+  );
+};
+
+// REFATORADA: Função para verificar se há filtros ativos (para UI)
+export const checkHasActiveFilters = (filters: SearchFilters): boolean => {
+  console.log('🔍 Checking active filters for UI:', { 
+    filters,
+    hasResourceType: filters.resourceType.length > 0,
+    isShowingAll: isShowingAllResourceTypes(filters.resourceType),
+    hasOtherFilters: hasNonResourceTypeFilters(filters)
+  });
+  
+  // Para UI, considerar que "Todos" não é um filtro ativo
+  const hasResourceTypeFilter = filters.resourceType.length > 0 && !isShowingAllResourceTypes(filters.resourceType);
+  
+  return (
+    hasResourceTypeFilter ||
+    hasNonResourceTypeFilters(filters)
   );
 };

@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SearchFilters } from '@/types/searchTypes';
+import { isShowingAllResourceTypes } from '@/utils/searchUtils';
 
 interface FilterChipsProps {
   filters: SearchFilters;
@@ -12,10 +13,11 @@ interface FilterChipsProps {
 }
 
 const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) => {
+  // CORRIGIDO: Não mostrar "Todos" como filtro ativo
   const hasFilters = 
-    filters.resourceType.length > 0 ||
+    (filters.resourceType.length > 0 && !isShowingAllResourceTypes(filters.resourceType)) ||
     filters.subject.length > 0 ||
-    filters.author.length > 0 || // CORRIGIDO: Agora é array
+    filters.author.length > 0 ||
     filters.year ||
     filters.duration ||
     filters.language.length > 0 ||
@@ -25,7 +27,6 @@ const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) 
 
   const getResourceTypeLabel = (type: string) => {
     switch (type) {
-      case 'all': return 'Todos os tipos';
       case 'titulo': return 'Livros';
       case 'video': return 'Vídeos';
       case 'podcast': return 'Podcasts';
@@ -46,8 +47,8 @@ const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) 
     <div className="flex flex-wrap items-center gap-2 mb-6">
       <span className="text-sm text-gray-600 font-medium">Filtros ativos:</span>
       
-      {/* Resource Type filters */}
-      {filters.resourceType.map(type => (
+      {/* Resource Type filters - CORRIGIDO: Não mostrar "all" */}
+      {filters.resourceType.filter(type => type !== 'all').map(type => (
         <Badge key={type} variant="secondary" className="flex items-center gap-1">
           {getResourceTypeLabel(type)}
           <button
@@ -72,7 +73,7 @@ const FilterChips = ({ filters, onRemoveFilter, onClearAll }: FilterChipsProps) 
         </Badge>
       ))}
 
-      {/* Author filters - CORRIGIDO: Agora é array */}
+      {/* Author filters */}
       {filters.author.map(author => (
         <Badge key={author} variant="secondary" className="flex items-center gap-1">
           Autor: {author}

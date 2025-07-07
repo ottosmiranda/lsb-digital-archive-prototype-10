@@ -3,13 +3,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SearchFilters } from '@/types/searchTypes';
 import { useSearchAnalytics } from '@/hooks/useSearchAnalytics';
+import { isShowingAllResourceTypes } from '@/utils/searchUtils';
 
 export const useSearchState = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { trackSearch } = useSearchAnalytics();
   
   const [filters, setFilters] = useState<SearchFilters>({
-    resourceType: [],
+    resourceType: ['all'], // CORRIGIDO: Inicializar com 'all' por padrão
     subject: [],
     author: [],
     year: '',
@@ -18,7 +19,7 @@ export const useSearchState = () => {
     documentType: [],
   });
   
-  const [sortBy, setSortByState] = useState('relevance');
+  const [sortBy, setSortByState] = useState('title'); // CORRIGIDO: Padrão para ordenação alfabética
   const [currentPage, setCurrentPage] = useState(1);
 
   const query = searchParams.get('q') || '';
@@ -27,34 +28,36 @@ export const useSearchState = () => {
     return searchParams.getAll('filtros') || [];
   }, [searchParams]);
 
-  // Initialize filters and sorting from URL params only once
+  // CORRIGIDO: Inicialização mais robusta
   useEffect(() => {
-    console.log('🔄 Initializing filters from URL params:', { appliedFilters });
+    console.log('🔄 Initializing filters from URL params:', { 
+      appliedFilters,
+      currentFilters: filters 
+    });
     
     const resourceTypesFromUrl = searchParams.getAll('filtros');
+    const sortParam = searchParams.get('ordenar');
 
-    // CORRIGIDO: Melhor lógica de inicialização
+    // Só atualizar se há filtros específicos na URL
     if (resourceTypesFromUrl.length > 0) {
-      // Se há filtros na URL, usar eles
+      console.log('📍 Setting resourceType from URL:', resourceTypesFromUrl);
       setFilters(prev => ({
         ...prev,
         resourceType: resourceTypesFromUrl
       }));
-      console.log('📍 Setting resourceType from URL:', resourceTypesFromUrl);
     } else {
-      // Se não há filtros na URL, definir como "Todos" por padrão
-      setFilters(prev => ({
-        ...prev,
-        resourceType: ['all']
-      }));
-      console.log('📍 Setting default resourceType to "all"');
+      // Manter 'all' como padrão se não há filtros na URL
+      console.log('📍 Keeping default resourceType as ["all"]');
     }
 
-    const sortParam = searchParams.get('ordenar');
+    // Configurar ordenação baseada na URL
     if (sortParam === 'recentes') {
       setSortByState('recent');
     } else if (sortParam === 'mais-acessados') {
       setSortByState('accessed');
+    } else if (!resourceTypesFromUrl.length) {
+      // Se não há filtros específicos, usar ordenação alfabética
+      setSortByState('title');
     }
   }, []); // Apenas na inicialização
 
@@ -88,29 +91,31 @@ export const useSearchState = () => {
     setSearchParams(newSearchParams);
   };
 
-  // CORRIGIDO: Função para atualizar filtros E URL params
+  // CORRIGIDO: Função para sincronizar filtros com URL
   const updateFilters = (newFilters: SearchFilters) => {
-    console.log('🔧 Updating filters:', { newFilters });
+    console.log('🔧 Updating filters and URL:', { 
+      newFilters,
+      isShowingAll: isShowingAllResourceTypes(newFilters.resourceType)
+    });
+    
     setFilters(newFilters);
     
-    // Sincronizar URL params com resourceType
+    // Atualizar URL params
     const newSearchParams = new URLSearchParams(searchParams);
     
     // Remover filtros existentes
     newSearchParams.delete('filtros');
     
-    // Adicionar novos filtros de resourceType
-    if (newFilters.resourceType.length > 0) {
-      if (newFilters.resourceType.includes('all')) {
-        // Para "Todos", não adicionar parâmetro filtros na URL
-        console.log('📍 Setting "Todos" - removing filtros param');
-      } else {
-        // Para filtros específicos, adicionar na URL
-        newFilters.resourceType.forEach(type => {
-          newSearchParams.append('filtros', type);
-        });
-        console.log('📍 Setting specific filters in URL:', newFilters.resourceType);
-      }
+    // CORRIGIDO: Lógica para URL params baseada no estado dos filtros
+    if (isShowingAllResourceTypes(newFilters.resourceType)) {
+      // Para "Todos", não adicionar parâmetro filtros na URL
+      console.log('📍 Showing all resources - removing filtros param');
+    } else if (newFilters.resourceType.length > 0) {
+      // Para filtros específicos, adicionar na URL
+      newFilters.resourceType.forEach(type => {
+        newSearchParams.append('filtros', type);
+      });
+      console.log('📍 Setting specific filters in URL:', newFilters.resourceType);
     }
     
     setSearchParams(newSearchParams);

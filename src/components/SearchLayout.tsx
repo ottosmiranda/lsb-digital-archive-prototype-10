@@ -12,6 +12,7 @@ import FilterChips from '@/components/FilterChips';
 import DataRefreshButton from '@/components/DataRefreshButton';
 import Footer from '@/components/Footer';
 import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
+import { isShowingAllResourceTypes } from '@/utils/searchUtils';
 
 interface SearchLayoutProps {
   query: string;
@@ -57,22 +58,23 @@ const SearchLayout = ({
   useEffect(() => {
     console.log('🔄 Syncing activeContentType with filters:', { 
       resourceType: filters.resourceType,
-      currentActiveContentType: activeContentType 
+      currentActiveContentType: activeContentType,
+      isShowingAll: isShowingAllResourceTypes(filters.resourceType)
     });
     
-    if (filters.resourceType.length === 1) {
+    if (isShowingAllResourceTypes(filters.resourceType)) {
+      setActiveContentType('all');
+      console.log('📍 Set activeContentType to "all" (showing all resources)');
+    } else if (filters.resourceType.length === 1) {
       const resourceType = filters.resourceType[0];
-      if (['titulo', 'video', 'podcast', 'all'].includes(resourceType)) {
+      if (['titulo', 'video', 'podcast'].includes(resourceType)) {
         setActiveContentType(resourceType);
         console.log('📍 Set activeContentType to:', resourceType);
       }
-    } else if (filters.resourceType.length === 0) {
-      setActiveContentType('all');
-      console.log('📍 Set activeContentType to "all" (no filters)');
-    } else {
-      // Multiple resourceTypes selected
+    } else if (filters.resourceType.length > 1) {
+      // Multiple specific resourceTypes selected
       setActiveContentType('all'); 
-      console.log('📍 Set activeContentType to "all" (multiple filters)');
+      console.log('📍 Set activeContentType to "all" (multiple specific filters)');
     }
   }, [filters.resourceType]);
   
@@ -87,10 +89,14 @@ const SearchLayout = ({
     switch (filterType) {
       case 'resourceType':
         if (value === 'all') {
-          // Se removendo "all", volta para estado inicial sem filtros
+          // Se removendo "all", volta para estado sem filtros
           newFilters.resourceType = [];
-        } else {
+        } else if (value) {
           newFilters.resourceType = newFilters.resourceType.filter(type => type !== value);
+          // Se não há mais filtros específicos, volta para "all"
+          if (newFilters.resourceType.length === 0) {
+            newFilters.resourceType = ['all'];
+          }
         }
         break;
       case 'subject':
@@ -126,13 +132,13 @@ const SearchLayout = ({
     const newFilters = { ...filters };
     
     if (type === 'all') {
-      // CORRIGIDO: Usar 'all' como valor especial para indicar "Todos"
+      // Para "Todos", usar estado especial
       newFilters.resourceType = ['all'];
-      // Automatically apply alphabetical sorting when "Todos" is selected
+      // Aplicar ordenação alfabética automaticamente
       onSortChange('title');
       console.log('📍 Setting resourceType to ["all"] and sort to "title"');
-    } else {
-      // Ensure only valid types are pushed
+    } else if (['titulo', 'video', 'podcast'].includes(type)) {
+      // Para tipos específicos
       newFilters.resourceType = [type]; 
       console.log('📍 Setting resourceType to:', [type]);
     }

@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
 import { useApiSearch } from '@/hooks/useApiSearch';
-import { checkHasActiveFilters } from '@/utils/searchUtils';
+import { shouldPerformSearch, checkHasActiveFilters } from '@/utils/searchUtils';
 
 interface SearchResponse {
   results: SearchResult[];
@@ -66,18 +66,16 @@ export const useSearchResults = () => {
 
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // Verificar se há filtros ativos - incluindo estado "Todos"
+  // CORRIGIDO: Usar nova função para verificar se há filtros ativos
   const hasActiveFilters = useMemo((): boolean => {
     const result = checkHasActiveFilters(filters);
-    console.log('🔍 Checking active filters:', { filters, hasActiveFilters: result });
+    console.log('🔍 Checking active filters for UI:', { filters, hasActiveFilters: result });
     return result;
   }, [filters]);
 
-  // Função para executar busca
+  // CORRIGIDA: Função para executar busca
   const performSearch = async () => {
-    // CORRIGIDO: Buscar se houver query OU filtros ativos (incluindo 'all' para "Todos")
-    // O filtro "Todos" deve sempre executar busca para mostrar todos os resultados
-    const shouldSearch = query.trim() || hasActiveFilters;
+    const shouldSearch = shouldPerformSearch(query, filters);
     
     console.log('🚀 Performing search analysis:', { 
       query: query.trim(), 
@@ -85,8 +83,7 @@ export const useSearchResults = () => {
       sortBy, 
       currentPage,
       hasActiveFilters,
-      shouldSearch,
-      resourceTypeContainsAll: filters.resourceType.includes('all')
+      shouldSearch
     });
     
     if (!shouldSearch) {
@@ -114,7 +111,6 @@ export const useSearchResults = () => {
       filters, 
       sortBy, 
       currentPage,
-      hasActiveFilters,
       shouldSearch
     });
 
@@ -137,7 +133,6 @@ export const useSearchResults = () => {
           currentPage: response.pagination.currentPage,
           totalPages: response.pagination.totalPages,
           resultsInPage: response.results.length,
-          isRealPagination: response.pagination.totalResults > 0,
           appliedFilters: response.searchInfo.appliedFilters
         });
         

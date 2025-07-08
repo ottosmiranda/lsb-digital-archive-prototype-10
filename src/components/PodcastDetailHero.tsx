@@ -1,9 +1,9 @@
 
-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { User, Calendar, Tag, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ShareButtons from "@/components/ShareButtons";
 import React from "react";
 
 const fallbackImg = "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=300&q=80";
@@ -29,6 +29,10 @@ const PodcastDetailHero = ({
   description,
   onPlayLatest
 }: PodcastDetailHeroProps) => {
+  const shareUrl = window.location.href;
+  const shareTitle = title;
+  const shareDescription = description;
+
   return (
     <section className="relative mb-8">
       {/* Hero: Cover, Spotify Player Button, metadata */}
@@ -62,8 +66,8 @@ const PodcastDetailHero = ({
             <Calendar className="h-4 w-4" />
             <span>Desde {year}</span>
           </div>
-          {/* Spotify Player Button */}
-          <div className="flex justify-start mt-2">
+          {/* Spotify Player Button and Share Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start mt-2">
             <Button 
               data-testid="play-last-episode" 
               className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg shadow transition" 
@@ -73,6 +77,18 @@ const PodcastDetailHero = ({
               <Play className="h-5 w-5 mr-2" />
               Ouça o episódio
             </Button>
+            
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-gray-600">Compartilhar</span>
+              <ShareButtons
+                shareUrl={shareUrl}
+                shareTitle={shareTitle}
+                shareDescription={shareDescription}
+                layout="horizontal"
+                iconSize={28}
+                showCopyButton={true}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -90,4 +106,3 @@ const PodcastDetailHero = ({
 };
 
 export default PodcastDetailHero;
-

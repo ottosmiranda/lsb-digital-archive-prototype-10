@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
@@ -18,9 +17,7 @@ import {
 import PodcastDetailHero from "@/components/PodcastDetailHero";
 import PodcastEpisodeList from "@/components/PodcastEpisodeList";
 import { useDataLoader } from '@/hooks/useDataLoader';
-import { useResourceById } from '@/hooks/useResourceById';
 import LoadingSkeleton from '@/components/ResourceDetail/LoadingSkeleton';
-import LoadingSearchState from '@/components/ResourceDetail/LoadingSearchState';
 import ResourceNotFound from '@/components/ResourceDetail/ResourceNotFound';
 import ResourceBreadcrumb from '@/components/ResourceDetail/ResourceBreadcrumb';
 import BackButton from '@/components/ResourceDetail/BackButton';
@@ -33,54 +30,71 @@ import { Resource } from '@/types/resourceTypes';
 
 const ResourceDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { allData, loading: dataLoaderLoading } = useDataLoader();
-  const { 
-    resource: apiResource, 
-    suggestions, 
-    loading: apiSearchLoading, 
-    error: apiError,
-    retrySearch,
-    searchAttempted 
-  } = useResourceById(id);
-  
+  const { allData, loading } = useDataLoader();
   const [resource, setResource] = useState<Resource | null>(null);
   const [resourceLoading, setResourceLoading] = useState(true);
-  const [searchPhase, setSearchPhase] = useState<'local' | 'api' | 'complete'>('local');
 
   // Scroll to top when component mounts or when resource changes
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id, resource]);
 
-  // FASE 1: Busca local (dados já carregados)
   useEffect(() => {
-    const findResourceLocally = () => {
-      if (!allData || allData.length === 0 || !id) {
-        console.log('📊 Dados locais não disponíveis ainda');
-        return null;
+    const findResource = () => {
+      if (!allData || allData.length === 0) {
+        console.log('📊 No data available yet');
+        setResourceLoading(false);
+        return;
       }
 
-      console.group('🔍 BUSCA LOCAL - ID:', id);
-      console.log('📊 Total de dados locais:', allData.length);
+      console.group('🔍 RESOURCE SEARCH DEBUG');
+      console.log('🎯 Target ID:', id);
+      console.log('📊 Total available data:', allData.length, 'items');
 
-      // PHASE 1: Direct ID match
+      // Enhanced debugging - show all video IDs
+      const videos = allData.filter(item => item.type === 'video');
+      console.log('🎬 Available videos:', videos.length);
+      console.log('🎬 Video ID samples:', videos.slice(0, 10).map(v => ({
+        id: v.id,
+        originalId: v.originalId,
+        title: v.title.substring(0, 40) + '...'
+      })));
+
+      // PHASE 1: Direct ID match (most reliable)
+      console.log('🔍 Phase 1: Searching by exact ID match...');
       let foundResource = allData.find(item => String(item.id) === id);
       
       if (foundResource) {
-        console.log('✅ Encontrado por ID direto local');
+        console.log('✅ Phase 1 SUCCESS: Found by exact ID', {
+          id: foundResource.id,
+          type: foundResource.type,
+          title: foundResource.title
+        });
       } else {
-        // PHASE 2: originalId match para videos
+        console.log('❌ Phase 1 FAILED: No exact ID match');
+        
+        // PHASE 2: originalId match for videos (UUID from API)
+        console.log('🔍 Phase 2: Searching by originalId for videos...');
         foundResource = allData.find(item => 
           item.type === 'video' && (item as any).originalId === id
         );
         
         if (foundResource) {
-          console.log('✅ Encontrado por originalId local');
+          console.log('✅ Phase 2 SUCCESS: Found by originalId', {
+            id: foundResource.id,
+            originalId: (foundResource as any).originalId,
+            type: foundResource.type,
+            title: foundResource.title
+          });
         } else {
-          // PHASE 3: busca numérica aproximada
-          const numericId = parseInt(id);
-          if (!isNaN(numericId)) {
-            const videos = allData.filter(item => item.type === 'video');
+          console.log('❌ Phase 2 FAILED: No originalId match');
+          
+          // PHASE 3: Smart numerical ID matching
+          console.log('🔍 Phase 3: Smart numerical ID matching...');
+          const numericId = parseInt(id || '0');
+          
+          if (numericId >= 1000) {
+            // Look for videos with closest ID match
             const videoMatches = videos
               .map(v => ({ 
                 video: v, 
@@ -90,16 +104,32 @@ const ResourceDetail = () => {
             
             if (videoMatches.length > 0 && videoMatches[0].distance < 1000) {
               foundResource = videoMatches[0].video;
-              console.log('✅ Encontrado por proximidade local');
+              console.log('✅ Phase 3 SUCCESS: Found closest video match', {
+                targetId: numericId,
+                foundId: foundResource.id,
+                distance: videoMatches[0].distance,
+                title: foundResource.title
+              });
+            } else {
+              console.log('❌ Phase 3 FAILED: No close video match');
             }
           }
         }
       }
 
       if (foundResource) {
-        // Converter SearchResult para Resource
+        console.log('🎉 FINAL RESULT: Resource found!', {
+          id: foundResource.id,
+          originalId: (foundResource as any).originalId,
+          type: foundResource.type,
+          title: foundResource.title,
+          hasEmbedUrl: !!(foundResource as any).embedUrl,
+          hasThumbnail: !!foundResource.thumbnail
+        });
+        
+        // Convert SearchResult to Resource format
         const convertedResource: Resource = {
-          id: typeof foundResource.id === 'string' ? parseInt(id) : foundResource.id,
+          id: typeof foundResource.id === 'string' ? parseInt(id || '0') : foundResource.id,
           title: foundResource.title,
           type: foundResource.type,
           author: foundResource.author,
@@ -121,91 +151,43 @@ const ResourceDetail = () => {
           categories: (foundResource as any).categories
         };
 
-        console.log('🎉 Recurso encontrado localmente:', convertedResource.title);
-        console.groupEnd();
-        return convertedResource;
+        console.log('🔄 Final converted resource:', {
+          id: convertedResource.id,
+          type: convertedResource.type,
+          hasEmbedUrl: !!convertedResource.embedUrl,
+          embedUrl: convertedResource.embedUrl?.substring(0, 50) + '...'
+        });
+        setResource(convertedResource);
+      } else {
+        console.log('💀 TOTAL FAILURE: Resource not found for ID:', id);
+        console.log('🔍 Available ID ranges:', {
+          videos: videos.length > 0 ? {
+            minId: Math.min(...videos.map(v => v.id)),
+            maxId: Math.max(...videos.map(v => v.id)),
+            sampleIds: videos.slice(0, 5).map(v => v.id)
+          } : 'No videos',
+          allTypes: {
+            minId: Math.min(...allData.map(v => v.id)),
+            maxId: Math.max(...allData.map(v => v.id))
+          }
+        });
+        setResource(null);
       }
-
-      console.log('❌ Recurso não encontrado localmente');
+      
       console.groupEnd();
-      return null;
+      setResourceLoading(false);
     };
 
-    if (!dataLoaderLoading && id) {
-      const localResource = findResourceLocally();
-      if (localResource) {
-        setResource(localResource);
-        setResourceLoading(false);
-        setSearchPhase('complete');
-        console.log('✅ Usando recurso encontrado localmente');
-      } else {
-        // Não encontrado localmente, partir para busca na API
-        setSearchPhase('api');
-        console.log('🌐 Iniciando busca na API...');
-      }
+    if (!loading) {
+      findResource();
     }
-  }, [id, allData, dataLoaderLoading]);
+  }, [id, allData, loading]);
 
-  // FASE 2: Busca na API (quando não encontrado localmente)
-  useEffect(() => {
-    if (searchPhase === 'api' && apiResource) {
-      setResource(apiResource);
-      setResourceLoading(false);
-      setSearchPhase('complete');
-      console.log('✅ Recurso encontrado via API:', apiResource.title);
-    } else if (searchPhase === 'api' && searchAttempted && !apiSearchLoading && !apiResource) {
-      // Busca na API foi concluída mas não encontrou o recurso
-      setResourceLoading(false);
-      setSearchPhase('complete');
-      console.log('❌ Recurso não encontrado nem localmente nem na API');
-    }
-  }, [searchPhase, apiResource, searchAttempted, apiSearchLoading]);
+  // Loading skeletons
+  if (loading || resourceLoading) return <><Navigation /><LoadingSkeleton /></>;
+  if (!resource) return <><Navigation /><ResourceNotFound /></>;
 
-  // Estados de loading
-  if (dataLoaderLoading) {
-    return (
-      <>
-        <Navigation />
-        <LoadingSkeleton />
-      </>
-    );
-  }
-
-  if (searchPhase === 'api' && apiSearchLoading && id) {
-    return (
-      <>
-        <Navigation />
-        <LoadingSearchState resourceId={id} />
-      </>
-    );
-  }
-
-  // Recurso não encontrado
-  if (searchPhase === 'complete' && !resource) {
-    return (
-      <>
-        <Navigation />
-        <ResourceNotFound 
-          resourceId={id}
-          suggestions={suggestions}
-          onRetry={retrySearch}
-          loading={apiSearchLoading}
-        />
-      </>
-    );
-  }
-
-  // Loading enquanto ainda está processando
-  if (resourceLoading || !resource) {
-    return (
-      <>
-        <Navigation />
-        <LoadingSkeleton />
-      </>
-    );
-  }
-
-  // Se podcast detectado
+  // If podcast detected
   if (resource.type === 'podcast') {
     return <PodcastDetailView podcast={resource} />;
   }
@@ -218,12 +200,12 @@ const ResourceDetail = () => {
         <BackButton />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
+          {/* Main Content - Ordem alterada: ResourceContent primeiro, MediaSection depois */}
           <div className="lg:col-span-2">
             <ResourceContent resource={resource} />
             <MediaSection resource={resource} />
           </div>
-          {/* Sidebar */}
+          {/* Sidebar - Reordenado: ResourceInfo primeiro, ActionButtons depois */}
           <div className="space-y-6">
             <ResourceInfo resource={resource} />
             <ActionButtons resource={resource} />

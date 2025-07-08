@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AlertCircle, Download, RefreshCw } from 'lucide-react';
+import { AlertCircle, Download, ExternalLink, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface PDFFallbackProps {
@@ -23,6 +23,7 @@ export const PDFFallback = ({
   fallbackMode,
   error,
   onDownload,
+  onOpenInNewTab,
   onRetry,
   onFallbackLoad,
   onFallbackError
@@ -55,6 +56,10 @@ export const PDFFallback = ({
           <Button onClick={onDownload} variant="default">
             <Download className="h-4 w-4 mr-2" />
             Baixar PDF
+          </Button>
+          <Button onClick={onOpenInNewTab} variant="outline">
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Abrir em nova aba
           </Button>
           <Button onClick={onRetry} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />

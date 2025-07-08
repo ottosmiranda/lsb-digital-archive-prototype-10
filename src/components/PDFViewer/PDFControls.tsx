@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Download, Maximize2, Minimize2, RefreshCw, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import { Download, Maximize2, Minimize2, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,7 @@ export const PDFControls = ({
   onZoomOut,
   onToggleFullscreen,
   onDownload,
+  onOpenInNewTab,
   onRetry
 }: PDFControlsProps) => {
   const goToPage = (page: number) => {
@@ -45,7 +46,7 @@ export const PDFControls = ({
     <div className="flex items-center justify-between p-4 border-b bg-gray-50">
       <div className="flex items-center space-x-3">
         <Badge variant="outline" className="text-xs">
-          {fallbackMode ? 'Visualizador do Livro' : 'React PDF'}
+          {fallbackMode ? 'Google Docs Viewer' : 'React PDF'}
         </Badge>
         {numPages > 0 && !fallbackMode && (
           <Badge variant="secondary" className="text-xs">
@@ -106,9 +107,12 @@ export const PDFControls = ({
           </>
         )}
 
-        {/* Action buttons - removed the "open in new tab" button */}
+        {/* Action buttons */}
         <Button onClick={onDownload} size="sm" variant="outline" title="Baixar PDF">
           <Download className="h-4 w-4" />
+        </Button>
+        <Button onClick={onOpenInNewTab} size="sm" variant="outline" title="Abrir em nova aba">
+          <ExternalLink className="h-4 w-4" />
         </Button>
         {error && !fallbackMode && (
           <Button onClick={onRetry} size="sm" variant="outline" title="Tentar novamente">

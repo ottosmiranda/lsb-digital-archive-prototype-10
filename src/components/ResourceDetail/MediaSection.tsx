@@ -4,6 +4,7 @@ import { Play, Clock, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Resource } from "@/types/resourceTypes";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import PDFViewer from "@/components/PDFViewer";
 
 const MediaSection = ({ resource }: { resource: Resource }) => {
   if (resource.type === 'video') {
@@ -55,7 +56,12 @@ const MediaSection = ({ resource }: { resource: Resource }) => {
   }
 
   if (resource.type === 'titulo') {
-    // Always show book thumbnail - PDF viewer is now handled in ResourceDetail.tsx
+    // If we have a PDF URL, show the PDF viewer
+    if (resource.pdfUrl) {
+      return <PDFViewer pdfUrl={resource.pdfUrl} title={resource.title} />;
+    }
+
+    // Fallback to book thumbnail if no PDF available
     return (
       <Card className="mb-6">
         <CardContent className="p-0">

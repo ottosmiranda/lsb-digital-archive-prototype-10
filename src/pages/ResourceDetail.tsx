@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
@@ -74,10 +73,10 @@ const ResourceDetail = () => {
       } else {
         console.log('❌ Phase 1 FAILED: No exact ID match');
         
-        // PHASE 2: originalId match for videos (UUID from API)
-        console.log('🔍 Phase 2: Searching by originalId for videos...');
+        // PHASE 2: originalId match for videos AND podcasts (UUID from API)
+        console.log('🔍 Phase 2: Searching by originalId for videos and podcasts...');
         foundResource = allData.find(item => 
-          item.type === 'video' && (item as any).originalId === id
+          (item.type === 'video' || item.type === 'podcast') && (item as any).originalId === id
         );
         
         if (foundResource) {

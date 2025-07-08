@@ -35,7 +35,7 @@ const Navigation = () => {
               <img 
                 alt="Biblioteca Digital & Link" 
                 className="h-10 w-auto" 
-                src="/lovable-uploads/a9499420-f099-451c-b38c-74c487bcebd2.png" 
+                src="/lovable-uploads/logo-bibliotecadigital-link.webp" 
               />
             </Link>
           </div>

@@ -111,9 +111,12 @@ export const PDFControls = ({
         <Button onClick={onDownload} size="sm" variant="outline" title="Baixar PDF">
           <Download className="h-4 w-4" />
         </Button>
-        <Button onClick={onOpenInNewTab} size="sm" variant="outline" title="Abrir em nova aba">
-          <ExternalLink className="h-4 w-4" />
-        </Button>
+        {/* Remove the "Open in new tab" button when in fallback mode (Google Docs viewer) */}
+        {!fallbackMode && (
+          <Button onClick={onOpenInNewTab} size="sm" variant="outline" title="Abrir em nova aba">
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+        )}
         {error && !fallbackMode && (
           <Button onClick={onRetry} size="sm" variant="outline" title="Tentar novamente">
             <RefreshCw className="h-4 w-4" />

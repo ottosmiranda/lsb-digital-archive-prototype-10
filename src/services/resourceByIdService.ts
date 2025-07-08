@@ -35,25 +35,36 @@ class ResourceByIdService {
       return { success: true, resource: cached };
     }
 
-    // 2. Buscar na API via edge function
+    // 2. Buscar na API via edge function com timeout personalizado
     try {
-      const { data, error } = await supabase.functions.invoke('search-content', {
+      console.log(`🌐 Fazendo busca na API para ID ${id}`);
+      
+      // Timeout de 15 segundos para busca por ID
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Timeout na busca por ID ${id} após 15 segundos`)), 15000);
+      });
+      
+      const searchPromise = supabase.functions.invoke('search-content', {
         body: {
           query: '',
           filters: { resourceType: ['all'] },
-          searchById: id, // Novo parâmetro para busca por ID específico
+          searchById: id, // Parâmetro para busca por ID específico
           sortBy: 'relevance',
           page: 1,
           resultsPerPage: 1
         }
       });
 
+      const { data, error } = await Promise.race([searchPromise, timeoutPromise]);
+
       if (error) {
         console.error(`❌ Erro na busca por ID ${id}:`, error);
-        return { success: false, error: error.message };
+        throw new Error(`Erro na busca: ${error.message}`);
       }
 
-      if (data.success && data.results.length > 0) {
+      console.log(`📊 Resposta da API para ID ${id}:`, data);
+
+      if (data && data.success && data.results && data.results.length > 0) {
         const searchResult = data.results[0];
         const resource = this.transformSearchResultToResource(searchResult, id);
         
@@ -64,9 +75,19 @@ class ResourceByIdService {
         return { success: true, resource };
       }
 
-      // 3. Se não encontrado, buscar sugestões
-      console.log(`🔍 Recurso não encontrado para ID ${id}, buscando sugestões...`);
-      const suggestions = await this.findSuggestions(id);
+      // 3. Se não encontrado, verificar se há sugestões na resposta
+      if (data && data.results && data.results.length > 0) {
+        console.log(`💡 Sugestões encontradas para ID ${id}:`, data.results.length);
+        return { 
+          success: false, 
+          error: `Recurso com ID ${id} não encontrado`,
+          suggestions: data.results
+        };
+      }
+
+      // 4. Último recurso: buscar sugestões por proximidade
+      console.log(`🔍 Buscando sugestões por proximidade para ID ${id}`);
+      const suggestions = await this.findSuggestionsByProximity(id);
       
       return { 
         success: false, 
@@ -76,6 +97,17 @@ class ResourceByIdService {
 
     } catch (error) {
       console.error(`❌ Erro na busca por ID ${id}:`, error);
+      
+      // Em caso de erro de timeout ou rede, tentar buscar sugestões
+      if (error instanceof Error && (error.message.includes('timeout') || error.message.includes('fetch'))) {
+        const suggestions = await this.findSuggestionsByProximity(id);
+        return { 
+          success: false, 
+          error: `Erro de conexão ao buscar ID ${id}`,
+          suggestions 
+        };
+      }
+      
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Erro desconhecido' 
@@ -84,28 +116,24 @@ class ResourceByIdService {
   }
 
   /**
-   * Busca sugestões baseadas no ID não encontrado
+   * Busca sugestões baseadas no ID não encontrado usando proximidade numérica
    */
-  private async findSuggestions(originalId: string): Promise<SearchResult[]> {
+  private async findSuggestionsByProximity(originalId: string): Promise<SearchResult[]> {
     try {
-      // Tentar buscar recursos próximos numericamente
-      const numericId = parseInt(originalId);
-      if (!isNaN(numericId)) {
-        const { data } = await supabase.functions.invoke('search-content', {
-          body: {
-            query: '',
-            filters: { resourceType: ['all'] },
-            sortBy: 'relevance',
-            page: 1,
-            resultsPerPage: 5,
-            findSimilar: numericId // Novo parâmetro para buscar IDs próximos
-          }
-        });
-
-        if (data.success && data.results.length > 0) {
-          console.log(`💡 Encontradas ${data.results.length} sugestões para ID ${originalId}`);
-          return data.results.slice(0, 3); // Retornar apenas 3 sugestões
+      const { data } = await supabase.functions.invoke('search-content', {
+        body: {
+          query: '',
+          filters: { resourceType: ['all'] },
+          findSimilar: parseInt(originalId), // Parâmetro para buscar IDs próximos
+          sortBy: 'relevance',
+          page: 1,
+          resultsPerPage: 5
         }
+      });
+
+      if (data && data.success && data.results && data.results.length > 0) {
+        console.log(`💡 Encontradas ${data.results.length} sugestões para ID ${originalId}`);
+        return data.results.slice(0, 3); // Retornar apenas 3 sugestões
       }
 
       return [];

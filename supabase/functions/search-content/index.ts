@@ -24,6 +24,8 @@ interface SearchRequest {
   sortBy: string;
   page: number;
   resultsPerPage: number;
+  searchById?: string;
+  findSimilar?: number;
 }
 
 interface SearchResult {
@@ -182,182 +184,6 @@ const fetchPaginatedContent = async (
     console.error(`❌ Erro API paginada ${contentType} página ${page}:`, error);
     throw error;
   }
-};
-
-// BUSCA PAGINADA REAL (NOVA IMPLEMENTAÇÃO)
-const performPaginatedSearch = async (
-  searchParams: SearchRequest
-): Promise<any> => {
-  const { filters, sortBy, page, resultsPerPage } = searchParams;
-  const activeTypes = filters.resourceType.filter(type => type !== 'all');
-  
-  console.log(`🎯 Busca Paginada: tipos ${activeTypes.join(', ')}, página ${page}`);
-  
-  if (activeTypes.length === 0) {
-    throw new Error('Nenhum tipo de conteúdo especificado para busca paginada');
-  }
-  
-  // Para busca paginada, processar apenas o primeiro tipo (mantém consistência)
-  const contentType = activeTypes[0];
-  const apiType = contentType === 'titulo' ? 'livro' : contentType === 'video' ? 'aula' : 'podcast';
-  
-  const cacheKey = getCacheKey('paginated', `${apiType}_page${page}_limit${resultsPerPage}`);
-  
-  if (isValidCache(cacheKey)) {
-    const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT Paginado: ${cached.results.length} itens`);
-    return cached;
-  }
-  
-  try {
-    const { items, total } = await fetchPaginatedContent(apiType, page, resultsPerPage);
-    
-    const totalPages = Math.ceil(total / resultsPerPage);
-    
-    const response = {
-      success: true,
-      results: items,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalResults: total,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1
-      },
-      searchInfo: {
-        query: '',
-        appliedFilters: filters,
-        sortBy
-      }
-    };
-    
-    setCache(cacheKey, response, 'paginated');
-    
-    console.log(`✅ Busca Paginada concluída: ${items.length} itens, ${total} total`);
-    return response;
-    
-  } catch (error) {
-    console.error('❌ Erro na busca paginada:', error);
-    throw error;
-  }
-};
-
-// NOVA IMPLEMENTAÇÃO: Busca Global com Paginação Real Unificada
-const performGlobalSearch = async (
-  searchParams: SearchRequest
-): Promise<any> => {
-  const { sortBy, page, resultsPerPage } = searchParams;
-  
-  console.log(`🎯 Busca Global UNIFICADA: página ${page} (paginação REAL)`);
-  
-  const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
-  
-  if (isValidCache(cacheKey)) {
-    const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT Global Página: ${cached.results.length} itens`);
-    return cached;
-  }
-  
-  try {
-    // NOVA ABORDAGEM: Distribuição inteligente por página
-    const response = await performUnifiedPageFetch(page, resultsPerPage, sortBy);
-    
-    setCache(cacheKey, response, 'global');
-    
-    console.log(`✅ Busca Global Unificada concluída: página ${page}/${response.pagination.totalPages}`);
-    return response;
-    
-  } catch (error) {
-    console.error('❌ Erro na busca global unificada:', error);
-    throw error;
-  }
-};
-
-// Nova função para busca unificada por página
-const performUnifiedPageFetch = async (
-  page: number,
-  limit: number,
-  sortBy: string
-): Promise<any> => {
-  const CONTENT_TOTALS = {
-    podcasts: 2512,
-    videos: 300,
-    books: 30
-  };
-  
-  const TOTAL_ITEMS = CONTENT_TOTALS.podcasts + CONTENT_TOTALS.videos + CONTENT_TOTALS.books; // 2842
-  
-  // Calcular distribuição proporcional para esta página
-  const startIndex = (page - 1) * limit;
-  
-  const podcastRatio = CONTENT_TOTALS.podcasts / TOTAL_ITEMS; // ~0.88
-  const videoRatio = CONTENT_TOTALS.videos / TOTAL_ITEMS; // ~0.11
-  const bookRatio = CONTENT_TOTALS.books / TOTAL_ITEMS; // ~0.01
-  
-  const podcastsNeeded = Math.round(limit * podcastRatio);
-  const videosNeeded = Math.round(limit * videoRatio);
-  const booksNeeded = limit - podcastsNeeded - videosNeeded;
-  
-  // Calcular páginas correspondentes
-  const podcastPage = Math.ceil((startIndex * podcastRatio + 1) / podcastsNeeded) || 1;
-  const videoPage = Math.ceil((startIndex * videoRatio + 1) / videosNeeded) || 1;
-  const bookPage = Math.ceil((startIndex * bookRatio + 1) / booksNeeded) || 1;
-  
-  console.log(`📊 Distribuição página ${page}:`, {
-    podcasts: { page: podcastPage, limit: podcastsNeeded },
-    videos: { page: videoPage, limit: videosNeeded },
-    books: { page: bookPage, limit: booksNeeded }
-  });
-  
-  // Requisições paralelas otimizadas - apenas os itens necessários
-  const [podcastsResult, videosResult, booksResult] = await Promise.allSettled([
-    fetchPaginatedContent('podcast', Math.max(1, podcastPage), Math.max(1, podcastsNeeded)),
-    fetchPaginatedContent('aula', Math.max(1, videoPage), Math.max(1, videosNeeded)),
-    fetchPaginatedContent('livro', Math.max(1, bookPage), Math.max(1, booksNeeded))
-  ]);
-  
-  const allItems: SearchResult[] = [];
-  
-  // Agregar apenas os resultados necessários
-  if (podcastsResult.status === 'fulfilled') {
-    allItems.push(...podcastsResult.value.items);
-    console.log(`✅ Podcasts: ${podcastsResult.value.items.length} itens`);
-  }
-  
-  if (videosResult.status === 'fulfilled') {
-    allItems.push(...videosResult.value.items);
-    console.log(`✅ Vídeos: ${videosResult.value.items.length} itens`);
-  }
-  
-  if (booksResult.status === 'fulfilled') {
-    allItems.push(...booksResult.value.items);
-    console.log(`✅ Livros: ${booksResult.value.items.length} itens`);
-  }
-  
-  // Ordenar e limitar
-  const sortedItems = sortResults(allItems, sortBy);
-  const finalItems = sortedItems.slice(0, limit);
-  
-  const totalPages = Math.ceil(TOTAL_ITEMS / limit);
-  
-  console.log(`🎯 Página ${page}: ${finalItems.length} itens finais de ${TOTAL_ITEMS} totais`);
-  
-  return {
-    success: true,
-    results: finalItems,
-    pagination: {
-      currentPage: page,
-      totalPages,
-      totalResults: TOTAL_ITEMS,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1
-    },
-    searchInfo: {
-      query: '',
-      appliedFilters: { resourceType: ['all'] },
-      sortBy
-    }
-  };
 };
 
 // NOVA FUNÇÃO: Busca direta por ID específico
@@ -534,125 +360,181 @@ const performSuggestionSearch = async (originalId: string): Promise<any> => {
   }
 };
 
-// FUNÇÃO PRINCIPAL DE BUSCA COM NOVA ARQUITETURA
-const performSearch = async (searchParams: SearchRequest): Promise<any> => {
-  const { query, filters, searchById, findSimilar } = searchParams as any;
-  const requestId = `search_${Date.now()}`;
+// FUNÇÕES DE BUSCA PAGINADA, GLOBAL, FILTRADA, ETC.
+
+const performPaginatedSearch = async (
+  searchParams: SearchRequest
+): Promise<any> => {
+  const { filters, sortBy, page, resultsPerPage } = searchParams;
+  const activeTypes = filters.resourceType.filter(type => type !== 'all');
   
-  console.group(`🔍 ${requestId} - SEARCH REQUEST`);
-  console.log('📋 Parâmetros:', { 
-    query: query || '(vazio)', 
-    resourceTypes: filters.resourceType,
-    page: searchParams.page,
-    searchById,
-    findSimilar
-  });
-
+  console.log(`🎯 Busca Paginada: tipos ${activeTypes.join(', ')}, página ${page}`);
+  
+  if (activeTypes.length === 0) {
+    throw new Error('Nenhum tipo de conteúdo especificado para busca paginada');
+  }
+  
+  // Para busca paginada, processar apenas o primeiro tipo (mantém consistência)
+  const contentType = activeTypes[0];
+  const apiType = contentType === 'titulo' ? 'livro' : contentType === 'video' ? 'aula' : 'podcast';
+  
+  const cacheKey = getCacheKey('paginated', `${apiType}_page${page}_limit${resultsPerPage}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Paginado: ${cached.results.length} itens`);
+    return cached;
+  }
+  
   try {
-    let result;
+    const { items, total } = await fetchPaginatedContent(apiType, page, resultsPerPage);
     
-    // NOVO: Busca direta por ID específico
-    if (searchById) {
-      console.log(`🎯 Modo: BUSCA POR ID ESPECÍFICO (${searchById})`);
-      result = await performDirectIdSearch(searchById);
-    }
-    // NOVO: Busca de sugestões por proximidade
-    else if (findSimilar) {
-      console.log(`💡 Modo: BUSCA DE SUGESTÕES (${findSimilar})`);
-      result = await performSuggestionSearch(String(findSimilar));
-    }
-    // Lógica existente
-    else {
-      const searchType = detectSearchType(query, filters);
-      
-      switch (searchType) {
-        case 'paginated':
-          result = await performPaginatedSearch(searchParams);
-          break;
-        case 'global':
-          result = await performGlobalSearch(searchParams);
-          break;
-        case 'filtered':
-          result = await performFilteredSearch(searchParams);
-          break;
-        default:
-          throw new Error(`Tipo de busca não suportado: ${searchType}`);
-      }
-    }
+    const totalPages = Math.ceil(total / resultsPerPage);
     
-    console.log(`✅ BUSCA concluída:`, {
-      resultados: result.results.length,
-      total: result.pagination.totalResults,
-      tipo: result.searchInfo.searchType || 'standard'
-    });
-    
-    console.groupEnd();
-    return result;
-
-  } catch (error) {
-    console.error(`❌ BUSCA falhou:`, error);
-    console.groupEnd();
-    
-    return {
-      success: false,
-      error: error.message,
-      results: [],
+    const response = {
+      success: true,
+      results: items,
       pagination: {
-        currentPage: searchParams.page,
-        totalPages: 0,
-        totalResults: 0,
-        hasNextPage: false,
-        hasPreviousPage: false
+        currentPage: page,
+        totalPages,
+        totalResults: total,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
       },
-      searchInfo: { 
-        query: searchParams.query, 
-        appliedFilters: searchParams.filters, 
-        sortBy: searchParams.sortBy 
+      searchInfo: {
+        query: '',
+        appliedFilters: filters,
+        sortBy
       }
     };
+    
+    setCache(cacheKey, response, 'paginated');
+    
+    console.log(`✅ Busca Paginada concluída: ${items.length} itens, ${total} total`);
+    return response;
+    
+  } catch (error) {
+    console.error('❌ Erro na busca paginada:', error);
+    throw error;
   }
 };
 
-// FUNÇÃO AUXILIAR: Carregar TODOS os itens de um tipo específico
-const loadAllContentOfType = async (contentType: string): Promise<SearchResult[]> => {
+const performGlobalSearch = async (
+  searchParams: SearchRequest
+): Promise<any> => {
+  const { sortBy, page, resultsPerPage } = searchParams;
+  
+  console.log(`🎯 Busca Global UNIFICADA: página ${page} (paginação REAL)`);
+  
+  const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Global Página: ${cached.results.length} itens`);
+    return cached;
+  }
+  
+  try {
+    // NOVA ABORDAGEM: Distribuição inteligente por página
+    const response = await performUnifiedPageFetch(page, resultsPerPage, sortBy);
+    
+    setCache(cacheKey, response, 'global');
+    
+    console.log(`✅ Busca Global Unificada concluída: página ${page}/${response.pagination.totalPages}`);
+    return response;
+    
+  } catch (error) {
+    console.error('❌ Erro na busca global unificada:', error);
+    throw error;
+  }
+};
+
+const performUnifiedPageFetch = async (
+  page: number,
+  limit: number,
+  sortBy: string
+): Promise<any> => {
+  const CONTENT_TOTALS = {
+    podcasts: 2512,
+    videos: 300,
+    books: 30
+  };
+  
+  const TOTAL_ITEMS = CONTENT_TOTALS.podcasts + CONTENT_TOTALS.videos + CONTENT_TOTALS.books; // 2842
+  
+  // Calcular distribuição proporcional para esta página
+  const startIndex = (page - 1) * limit;
+  
+  const podcastRatio = CONTENT_TOTALS.podcasts / TOTAL_ITEMS; // ~0.88
+  const videoRatio = CONTENT_TOTALS.videos / TOTAL_ITEMS; // ~0.11
+  const bookRatio = CONTENT_TOTALS.books / TOTAL_ITEMS; // ~0.01
+  
+  const podcastsNeeded = Math.round(limit * podcastRatio);
+  const videosNeeded = Math.round(limit * videoRatio);
+  const booksNeeded = limit - podcastsNeeded - videosNeeded;
+  
+  // Calcular páginas correspondentes
+  const podcastPage = Math.ceil((startIndex * podcastRatio + 1) / podcastsNeeded) || 1;
+  const videoPage = Math.ceil((startIndex * videoRatio + 1) / videosNeeded) || 1;
+  const bookPage = Math.ceil((startIndex * bookRatio + 1) / booksNeeded) || 1;
+  
+  console.log(`📊 Distribuição página ${page}:`, {
+    podcasts: { page: podcastPage, limit: podcastsNeeded },
+    videos: { page: videoPage, limit: videosNeeded },
+    books: { page: bookPage, limit: booksNeeded }
+  });
+  
+  // Requisições paralelas otimizadas - apenas os itens necessários
+  const [podcastsResult, videosResult, booksResult] = await Promise.allSettled([
+    fetchPaginatedContent('podcast', Math.max(1, podcastPage), Math.max(1, podcastsNeeded)),
+    fetchPaginatedContent('aula', Math.max(1, videoPage), Math.max(1, videosNeeded)),
+    fetchPaginatedContent('livro', Math.max(1, bookPage), Math.max(1, booksNeeded))
+  ]);
+  
   const allItems: SearchResult[] = [];
-  let currentPage = 1;
-  let hasMore = true;
   
-  // Limites aumentados para carregamento completo
-  const batchSize = 100; // Itens por batch
-  const maxPages = 100; // Limite de segurança
-  
-  console.log(`🔍 Carregando TODOS os ${contentType}s disponíveis...`);
-  
-  while (hasMore && currentPage <= maxPages) {
-    try {
-      const { items, total } = await fetchPaginatedContent(contentType, currentPage, batchSize);
-      
-      if (items.length === 0) {
-        console.log(`📄 ${contentType} página ${currentPage}: Sem mais itens`);
-        hasMore = false;
-        break;
-      }
-      
-      allItems.push(...items);
-      console.log(`📄 ${contentType} página ${currentPage}: +${items.length} itens (total: ${allItems.length})`);
-      
-      // Continuar se há mais itens e não atingimos o total
-      hasMore = items.length === batchSize && allItems.length < total;
-      currentPage++;
-      
-    } catch (error) {
-      console.error(`❌ Erro carregando ${contentType} página ${currentPage}:`, error);
-      hasMore = false;
-    }
+  // Agregar apenas os resultados necessários
+  if (podcastsResult.status === 'fulfilled') {
+    allItems.push(...podcastsResult.value.items);
+    console.log(`✅ Podcasts: ${podcastsResult.value.items.length} itens`);
   }
   
-  console.log(`✅ ${contentType} completo: ${allItems.length} itens carregados`);
-  return allItems;
+  if (videosResult.status === 'fulfilled') {
+    allItems.push(...videosResult.value.items);
+    console.log(`✅ Vídeos: ${videosResult.value.items.length} itens`);
+  }
+  
+  if (booksResult.status === 'fulfilled') {
+    allItems.push(...booksResult.value.items);
+    console.log(`✅ Livros: ${booksResult.value.items.length} itens`);
+  }
+  
+  // Ordenar e limitar
+  const sortedItems = sortResults(allItems, sortBy);
+  const finalItems = sortedItems.slice(0, limit);
+  
+  const totalPages = Math.ceil(TOTAL_ITEMS / limit);
+  
+  console.log(`🎯 Página ${page}: ${finalItems.length} itens finais de ${TOTAL_ITEMS} totais`);
+  
+  return {
+    success: true,
+    results: finalItems,
+    pagination: {
+      currentPage: page,
+      totalPages,
+      totalResults: TOTAL_ITEMS,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1
+    },
+    searchInfo: {
+      query: '',
+      appliedFilters: { resourceType: ['all'] },
+      sortBy
+    }
+  };
 };
 
-// BUSCA FILTRADA COM CACHE TEMPORÁRIO
 const performFilteredSearch = async (
   searchParams: SearchRequest
 ): Promise<any> => {

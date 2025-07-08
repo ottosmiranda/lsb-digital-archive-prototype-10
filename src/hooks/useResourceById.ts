@@ -31,11 +31,14 @@ export const useResourceById = (id: string | undefined): UseResourceByIdReturn =
     searchAttempted: false
   });
 
-  const searchResourceById = async (resourceId: string) => {
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 2;
+
+  const searchResourceById = async (resourceId: string, attempt: number = 0) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      console.log(`🎯 useResourceById: Iniciando busca para ID ${resourceId}`);
+      console.log(`🎯 useResourceById: Tentativa ${attempt + 1} para ID ${resourceId}`);
       
       // Log da tentativa de acesso
       resourceAccessAnalytics.logAccessAttempt(resourceId, 'direct_access');
@@ -52,6 +55,9 @@ export const useResourceById = (id: string | undefined): UseResourceByIdReturn =
           suggestions: [],
           searchAttempted: true
         });
+
+        // Reset retry count em caso de sucesso
+        setRetryCount(0);
 
         // Log de sucesso
         resourceAccessAnalytics.logAccessAttempt(resourceId, 'found');
@@ -71,7 +77,20 @@ export const useResourceById = (id: string | undefined): UseResourceByIdReturn =
       }
 
     } catch (error) {
-      console.error(`❌ useResourceById: Erro na busca por ID ${resourceId}:`, error);
+      console.error(`❌ useResourceById: Erro na busca por ID ${resourceId} (tentativa ${attempt + 1}):`, error);
+      
+      // Retry automático em caso de erro de rede
+      if (attempt < maxRetries && error instanceof Error && 
+          (error.message.includes('timeout') || error.message.includes('fetch'))) {
+        console.log(`🔄 Tentando novamente em 1 segundo (tentativa ${attempt + 2}/${maxRetries + 1})`);
+        
+        setTimeout(() => {
+          setRetryCount(attempt + 1);
+          searchResourceById(resourceId, attempt + 1);
+        }, 1000);
+        
+        return;
+      }
       
       setState({
         resource: null,
@@ -89,6 +108,7 @@ export const useResourceById = (id: string | undefined): UseResourceByIdReturn =
   const retry = () => {
     if (id) {
       setState(prev => ({ ...prev, searchAttempted: false }));
+      setRetryCount(0);
       searchResourceById(id);
     }
   };
@@ -99,10 +119,10 @@ export const useResourceById = (id: string | undefined): UseResourceByIdReturn =
 
   // Efeito para buscar o recurso quando o ID muda
   useEffect(() => {
-    if (id && !state.searchAttempted) {
+    if (id && !state.searchAttempted && retryCount === 0) {
       searchResourceById(id);
     }
-  }, [id, state.searchAttempted]);
+  }, [id, state.searchAttempted, retryCount]);
 
   // Reset state quando ID muda
   useEffect(() => {
@@ -113,6 +133,7 @@ export const useResourceById = (id: string | undefined): UseResourceByIdReturn =
       suggestions: [],
       searchAttempted: false
     });
+    setRetryCount(0);
   }, [id]);
 
   return {

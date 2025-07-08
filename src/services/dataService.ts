@@ -1,3 +1,4 @@
+
 import { SearchResult } from '@/types/searchTypes';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -109,6 +110,15 @@ export class DataService {
     if (podcastsResult.status === 'fulfilled') {
       results.push(...podcastsResult.value);
       console.log('🎧 Podcasts fetched:', podcastsResult.value.length);
+      
+      // Log podcast IDs for debugging
+      if (podcastsResult.value.length > 0) {
+        console.log('🎧 Podcast IDs preview:', podcastsResult.value.slice(0, 3).map(p => ({
+          id: p.id,
+          originalId: p.originalId,
+          title: p.title
+        })));
+      }
     } else {
       console.error('❌ Failed to fetch podcasts:', podcastsResult.reason);
       errors.push('podcasts');
@@ -203,22 +213,59 @@ export class DataService {
   }
 
   private async fetchPodcastsFromAPI(): Promise<SearchResult[]> {
-    console.log('🎧 Fetching podcasts from API...');
+    console.log('🎧 Fetching ALL podcasts from API with complete pagination...');
     
-    const { data, error } = await supabase.functions.invoke('fetch-podcasts');
+    const allPodcasts: SearchResult[] = [];
+    let page = 1;
+    let totalPages = 1;
     
-    if (error) {
-      console.error('❌ Podcasts edge function error:', error);
-      throw error;
-    }
+    do {
+      console.log(`📄 Fetching podcasts page ${page}/${totalPages}...`);
+      
+      const { data, error } = await supabase.functions.invoke('fetch-podcasts', {
+        body: { page, limit: 50 } // Increased limit for efficiency
+      });
+      
+      if (error) {
+        console.error(`❌ Podcasts page ${page} error:`, error);
+        throw error;
+      }
 
-    if (!data.success) {
-      console.error('❌ Podcasts API returned error:', data.error);
-      throw new Error(data.error);
-    }
+      if (!data.success) {
+        console.error(`❌ Podcasts page ${page} API error:`, data.error);
+        throw new Error(data.error);
+      }
 
-    console.log('✅ Podcasts from API:', data.count);
-    return data.podcasts;
+      // Add podcasts from this page
+      allPodcasts.push(...data.podcasts);
+      totalPages = data.totalPages;
+      
+      console.log(`✅ Page ${page}: ${data.podcasts.length} podcasts loaded (total so far: ${allPodcasts.length})`);
+      
+      // Log IDs for debugging on first few pages
+      if (page <= 2) {
+        console.log(`🎧 Podcast IDs from page ${page}:`, data.podcasts.slice(0, 3).map(p => ({
+          id: p.id,
+          originalId: p.originalId,
+          title: p.title.substring(0, 30) + '...'
+        })));
+      }
+      
+      page++;
+      
+    } while (page <= totalPages);
+    
+    console.log(`🎉 ALL podcasts loaded: ${allPodcasts.length} total podcasts from ${totalPages} pages`);
+    
+    // Final summary of podcast IDs for debugging
+    console.log('🎧 Final podcast ID ranges:', {
+      minId: Math.min(...allPodcasts.map(p => p.id)),
+      maxId: Math.max(...allPodcasts.map(p => p.id)),
+      sampleOriginalIds: allPodcasts.slice(0, 5).map(p => p.originalId),
+      totalCount: allPodcasts.length
+    });
+    
+    return allPodcasts;
   }
 
   // Clear cache method for manual refresh

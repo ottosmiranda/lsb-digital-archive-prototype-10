@@ -31,7 +31,8 @@ interface PodcastEpisodeItem {
 }
 
 interface TransformedPodcast {
-  id: number;
+  id: string; // Keep original episode_id from API
+  originalId: string; // Same as id for consistency
   title: string;
   type: 'podcast';
   author: string;
@@ -99,21 +100,39 @@ const handler = async (req: Request): Promise<Response> => {
       return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
     };
 
-    // Transform episodes to match SearchResult interface
-    const transformedPodcasts: TransformedPodcast[] = data.conteudo.map((episode, index) => ({
-      id: (page - 1) * limit + index + 2000, // Generate unique IDs based on page and position
-      title: episode.episodio_titulo || 'Episódio sem título',
-      type: 'podcast' as const,
-      author: episode.publicador || 'Autor não informado',
-      description: episode.descricao || 'Descrição não disponível',
-      year: episode.data_lancamento ? new Date(episode.data_lancamento).getFullYear() : 2024,
-      subject: episode.podcast_titulo || 'Podcast',
-      duration: episode.duracao_ms ? formatDuration(episode.duracao_ms) : undefined,
-      thumbnail: episode.imagem_url,
-      embedUrl: episode.embed_url
-    }));
+    // Transform episodes to match SearchResult interface - USE ORIGINAL IDs
+    const transformedPodcasts: TransformedPodcast[] = data.conteudo.map((episode) => {
+      console.log(`🔄 Transforming episode:`, {
+        episodio_id: episode.episodio_id,
+        podcast_id: episode.podcast_id,
+        title: episode.episodio_titulo
+      });
+      
+      return {
+        id: episode.episodio_id, // Use original episode ID from API
+        originalId: episode.episodio_id, // Same as id for consistency
+        title: episode.episodio_titulo || 'Episódio sem título',
+        type: 'podcast' as const,
+        author: episode.publicador || 'Autor não informado',
+        description: episode.descricao || 'Descrição não disponível',
+        year: episode.data_lancamento ? new Date(episode.data_lancamento).getFullYear() : 2024,
+        subject: episode.podcast_titulo || 'Podcast',
+        duration: episode.duracao_ms ? formatDuration(episode.duracao_ms) : undefined,
+        thumbnail: episode.imagem_url,
+        embedUrl: episode.embed_url
+      };
+    });
 
     console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items for page ${page}`);
+    
+    // Log sample IDs for debugging
+    if (transformedPodcasts.length > 0) {
+      console.log('🎧 Sample podcast IDs:', transformedPodcasts.slice(0, 3).map(p => ({
+        id: p.id,
+        originalId: p.originalId,
+        title: p.title.substring(0, 30) + '...'
+      })));
+    }
 
     return new Response(JSON.stringify({
       success: true,

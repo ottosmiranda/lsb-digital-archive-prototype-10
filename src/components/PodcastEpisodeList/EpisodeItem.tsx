@@ -1,5 +1,6 @@
 
 
+
 import { Play, Calendar, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -101,9 +102,6 @@ const EpisodeItem = ({
         <div className="flex-1 min-w-0">
           <div className="flex gap-2 items-center">
             <h3 className="font-semibold truncate">{apiEpisode.title}</h3>
-            {index < 2 && (
-              <Badge className="bg-green-600 text-white ml-1">NOVO</Badge>
-            )}
             {isSelected && (
               <Badge className="bg-blue-600 text-white ml-1">TOCANDO</Badge>
             )}
@@ -160,9 +158,6 @@ const EpisodeItem = ({
         <div className="flex-1 min-w-0">
           <div className="flex gap-2 items-center">
             <h3 className="font-semibold truncate">{spotifyEpisode.name}</h3>
-            {index < 2 && (
-              <Badge className="bg-green-600 text-white ml-1">NOVO</Badge>
-            )}
             {isSelected && (
               <Badge className="bg-blue-600 text-white ml-1">TOCANDO</Badge>
             )}
@@ -206,9 +201,6 @@ const EpisodeItem = ({
       <div className="flex-1 min-w-0">
         <div className="flex gap-2 items-center">
           <h3 className="font-semibold truncate">{generatedEpisode.title}</h3>
-          {generatedEpisode.isNew && (
-            <Badge className="bg-green-600 text-white ml-1">NOVO</Badge>
-          )}
           {isSelected && (
             <Badge className="bg-blue-600 text-white ml-1">TOCANDO</Badge>
           )}
@@ -237,4 +229,5 @@ const EpisodeItem = ({
 };
 
 export default EpisodeItem;
+
 

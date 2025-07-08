@@ -1,4 +1,5 @@
 
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { User, Calendar, Tag, Play } from "lucide-react";
@@ -67,10 +68,10 @@ const PodcastDetailHero = ({
               data-testid="play-last-episode" 
               className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg shadow transition" 
               onClick={onPlayLatest} 
-              aria-label="Ouça o último episódio"
+              aria-label="Ouça o episódio"
             >
               <Play className="h-5 w-5 mr-2" />
-              Ouça o último episódio
+              Ouça o episódio
             </Button>
           </div>
         </div>
@@ -89,3 +90,4 @@ const PodcastDetailHero = ({
 };
 
 export default PodcastDetailHero;
+

@@ -1,23 +1,12 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from '@/components/ui/breadcrumb';
-import PodcastDetailHero from "@/components/PodcastDetailHero";
-import PodcastEpisodeList from "@/components/PodcastEpisodeList";
 import { useDataLoader } from '@/hooks/useDataLoader';
+import { useResourceById } from '@/hooks/useResourceById';
 import LoadingSkeleton from '@/components/ResourceDetail/LoadingSkeleton';
+import LoadingSearchState from '@/components/ResourceDetail/LoadingSearchState';
 import ResourceNotFound from '@/components/ResourceDetail/ResourceNotFound';
 import ResourceBreadcrumb from '@/components/ResourceDetail/ResourceBreadcrumb';
 import BackButton from '@/components/ResourceDetail/BackButton';
@@ -30,164 +19,164 @@ import { Resource } from '@/types/resourceTypes';
 
 const ResourceDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { allData, loading } = useDataLoader();
+  const { allData, loading: dataLoaderLoading } = useDataLoader();
+  const { 
+    resource: apiResource, 
+    loading: apiLoading, 
+    error: apiError, 
+    suggestions,
+    retry 
+  } = useResourceById(id);
+  
   const [resource, setResource] = useState<Resource | null>(null);
-  const [resourceLoading, setResourceLoading] = useState(true);
+  const [isSearchingViaAPI, setIsSearchingViaAPI] = useState(false);
 
   // Scroll to top when component mounts or when resource changes
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id, resource]);
 
+  // Lógica de busca escalonada: local → API
   useEffect(() => {
     const findResource = () => {
-      if (!allData || allData.length === 0) {
-        console.log('📊 No data available yet');
-        setResourceLoading(false);
-        return;
-      }
+      if (!id) return;
 
-      console.group('🔍 RESOURCE SEARCH DEBUG');
+      console.group('🔍 RESOURCE DETAIL SEARCH');
       console.log('🎯 Target ID:', id);
-      console.log('📊 Total available data:', allData.length, 'items');
 
-      // Enhanced debugging - show all video IDs
-      const videos = allData.filter(item => item.type === 'video');
-      console.log('🎬 Available videos:', videos.length);
-      console.log('🎬 Video ID samples:', videos.slice(0, 10).map(v => ({
-        id: v.id,
-        originalId: v.originalId,
-        title: v.title.substring(0, 40) + '...'
-      })));
+      // FASE 1: Buscar nos dados pré-carregados
+      if (allData && allData.length > 0) {
+        console.log('📊 Checking pre-loaded data:', allData.length, 'items');
+        
+        // Busca direta por ID
+        let foundResource = allData.find(item => String(item.id) === id);
+        
+        if (!foundResource) {
+          // Busca por originalId para vídeos
+          foundResource = allData.find(item => 
+            item.type === 'video' && (item as any).originalId === id
+          );
+        }
 
-      // PHASE 1: Direct ID match (most reliable)
-      console.log('🔍 Phase 1: Searching by exact ID match...');
-      let foundResource = allData.find(item => String(item.id) === id);
-      
-      if (foundResource) {
-        console.log('✅ Phase 1 SUCCESS: Found by exact ID', {
-          id: foundResource.id,
-          type: foundResource.type,
-          title: foundResource.title
-        });
-      } else {
-        console.log('❌ Phase 1 FAILED: No exact ID match');
-        
-        // PHASE 2: originalId match for videos (UUID from API)
-        console.log('🔍 Phase 2: Searching by originalId for videos...');
-        foundResource = allData.find(item => 
-          item.type === 'video' && (item as any).originalId === id
-        );
-        
-        if (foundResource) {
-          console.log('✅ Phase 2 SUCCESS: Found by originalId', {
-            id: foundResource.id,
-            originalId: (foundResource as any).originalId,
-            type: foundResource.type,
-            title: foundResource.title
-          });
-        } else {
-          console.log('❌ Phase 2 FAILED: No originalId match');
-          
-          // PHASE 3: Smart numerical ID matching
-          console.log('🔍 Phase 3: Smart numerical ID matching...');
+        if (!foundResource) {
+          // Busca numérica inteligente
           const numericId = parseInt(id || '0');
-          
           if (numericId >= 1000) {
-            // Look for videos with closest ID match
+            const videos = allData.filter(item => item.type === 'video');
             const videoMatches = videos
-              .map(v => ({ 
-                video: v, 
-                distance: Math.abs(v.id - numericId) 
-              }))
+              .map(v => ({ video: v, distance: Math.abs(v.id - numericId) }))
               .sort((a, b) => a.distance - b.distance);
             
             if (videoMatches.length > 0 && videoMatches[0].distance < 1000) {
               foundResource = videoMatches[0].video;
-              console.log('✅ Phase 3 SUCCESS: Found closest video match', {
-                targetId: numericId,
-                foundId: foundResource.id,
-                distance: videoMatches[0].distance,
-                title: foundResource.title
-              });
-            } else {
-              console.log('❌ Phase 3 FAILED: No close video match');
             }
           }
         }
+
+        if (foundResource) {
+          console.log('✅ Found in pre-loaded data:', foundResource.title);
+          
+          // Converter para formato Resource
+          const convertedResource: Resource = {
+            id: typeof foundResource.id === 'string' ? parseInt(id) : foundResource.id,
+            title: foundResource.title,
+            type: foundResource.type,
+            author: foundResource.author,
+            duration: foundResource.duration,
+            pages: foundResource.pages,
+            episodes: foundResource.episodes ? 
+              (typeof foundResource.episodes === 'string' ? 
+                parseInt(foundResource.episodes.replace(/\D/g, '')) : foundResource.episodes) : undefined,
+            thumbnail: foundResource.thumbnail,
+            description: foundResource.description,
+            year: foundResource.year,
+            subject: foundResource.subject,
+            embedUrl: (foundResource as any).embedUrl,
+            pdfUrl: (foundResource as any).pdfUrl,
+            fullDescription: foundResource.description,
+            tags: foundResource.subject ? [foundResource.subject] : undefined,
+            language: (foundResource as any).language,
+            documentType: (foundResource as any).documentType,
+            categories: (foundResource as any).categories
+          };
+
+          setResource(convertedResource);
+          setIsSearchingViaAPI(false);
+          console.groupEnd();
+          return;
+        }
       }
 
-      if (foundResource) {
-        console.log('🎉 FINAL RESULT: Resource found!', {
-          id: foundResource.id,
-          originalId: (foundResource as any).originalId,
-          type: foundResource.type,
-          title: foundResource.title,
-          hasEmbedUrl: !!(foundResource as any).embedUrl,
-          hasThumbnail: !!foundResource.thumbnail
-        });
-        
-        // Convert SearchResult to Resource format
-        const convertedResource: Resource = {
-          id: typeof foundResource.id === 'string' ? parseInt(id || '0') : foundResource.id,
-          title: foundResource.title,
-          type: foundResource.type,
-          author: foundResource.author,
-          duration: foundResource.duration,
-          pages: foundResource.pages,
-          episodes: foundResource.episodes ? 
-            (typeof foundResource.episodes === 'string' ? 
-              parseInt(foundResource.episodes.replace(/\D/g, '')) : foundResource.episodes) : undefined,
-          thumbnail: foundResource.thumbnail,
-          description: foundResource.description,
-          year: foundResource.year,
-          subject: foundResource.subject,
-          embedUrl: (foundResource as any).embedUrl,
-          pdfUrl: (foundResource as any).pdfUrl,
-          fullDescription: foundResource.description,
-          tags: foundResource.subject ? [foundResource.subject] : undefined,
-          language: (foundResource as any).language,
-          documentType: (foundResource as any).documentType,
-          categories: (foundResource as any).categories
-        };
-
-        console.log('🔄 Final converted resource:', {
-          id: convertedResource.id,
-          type: convertedResource.type,
-          hasEmbedUrl: !!convertedResource.embedUrl,
-          embedUrl: convertedResource.embedUrl?.substring(0, 50) + '...'
-        });
-        setResource(convertedResource);
-      } else {
-        console.log('💀 TOTAL FAILURE: Resource not found for ID:', id);
-        console.log('🔍 Available ID ranges:', {
-          videos: videos.length > 0 ? {
-            minId: Math.min(...videos.map(v => v.id)),
-            maxId: Math.max(...videos.map(v => v.id)),
-            sampleIds: videos.slice(0, 5).map(v => v.id)
-          } : 'No videos',
-          allTypes: {
-            minId: Math.min(...allData.map(v => v.id)),
-            maxId: Math.max(...allData.map(v => v.id))
-          }
-        });
-        setResource(null);
-      }
-      
+      // FASE 2: Não encontrado nos dados pré-carregados
+      console.log('❌ Not found in pre-loaded data, will search via API');
+      setIsSearchingViaAPI(true);
       console.groupEnd();
-      setResourceLoading(false);
     };
 
-    if (!loading) {
+    // Só buscar localmente se não estamos carregando dados e não temos resource da API ainda
+    if (!dataLoaderLoading && !apiResource && !apiLoading) {
       findResource();
     }
-  }, [id, allData, loading]);
+  }, [id, allData, dataLoaderLoading, apiResource, apiLoading]);
+
+  // Atualizar resource quando a API retorna resultado
+  useEffect(() => {
+    if (apiResource) {
+      console.log('✅ Resource found via API:', apiResource.title);
+      setResource(apiResource);
+      setIsSearchingViaAPI(false);
+    }
+  }, [apiResource]);
+
+  // Estados de loading
+  const isLoading = dataLoaderLoading || (isSearchingViaAPI && apiLoading);
+  const isSearchingAPI = isSearchingViaAPI && apiLoading;
 
   // Loading skeletons
-  if (loading || resourceLoading) return <><Navigation /><LoadingSkeleton /></>;
-  if (!resource) return <><Navigation /><ResourceNotFound /></>;
+  if (isLoading && !isSearchingAPI) {
+    return (
+      <>
+        <Navigation />
+        <LoadingSkeleton />
+      </>
+    );
+  }
 
-  // If podcast detected
+  // Estado de busca na API
+  if (isSearchingAPI) {
+    return (
+      <>
+        <Navigation />
+        <LoadingSearchState searchingId={id} />
+      </>
+    );
+  }
+
+  // Recurso não encontrado
+  if (!resource && (apiError || (!apiLoading && isSearchingViaAPI))) {
+    return (
+      <>
+        <Navigation />
+        <ResourceNotFound 
+          requestedId={id}
+          suggestions={suggestions}
+          onRetry={retry}
+        />
+      </>
+    );
+  }
+
+  // Sem resource disponível
+  if (!resource) {
+    return (
+      <>
+        <Navigation />
+        <LoadingSkeleton />
+      </>
+    );
+  }
+
+  // Se podcast detectado
   if (resource.type === 'podcast') {
     return <PodcastDetailView podcast={resource} />;
   }
@@ -200,12 +189,12 @@ const ResourceDetail = () => {
         <BackButton />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content - Ordem alterada: ResourceContent primeiro, MediaSection depois */}
+          {/* Main Content */}
           <div className="lg:col-span-2">
             <ResourceContent resource={resource} />
             <MediaSection resource={resource} />
           </div>
-          {/* Sidebar - Reordenado: ResourceInfo primeiro, ActionButtons depois */}
+          {/* Sidebar */}
           <div className="space-y-6">
             <ResourceInfo resource={resource} />
             <ActionButtons resource={resource} />

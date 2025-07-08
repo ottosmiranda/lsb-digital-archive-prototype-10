@@ -360,6 +360,259 @@ const performUnifiedPageFetch = async (
   };
 };
 
+// NOVA FUNÇÃO: Busca direta por ID específico
+const performDirectIdSearch = async (
+  searchId: string
+): Promise<any> => {
+  console.log(`🎯 Busca Direta por ID: ${searchId}`);
+  
+  // Tentar diferentes formatos de ID
+  const searches = [
+    // 1. Busca exata por ID numérico
+    { type: 'numeric', value: parseInt(searchId) },
+    // 2. Busca por originalId (UUID)
+    { type: 'uuid', value: searchId },
+    // 3. Busca por proximidade numérica
+    { type: 'proximity', value: parseInt(searchId) }
+  ];
+
+  for (const search of searches) {
+    try {
+      console.log(`🔍 Tentativa ${search.type} para ${search.value}`);
+      
+      // Buscar em todos os tipos de conteúdo
+      const promises = ['podcast', 'aula', 'livro'].map(async (contentType) => {
+        try {
+          // Para busca UUID, procurar por originalId
+          if (search.type === 'uuid') {
+            const { items } = await fetchPaginatedContent(contentType, 1, 100);
+            return items.find(item => (item as any).originalId === searchId);
+          }
+          
+          // Para busca numérica, procurar por ID exato
+          if (search.type === 'numeric' && !isNaN(search.value as number)) {
+            const { items } = await fetchPaginatedContent(contentType, 1, 100);
+            return items.find(item => item.id === search.value);
+          }
+          
+          return null;
+        } catch (error) {
+          console.error(`❌ Erro buscando ${contentType}:`, error);
+          return null;
+        }
+      });
+
+      const results = await Promise.allSettled(promises);
+      const foundItem = results
+        .filter(result => result.status === 'fulfilled')
+        .map(result => (result as PromiseFulfilledResult<any>).value)
+        .find(item => item !== null);
+
+      if (foundItem) {
+        console.log(`✅ Recurso encontrado via ${search.type}:`, foundItem.title);
+        return {
+          success: true,
+          results: [foundItem],
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalResults: 1,
+            hasNextPage: false,
+            hasPreviousPage: false
+          },
+          searchInfo: {
+            query: '',
+            appliedFilters: { resourceType: ['all'] },
+            sortBy: 'relevance',
+            searchType: `direct_id_${search.type}`
+          }
+        };
+      }
+    } catch (error) {
+      console.error(`❌ Erro na busca ${search.type}:`, error);
+    }
+  }
+
+  // Se não encontrou, buscar sugestões por proximidade
+  return await performSuggestionSearch(searchId);
+};
+
+// NOVA FUNÇÃO: Busca de sugestões por proximidade
+const performSuggestionSearch = async (originalId: string): Promise<any> => {
+  console.log(`💡 Buscando sugestões para ID: ${originalId}`);
+  
+  const numericId = parseInt(originalId);
+  if (isNaN(numericId)) {
+    return {
+      success: false,
+      results: [],
+      pagination: {
+        currentPage: 1,
+        totalPages: 0,
+        totalResults: 0,
+        hasNextPage: false,
+        hasPreviousPage: false
+      },
+      searchInfo: {
+        query: '',
+        appliedFilters: { resourceType: ['all'] },
+        sortBy: 'relevance',
+        searchType: 'suggestions_failed'
+      }
+    };
+  }
+
+  try {
+    // Buscar alguns itens de cada tipo para encontrar IDs próximos
+    const promises = ['podcast', 'aula', 'livro'].map(async (contentType) => {
+      try {
+        const { items } = await fetchPaginatedContent(contentType, 1, 50);
+        return items.map(item => ({
+          ...item,
+          distance: Math.abs(item.id - numericId)
+        }));
+      } catch (error) {
+        console.error(`❌ Erro buscando sugestões ${contentType}:`, error);
+        return [];
+      }
+    });
+
+    const results = await Promise.allSettled(promises);
+    const allItems = results
+      .filter(result => result.status === 'fulfilled')
+      .flatMap(result => (result as PromiseFulfilledResult<any>).value);
+
+    // Ordenar por proximidade e pegar os 5 mais próximos
+    const suggestions = allItems
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 5)
+      .map(item => {
+        const { distance, ...itemWithoutDistance } = item;
+        return itemWithoutDistance;
+      });
+
+    console.log(`💡 Encontradas ${suggestions.length} sugestões para ID ${originalId}`);
+
+    return {
+      success: false,
+      results: suggestions,
+      pagination: {
+        currentPage: 1,
+        totalPages: 0,
+        totalResults: 0,
+        hasNextPage: false,
+        hasPreviousPage: false
+      },
+      searchInfo: {
+        query: '',
+        appliedFilters: { resourceType: ['all'] },
+        sortBy: 'proximity',
+        searchType: 'suggestions',
+        originalId
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar sugestões:', error);
+    return {
+      success: false,
+      results: [],
+      pagination: {
+        currentPage: 1,
+        totalPages: 0,
+        totalResults: 0,
+        hasNextPage: false,
+        hasPreviousPage: false
+      },
+      searchInfo: {
+        query: '',
+        appliedFilters: { resourceType: ['all'] },
+        sortBy: 'relevance',
+        searchType: 'suggestions_error'
+      }
+    };
+  }
+};
+
+// FUNÇÃO PRINCIPAL DE BUSCA COM NOVA ARQUITETURA
+const performSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, searchById, findSimilar } = searchParams as any;
+  const requestId = `search_${Date.now()}`;
+  
+  console.group(`🔍 ${requestId} - SEARCH REQUEST`);
+  console.log('📋 Parâmetros:', { 
+    query: query || '(vazio)', 
+    resourceTypes: filters.resourceType,
+    page: searchParams.page,
+    searchById,
+    findSimilar
+  });
+
+  try {
+    let result;
+    
+    // NOVO: Busca direta por ID específico
+    if (searchById) {
+      console.log(`🎯 Modo: BUSCA POR ID ESPECÍFICO (${searchById})`);
+      result = await performDirectIdSearch(searchById);
+    }
+    // NOVO: Busca de sugestões por proximidade
+    else if (findSimilar) {
+      console.log(`💡 Modo: BUSCA DE SUGESTÕES (${findSimilar})`);
+      result = await performSuggestionSearch(String(findSimilar));
+    }
+    // Lógica existente
+    else {
+      const searchType = detectSearchType(query, filters);
+      
+      switch (searchType) {
+        case 'paginated':
+          result = await performPaginatedSearch(searchParams);
+          break;
+        case 'global':
+          result = await performGlobalSearch(searchParams);
+          break;
+        case 'filtered':
+          result = await performFilteredSearch(searchParams);
+          break;
+        default:
+          throw new Error(`Tipo de busca não suportado: ${searchType}`);
+      }
+    }
+    
+    console.log(`✅ BUSCA concluída:`, {
+      resultados: result.results.length,
+      total: result.pagination.totalResults,
+      tipo: result.searchInfo.searchType || 'standard'
+    });
+    
+    console.groupEnd();
+    return result;
+
+  } catch (error) {
+    console.error(`❌ BUSCA falhou:`, error);
+    console.groupEnd();
+    
+    return {
+      success: false,
+      error: error.message,
+      results: [],
+      pagination: {
+        currentPage: searchParams.page,
+        totalPages: 0,
+        totalResults: 0,
+        hasNextPage: false,
+        hasPreviousPage: false
+      },
+      searchInfo: { 
+        query: searchParams.query, 
+        appliedFilters: searchParams.filters, 
+        sortBy: searchParams.sortBy 
+      }
+    };
+  }
+};
+
 // FUNÇÃO AUXILIAR: Carregar TODOS os itens de um tipo específico
 const loadAllContentOfType = async (contentType: string): Promise<SearchResult[]> => {
   const allItems: SearchResult[] = [];
@@ -470,73 +723,6 @@ const performFilteredSearch = async (
       sortBy
     }
   };
-};
-
-// FUNÇÃO PRINCIPAL DE BUSCA COM NOVA ARQUITETURA
-const performSearch = async (searchParams: SearchRequest): Promise<any> => {
-  const { query, filters } = searchParams;
-  const requestId = `search_${Date.now()}`;
-  
-  // DETECTOR DE TIPO DE BUSCA
-  const searchType = detectSearchType(query, filters);
-  
-  console.group(`🔍 ${requestId} - ${searchType.toUpperCase()} SEARCH`);
-  console.log('📋 Parâmetros:', { 
-    query: query || '(vazio)', 
-    resourceTypes: filters.resourceType,
-    page: searchParams.page,
-    type: searchType
-  });
-
-  try {
-    let result;
-    
-    // ROTEAMENTO POR TIPO DE BUSCA
-    switch (searchType) {
-      case 'paginated':
-        result = await performPaginatedSearch(searchParams);
-        break;
-      case 'global':
-        result = await performGlobalSearch(searchParams);
-        break;
-      case 'filtered':
-        result = await performFilteredSearch(searchParams);
-        break;
-      default:
-        throw new Error(`Tipo de busca não suportado: ${searchType}`);
-    }
-    
-    console.log(`✅ ${searchType.toUpperCase()} concluída:`, {
-      resultados: result.results.length,
-      total: result.pagination.totalResults,
-      pagina: `${result.pagination.currentPage}/${result.pagination.totalPages}`
-    });
-    
-    console.groupEnd();
-    return result;
-
-  } catch (error) {
-    console.error(`❌ ${searchType.toUpperCase()} falhou:`, error);
-    console.groupEnd();
-    
-    return {
-      success: false,
-      error: error.message,
-      results: [],
-      pagination: {
-        currentPage: searchParams.page,
-        totalPages: 0,
-        totalResults: 0,
-        hasNextPage: false,
-        hasPreviousPage: false
-      },
-      searchInfo: { 
-        query: searchParams.query, 
-        appliedFilters: searchParams.filters, 
-        sortBy: searchParams.sortBy 
-      }
-    };
-  }
 };
 
 const transformToSearchResult = (item: any, tipo: string): SearchResult => {

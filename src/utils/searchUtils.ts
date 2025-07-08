@@ -57,6 +57,11 @@ export const normalizeText = (text: string): string => {
     .replace(/[\u0300-\u036f]/g, ''); // Remove accents
 };
 
+// NOVA FUNÇÃO: Extrair parâmetros de query como array
+export const getQueryParamArray = (searchParams: URLSearchParams, key: string): string[] => {
+  return searchParams.getAll(key);
+};
+
 // Extract unique authors with counts from search results
 export const extractAuthorsFromResults = (results: SearchResult[]): { name: string; count: number }[] => {
   const authorMap = new Map<string, number>();

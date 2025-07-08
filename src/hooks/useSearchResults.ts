@@ -1,8 +1,9 @@
+
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useDataLoader } from '@/hooks/useDataLoader';
-import { searchUtils } from '@/utils/searchUtils';
+import { getQueryParamArray } from '@/utils/searchUtils';
 import { navigationHistoryService } from '@/services/navigationHistoryService';
 
 export const useSearchResults = () => {
@@ -19,15 +20,15 @@ export const useSearchResults = () => {
 
   const [query, setQuery] = useState<string>(searchParams.get('q') || '');
   const [filters, setFilters] = useState<SearchFilters>({
-    resourceType: searchUtils.getQueryParamArray(searchParams, 'type'),
-    subject: searchUtils.getQueryParamArray(searchParams, 'subject'),
-    author: searchUtils.getQueryParamArray(searchParams, 'author'),
+    resourceType: getQueryParamArray(searchParams, 'type'),
+    subject: getQueryParamArray(searchParams, 'subject'),
+    author: getQueryParamArray(searchParams, 'author'),
     year: searchParams.get('year') || '',
     duration: searchParams.get('duration') || '',
-    language: searchUtils.getQueryParamArray(searchParams, 'language'),
-    documentType: searchUtils.getQueryParamArray(searchParams, 'documentType'),
-    program: searchUtils.getQueryParamArray(searchParams, 'program'),
-    channel: searchUtils.getQueryParamArray(searchParams, 'channel'),
+    language: getQueryParamArray(searchParams, 'language'),
+    documentType: getQueryParamArray(searchParams, 'documentType'),
+    program: getQueryParamArray(searchParams, 'program'),
+    channel: getQueryParamArray(searchParams, 'channel'),
   });
   const [sortBy, setSortBy] = useState<string>(searchParams.get('sortBy') || 'relevance');
   const [currentPage, setCurrentPage] = useState<number>(Number(searchParams.get('page')) || 1);

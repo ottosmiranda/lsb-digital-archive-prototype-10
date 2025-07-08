@@ -25,7 +25,7 @@ export class NavigationHistoryService {
         timestamp: Date.now()
       };
       
-      sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(searchData));
+      sessionStorage.setItem(NavigationHistoryService.STORAGE_KEY, JSON.stringify(searchData));
       console.log('🔄 Navigation context saved:', searchData);
     } catch (error) {
       console.warn('⚠️ Failed to save navigation context:', error);
@@ -34,7 +34,7 @@ export class NavigationHistoryService {
 
   getLastSearchUrl(): string | null {
     try {
-      const stored = sessionStorage.getItem(this.STORAGE_KEY);
+      const stored = sessionStorage.getItem(NavigationHistoryService.STORAGE_KEY);
       if (!stored) return null;
 
       const searchData = JSON.parse(stored);
@@ -70,7 +70,7 @@ export class NavigationHistoryService {
 
   clearHistory(): void {
     try {
-      sessionStorage.removeItem(this.STORAGE_KEY);
+      sessionStorage.removeItem(NavigationHistoryService.STORAGE_KEY);
       console.log('🧹 Navigation history cleared');
     } catch (error) {
       console.warn('⚠️ Failed to clear navigation history:', error);
@@ -78,7 +78,7 @@ export class NavigationHistoryService {
   }
 
   // Save current search context from location
-  saveCurrentSearch(location: Location): void {
+  saveCurrentSearch(location: { search: string }): void {
     const searchParams = new URLSearchParams(location.search);
     this.saveSearchContext(searchParams);
   }

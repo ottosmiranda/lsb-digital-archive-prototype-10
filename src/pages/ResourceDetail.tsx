@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
@@ -146,7 +145,10 @@ const ResourceDetail = () => {
           embedUrl: (foundResource as any).embedUrl,
           pdfUrl: (foundResource as any).pdfUrl,
           fullDescription: foundResource.description,
-          tags: foundResource.subject ? [foundResource.subject] : undefined
+          tags: foundResource.subject ? [foundResource.subject] : undefined,
+          language: (foundResource as any).language,
+          documentType: (foundResource as any).documentType,
+          categories: (foundResource as any).categories
         };
 
         console.log('🔄 Final converted resource:', {

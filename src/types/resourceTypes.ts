@@ -21,4 +21,6 @@ export interface Resource {
   transcript?: boolean;
   embedUrl?: string;
   pdfUrl?: string; // Add pdfUrl property for books
+  documentType?: string; // Add documentType property for books
+  categories?: string[]; // Add categories array property
 }

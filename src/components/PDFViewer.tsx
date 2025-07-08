@@ -114,7 +114,7 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
   const renderViewer = () => {
     if (strategy === 'download') {
       return (
-        <div className={`${isFullscreen ? 'h-screen' : 'h-96'} flex items-center justify-center bg-gray-50`}>
+        <div className={`${isFullscreen ? 'h-screen' : 'h-[500px]'} flex items-center justify-center bg-gray-50`}>
           <div className="text-center p-8">
             <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -143,7 +143,7 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
     }
 
     return (
-      <div className={`overflow-hidden ${isFullscreen ? 'h-screen' : 'h-96'} bg-gray-100 relative`}>
+      <div className={`overflow-hidden ${isFullscreen ? 'h-screen' : 'h-[500px]'} bg-gray-100 relative`}>
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
             <div className="text-center">

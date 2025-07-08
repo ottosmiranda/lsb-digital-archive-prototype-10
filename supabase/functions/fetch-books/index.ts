@@ -41,6 +41,7 @@ interface TransformedBook {
   documentType?: string;
   pdfUrl?: string;
   language?: string;
+  categories?: string[];
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -110,7 +111,8 @@ const handler = async (req: Request): Promise<Response> => {
         subject: book.categorias && book.categorias.length > 0 ? book.categorias[0] : 'Literatura',
         documentType: book.tipo_documento || 'Livro',
         pdfUrl: pdfUrl,
-        language: book.language || undefined
+        language: book.language || undefined,
+        categories: book.categorias || []
       };
     });
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
@@ -26,6 +27,7 @@ import ActionButtons from '@/components/ResourceDetail/ActionButtons';
 import ResourceInfo from '@/components/ResourceDetail/ResourceInfo';
 import ResourceContent from '@/components/ResourceDetail/ResourceContent';
 import PodcastDetailView from '@/components/ResourceDetail/PodcastDetailView';
+import PDFViewer from '@/components/PDFViewer';
 import { Resource } from '@/types/resourceTypes';
 
 const ResourceDetail = () => {
@@ -202,10 +204,22 @@ const ResourceDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            <MediaSection resource={resource} />
             <ResourceContent resource={resource} />
+            
+            {/* PDF Viewer - now appears after title and description */}
+            {resource.type === 'titulo' && resource.pdfUrl && (
+              <div className="mt-6">
+                <PDFViewer 
+                  pdfUrl={resource.pdfUrl} 
+                  title={resource.title} 
+                />
+              </div>
+            )}
+            
+            <MediaSection resource={resource} />
           </div>
-          {/* Sidebar - Reordenado: ResourceInfo primeiro, ActionButtons depois */}
+          
+          {/* Sidebar */}
           <div className="space-y-6">
             <ResourceInfo resource={resource} />
             <ActionButtons resource={resource} />

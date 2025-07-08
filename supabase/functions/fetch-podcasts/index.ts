@@ -1,4 +1,5 @@
 
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
@@ -41,6 +42,8 @@ interface TransformedPodcast {
   duration?: string;
   thumbnail?: string;
   embedUrl?: string;
+  podcast_titulo?: string;
+  episodio_id?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -49,25 +52,33 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('🎧 Starting optimized podcast API fetch...');
+    console.log('🎧 Starting podcast API fetch...');
     
-    // Parse request body for pagination parameters
+    // Parse request body for pagination parameters and filters
     let page = 1;
     let limit = 10;
+    let podcastTitulo = null;
     
     if (req.method === 'POST') {
       try {
         const body = await req.json();
         page = body.page || 1;
         limit = body.limit || 10;
-        console.log(`📄 Request params: page=${page}, limit=${limit}`);
+        podcastTitulo = body.podcast_titulo || null;
+        console.log(`📄 Request params: page=${page}, limit=${limit}, podcast_titulo=${podcastTitulo}`);
       } catch (e) {
         console.log('📄 No body params, using defaults');
       }
     }
 
     const baseUrl = 'https://lbs-src1.onrender.com/api/v1/conteudo-lbs';
-    const apiUrl = `${baseUrl}?tipo=podcast&page=${page}&limit=${limit}`;
+    let apiUrl = `${baseUrl}?tipo=podcast&page=${page}&limit=${limit}`;
+    
+    // Add podcast title filter if provided
+    if (podcastTitulo) {
+      apiUrl += `&podcast_titulo=${encodeURIComponent(podcastTitulo)}`;
+      console.log(`🎯 Filtering by podcast title: ${podcastTitulo}`);
+    }
     
     console.log(`📡 Fetching podcasts from: ${apiUrl}`);
     
@@ -110,10 +121,24 @@ const handler = async (req: Request): Promise<Response> => {
       subject: episode.podcast_titulo || 'Podcast',
       duration: episode.duracao_ms ? formatDuration(episode.duracao_ms) : undefined,
       thumbnail: episode.imagem_url,
-      embedUrl: episode.embed_url
+      embedUrl: episode.embed_url,
+      podcast_titulo: episode.podcast_titulo,
+      episodio_id: episode.episodio_id
     }));
 
     console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items for page ${page}`);
+
+    // Extract program info from first episode if filtering by podcast title
+    let programInfo = null;
+    if (podcastTitulo && transformedPodcasts.length > 0) {
+      const firstEpisode = data.conteudo[0];
+      programInfo = {
+        title: firstEpisode.podcast_titulo,
+        publisher: firstEpisode.publicador,
+        thumbnail: firstEpisode.imagem_url,
+        description: `Programa de podcast com ${data.total} episódios disponíveis.`
+      };
+    }
 
     return new Response(JSON.stringify({
       success: true,
@@ -122,7 +147,8 @@ const handler = async (req: Request): Promise<Response> => {
       total: data.total,
       totalPages: data.totalPages,
       count: transformedPodcasts.length,
-      podcasts: transformedPodcasts
+      podcasts: transformedPodcasts,
+      programInfo
     }), {
       status: 200,
       headers: {
@@ -141,7 +167,8 @@ const handler = async (req: Request): Promise<Response> => {
       limit: 10,
       total: 0,
       totalPages: 0,
-      podcasts: []
+      podcasts: [],
+      programInfo: null
     }), {
       status: 500,
       headers: {
@@ -153,3 +180,4 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 serve(handler);
+

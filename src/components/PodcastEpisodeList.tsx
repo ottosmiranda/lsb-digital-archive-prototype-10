@@ -1,26 +1,21 @@
 
+
 import React, { useImperativeHandle, useState, forwardRef, useCallback } from "react";
-import { useSpotifyOEmbed } from "@/hooks/useSpotifyOEmbed";
-import { useSpotifyEpisodes } from "@/hooks/useSpotifyEpisodes";
-import { useGlobalSpotifyAuth } from "@/hooks/useGlobalSpotifyAuth";
+import { usePodcastProgramEpisodes } from "@/hooks/usePodcastProgramEpisodes";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
-import { generateEpisodes, generateMoreEpisodes } from "@/utils/episodeGenerator";
-import { generateEpisodeEmbedUrl } from "@/utils/spotifyUtils";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import EpisodesHeader from "./PodcastEpisodeList/EpisodesHeader";
-import SpotifyPlayerSection from "./PodcastEpisodeList/SpotifyPlayerSection";
 import EpisodeItem from "./PodcastEpisodeList/EpisodeItem";
-import SpotifyErrorDisplay from "./PodcastEpisodeList/SpotifyErrorDisplay";
 
 export interface PodcastEpisodeListHandles {
   playLatest: () => void;
 }
 
 interface PodcastEpisodeListProps {
-  total: number;
-  podcastTitle: string;
-  embedUrl?: string;
+  podcastTitle: string; // Nome do programa do podcast
+  currentEpisodeId?: string; // ID do episódio atual para destacar
+  embedUrl?: string; // URL do player principal
 }
 
 interface SelectedEpisode {
@@ -30,94 +25,42 @@ interface SelectedEpisode {
   date: string;
   duration: string;
   embedUrl?: string;
-  isSpotifyEpisode: boolean;
 }
 
 const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeListProps>(
-  ({ total, podcastTitle, embedUrl }, ref) => {
-    const { oembedData, loading: oembedLoading, error: oembedError } = useSpotifyOEmbed(embedUrl);
-    const { 
-      isConfigured,
-      loading: globalAuthLoading,
-      error: authError,
-      token
-    } = useGlobalSpotifyAuth();
-    
-    const { 
-      episodes: spotifyEpisodes, 
-      loading: episodesLoading, 
-      loadingMore: spotifyLoadingMore,
-      error: episodesError,
+  ({ podcastTitle, currentEpisodeId, embedUrl }, ref) => {
+    const {
+      episodes,
+      programInfo,
+      loading,
+      loadingMore,
+      error,
+      hasMore,
       totalEpisodes,
-      hasRealData, 
-      hasMore: spotifyHasMore,
-      loadMoreEpisodes: loadMoreSpotifyEpisodes
-    } = useSpotifyEpisodes(embedUrl, 10);
-    
-    // Generated episodes state for fallback
-    const [generatedEpisodes, setGeneratedEpisodes] = useState(() => 
-      generateEpisodes(total, podcastTitle, 10, 0)
-    );
-    const [generatedHasMore, setGeneratedHasMore] = useState(total > 10);
-    const [generatedLoadingMore, setGeneratedLoadingMore] = useState(false);
-
-    // Use real Spotify episodes if available, otherwise fall back to generated ones
-    const displayEpisodes = hasRealData ? spotifyEpisodes : generatedEpisodes;
-    const hasMore = hasRealData ? spotifyHasMore : generatedHasMore;
-    const loadingMore = hasRealData ? spotifyLoadingMore : generatedLoadingMore;
+      loadMoreEpisodes
+    } = usePodcastProgramEpisodes(podcastTitle, 10);
 
     // Selected episode state
     const [selectedEpisode, setSelectedEpisode] = useState<SelectedEpisode | null>(null);
     const [playingFirst, setPlayingFirst] = useState(false);
 
-    // Load more generated episodes
-    const loadMoreGeneratedEpisodes = useCallback(() => {
-      if (!generatedHasMore || generatedLoadingMore) return;
-      
-      setGeneratedLoadingMore(true);
-      
-      // Simulate loading delay
-      setTimeout(() => {
-        const moreEpisodes = generateMoreEpisodes(total, podcastTitle, generatedEpisodes, 10);
-        setGeneratedEpisodes(prev => [...prev, ...moreEpisodes]);
-        setGeneratedHasMore(generatedEpisodes.length + moreEpisodes.length < total);
-        setGeneratedLoadingMore(false);
-      }, 500);
-    }, [total, podcastTitle, generatedEpisodes, generatedHasMore, generatedLoadingMore]);
-
-    // Universal load more function
-    const loadMore = useCallback(() => {
-      if (hasRealData) {
-        loadMoreSpotifyEpisodes();
-      } else {
-        loadMoreGeneratedEpisodes();
-      }
-    }, [hasRealData, loadMoreSpotifyEpisodes, loadMoreGeneratedEpisodes]);
-
     // Infinite scroll hook
     const { loadingRef } = useInfiniteScroll({
       hasMore,
       loading: loadingMore,
-      onLoadMore: loadMore,
+      onLoadMore: loadMoreEpisodes,
       threshold: 200
     });
 
     // Handle episode selection
-    const handleEpisodeSelect = (episode: any, isSpotifyEpisode: boolean) => {
-      let episodeEmbedUrl = null;
-      
-      if (isSpotifyEpisode && episode.external_urls?.spotify) {
-        episodeEmbedUrl = generateEpisodeEmbedUrl(episode.external_urls.spotify);
-      }
-
+    const handleEpisodeSelect = (episode: any) => {
       const selectedEpisodeData: SelectedEpisode = {
-        id: isSpotifyEpisode ? episode.id : episode.id.toString(),
-        title: isSpotifyEpisode ? episode.name : episode.title,
-        description: isSpotifyEpisode ? episode.description : episode.desc,
-        date: isSpotifyEpisode ? episode.release_date : episode.date,
-        duration: isSpotifyEpisode ? formatDuration(episode.duration_ms) : episode.duration,
-        embedUrl: episodeEmbedUrl || undefined,
-        isSpotifyEpisode
+        id: episode.episodio_id || episode.id.toString(),
+        title: episode.title,
+        description: episode.description,
+        date: new Date().toLocaleDateString('pt-BR'), // Fallback date
+        duration: episode.duration || "45:00",
+        embedUrl: episode.embedUrl
       };
 
       setSelectedEpisode(selectedEpisodeData);
@@ -130,32 +73,6 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
       }
     };
 
-    const formatDuration = (durationMs?: number) => {
-      if (!durationMs) return "45:00";
-      const minutes = Math.floor(durationMs / 60000);
-      const seconds = Math.floor((durationMs % 60000) / 1000);
-      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    };
-
-    // Determine which error to show
-    const displayError = episodesError || authError;
-    
-    // Enhanced error retry function
-    const handleErrorRetry = () => {
-      // For global auth errors, redirect to settings
-      if (authError || !isConfigured) {
-        window.location.href = '/settings';
-      } else if (episodesError) {
-        // Trigger re-fetch by calling loadMore
-        loadMore();
-      }
-    };
-
-    const handleConfigure = () => {
-      // Navigate to settings for admin configuration
-      window.location.href = '/settings';
-    };
-
     // Expose "playLatest" method to parent
     useImperativeHandle(ref, () => ({
       playLatest: () => {
@@ -164,65 +81,82 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
       },
     }));
 
+    if (loading) {
+      return (
+        <section className="mt-10" id="all-episodes-list">
+          <div className="flex justify-center items-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-600" />
+            <span className="ml-2 text-gray-600">Carregando episódios...</span>
+          </div>
+        </section>
+      );
+    }
+
+    if (error) {
+      return (
+        <section className="mt-10" id="all-episodes-list">
+          <div className="flex flex-col items-center py-8 text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Erro ao carregar episódios
+            </h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Tentar novamente
+            </Button>
+          </div>
+        </section>
+      );
+    }
+
     return (
       <section className="mt-10" id="all-episodes-list">
         <EpisodesHeader
-          hasRealData={hasRealData}
-          episodeCount={hasRealData ? totalEpisodes : total}
-          total={total}
-          episodesLoading={episodesLoading}
+          hasRealData={true}
+          episodeCount={totalEpisodes}
+          total={totalEpisodes}
+          episodesLoading={false}
         />
         
         <div className="flex flex-col gap-5">
-          {/* Show error if authentication or episodes failed */}
-          {displayError && (
-            <SpotifyErrorDisplay
-              error={displayError}
-              onRetry={displayError.retryable ? handleErrorRetry : undefined}
-              onConfigure={!isConfigured ? handleConfigure : undefined}
-              authStatus={isConfigured ? 'success' : 'not_configured'}
-              browserName="Browser"
-              isConfigured={isConfigured}
-            />
-          )}
-          
-          {/* Spotify Player - First Episode or Selected Episode */}
+          {/* Main Player Section */}
           {embedUrl && (
-            <SpotifyPlayerSection
-              embedUrl={selectedEpisode?.embedUrl || embedUrl}
-              playingFirst={playingFirst}
-              podcastTitle={podcastTitle}
-              selectedEpisode={selectedEpisode}
-              oembedData={oembedData}
-              oembedLoading={oembedLoading}
-              oembedError={oembedError}
-            />
+            <div className="bg-white rounded-xl border shadow-sm p-6">
+              <h3 className="font-semibold text-lg mb-4">
+                {selectedEpisode ? selectedEpisode.title : "Player Principal"}
+              </h3>
+              <div className="aspect-video w-full rounded-lg overflow-hidden">
+                <iframe
+                  src={selectedEpisode?.embedUrl || embedUrl}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  allow="encrypted-media"
+                  className="w-full h-full"
+                  title={selectedEpisode?.title || "Podcast Player"}
+                />
+              </div>
+            </div>
           )}
           
           {/* Episodes List */}
-          {hasRealData ? (
-            // Real Spotify Episodes
-            spotifyEpisodes.map((episode, index) => (
+          {episodes.length > 0 ? (
+            episodes.map((episode) => (
               <EpisodeItem
                 key={episode.id}
                 episode={episode}
-                isSpotifyEpisode={true}
-                index={index}
-                isSelected={selectedEpisode?.id === episode.id}
-                onEpisodeSelect={() => handleEpisodeSelect(episode, true)}
+                isSpotifyEpisode={false}
+                isSelected={
+                  selectedEpisode?.id === (episode.episodio_id || episode.id.toString()) ||
+                  currentEpisodeId === (episode.episodio_id || episode.id.toString())
+                }
+                onEpisodeSelect={() => handleEpisodeSelect(episode)}
               />
             ))
           ) : (
-            // Generated Episodes List (Fallback)
-            generatedEpisodes.map((ep) => (
-              <EpisodeItem
-                key={ep.id}
-                episode={ep}
-                isSpotifyEpisode={false}
-                isSelected={selectedEpisode?.id === ep.id.toString()}
-                onEpisodeSelect={() => handleEpisodeSelect(ep, false)}
-              />
-            ))
+            <div className="text-center py-8 text-gray-500">
+              <p>Nenhum episódio encontrado para este programa.</p>
+            </div>
           )}
 
           {/* Loading indicator and Load More button */}
@@ -235,7 +169,7 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
                 </div>
               ) : (
                 <Button 
-                  onClick={loadMore} 
+                  onClick={loadMoreEpisodes} 
                   variant="outline" 
                   className="w-48"
                   disabled={loadingMore}
@@ -247,9 +181,9 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
           )}
 
           {/* End of list message */}
-          {!hasMore && displayEpisodes.length > 0 && (
+          {!hasMore && episodes.length > 0 && (
             <div className="text-center py-6 text-gray-500">
-              <p>Você visualizou todos os {displayEpisodes.length} episódios disponíveis</p>
+              <p>Você visualizou todos os {episodes.length} episódios disponíveis</p>
             </div>
           )}
         </div>
@@ -259,3 +193,4 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
 );
 
 export default PodcastEpisodeList;
+

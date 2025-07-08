@@ -1,4 +1,5 @@
 
+
 import { useEffect, useRef } from "react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -30,26 +31,29 @@ const PodcastDetailView = ({ podcast }: PodcastDetailViewProps) => {
     }
   };
 
+  // Extract program name from podcast.subject (which contains podcast_titulo)
+  const programTitle = podcast.subject || podcast.title;
+  
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
       <div className="max-w-4xl mx-auto py-8 px-4 md:px-8">
-        <ResourceBreadcrumb title={podcast.title} />
+        <ResourceBreadcrumb title={programTitle} />
         <BackButton />
         <PodcastDetailHero
           cover={podcast.thumbnail}
-          title={podcast.title}
+          title={programTitle}
           publisher={podcast.author}
-          episodeCount={parseInt(`${podcast.episodes}`) || 1}
+          episodeCount={podcast.episodes ? parseInt(`${podcast.episodes}`) : 0}
           year={podcast.year}
-          categories={podcast.subject ? [podcast.subject] : []}
-          description={podcast.description}
+          categories={[programTitle]}
+          description={podcast.description || `Programa de podcast "${programTitle}" com episódios disponíveis.`}
           onPlayLatest={handlePlayLatest}
         />
         <PodcastEpisodeList
           ref={episodesListRef}
-          total={parseInt(`${podcast.episodes}`) || 1}
-          podcastTitle={podcast.title}
+          podcastTitle={programTitle}
+          currentEpisodeId={podcast.id.toString()}
           embedUrl={podcast.embedUrl}
         />
       </div>
@@ -59,3 +63,4 @@ const PodcastDetailView = ({ podcast }: PodcastDetailViewProps) => {
 };
 
 export default PodcastDetailView;
+

@@ -1,4 +1,3 @@
-
 import { SearchResult } from '@/types/searchTypes';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -84,22 +83,13 @@ export class DataService {
       results.push(...videosResult.value);
       console.log('🎬 Videos fetched:', videosResult.value.length);
       
-      // Log video IDs for debugging - SAFE FOR NUMERIC IDs
+      // Log video IDs for debugging
       if (videosResult.value.length > 0) {
-        const numericIds = videosResult.value.map(v => v.id).filter(id => typeof id === 'number');
         console.log('🎬 Video IDs preview:', videosResult.value.slice(0, 3).map(v => ({
           id: v.id,
           originalId: v.originalId,
           title: v.title
         })));
-        
-        if (numericIds.length > 0) {
-          console.log('🎬 Video ID range:', {
-            minId: Math.min(...numericIds),
-            maxId: Math.max(...numericIds),
-            totalCount: numericIds.length
-          });
-        }
       }
     } else {
       console.error('❌ Failed to fetch videos:', videosResult.reason);
@@ -115,26 +105,10 @@ export class DataService {
       errors.push('books');
     }
 
-    // Process podcasts result - FIXED: No Math operations on UUID strings
+    // Process podcasts result
     if (podcastsResult.status === 'fulfilled') {
       results.push(...podcastsResult.value);
       console.log('🎧 Podcasts fetched:', podcastsResult.value.length);
-      
-      // Log podcast IDs for debugging - SAFE FOR STRING IDs
-      if (podcastsResult.value.length > 0) {
-        console.log('🎧 Podcast IDs preview:', podcastsResult.value.slice(0, 3).map(p => ({
-          id: p.id,
-          originalId: p.originalId,
-          title: p.title
-        })));
-        
-        // Safe logging for string IDs - no Math operations
-        console.log('🎧 Podcast ID info:', {
-          sampleIds: podcastsResult.value.slice(0, 5).map(p => p.id),
-          totalCount: podcastsResult.value.length,
-          idType: 'UUID strings'
-        });
-      }
     } else {
       console.error('❌ Failed to fetch podcasts:', podcastsResult.reason);
       errors.push('podcasts');
@@ -183,11 +157,28 @@ export class DataService {
       
       console.log(`✅ Page ${page}: ${data.videos.length} videos loaded (total so far: ${allVideos.length})`);
       
+      // Log IDs for debugging on first few pages
+      if (page <= 2) {
+        console.log(`🎬 Video IDs from page ${page}:`, data.videos.slice(0, 3).map(v => ({
+          id: v.id,
+          originalId: v.originalId,
+          title: v.title.substring(0, 30) + '...'
+        })));
+      }
+      
       page++;
       
     } while (page <= totalPages);
     
     console.log(`🎉 ALL videos loaded: ${allVideos.length} total videos from ${totalPages} pages`);
+    
+    // Final summary of video IDs for debugging
+    console.log('🎬 Final video ID ranges:', {
+      minId: Math.min(...allVideos.map(v => v.id)),
+      maxId: Math.max(...allVideos.map(v => v.id)),
+      sampleOriginalIds: allVideos.slice(0, 5).map(v => v.originalId),
+      totalCount: allVideos.length
+    });
     
     return allVideos;
   }
@@ -212,42 +203,22 @@ export class DataService {
   }
 
   private async fetchPodcastsFromAPI(): Promise<SearchResult[]> {
-    console.log('🎧 Fetching ALL podcasts from API with complete pagination...');
+    console.log('🎧 Fetching podcasts from API...');
     
-    const allPodcasts: SearchResult[] = [];
-    let page = 1;
-    let totalPages = 1;
+    const { data, error } = await supabase.functions.invoke('fetch-podcasts');
     
-    do {
-      console.log(`📄 Fetching podcasts page ${page}/${totalPages}...`);
-      
-      const { data, error } = await supabase.functions.invoke('fetch-podcasts', {
-        body: { page, limit: 50 } // Increased limit for efficiency
-      });
-      
-      if (error) {
-        console.error(`❌ Podcasts page ${page} error:`, error);
-        throw error;
-      }
+    if (error) {
+      console.error('❌ Podcasts edge function error:', error);
+      throw error;
+    }
 
-      if (!data.success) {
-        console.error(`❌ Podcasts page ${page} API error:`, data.error);
-        throw new Error(data.error);
-      }
+    if (!data.success) {
+      console.error('❌ Podcasts API returned error:', data.error);
+      throw new Error(data.error);
+    }
 
-      // Add podcasts from this page
-      allPodcasts.push(...data.podcasts);
-      totalPages = data.totalPages;
-      
-      console.log(`✅ Page ${page}: ${data.podcasts.length} podcasts loaded (total so far: ${allPodcasts.length})`);
-      
-      page++;
-      
-    } while (page <= totalPages);
-    
-    console.log(`🎉 ALL podcasts loaded: ${allPodcasts.length} total podcasts from ${totalPages} pages`);
-    
-    return allPodcasts;
+    console.log('✅ Podcasts from API:', data.count);
+    return data.podcasts;
   }
 
   // Clear cache method for manual refresh

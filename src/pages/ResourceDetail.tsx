@@ -1,5 +1,6 @@
+
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -27,16 +28,12 @@ import ResourceInfo from '@/components/ResourceDetail/ResourceInfo';
 import ResourceContent from '@/components/ResourceDetail/ResourceContent';
 import PodcastDetailView from '@/components/ResourceDetail/PodcastDetailView';
 import { Resource } from '@/types/resourceTypes';
-import { useToast } from '@/hooks/use-toast';
 
 const ResourceDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { toast } = useToast();
   const { allData, loading } = useDataLoader();
   const [resource, setResource] = useState<Resource | null>(null);
   const [resourceLoading, setResourceLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   // Scroll to top when component mounts or when resource changes
   useEffect(() => {
@@ -51,167 +48,84 @@ const ResourceDetail = () => {
         return;
       }
 
-      console.group('🔍 ENHANCED RESOURCE SEARCH WITH SMART REDIRECT - ID: ' + id);
-      console.log('🎯 TARGET ID:', id, 'Type:', typeof id);
+      console.group('🔍 RESOURCE SEARCH DEBUG');
+      console.log('🎯 Target ID:', id);
       console.log('📊 Total available data:', allData.length, 'items');
 
-      const isNumericId = !isNaN(Number(id));
-      console.log('🔢 Target ID is numeric:', isNumericId);
+      // Enhanced debugging - show all video IDs
+      const videos = allData.filter(item => item.type === 'video');
+      console.log('🎬 Available videos:', videos.length);
+      console.log('🎬 Video ID samples:', videos.slice(0, 10).map(v => ({
+        id: v.id,
+        originalId: v.originalId,
+        title: v.title.substring(0, 40) + '...'
+      })));
 
-      // Análise detalhada por tipo
-      const byType = allData.reduce((acc, item) => {
-        if (!acc[item.type]) acc[item.type] = [];
-        acc[item.type].push(item);
-        return acc;
-      }, {} as Record<string, any[]>);
-
-      console.log('📈 Data breakdown by type:');
-      Object.entries(byType).forEach(([type, items]) => {
-        console.log(`  ${type}: ${items.length} items`);
-        
-        // Mostrar amostras de IDs para cada tipo - SAFE FOR ALL TYPES
-        const sampleIds = items.slice(0, 3).map(item => ({
-          id: item.id,
-          originalId: (item as any).originalId,
-          idType: typeof item.id,
-          title: item.title.substring(0, 30) + '...'
-        }));
-        console.log(`  ${type} ID samples:`, sampleIds);
-      });
-
-      // BUSCA APRIMORADA: Múltiplas estratégias de busca
-      console.log('🔍 Starting comprehensive search...');
-      let foundResource: any = null;
-      let searchMethod = '';
-
-      // ESTRATÉGIA 1: Busca direta por ID
-      foundResource = allData.find(item => String(item.id) === id);
+      // PHASE 1: Direct ID match (most reliable)
+      console.log('🔍 Phase 1: Searching by exact ID match...');
+      let foundResource = allData.find(item => String(item.id) === id);
+      
       if (foundResource) {
-        searchMethod = 'Direct ID match';
-        console.log('✅ FOUND by direct ID:', foundResource.id, foundResource.type, foundResource.title);
-      }
-
-      // ESTRATÉGIA 2: Busca por originalId (para vídeos transformados)
-      if (!foundResource) {
+        console.log('✅ Phase 1 SUCCESS: Found by exact ID', {
+          id: foundResource.id,
+          type: foundResource.type,
+          title: foundResource.title
+        });
+      } else {
+        console.log('❌ Phase 1 FAILED: No exact ID match');
+        
+        // PHASE 2: originalId match for videos (UUID from API)
+        console.log('🔍 Phase 2: Searching by originalId for videos...');
         foundResource = allData.find(item => 
-          (item as any).originalId && String((item as any).originalId) === id
+          item.type === 'video' && (item as any).originalId === id
         );
+        
         if (foundResource) {
-          searchMethod = 'OriginalId match';
-          console.log('✅ FOUND by originalId:', (foundResource as any).originalId, foundResource.type, foundResource.title);
-        }
-      }
-
-      // ESTRATÉGIA 3: Busca numérica flexível (para IDs transformados)
-      if (!foundResource && isNumericId) {
-        const numericId = parseInt(id || '0');
-        foundResource = allData.find(item => 
-          typeof item.id === 'number' && item.id === numericId
-        );
-        if (foundResource) {
-          searchMethod = 'Numeric ID match';
-          console.log('✅ FOUND by numeric conversion:', foundResource.id, foundResource.type, foundResource.title);
-        }
-      }
-
-      // ESTRATÉGIA 4: Redirecionamento inteligente por tipo
-      if (!foundResource && isNumericId) {
-        console.log('🧠 Attempting smart redirect for numeric ID:', id);
-        
-        // Procurar em vídeos primeiro (mais comum para IDs numéricos)
-        const videoMatch = allData.find(item => 
-          item.type === 'video' && (
-            String(item.id) === id || 
-            String((item as any).originalId) === id ||
-            (typeof item.id === 'number' && item.id === parseInt(id))
-          )
-        );
-        
-        if (videoMatch) {
-          foundResource = videoMatch;
-          searchMethod = 'Smart redirect to video';
-          console.log('🎯 SMART REDIRECT: Found video for numeric ID');
-          
-          toast({
-            title: "Recurso encontrado!",
-            description: `Redirecionando para o vídeo "${foundResource.title.substring(0, 50)}..."`,
-            duration: 3000,
+          console.log('✅ Phase 2 SUCCESS: Found by originalId', {
+            id: foundResource.id,
+            originalId: (foundResource as any).originalId,
+            type: foundResource.type,
+            title: foundResource.title
           });
+        } else {
+          console.log('❌ Phase 2 FAILED: No originalId match');
           
-          setTimeout(() => {
-            navigate(`/recurso/${foundResource.id}`, { replace: true });
-          }, 1000);
-          return;
-        }
-
-        // Se não encontrou vídeo, tentar livros
-        const bookMatch = allData.find(item => 
-          item.type === 'titulo' && (
-            String(item.id) === id || 
-            (typeof item.id === 'number' && item.id === parseInt(id))
-          )
-        );
-        
-        if (bookMatch) {
-          foundResource = bookMatch;
-          searchMethod = 'Smart redirect to book';
-          console.log('🎯 SMART REDIRECT: Found book for numeric ID');
+          // PHASE 3: Smart numerical ID matching
+          console.log('🔍 Phase 3: Smart numerical ID matching...');
+          const numericId = parseInt(id || '0');
           
-          toast({
-            title: "Recurso encontrado!",
-            description: `Redirecionando para o livro "${foundResource.title.substring(0, 50)}..."`,
-            duration: 3000,
-          });
-          
-          setTimeout(() => {
-            navigate(`/recurso/${foundResource.id}`, { replace: true });
-          }, 1000);
-          return;
-        }
-      }
-
-      // Debug aprimorado
-      const debugData = {
-        targetId: id,
-        targetIdType: typeof id,
-        isNumeric: isNumericId,
-        totalItems: allData.length,
-        searchMethod: searchMethod || 'No match found',
-        typeBreakdown: Object.fromEntries(
-          Object.entries(byType).map(([type, items]) => [
-            type, 
-            {
-              count: items.length,
-              idTypes: [...new Set(items.map(i => typeof i.id))],
-              sampleIds: items.slice(0, 3).map(i => ({
-                id: i.id,
-                originalId: (i as any).originalId
+          if (numericId >= 1000) {
+            // Look for videos with closest ID match
+            const videoMatches = videos
+              .map(v => ({ 
+                video: v, 
+                distance: Math.abs(v.id - numericId) 
               }))
+              .sort((a, b) => a.distance - b.distance);
+            
+            if (videoMatches.length > 0 && videoMatches[0].distance < 1000) {
+              foundResource = videoMatches[0].video;
+              console.log('✅ Phase 3 SUCCESS: Found closest video match', {
+                targetId: numericId,
+                foundId: foundResource.id,
+                distance: videoMatches[0].distance,
+                title: foundResource.title
+              });
+            } else {
+              console.log('❌ Phase 3 FAILED: No close video match');
             }
-          ])
-        ),
-        searchResult: foundResource ? {
-          found: true,
+          }
+        }
+      }
+
+      if (foundResource) {
+        console.log('🎉 FINAL RESULT: Resource found!', {
           id: foundResource.id,
           originalId: (foundResource as any).originalId,
           type: foundResource.type,
           title: foundResource.title,
-          method: searchMethod
-        } : {
-          found: false,
-          reason: `ID ${id} (${isNumericId ? 'numeric' : 'text'}) not found using any search method`
-        }
-      };
-
-      console.log('📊 COMPLETE SEARCH DEBUG:', debugData);
-      setDebugInfo(debugData);
-
-      if (foundResource) {
-        console.log('🎉 RESOURCE FOUND via', searchMethod, {
-          id: foundResource.id,
-          originalId: (foundResource as any).originalId,
-          type: foundResource.type,
-          title: foundResource.title
+          hasEmbedUrl: !!(foundResource as any).embedUrl,
+          hasThumbnail: !!foundResource.thumbnail
         });
         
         // Convert SearchResult to Resource format
@@ -235,9 +149,26 @@ const ResourceDetail = () => {
           tags: foundResource.subject ? [foundResource.subject] : undefined
         };
 
+        console.log('🔄 Final converted resource:', {
+          id: convertedResource.id,
+          type: convertedResource.type,
+          hasEmbedUrl: !!convertedResource.embedUrl,
+          embedUrl: convertedResource.embedUrl?.substring(0, 50) + '...'
+        });
         setResource(convertedResource);
       } else {
-        console.log('💀 RESOURCE NOT FOUND after comprehensive search');
+        console.log('💀 TOTAL FAILURE: Resource not found for ID:', id);
+        console.log('🔍 Available ID ranges:', {
+          videos: videos.length > 0 ? {
+            minId: Math.min(...videos.map(v => v.id)),
+            maxId: Math.max(...videos.map(v => v.id)),
+            sampleIds: videos.slice(0, 5).map(v => v.id)
+          } : 'No videos',
+          allTypes: {
+            minId: Math.min(...allData.map(v => v.id)),
+            maxId: Math.max(...allData.map(v => v.id))
+          }
+        });
         setResource(null);
       }
       
@@ -248,11 +179,11 @@ const ResourceDetail = () => {
     if (!loading) {
       findResource();
     }
-  }, [id, allData, loading, navigate, toast]);
+  }, [id, allData, loading]);
 
   // Loading skeletons
   if (loading || resourceLoading) return <><Navigation /><LoadingSkeleton /></>;
-  if (!resource) return <><Navigation /><ResourceNotFound targetId={id} debugInfo={debugInfo} /></>;
+  if (!resource) return <><Navigation /><ResourceNotFound /></>;
 
   // If podcast detected
   if (resource.type === 'podcast') {
@@ -272,7 +203,7 @@ const ResourceDetail = () => {
             <MediaSection resource={resource} />
             <ResourceContent resource={resource} />
           </div>
-          {/* Sidebar */}
+          {/* Sidebar - Reordenado: ResourceInfo primeiro, ActionButtons depois */}
           <div className="space-y-6">
             <ResourceInfo resource={resource} />
             <ActionButtons resource={resource} />

@@ -1,3 +1,4 @@
+
 import { SearchResult } from '@/types/searchTypes';
 
 export class DataTransformer {
@@ -9,7 +10,7 @@ export class DataTransformer {
     });
     
     const baseResult: SearchResult = {
-      id: item.id, // Use original ID from API instead of random generation
+      id: Math.floor(Math.random() * 10000) + 1000,
       originalId: item.id,
       title: item.titulo || item.podcast_titulo || item.title || 'Título não disponível',
       author: item.autor || item.canal || 'Link Business School',

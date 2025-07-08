@@ -20,14 +20,12 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Remove PDF.js specific configurations since we're using iframe approach
+  optimizeDeps: {
+    include: ['pdfjs-dist']
+  },
   build: {
     rollupOptions: {
-      output: {
-        manualChunks: {
-          // Remove pdfjs chunk
-        }
-      }
+      external: [],
     }
   }
 }));

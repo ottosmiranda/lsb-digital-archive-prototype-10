@@ -242,136 +242,122 @@ const performPaginatedSearch = async (
   }
 };
 
-// BUSCA GLOBAL COMPLETA REFATORADA
+// NOVA IMPLEMENTAÇÃO: Busca Global com Paginação Real Unificada
 const performGlobalSearch = async (
   searchParams: SearchRequest
 ): Promise<any> => {
   const { sortBy, page, resultsPerPage } = searchParams;
   
-  console.log(`🌍 Busca Global COMPLETA: página ${page}, aggregando TODOS os itens disponíveis`);
+  console.log(`🎯 Busca Global UNIFICADA: página ${page} (paginação REAL)`);
   
-  const cacheKey = getCacheKey('global', 'all_content_complete');
+  const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
   
   if (isValidCache(cacheKey)) {
     const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT Global: ${cached.length} itens totais`);
-    
-    // Aplicar paginação no dataset completo cacheado
-    const sorted = sortResults(cached, sortBy);
-    const totalResults = sorted.length;
-    const totalPages = Math.ceil(totalResults / resultsPerPage);
-    const startIndex = (page - 1) * resultsPerPage;
-    const paginatedResults = sorted.slice(startIndex, startIndex + resultsPerPage);
-    
-    console.log(`📊 Paginação Global: ${paginatedResults.length} itens da página ${page}/${totalPages} (total: ${totalResults})`);
-    
-    return {
-      success: true,
-      results: paginatedResults,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalResults,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1
-      },
-      searchInfo: {
-        query: '',
-        appliedFilters: searchParams.filters,
-        sortBy
-      }
-    };
+    console.log(`📦 Cache HIT Global Página: ${cached.results.length} itens`);
+    return cached;
   }
-  
-  // Carregar dataset global COMPLETO (não limitado)
-  console.log(`🔄 Carregando dataset global COMPLETO (sem limites)...`);
   
   try {
-    // Estratégia agressiva: carregar TODOS os itens disponíveis
-    const allContentPromises = [
-      loadAllContentOfType('podcast'),
-      loadAllContentOfType('aula'), 
-      loadAllContentOfType('livro')
-    ];
-
-    const results = await Promise.allSettled(allContentPromises);
+    // NOVA ABORDAGEM: Distribuição inteligente por página
+    const response = await performUnifiedPageFetch(page, resultsPerPage, sortBy);
     
-    const allContent: SearchResult[] = [];
-    let loadedStats = { podcasts: 0, videos: 0, books: 0 };
+    setCache(cacheKey, response, 'global');
     
-    // Agregar resultados de todos os tipos
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        allContent.push(...result.value);
-        
-        const typeNames = ['podcasts', 'videos', 'books'];
-        const typeName = typeNames[index] as keyof typeof loadedStats;
-        loadedStats[typeName] = result.value.length;
-      } else {
-        console.error(`❌ Falha ao carregar tipo ${['podcast', 'aula', 'livro'][index]}:`, result.reason);
-      }
-    });
-    
-    console.group('📊 DATASET GLOBAL CARREGADO');
-    console.log(`🎧 Podcasts: ${loadedStats.podcasts}`);
-    console.log(`🎬 Vídeos: ${loadedStats.videos}`);
-    console.log(`📚 Livros: ${loadedStats.books}`);
-    console.log(`🎯 TOTAL: ${allContent.length} itens`);
-    console.groupEnd();
-    
-    if (allContent.length === 0) {
-      console.warn('⚠️ Nenhum conteúdo global carregado');
-      return {
-        success: true,
-        results: [],
-        pagination: {
-          currentPage: page,
-          totalPages: 0,
-          totalResults: 0,
-          hasNextPage: false,
-          hasPreviousPage: false
-        },
-        searchInfo: {
-          query: '',
-          appliedFilters: searchParams.filters,
-          sortBy
-        }
-      };
-    }
-    
-    // Cache do dataset global COMPLETO (20 minutos)
-    setCache(cacheKey, allContent, 'global');
-    
-    // Aplicar paginação
-    const sorted = sortResults(allContent, sortBy);
-    const totalResults = sorted.length;
-    const totalPages = Math.ceil(totalResults / resultsPerPage);
-    const startIndex = (page - 1) * resultsPerPage;
-    const paginatedResults = sorted.slice(startIndex, startIndex + resultsPerPage);
-    
-    console.log(`✅ Dataset Global COMPLETO carregado: ${allContent.length} itens, página ${page}/${totalPages}`);
-    
-    return {
-      success: true,
-      results: paginatedResults,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalResults,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1
-      },
-      searchInfo: {
-        query: '',
-        appliedFilters: searchParams.filters,
-        sortBy
-      }
-    };
+    console.log(`✅ Busca Global Unificada concluída: página ${page}/${response.pagination.totalPages}`);
+    return response;
     
   } catch (error) {
-    console.error('❌ Erro na busca global completa:', error);
+    console.error('❌ Erro na busca global unificada:', error);
     throw error;
   }
+};
+
+// Nova função para busca unificada por página
+const performUnifiedPageFetch = async (
+  page: number,
+  limit: number,
+  sortBy: string
+): Promise<any> => {
+  const CONTENT_TOTALS = {
+    podcasts: 2512,
+    videos: 300,
+    books: 30
+  };
+  
+  const TOTAL_ITEMS = CONTENT_TOTALS.podcasts + CONTENT_TOTALS.videos + CONTENT_TOTALS.books; // 2842
+  
+  // Calcular distribuição proporcional para esta página
+  const startIndex = (page - 1) * limit;
+  
+  const podcastRatio = CONTENT_TOTALS.podcasts / TOTAL_ITEMS; // ~0.88
+  const videoRatio = CONTENT_TOTALS.videos / TOTAL_ITEMS; // ~0.11
+  const bookRatio = CONTENT_TOTALS.books / TOTAL_ITEMS; // ~0.01
+  
+  const podcastsNeeded = Math.round(limit * podcastRatio);
+  const videosNeeded = Math.round(limit * videoRatio);
+  const booksNeeded = limit - podcastsNeeded - videosNeeded;
+  
+  // Calcular páginas correspondentes
+  const podcastPage = Math.ceil((startIndex * podcastRatio + 1) / podcastsNeeded) || 1;
+  const videoPage = Math.ceil((startIndex * videoRatio + 1) / videosNeeded) || 1;
+  const bookPage = Math.ceil((startIndex * bookRatio + 1) / booksNeeded) || 1;
+  
+  console.log(`📊 Distribuição página ${page}:`, {
+    podcasts: { page: podcastPage, limit: podcastsNeeded },
+    videos: { page: videoPage, limit: videosNeeded },
+    books: { page: bookPage, limit: booksNeeded }
+  });
+  
+  // Requisições paralelas otimizadas - apenas os itens necessários
+  const [podcastsResult, videosResult, booksResult] = await Promise.allSettled([
+    fetchPaginatedContent('podcast', Math.max(1, podcastPage), Math.max(1, podcastsNeeded)),
+    fetchPaginatedContent('aula', Math.max(1, videoPage), Math.max(1, videosNeeded)),
+    fetchPaginatedContent('livro', Math.max(1, bookPage), Math.max(1, booksNeeded))
+  ]);
+  
+  const allItems: SearchResult[] = [];
+  
+  // Agregar apenas os resultados necessários
+  if (podcastsResult.status === 'fulfilled') {
+    allItems.push(...podcastsResult.value.items);
+    console.log(`✅ Podcasts: ${podcastsResult.value.items.length} itens`);
+  }
+  
+  if (videosResult.status === 'fulfilled') {
+    allItems.push(...videosResult.value.items);
+    console.log(`✅ Vídeos: ${videosResult.value.items.length} itens`);
+  }
+  
+  if (booksResult.status === 'fulfilled') {
+    allItems.push(...booksResult.value.items);
+    console.log(`✅ Livros: ${booksResult.value.items.length} itens`);
+  }
+  
+  // Ordenar e limitar
+  const sortedItems = sortResults(allItems, sortBy);
+  const finalItems = sortedItems.slice(0, limit);
+  
+  const totalPages = Math.ceil(TOTAL_ITEMS / limit);
+  
+  console.log(`🎯 Página ${page}: ${finalItems.length} itens finais de ${TOTAL_ITEMS} totais`);
+  
+  return {
+    success: true,
+    results: finalItems,
+    pagination: {
+      currentPage: page,
+      totalPages,
+      totalResults: TOTAL_ITEMS,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1
+    },
+    searchInfo: {
+      query: '',
+      appliedFilters: { resourceType: ['all'] },
+      sortBy
+    }
+  };
 };
 
 // FUNÇÃO AUXILIAR: Carregar TODOS os itens de um tipo específico

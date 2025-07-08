@@ -1,4 +1,5 @@
 
+
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ const Navigation = () => {
               <img 
                 alt="Biblioteca Digital & Link" 
                 className="h-10 w-auto" 
-                src="/lovable-uploads/2166379e-4179-4662-bfa4-4b77803f7347.png" 
+                src="/lovable-uploads/87404866-09ad-42db-a315-7bf3475988c1.png" 
               />
             </Link>
           </div>
@@ -108,3 +109,4 @@ const Navigation = () => {
 };
 
 export default Navigation;
+

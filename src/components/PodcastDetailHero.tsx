@@ -35,8 +35,9 @@ const PodcastDetailHero = ({
 
   return (
     <section className="relative mb-8">
-      {/* Hero: Cover, Spotify Player Button, metadata */}
-      <div className="flex flex-col gap-6 md:flex-row md:gap-10 py-[7px]">
+      {/* Hero: 3-column layout - Cover, Info + Button, Share Card */}
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 py-[7px]">
+        {/* Column 1: Cover Image */}
         <div className="flex-shrink-0">
           <img 
             src={cover || fallbackImg} 
@@ -47,6 +48,8 @@ const PodcastDetailHero = ({
             }} 
           />
         </div>
+
+        {/* Column 2: Program Info and Play Button */}
         <div className="flex-1 flex flex-col justify-between py-2">
           {/* Category badges */}
           <div className="flex flex-wrap gap-2 mb-2">
@@ -66,8 +69,9 @@ const PodcastDetailHero = ({
             <Calendar className="h-4 w-4" />
             <span>Desde {year}</span>
           </div>
-          {/* Spotify Player Button and Share Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start mt-2">
+          
+          {/* Play Button */}
+          <div className="mt-2">
             <Button 
               data-testid="play-last-episode" 
               className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg shadow transition" 
@@ -77,21 +81,29 @@ const PodcastDetailHero = ({
               <Play className="h-5 w-5 mr-2" />
               Ouça o episódio
             </Button>
-            
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-gray-600">Compartilhar</span>
-              <ShareButtons
-                shareUrl={shareUrl}
-                shareTitle={shareTitle}
-                shareDescription={shareDescription}
-                layout="horizontal"
-                iconSize={28}
-                showCopyButton={true}
-              />
-            </div>
           </div>
         </div>
+
+        {/* Column 3: Share Card */}
+        <div className="flex-shrink-0 w-full lg:w-auto">
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-gray-700">Compartilhar</h3>
+                <ShareButtons
+                  shareUrl={shareUrl}
+                  shareTitle={shareTitle}
+                  shareDescription={shareDescription}
+                  layout="vertical"
+                  iconSize={32}
+                  showCopyButton={true}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
       {/* Description */}
       <div className="mt-7">
         <Card>

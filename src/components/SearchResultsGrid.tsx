@@ -80,11 +80,11 @@ const SearchResultsGrid = ({
       title: result.title.substring(0, 50) + '...'
     });
     
-    // For videos, prioritize originalId if available (UUID from API)
+    // For videos AND podcasts, prioritize originalId if available (UUID from API)
     let navigationId: string;
-    if (result.type === 'video' && (result as any).originalId) {
+    if ((result.type === 'video' || result.type === 'podcast') && (result as any).originalId) {
       navigationId = (result as any).originalId;
-      console.log('🎬 Using originalId for video navigation:', navigationId);
+      console.log('🎬 Using originalId for navigation:', navigationId);
     } else {
       navigationId = String(result.id);
       console.log('📄 Using standard id for navigation:', navigationId);

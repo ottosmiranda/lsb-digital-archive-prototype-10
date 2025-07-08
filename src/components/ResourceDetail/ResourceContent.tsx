@@ -11,7 +11,7 @@ const ResourceContent = ({ resource }: { resource: Resource }) => {
     resource.fullDescription.length > resource.description.length + 50;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 mb-16 lg:mb-[120px]">
       <div>
         <Badge className={`${getTypeBadgeColor(resource.type)} mb-2`}>
           {resource.type === 'video' && <Play className="h-3 w-3 mr-1" />}

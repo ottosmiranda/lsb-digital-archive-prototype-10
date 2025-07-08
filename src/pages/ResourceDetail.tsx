@@ -200,10 +200,10 @@ const ResourceDetail = () => {
         <BackButton />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
+          {/* Main Content - Ordem alterada: ResourceContent primeiro, MediaSection depois */}
           <div className="lg:col-span-2">
-            <MediaSection resource={resource} />
             <ResourceContent resource={resource} />
+            <MediaSection resource={resource} />
           </div>
           {/* Sidebar - Reordenado: ResourceInfo primeiro, ActionButtons depois */}
           <div className="space-y-6">

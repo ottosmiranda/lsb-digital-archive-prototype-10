@@ -31,7 +31,7 @@ const ActionButtons = ({ resource }: { resource: Resource }) => {
     }
   };
 
-  if (resource.type === 'video') {
+  if (resource.type === 'video' || resource.type === 'titulo') {
     return (
       <Card>
         <CardContent className="p-4 space-y-3">
@@ -55,27 +55,6 @@ const ActionButtons = ({ resource }: { resource: Resource }) => {
           <Button variant="outline" className="w-full" onClick={handleCopyLink}>
             {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
             {copied ? 'Link Copiado!' : 'Copiar Link'}
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (resource.type === 'titulo') {
-    return (
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <Button className="w-full bg-blue-600 hover:bg-blue-700">
-            <BookOpen className="h-4 w-4 mr-2" />
-            Ler Online
-          </Button>
-          <Button variant="outline" className="w-full">
-            <Download className="h-4 w-4 mr-2" />
-            Download PDF
-          </Button>
-          <Button variant="outline" className="w-full">
-            <Share2 className="h-4 w-4 mr-2" />
-            Compartilhar
           </Button>
         </CardContent>
       </Card>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Download, Share2, Clock, User, Calendar, BookOpen, Headphones, FileText, Volume2 } from 'lucide-react';
@@ -52,7 +51,7 @@ const ResourceDetail = () => {
         return;
       }
 
-      console.group('🔍 ENHANCED RESOURCE SEARCH WITH SMART REDIRECT');
+      console.group('🔍 ENHANCED RESOURCE SEARCH WITH SMART REDIRECT - ID: ' + id);
       console.log('🎯 TARGET ID:', id, 'Type:', typeof id);
       console.log('📊 Total available data:', allData.length, 'items');
 
@@ -70,7 +69,7 @@ const ResourceDetail = () => {
       Object.entries(byType).forEach(([type, items]) => {
         console.log(`  ${type}: ${items.length} items`);
         
-        // Mostrar amostras de IDs para cada tipo
+        // Mostrar amostras de IDs para cada tipo - SAFE FOR ALL TYPES
         const sampleIds = items.slice(0, 3).map(item => ({
           id: item.id,
           originalId: (item as any).originalId,
@@ -80,136 +79,104 @@ const ResourceDetail = () => {
         console.log(`  ${type} ID samples:`, sampleIds);
       });
 
-      // FASE 1: Busca exata por ID
-      console.log('🔍 PHASE 1: Exact ID match search...');
-      let foundResource = allData.find(item => String(item.id) === id);
-      
+      // BUSCA APRIMORADA: Múltiplas estratégias de busca
+      console.log('🔍 Starting comprehensive search...');
+      let foundResource: any = null;
+      let searchMethod = '';
+
+      // ESTRATÉGIA 1: Busca direta por ID
+      foundResource = allData.find(item => String(item.id) === id);
       if (foundResource) {
-        console.log('✅ PHASE 1 SUCCESS: Found by exact ID', {
-          id: foundResource.id,
-          type: foundResource.type,
-          title: foundResource.title
-        });
-      } else {
-        console.log('❌ PHASE 1 FAILED: No exact ID match');
-        
-        // FASE 2: Busca por originalId
-        console.log('🔍 PHASE 2: OriginalId search...');
+        searchMethod = 'Direct ID match';
+        console.log('✅ FOUND by direct ID:', foundResource.id, foundResource.type, foundResource.title);
+      }
+
+      // ESTRATÉGIA 2: Busca por originalId (para vídeos transformados)
+      if (!foundResource) {
         foundResource = allData.find(item => 
           (item as any).originalId && String((item as any).originalId) === id
         );
-        
         if (foundResource) {
-          console.log('✅ PHASE 2 SUCCESS: Found by originalId', {
-            id: foundResource.id,
-            originalId: (foundResource as any).originalId,
-            type: foundResource.type,
-            title: foundResource.title
-          });
-        } else {
-          console.log('❌ PHASE 2 FAILED: No originalId match');
-          
-          // FASE 3: Redirecionamento Inteligente
-          console.log('🔍 PHASE 3: Smart redirect analysis...');
-          
-          if (isNumericId) {
-            const numericId = parseInt(id || '0');
-            console.log('🔢 Searching for numeric ID in appropriate types:', numericId);
-            
-            // Buscar primeiro em vídeos (mais provável para IDs numéricos)
-            const videoMatches = allData.filter(item => 
-              item.type === 'video' && 
-              (item.id === numericId || (item as any).originalId === numericId)
-            );
-            
-            if (videoMatches.length > 0) {
-              foundResource = videoMatches[0];
-              console.log('✅ PHASE 3 SUCCESS: Found video match, suggesting redirect', {
-                id: foundResource.id,
-                type: foundResource.type,
-                title: foundResource.title
-              });
-              
-              // Mostrar toast e redirecionar
-              toast({
-                title: "Recurso encontrado!",
-                description: `Redirecionando para o vídeo "${foundResource.title.substring(0, 50)}..."`,
-                duration: 3000,
-              });
-              
-              // Delay para mostrar o toast antes do redirect
-              setTimeout(() => {
-                navigate(`/recurso/${foundResource.id}`, { replace: true });
-              }, 1000);
-              
-              return;
-            }
-            
-            // Se não encontrou vídeo, tentar livros
-            const bookMatches = allData.filter(item => 
-              item.type === 'titulo' && 
-              (item.id === numericId || (item as any).originalId === numericId)
-            );
-            
-            if (bookMatches.length > 0) {
-              foundResource = bookMatches[0];
-              console.log('✅ PHASE 3 SUCCESS: Found book match, suggesting redirect', {
-                id: foundResource.id,
-                type: foundResource.type,
-                title: foundResource.title
-              });
-              
-              toast({
-                title: "Recurso encontrado!",
-                description: `Redirecionando para o livro "${foundResource.title.substring(0, 50)}..."`,
-                duration: 3000,
-              });
-              
-              setTimeout(() => {
-                navigate(`/recurso/${foundResource.id}`, { replace: true });
-              }, 1000);
-              
-              return;
-            }
-          } else {
-            // Para IDs não numéricos, buscar em podcasts
-            console.log('📝 Searching for text ID in podcasts...');
-            const podcastMatches = allData.filter(item => 
-              item.type === 'podcast' && 
-              (String(item.id).includes(id || '') || String((item as any).originalId || '').includes(id || ''))
-            );
-            
-            if (podcastMatches.length > 0) {
-              foundResource = podcastMatches[0];
-              console.log('✅ PHASE 3 SUCCESS: Found podcast match, suggesting redirect', {
-                id: foundResource.id,
-                originalId: (foundResource as any).originalId,
-                type: foundResource.type,
-                title: foundResource.title
-              });
-              
-              toast({
-                title: "Recurso encontrado!",
-                description: `Redirecionando para o podcast "${foundResource.title.substring(0, 50)}..."`,
-                duration: 3000,
-              });
-              
-              setTimeout(() => {
-                navigate(`/recurso/${(foundResource as any).originalId || foundResource.id}`, { replace: true });
-              }, 1000);
-              
-              return;
-            }
-          }
+          searchMethod = 'OriginalId match';
+          console.log('✅ FOUND by originalId:', (foundResource as any).originalId, foundResource.type, foundResource.title);
         }
       }
 
-      // Debug final e estatísticas - aprimorado
+      // ESTRATÉGIA 3: Busca numérica flexível (para IDs transformados)
+      if (!foundResource && isNumericId) {
+        const numericId = parseInt(id || '0');
+        foundResource = allData.find(item => 
+          typeof item.id === 'number' && item.id === numericId
+        );
+        if (foundResource) {
+          searchMethod = 'Numeric ID match';
+          console.log('✅ FOUND by numeric conversion:', foundResource.id, foundResource.type, foundResource.title);
+        }
+      }
+
+      // ESTRATÉGIA 4: Redirecionamento inteligente por tipo
+      if (!foundResource && isNumericId) {
+        console.log('🧠 Attempting smart redirect for numeric ID:', id);
+        
+        // Procurar em vídeos primeiro (mais comum para IDs numéricos)
+        const videoMatch = allData.find(item => 
+          item.type === 'video' && (
+            String(item.id) === id || 
+            String((item as any).originalId) === id ||
+            (typeof item.id === 'number' && item.id === parseInt(id))
+          )
+        );
+        
+        if (videoMatch) {
+          foundResource = videoMatch;
+          searchMethod = 'Smart redirect to video';
+          console.log('🎯 SMART REDIRECT: Found video for numeric ID');
+          
+          toast({
+            title: "Recurso encontrado!",
+            description: `Redirecionando para o vídeo "${foundResource.title.substring(0, 50)}..."`,
+            duration: 3000,
+          });
+          
+          setTimeout(() => {
+            navigate(`/recurso/${foundResource.id}`, { replace: true });
+          }, 1000);
+          return;
+        }
+
+        // Se não encontrou vídeo, tentar livros
+        const bookMatch = allData.find(item => 
+          item.type === 'titulo' && (
+            String(item.id) === id || 
+            (typeof item.id === 'number' && item.id === parseInt(id))
+          )
+        );
+        
+        if (bookMatch) {
+          foundResource = bookMatch;
+          searchMethod = 'Smart redirect to book';
+          console.log('🎯 SMART REDIRECT: Found book for numeric ID');
+          
+          toast({
+            title: "Recurso encontrado!",
+            description: `Redirecionando para o livro "${foundResource.title.substring(0, 50)}..."`,
+            duration: 3000,
+          });
+          
+          setTimeout(() => {
+            navigate(`/recurso/${foundResource.id}`, { replace: true });
+          }, 1000);
+          return;
+        }
+      }
+
+      // Debug aprimorado
       const debugData = {
         targetId: id,
         targetIdType: typeof id,
         isNumeric: isNumericId,
         totalItems: allData.length,
+        searchMethod: searchMethod || 'No match found',
         typeBreakdown: Object.fromEntries(
           Object.entries(byType).map(([type, items]) => [
             type, 
@@ -228,28 +195,23 @@ const ResourceDetail = () => {
           id: foundResource.id,
           originalId: (foundResource as any).originalId,
           type: foundResource.type,
-          title: foundResource.title
+          title: foundResource.title,
+          method: searchMethod
         } : {
           found: false,
-          reason: `ID ${id} (${isNumericId ? 'numeric' : 'text'}) not found in any resource type. ${isNumericId ? 'Numeric IDs typically belong to videos or books.' : 'Text IDs typically belong to podcasts.'}`
-        },
-        smartRedirectAttempted: !foundResource,
-        redirectSuggestions: isNumericId ? 
-          ['Try searching videos or books', 'Podcasts use UUID/string IDs'] : 
-          ['Try searching podcasts', 'Verify the ID was copied correctly']
+          reason: `ID ${id} (${isNumericId ? 'numeric' : 'text'}) not found using any search method`
+        }
       };
 
-      console.log('📊 ENHANCED DEBUG DATA:', debugData);
+      console.log('📊 COMPLETE SEARCH DEBUG:', debugData);
       setDebugInfo(debugData);
 
       if (foundResource) {
-        console.log('🎉 RESOURCE FOUND!', {
+        console.log('🎉 RESOURCE FOUND via', searchMethod, {
           id: foundResource.id,
           originalId: (foundResource as any).originalId,
           type: foundResource.type,
-          title: foundResource.title,
-          hasEmbedUrl: !!(foundResource as any).embedUrl,
-          hasThumbnail: !!foundResource.thumbnail
+          title: foundResource.title
         });
         
         // Convert SearchResult to Resource format
@@ -275,7 +237,7 @@ const ResourceDetail = () => {
 
         setResource(convertedResource);
       } else {
-        console.log('💀 RESOURCE NOT FOUND - Enhanced analysis completed with smart redirect attempts');
+        console.log('💀 RESOURCE NOT FOUND after comprehensive search');
         setResource(null);
       }
       

@@ -203,10 +203,10 @@ const ResourceDetail = () => {
             <MediaSection resource={resource} />
             <ResourceContent resource={resource} />
           </div>
-          {/* Sidebar */}
+          {/* Sidebar - Reordered: ResourceInfo first, then ActionButtons */}
           <div className="space-y-6">
-            <ActionButtons resource={resource} />
             <ResourceInfo resource={resource} />
+            <ActionButtons resource={resource} />
           </div>
         </div>
       </div>

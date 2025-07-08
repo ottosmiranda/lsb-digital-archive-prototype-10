@@ -1,228 +1,241 @@
-
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
-import { useSearchState } from '@/hooks/useSearchState';
-import { useApiSearch } from '@/hooks/useApiSearch';
-import { checkHasActiveFilters } from '@/utils/searchUtils';
-
-interface SearchResponse {
-  results: SearchResult[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalResults: number;
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
-  searchInfo: {
-    query: string;
-    appliedFilters: SearchFilters;
-    sortBy: string;
-  };
-}
+import { useDataLoader } from '@/hooks/useDataLoader';
+import { searchUtils } from '@/utils/searchUtils';
+import { navigationHistoryService } from '@/services/navigationHistoryService';
 
 export const useSearchResults = () => {
-  const resultsPerPage = 9;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const { allData, loading: dataLoading, forceRefresh } = useDataLoader();
   
-  const {
-    query,
-    filters,
-    sortBy,
-    currentPage,
-    setFilters,
-    setSortBy,
-    setCurrentPage,
-    setQuery
-  } = useSearchState();
-
-  const { search, loading, error, clearCache, prefetchNextPage } = useApiSearch({ resultsPerPage });
-  
-  const [searchResponse, setSearchResponse] = useState<SearchResponse>({
-    results: [],
-    pagination: {
-      currentPage: 1,
-      totalPages: 0,
-      totalResults: 0,
-      hasNextPage: false,
-      hasPreviousPage: false
-    },
-    searchInfo: {
-      query: '',
-      appliedFilters: {
-        resourceType: [],
-        subject: [],
-        author: [],
-        year: '',
-        duration: '',
-        language: [],
-        documentType: [],
-        program: [],
-        channel: []
-      },
-      sortBy: 'relevance'
-    }
-  });
-
-  const [usingFallback, setUsingFallback] = useState(false);
-
-  // Verificação de filtros ativos
-  const hasActiveFilters = useMemo((): boolean => {
-    return checkHasActiveFilters(filters);
-  }, [filters]);
-
-  // NOVA LÓGICA: Verificar se deve executar busca
-  const shouldSearch = useMemo((): boolean => {
-    const hasQuery = query.trim() !== '';
-    const hasResourceTypeFilters = filters.resourceType.length > 0;
-    const hasOtherFilters = hasActiveFilters;
-    
-    console.log('🔍 Nova lógica shouldSearch:', { 
-      hasQuery, 
-      hasResourceTypeFilters, 
-      hasOtherFilters,
-      resourceType: filters.resourceType,
-      result: hasQuery || hasResourceTypeFilters || hasOtherFilters
-    });
-    
-    return hasQuery || hasResourceTypeFilters || hasOtherFilters;
-  }, [query, filters.resourceType, hasActiveFilters]);
-
-  // NOVA IMPLEMENTAÇÃO: Busca com paginação real
-  const performSearch = useCallback(async () => {
-    const requestId = `search_${Date.now()}`;
-    console.group(`🔍 ${requestId} - Nova Arquitetura de Busca`);
-    console.log('📋 Parâmetros:', { query, filters, sortBy, currentPage, shouldSearch });
-
-    // Se não deve buscar, limpar resultados
-    if (!shouldSearch) {
-      console.log('❌ Não deve buscar - limpando resultados');
-      setSearchResponse({
-        results: [],
-        pagination: {
-          currentPage: 1,
-          totalPages: 0,
-          totalResults: 0,
-          hasNextPage: false,
-          hasPreviousPage: false
-        },
-        searchInfo: {
-          query: '',
-          appliedFilters: filters,
-          sortBy
-        }
-      });
-      console.groupEnd();
-      return;
-    }
-
-    try {
-      console.log('🚀 Executando busca com paginação real via Nova API...');
-      const response = await search(query, filters, sortBy, currentPage);
-      
-      // Validação da resposta
-      if (!response.results || !Array.isArray(response.results)) {
-        console.error('❌ Resposta inválida da Nova API:', response);
-        throw new Error('Estrutura de resposta inválida da Nova API');
-      }
-      
-      setSearchResponse({
-        results: response.results,
-        pagination: response.pagination,
-        searchInfo: response.searchInfo
-      });
-
-      setUsingFallback(!response.success);
-
-      if (response.error) {
-        console.warn('⚠️ Nova API com erros:', response.error);
-      } else {
-        console.log('✅ Nova API bem-sucedida:', {
-          results: response.results.length,
-          totalResults: response.pagination.totalResults,
-          currentPage: response.pagination.currentPage,
-          totalPages: response.pagination.totalPages,
-          paginaçãoReal: '🎯 SIM'
-        });
-        
-        // Prefetch da próxima página se disponível
-        if (response.pagination.hasNextPage) {
-          console.log('🔮 Prefetching próxima página...');
-          prefetchNextPage(query, filters, sortBy, currentPage);
-        }
-      }
-
-    } catch (err) {
-      console.error('❌ Nova API falhou:', err);
-      setUsingFallback(true);
-      
-      setSearchResponse({
-        results: [],
-        pagination: {
-          currentPage,
-          totalPages: 0,
-          totalResults: 0,
-          hasNextPage: false,
-          hasPreviousPage: false
-        },
-        searchInfo: {
-          query,
-          appliedFilters: filters,
-          sortBy
-        }
-      });
-    }
-    
-    console.groupEnd();
-  }, [query, filters, sortBy, currentPage, shouldSearch, search, prefetchNextPage]);
-
-  // Effect para executar busca quando parâmetros mudarem
+  // Save current search context whenever search params change
   useEffect(() => {
-    performSearch();
-  }, [performSearch]);
-
-  // Handlers otimizados
-  const handleFilterChange = useCallback((newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
-    console.log('🔄 Mudança de filtro (Nova API):', { newFilters, options });
-    setFilters(newFilters);
-    
-    if (!options?.authorTyping) {
-      setCurrentPage(1); // Reset para página 1 em nova busca
+    if (searchParams.toString()) {
+      navigationHistoryService.saveCurrentSearch(location);
     }
-  }, [setFilters, setCurrentPage]);
+  }, [searchParams, location]);
 
-  const handleSortChange = useCallback((newSort: string) => {
-    console.log('📊 Mudança de ordenação (Nova API):', newSort);
-    setSortBy(newSort);
-    setCurrentPage(1); // Reset para página 1
-  }, [setSortBy, setCurrentPage]);
+  const [query, setQuery] = useState<string>(searchParams.get('q') || '');
+  const [filters, setFilters] = useState<SearchFilters>({
+    resourceType: searchUtils.getQueryParamArray(searchParams, 'type'),
+    subject: searchUtils.getQueryParamArray(searchParams, 'subject'),
+    author: searchUtils.getQueryParamArray(searchParams, 'author'),
+    year: searchParams.get('year') || '',
+    duration: searchParams.get('duration') || '',
+    language: searchUtils.getQueryParamArray(searchParams, 'language'),
+    documentType: searchUtils.getQueryParamArray(searchParams, 'documentType'),
+    program: searchUtils.getQueryParamArray(searchParams, 'program'),
+    channel: searchUtils.getQueryParamArray(searchParams, 'channel'),
+  });
+  const [sortBy, setSortBy] = useState<string>(searchParams.get('sortBy') || 'relevance');
+  const [currentPage, setCurrentPage] = useState<number>(Number(searchParams.get('page')) || 1);
 
-  const handlePageChange = useCallback((page: number) => {
-    console.log('📄 Mudança de página (PAGINAÇÃO REAL):', page);
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [setCurrentPage]);
+  const resultsPerPage = 9;
 
-  const forceRefresh = useCallback(async () => {
-    console.log('🔄 Refresh forçado (Nova API) - limpando cache');
-    clearCache();
-    await performSearch();
-  }, [clearCache, performSearch]);
+  // Update search params when query, filters, sortBy, or currentPage change
+  useEffect(() => {
+    const newParams = new URLSearchParams();
+    if (query) newParams.set('q', query);
+    
+    filters.resourceType.forEach(type => newParams.append('type', type));
+    filters.subject.forEach(subject => newParams.append('subject', subject));
+    filters.author.forEach(author => newParams.append('author', author));
+    if (filters.year) newParams.set('year', filters.year);
+    if (filters.duration) newParams.set('duration', filters.duration);
+    filters.language.forEach(language => newParams.append('language', language));
+    filters.documentType.forEach(docType => newParams.append('documentType', docType));
+    filters.program.forEach(program => newParams.append('program', program));
+    filters.channel.forEach(channel => newParams.append('channel', channel));
+    
+    if (sortBy && sortBy !== 'relevance') newParams.set('sortBy', sortBy);
+    if (currentPage > 1) newParams.set('page', String(currentPage));
+
+    setSearchParams(newParams);
+  }, [query, filters, sortBy, currentPage, setSearchParams]);
+
+  const currentResults = useMemo(() => {
+    if (!allData) return [];
+
+    let filteredResults = [...allData];
+
+    if (query) {
+      filteredResults = filteredResults.filter(result =>
+        result.title.toLowerCase().includes(query.toLowerCase()) ||
+        result.description.toLowerCase().includes(query.toLowerCase()) ||
+        result.author.toLowerCase().includes(query.toLowerCase()) ||
+        result.subject.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+
+    if (filters.resourceType.length > 0) {
+      filteredResults = filteredResults.filter(result =>
+        filters.resourceType.includes(result.type)
+      );
+    }
+    if (filters.subject.length > 0) {
+      filteredResults = filteredResults.filter(result =>
+        filters.subject.includes(result.subject)
+      );
+    }
+    if (filters.author.length > 0) {
+       filteredResults = filteredResults.filter(result =>
+         filters.author.includes(result.author)
+       );
+    }
+    if (filters.year) {
+      filteredResults = filteredResults.filter(result =>
+        String(result.year) === filters.year
+      );
+    }
+    if (filters.duration) {
+      filteredResults = filteredResults.filter(result =>
+        result.duration === filters.duration
+      );
+    }
+     if (filters.language.length > 0) {
+       filteredResults = filteredResults.filter(result =>
+         filters.language.includes(result.language)
+       );
+     }
+    if (filters.documentType.length > 0) {
+      filteredResults = filteredResults.filter(result =>
+        filters.documentType.includes((result as any).documentType)
+      );
+    }
+    if (filters.program.length > 0) {
+      filteredResults = filteredResults.filter(result =>
+        filters.program.includes((result as any).program)
+      );
+    }
+    if (filters.channel.length > 0) {
+      filteredResults = filteredResults.filter(result =>
+        filters.channel.includes((result as any).channel)
+      );
+    }
+
+    if (sortBy === 'title') {
+      filteredResults.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortBy === 'year') {
+      filteredResults.sort((a, b) => (b.year || 0) - (a.year || 0));
+    }
+
+    const startIndex = (currentPage - 1) * resultsPerPage;
+    const endIndex = startIndex + resultsPerPage;
+    return filteredResults.slice(startIndex, endIndex);
+  }, [allData, query, filters, sortBy, currentPage, resultsPerPage]);
+
+  const totalResults = useMemo(() => {
+    if (!allData) return 0;
+
+    let filteredResults = [...allData];
+
+    if (query) {
+      filteredResults = filteredResults.filter(result =>
+        result.title.toLowerCase().includes(query.toLowerCase()) ||
+        result.description.toLowerCase().includes(query.toLowerCase()) ||
+        result.author.toLowerCase().includes(query.toLowerCase()) ||
+        result.subject.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+
+    if (filters.resourceType.length > 0) {
+      filteredResults = filteredResults.filter(result =>
+        filters.resourceType.includes(result.type)
+      );
+    }
+    if (filters.subject.length > 0) {
+      filteredResults = filteredResults.filter(result =>
+        filters.subject.includes(result.subject)
+      );
+    }
+    if (filters.author.length > 0) {
+        filteredResults = filteredResults.filter(result =>
+          filters.author.includes(result.author)
+        );
+     }
+    if (filters.year) {
+      filteredResults = filteredResults.filter(result =>
+        String(result.year) === filters.year
+      );
+    }
+    if (filters.duration) {
+      filteredResults = filteredResults.filter(result =>
+        result.duration === filters.duration
+      );
+    }
+    if (filters.language.length > 0) {
+      filteredResults = filteredResults.filter(result =>
+        filters.language.includes(result.language)
+      );
+    }
+    if (filters.documentType.length > 0) {
+      filteredResults = filteredResults.filter(result =>
+        filters.documentType.includes((result as any).documentType)
+      );
+    }
+    if (filters.program.length > 0) {
+      filteredResults = filteredResults.filter(result =>
+        filters.program.includes((result as any).program)
+      );
+    }
+    if (filters.channel.length > 0) {
+      filteredResults = filteredResults.filter(result =>
+        filters.channel.includes((result as any).channel)
+      );
+    }
+
+    return filteredResults.length;
+  }, [allData, query, filters]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(totalResults / resultsPerPage);
+  }, [totalResults, resultsPerPage]);
+
+  const hasActiveFilters = useMemo(() => {
+    return (
+      query !== '' ||
+      filters.resourceType.length > 0 ||
+      filters.subject.length > 0 ||
+      filters.author.length > 0 ||
+      filters.year !== '' ||
+      filters.duration !== '' ||
+      filters.language.length > 0 ||
+      filters.documentType.length > 0 ||
+      filters.program.length > 0 ||
+      filters.channel.length > 0
+    );
+  }, [query, filters]);
+
+  const handleFilterChange = useCallback((newFilters: SearchFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  }, []);
+
+  const handleSortChange = useCallback((newSortBy: string) => {
+    setSortBy(newSortBy);
+    setCurrentPage(1);
+  }, []);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setCurrentPage(newPage);
+  }, []);
 
   return {
     query,
     filters,
     sortBy,
-    currentResults: searchResponse.results,
-    totalResults: searchResponse.pagination.totalResults,
-    totalPages: searchResponse.pagination.totalPages,
-    currentPage: searchResponse.pagination.currentPage,
-    loading,
+    currentResults,
+    totalResults,
+    totalPages,
+    currentPage,
+    loading: dataLoading,
     hasActiveFilters,
-    usingFallback,
+    usingFallback: false,
     handleFilterChange,
     handleSortChange,
     handlePageChange,
-    setFilters,
     setQuery,
     forceRefresh
   };

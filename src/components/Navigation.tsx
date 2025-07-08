@@ -33,9 +33,9 @@ const Navigation = () => {
           <div className="flex-shrink-0">
             <Link to="/" className="flex items-center">
               <img 
-                alt="Biblioteca Digital LSB" 
+                alt="Biblioteca Digital & Link" 
                 className="h-10 w-auto" 
-                src="/lovable-uploads/2166379e-4179-4662-bfa4-4b77803f7347.png" 
+                src="/lovable-uploads/a9499420-f099-451c-b38c-74c487bcebd2.png" 
               />
             </Link>
           </div>

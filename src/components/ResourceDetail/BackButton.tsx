@@ -5,7 +5,7 @@ import { navigationHistoryService } from "@/services/navigationHistoryService";
 
 const BackButton = () => {
   const lastSearchUrl = navigationHistoryService.getLastSearchUrl();
-  const backUrl = lastSearchUrl || '/buscar';
+  const backUrl = lastSearchUrl || navigationHistoryService.getDefaultVideoSearchUrl();
   
   console.log('🔙 BackButton using URL:', backUrl);
 

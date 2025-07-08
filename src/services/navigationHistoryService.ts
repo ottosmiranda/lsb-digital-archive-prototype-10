@@ -68,6 +68,11 @@ export class NavigationHistoryService {
     }
   }
 
+  // Get default search URL with video filter when no history exists
+  getDefaultVideoSearchUrl(): string {
+    return '/buscar?type=video';
+  }
+
   clearHistory(): void {
     try {
       sessionStorage.removeItem(NavigationHistoryService.STORAGE_KEY);

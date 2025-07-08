@@ -48,50 +48,85 @@ const ResourceDetail = () => {
         return;
       }
 
-      console.log('🔍 Looking for resource with ID:', id);
-      console.log('📊 Available data:', allData.length, 'items');
+      console.group('🔍 RESOURCE SEARCH DEBUG');
+      console.log('🎯 Target ID:', id);
+      console.log('📊 Total available data:', allData.length, 'items');
 
-      // Log all available resources for debugging
-      console.log('📋 Available resources:', allData.map(item => ({
-        id: item.id,
-        type: item.type,
-        title: item.title,
-        originalId: (item as any).originalId || 'N/A'
+      // Enhanced debugging - show all video IDs
+      const videos = allData.filter(item => item.type === 'video');
+      console.log('🎬 Available videos:', videos.length);
+      console.log('🎬 Video ID samples:', videos.slice(0, 10).map(v => ({
+        id: v.id,
+        originalId: v.originalId,
+        title: v.title.substring(0, 40) + '...'
       })));
 
-      // First try to find by exact ID match
+      // PHASE 1: Direct ID match (most reliable)
+      console.log('🔍 Phase 1: Searching by exact ID match...');
       let foundResource = allData.find(item => String(item.id) === id);
-
-      // If not found by exact ID, try to find by originalId for videos
-      if (!foundResource) {
-        console.log('🔍 Trying to find by originalId for videos...');
+      
+      if (foundResource) {
+        console.log('✅ Phase 1 SUCCESS: Found by exact ID', {
+          id: foundResource.id,
+          type: foundResource.type,
+          title: foundResource.title
+        });
+      } else {
+        console.log('❌ Phase 1 FAILED: No exact ID match');
+        
+        // PHASE 2: originalId match for videos (UUID from API)
+        console.log('🔍 Phase 2: Searching by originalId for videos...');
         foundResource = allData.find(item => 
           item.type === 'video' && (item as any).originalId === id
         );
-      }
-
-      // If still not found, try title-based search as fallback
-      if (!foundResource) {
-        console.log('🔍 Trying title-based search as fallback...');
-        const searchId = parseInt(id || '0');
         
-        if (searchId >= 1000) {
-          // Look for videos with similar IDs
-          const videos = allData.filter(item => item.type === 'video');
-          console.log('🎬 Found videos:', videos.length);
+        if (foundResource) {
+          console.log('✅ Phase 2 SUCCESS: Found by originalId', {
+            id: foundResource.id,
+            originalId: (foundResource as any).originalId,
+            type: foundResource.type,
+            title: foundResource.title
+          });
+        } else {
+          console.log('❌ Phase 2 FAILED: No originalId match');
           
-          if (videos.length > 0) {
-            // Try to find closest match or use first video as fallback
-            foundResource = videos.find(v => v.id === searchId) || videos[0];
-            if (foundResource) {
-              console.log('🎯 Using video fallback:', foundResource.title);
+          // PHASE 3: Smart numerical ID matching
+          console.log('🔍 Phase 3: Smart numerical ID matching...');
+          const numericId = parseInt(id || '0');
+          
+          if (numericId >= 1000) {
+            // Look for videos with closest ID match
+            const videoMatches = videos
+              .map(v => ({ 
+                video: v, 
+                distance: Math.abs(v.id - numericId) 
+              }))
+              .sort((a, b) => a.distance - b.distance);
+            
+            if (videoMatches.length > 0 && videoMatches[0].distance < 1000) {
+              foundResource = videoMatches[0].video;
+              console.log('✅ Phase 3 SUCCESS: Found closest video match', {
+                targetId: numericId,
+                foundId: foundResource.id,
+                distance: videoMatches[0].distance,
+                title: foundResource.title
+              });
+            } else {
+              console.log('❌ Phase 3 FAILED: No close video match');
             }
           }
         }
       }
 
       if (foundResource) {
-        console.log('✅ Found resource:', foundResource.title, 'ID:', foundResource.id);
+        console.log('🎉 FINAL RESULT: Resource found!', {
+          id: foundResource.id,
+          originalId: (foundResource as any).originalId,
+          type: foundResource.type,
+          title: foundResource.title,
+          hasEmbedUrl: !!(foundResource as any).embedUrl,
+          hasThumbnail: !!foundResource.thumbnail
+        });
         
         // Convert SearchResult to Resource format
         const convertedResource: Resource = {
@@ -108,19 +143,36 @@ const ResourceDetail = () => {
           description: foundResource.description,
           year: foundResource.year,
           subject: foundResource.subject,
-          embedUrl: foundResource.embedUrl,
-          pdfUrl: foundResource.pdfUrl,
+          embedUrl: (foundResource as any).embedUrl,
+          pdfUrl: (foundResource as any).pdfUrl,
           fullDescription: foundResource.description,
           tags: foundResource.subject ? [foundResource.subject] : undefined
         };
 
-        console.log('🔄 Setting converted resource:', convertedResource);
+        console.log('🔄 Final converted resource:', {
+          id: convertedResource.id,
+          type: convertedResource.type,
+          hasEmbedUrl: !!convertedResource.embedUrl,
+          embedUrl: convertedResource.embedUrl?.substring(0, 50) + '...'
+        });
         setResource(convertedResource);
       } else {
-        console.log('❌ Resource not found for ID:', id);
+        console.log('💀 TOTAL FAILURE: Resource not found for ID:', id);
+        console.log('🔍 Available ID ranges:', {
+          videos: videos.length > 0 ? {
+            minId: Math.min(...videos.map(v => v.id)),
+            maxId: Math.max(...videos.map(v => v.id)),
+            sampleIds: videos.slice(0, 5).map(v => v.id)
+          } : 'No videos',
+          allTypes: {
+            minId: Math.min(...allData.map(v => v.id)),
+            maxId: Math.max(...allData.map(v => v.id))
+          }
+        });
         setResource(null);
       }
       
+      console.groupEnd();
       setResourceLoading(false);
     };
 

@@ -59,8 +59,30 @@ const SearchResultsList = ({
     }
   };
 
-  const handleResourceClick = (resourceId: number) => {
-    navigate(`/recurso/${resourceId}`);
+  const handleResourceClick = (result: SearchResult) => {
+    console.group('🎯 LIST NAVIGATION DEBUG');
+    console.log('📋 Clicked resource:', {
+      id: result.id,
+      originalId: (result as any).originalId,
+      type: result.type,
+      title: result.title.substring(0, 50) + '...'
+    });
+    
+    // For videos, prioritize originalId if available (UUID from API)
+    let navigationId: string;
+    if (result.type === 'video' && (result as any).originalId) {
+      navigationId = (result as any).originalId;
+      console.log('🎬 Using originalId for video navigation:', navigationId);
+    } else {
+      navigationId = String(result.id);
+      console.log('📄 Using standard id for navigation:', navigationId);
+    }
+    
+    const targetRoute = `/recurso/${navigationId}`;
+    console.log('🔗 Navigating to:', targetRoute);
+    console.groupEnd();
+    
+    navigate(targetRoute);
   };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -157,7 +179,7 @@ const SearchResultsList = ({
                   <div className="flex-shrink-0">
                     <Button 
                       className="bg-lsb-primary hover:bg-lsb-primary/90 text-white"
-                      onClick={() => handleResourceClick(result.id)}
+                      onClick={() => handleResourceClick(result)}
                     >
                       {result.type === 'video' && 'Assistir'}
                       {result.type === 'podcast' && 'Ouvir'}

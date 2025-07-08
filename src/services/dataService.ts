@@ -128,22 +128,59 @@ export class DataService {
   }
 
   private async fetchVideosFromAPI(): Promise<SearchResult[]> {
-    console.log('🎬 Fetching videos from API...');
+    console.log('🎬 Fetching ALL videos from API with complete pagination...');
     
-    const { data, error } = await supabase.functions.invoke('fetch-videos');
+    const allVideos: SearchResult[] = [];
+    let page = 1;
+    let totalPages = 1;
     
-    if (error) {
-      console.error('❌ Videos edge function error:', error);
-      throw error;
-    }
+    do {
+      console.log(`📄 Fetching videos page ${page}/${totalPages}...`);
+      
+      const { data, error } = await supabase.functions.invoke('fetch-videos', {
+        body: { page, limit: 50 } // Increased limit for efficiency
+      });
+      
+      if (error) {
+        console.error(`❌ Videos page ${page} error:`, error);
+        throw error;
+      }
 
-    if (!data.success) {
-      console.error('❌ Videos API returned error:', data.error);
-      throw new Error(data.error);
-    }
+      if (!data.success) {
+        console.error(`❌ Videos page ${page} API error:`, data.error);
+        throw new Error(data.error);
+      }
 
-    console.log('✅ Videos from API:', data.count);
-    return data.videos;
+      // Add videos from this page
+      allVideos.push(...data.videos);
+      totalPages = data.totalPages;
+      
+      console.log(`✅ Page ${page}: ${data.videos.length} videos loaded (total so far: ${allVideos.length})`);
+      
+      // Log IDs for debugging on first few pages
+      if (page <= 2) {
+        console.log(`🎬 Video IDs from page ${page}:`, data.videos.slice(0, 3).map(v => ({
+          id: v.id,
+          originalId: v.originalId,
+          title: v.title.substring(0, 30) + '...'
+        })));
+      }
+      
+      page++;
+      
+    } while (page <= totalPages);
+    
+    console.log(`🎉 ALL videos loaded: ${allVideos.length} total videos from ${totalPages} pages`);
+    
+    // Final summary of video IDs for debugging
+    console.log('🎬 Final video ID ranges:', {
+      minId: Math.min(...allVideos.map(v => v.id)),
+      maxId: Math.max(...allVideos.map(v => v.id)),
+      sampleOriginalIds: allVideos.slice(0, 5).map(v => v.originalId),
+      totalCount: allVideos.length
+    });
+    
+    return allVideos;
   }
 
   private async fetchBooksFromAPI(): Promise<SearchResult[]> {

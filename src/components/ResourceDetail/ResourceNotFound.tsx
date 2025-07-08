@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Search, AlertCircle, Info } from "lucide-react";
+import { ArrowLeft, Search, AlertCircle, Info, Lightbulb, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface ResourceNotFoundProps {
@@ -12,6 +12,82 @@ interface ResourceNotFoundProps {
 
 const ResourceNotFound = ({ targetId, debugInfo }: ResourceNotFoundProps) => {
   const isNumericId = targetId && !isNaN(Number(targetId));
+  
+  // Análise inteligente do tipo de ID
+  const analyzeIdType = () => {
+    if (!targetId) return { type: 'unknown', confidence: 'low', suggestions: [] };
+    
+    if (isNumericId) {
+      const numId = parseInt(targetId);
+      if (numId >= 1000 && numId <= 9999) {
+        return {
+          type: 'video_or_book',
+          confidence: 'high',
+          suggestions: ['Tente buscar por vídeos ou livros com este ID', 'Use a busca para encontrar conteúdo similar']
+        };
+      }
+      return {
+        type: 'numeric',
+        confidence: 'medium',
+        suggestions: ['IDs numéricos geralmente correspondem a vídeos ou livros', 'Podcasts usam IDs no formato texto/UUID']
+      };
+    }
+    
+    // Se contém hífens ou é muito longo, provavelmente é UUID
+    if (targetId.includes('-') || targetId.length > 20) {
+      return {
+        type: 'uuid_or_string',
+        confidence: 'high',
+        suggestions: ['Este formato é típico de podcasts', 'Verifique se o ID foi copiado corretamente']
+      };
+    }
+    
+    return {
+      type: 'text',
+      confidence: 'medium',
+      suggestions: ['IDs de texto podem ser de qualquer tipo de recurso', 'Tente usar a busca para encontrar o conteúdo']
+    };
+  };
+
+  const idAnalysis = analyzeIdType();
+  
+  // Sugestões de recursos similares baseadas no debug info
+  const getSimilarResources = () => {
+    if (!debugInfo?.typeBreakdown) return [];
+    
+    const suggestions = [];
+    
+    if (isNumericId && debugInfo.typeBreakdown.video?.count > 0) {
+      suggestions.push({
+        type: 'video',
+        icon: '🎬',
+        message: `Encontramos ${debugInfo.typeBreakdown.video.count} vídeos disponíveis`,
+        action: 'Explorar vídeos'
+      });
+    }
+    
+    if (isNumericId && debugInfo.typeBreakdown.titulo?.count > 0) {
+      suggestions.push({
+        type: 'book',
+        icon: '📚',
+        message: `Encontramos ${debugInfo.typeBreakdown.titulo.count} livros disponíveis`,
+        action: 'Explorar livros'
+      });
+    }
+    
+    if (!isNumericId && debugInfo.typeBreakdown.podcast?.count > 0) {
+      suggestions.push({
+        type: 'podcast',
+        icon: '🎧',
+        message: `Encontramos ${debugInfo.typeBreakdown.podcast.count} podcasts disponíveis`,
+        action: 'Explorar podcasts'
+      });
+    }
+    
+    return suggestions;
+  };
+
+  const similarResources = getSimilarResources();
   
   return (
     <div className="min-h-screen bg-white">
@@ -30,13 +106,82 @@ const ResourceNotFound = ({ targetId, debugInfo }: ResourceNotFoundProps) => {
             </p>
           </div>
 
-          {/* Debug Information Card */}
+          {/* Análise Inteligente do ID */}
+          <Card className="max-w-2xl mx-auto text-left">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Lightbulb className="h-5 w-5 text-amber-500" />
+                <h3 className="font-semibold text-gray-900">Análise do ID</h3>
+                <Badge variant={idAnalysis.confidence === 'high' ? 'default' : 'secondary'}>
+                  {idAnalysis.confidence === 'high' ? 'Alta confiança' : 'Média confiança'}
+                </Badge>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-blue-900 font-medium">
+                    {isNumericId ? (
+                      <>🔢 ID Numérico detectado</>
+                    ) : (
+                      <>📝 ID de Texto detectado</>
+                    )}
+                  </p>
+                  <p className="text-blue-800 text-sm mt-1">
+                    {isNumericId ? (
+                      <>IDs numéricos geralmente correspondem a <strong>vídeos</strong> ou <strong>livros</strong>. Podcasts usam IDs no formato UUID/string.</>
+                    ) : (
+                      <>IDs de texto/UUID geralmente correspondem a <strong>podcasts</strong>. Verifique se foi copiado corretamente.</>
+                    )}
+                  </p>
+                </div>
+                
+                {idAnalysis.suggestions.map((suggestion, index) => (
+                  <div key={index} className="flex items-start gap-2 text-sm text-gray-600">
+                    <span className="text-amber-500 mt-0.5">💡</span>
+                    <span>{suggestion}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recursos Similares Disponíveis */}
+          {similarResources.length > 0 && (
+            <Card className="max-w-2xl mx-auto">
+              <CardContent className="p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Search className="h-5 w-5 text-green-500" />
+                  Recursos Disponíveis
+                </h3>
+                
+                <div className="space-y-3">
+                  {similarResources.map((resource, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">{resource.icon}</span>
+                        <span className="text-green-800">{resource.message}</span>
+                      </div>
+                      <Link to={`/buscar?filtros=${resource.type}`}>
+                        <Button size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-100">
+                          {resource.action}
+                          <ExternalLink className="h-3 w-3 ml-1" />
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Debug Information Card - Mantido para suporte técnico */}
           {debugInfo && (
             <Card className="max-w-2xl mx-auto text-left">
               <CardContent className="p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Info className="h-5 w-5 text-blue-500" />
-                  <h3 className="font-semibold text-gray-900">Informações de Debug</h3>
+                  <h3 className="font-semibold text-gray-900">Informações Técnicas</h3>
+                  <Badge variant="outline" className="text-xs">Para Suporte</Badge>
                 </div>
                 
                 <div className="space-y-4 text-sm">
@@ -86,32 +231,12 @@ const ResourceNotFound = ({ targetId, debugInfo }: ResourceNotFoundProps) => {
             </Card>
           )}
 
-          {/* Suggestions based on ID type */}
-          <div className="space-y-4">
-            {isNumericId ? (
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h3 className="font-semibold text-blue-900 mb-2">💡 Dica: ID Numérico Detectado</h3>
-                <p className="text-blue-800 text-sm">
-                  O ID <code>{targetId}</code> parece ser numérico. Os podcasts geralmente usam IDs no formato texto/UUID.
-                  Se você está procurando um podcast específico, verifique se o ID está correto.
-                </p>
-              </div>
-            ) : (
-              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                <h3 className="font-semibold text-purple-900 mb-2">🎧 Procurando por um Podcast?</h3>
-                <p className="text-purple-800 text-sm">
-                  Este ID parece ser de um podcast. Certifique-se de que está usando o ID correto do episódio.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Action buttons */}
+          {/* Action buttons - Melhorados */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/buscar">
               <Button variant="outline" className="flex items-center gap-2">
                 <Search className="h-4 w-4" />
-                Fazer uma Busca
+                Buscar Recursos
               </Button>
             </Link>
             
@@ -123,14 +248,17 @@ const ResourceNotFound = ({ targetId, debugInfo }: ResourceNotFoundProps) => {
             </Link>
           </div>
 
-          {/* Additional help */}
-          <div className="text-sm text-gray-500 space-y-1">
-            <p>Precisa de ajuda? Experimente:</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>Verificar se o link foi copiado corretamente</li>
-              <li>Usar a busca para encontrar o recurso desejado</li>
-              <li>Navegar pelas categorias na página inicial</li>
-            </ul>
+          {/* Help section - Melhorada */}
+          <div className="text-sm text-gray-500 space-y-3">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <p className="font-medium text-gray-700 mb-2">🔍 Como encontrar o recurso certo:</p>
+              <ul className="list-disc list-inside space-y-1 text-left">
+                <li><strong>Para podcasts:</strong> Use IDs no formato UUID/string (ex: "abc-123-def")</li>
+                <li><strong>Para vídeos/livros:</strong> Use IDs numéricos (ex: 1886, 2045)</li>
+                <li><strong>Não tem certeza?</strong> Use a busca por título ou autor</li>
+                <li><strong>Link quebrado?</strong> Verifique se foi copiado completamente</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

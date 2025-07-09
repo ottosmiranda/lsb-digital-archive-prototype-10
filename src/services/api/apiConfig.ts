@@ -1,7 +1,8 @@
+
 // Configurações centralizadas para a API
 export const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
 
-export type ContentType = 'livro' | 'aula' | 'podcast';
+export type ContentType = 'livro' | 'aula' | 'podcast' | 'artigos';
 
 export interface APIResponse {
   tipo: string;
@@ -16,13 +17,15 @@ export interface ContentCounts {
   videos: number;
   books: number;
   podcasts: number;
+  articles: number;
 }
 
 // ENDPOINTS DE ID ÚNICO
 export const UNIQUE_ID_ENDPOINTS = {
   livro: (id: string) => `${API_BASE_URL}/conteudo-lbs/livro/${id}`,
   aula: (id: string) => `${API_BASE_URL}/conteudo-lbs/aula/${id}`,
-  podcast: (id: string) => `${API_BASE_URL}/conteudo-lbs/podcast/${id}`
+  podcast: (id: string) => `${API_BASE_URL}/conteudo-lbs/podcast/${id}`,
+  artigos: (id: string) => `${API_BASE_URL}/conteudo-lbs/artigos/${id}`
 };
 
 // CONFIGURAÇÃO PARA ENDPOINTS DE ID ÚNICO
@@ -54,6 +57,12 @@ export const SCALABLE_CONFIG = {
     percentage: 1.0, // 100% dos itens para números exatos
     chunkSize: 25,
     maxConcurrency: 2
+  },
+  artigos: {
+    maxItems: 50, // Preparado para crescimento (atual: 35)
+    percentage: 1.0, // 100% dos itens para números exatos
+    chunkSize: 15,
+    maxConcurrency: 2
   }
 };
 
@@ -61,5 +70,6 @@ export const SCALABLE_CONFIG = {
 export const HOMEPAGE_CONFIG = {
   podcast: { limit: 12 },
   aula: { limit: 12 },
-  livro: { limit: 12 }
+  livro: { limit: 12 },
+  artigos: { limit: 12 }
 };

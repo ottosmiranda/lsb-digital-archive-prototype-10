@@ -3,23 +3,26 @@ import { Resource } from '@/types/resourceTypes';
 import { API_BASE_URL } from './api/apiConfig';
 
 export interface ApiResourceResponse {
-  // Para livros
+  // Para livros e artigos
   id?: string;
   titulo?: string;
   autor?: string;
   language?: string;
+  idioma?: string;
   ano?: number;
+  data_publicacao?: string;
   categorias?: string[];
+  categoria?: string;
   descricao?: string;
   paginas?: number;
   arquivo?: string;
+  url?: string;
   tipo_documento?: string;
   
   // Para vídeos/aulas
   tipo?: string;
   canal?: string;
   imagem_url?: string;
-  idioma?: string;
   embed_url?: string;
   duracao?: number;
   
@@ -31,7 +34,6 @@ export interface ApiResourceResponse {
   episodio_titulo?: string;
   data_lancamento?: string;
   duracao_ms?: number;
-  url?: string;
 }
 
 export class ResourceByIdService {
@@ -82,11 +84,52 @@ export class ResourceByIdService {
       case 'video':
         return `${baseUrl}/aula/${id}`;
       case 'titulo':
+        // Para títulos, precisamos determinar se é livro ou artigo
+        // Por enquanto, tentaremos livro primeiro, depois artigo
         return `${baseUrl}/livro/${id}`;
       case 'podcast':
         return `${baseUrl}/podcast/${id}`;
       default:
         throw new Error(`Tipo de recurso não suportado: ${resourceType}`);
+    }
+  }
+
+  // Método auxiliar para buscar artigo especificamente
+  static async fetchArticleById(id: string): Promise<Resource | null> {
+    console.log(`🎯 BUSCA ARTIGO: ID ${id}`);
+    
+    try {
+      const endpoint = `${API_BASE_URL}/conteudo-lbs/artigos/${id}`;
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT_MS);
+      
+      const response = await fetch(endpoint, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} para artigo ID ${id}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ SUCESSO ARTIGO: ID ${id}`, data);
+      
+      return this.transformToResource(data, 'artigos', id);
+      
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log(`⏰ TIMEOUT ARTIGO: ID ${id} (${this.TIMEOUT_MS}ms)`);
+      } else {
+        console.log(`❌ ERRO ARTIGO: ID ${id}:`, error);
+      }
+      return null;
     }
   }
 
@@ -121,23 +164,26 @@ export class ResourceByIdService {
       };
     }
 
-    // For books
-    if (resourceType === 'titulo') {
+    // For books and articles
+    if (resourceType === 'titulo' || resourceType === 'livro' || resourceType === 'artigos') {
+      const year = this.extractYearFromDate(data.data_publicacao || data.ano);
+      const documentType = resourceType === 'artigos' ? 'Artigo' : (data.tipo_documento || 'Livro');
+      
       return {
-        id: data.id || requestedId, // Use real book ID
+        id: data.id || requestedId, // Use real book/article ID
         originalId: data.id || requestedId,
-        title: data.titulo || 'Livro sem título',
+        title: data.titulo || `${documentType} sem título`,
         author: data.autor || 'Autor desconhecido',
-        year: data.ano || new Date().getFullYear(),
+        year: year,
         description: data.descricao || 'Descrição não disponível',
-        subject: data.categorias?.[0] || 'Administração',
+        subject: data.categorias?.[0] || data.categoria || 'Administração',
         type: 'titulo',
         thumbnail: '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
         pages: data.paginas,
-        pdfUrl: data.arquivo,
-        language: data.language,
-        documentType: data.tipo_documento || 'Livro',
-        categories: data.categorias || []
+        pdfUrl: data.arquivo || data.url,
+        language: this.mapLanguageCode(data.language || data.idioma),
+        documentType: documentType,
+        categories: Array.isArray(data.categorias) ? data.categorias : (data.categoria ? [data.categoria] : [])
       };
     }
 
@@ -164,6 +210,43 @@ export class ResourceByIdService {
     }
 
     throw new Error(`Tipo de recurso não suportado: ${resourceType}`);
+  }
+
+  private static extractYearFromDate(dateValue: any): number {
+    if (!dateValue) return new Date().getFullYear();
+    
+    // Se já é um número, retornar diretamente
+    if (typeof dateValue === 'number') return dateValue;
+    
+    // Se é string "desconhecida", retornar ano atual
+    if (typeof dateValue === 'string' && dateValue.toLowerCase().includes('desconhecida')) {
+      return new Date().getFullYear();
+    }
+    
+    // Tentar extrair ano de string de data
+    if (typeof dateValue === 'string') {
+      const dateObj = new Date(dateValue);
+      if (!isNaN(dateObj.getTime())) {
+        return dateObj.getFullYear();
+      }
+    }
+    
+    return new Date().getFullYear();
+  }
+
+  private static mapLanguageCode(idioma: string): string {
+    if (!idioma || idioma === 'desconhecido') return 'Não especificado';
+    
+    const languageMap: Record<string, string> = {
+      'en': 'Inglês',
+      'pt': 'Português',
+      'es': 'Espanhol',
+      'fr': 'Francês',
+      'de': 'Alemão',
+      'it': 'Italiano'
+    };
+    
+    return languageMap[idioma.toLowerCase()] || idioma.charAt(0).toUpperCase() + idioma.slice(1);
   }
 
   private static formatDuration(durationMs: number): string {

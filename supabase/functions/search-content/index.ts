@@ -96,7 +96,8 @@ const languageMapping: Record<string, string> = {
   'zh-CN': 'Chinês',
   'ru': 'Russo',
   'ru-RU': 'Russo',
-  'Und': 'Indefinido'
+  'Und': 'Indefinido',
+  'desconhecido': 'Não especificado'
 };
 
 const mapLanguageCode = (idioma: string): string => {
@@ -325,38 +326,44 @@ const performUnifiedPageFetch = async (
   const CONTENT_TOTALS = {
     podcasts: 2512,
     videos: 300,
-    books: 30
+    books: 30,
+    articles: 35
   };
   
-  const TOTAL_ITEMS = CONTENT_TOTALS.podcasts + CONTENT_TOTALS.videos + CONTENT_TOTALS.books; // 2842
+  const TOTAL_ITEMS = CONTENT_TOTALS.podcasts + CONTENT_TOTALS.videos + CONTENT_TOTALS.books + CONTENT_TOTALS.articles; // 2877
   
   // Calcular distribuição proporcional para esta página
   const startIndex = (page - 1) * limit;
   
-  const podcastRatio = CONTENT_TOTALS.podcasts / TOTAL_ITEMS; // ~0.88
-  const videoRatio = CONTENT_TOTALS.videos / TOTAL_ITEMS; // ~0.11
+  const podcastRatio = CONTENT_TOTALS.podcasts / TOTAL_ITEMS; // ~0.87
+  const videoRatio = CONTENT_TOTALS.videos / TOTAL_ITEMS; // ~0.10
   const bookRatio = CONTENT_TOTALS.books / TOTAL_ITEMS; // ~0.01
+  const articleRatio = CONTENT_TOTALS.articles / TOTAL_ITEMS; // ~0.01
   
   const podcastsNeeded = Math.round(limit * podcastRatio);
   const videosNeeded = Math.round(limit * videoRatio);
-  const booksNeeded = limit - podcastsNeeded - videosNeeded;
+  const booksNeeded = Math.round(limit * bookRatio);
+  const articlesNeeded = limit - podcastsNeeded - videosNeeded - booksNeeded;
   
   // Calcular páginas correspondentes
   const podcastPage = Math.ceil((startIndex * podcastRatio + 1) / podcastsNeeded) || 1;
   const videoPage = Math.ceil((startIndex * videoRatio + 1) / videosNeeded) || 1;
   const bookPage = Math.ceil((startIndex * bookRatio + 1) / booksNeeded) || 1;
+  const articlePage = Math.ceil((startIndex * articleRatio + 1) / articlesNeeded) || 1;
   
   console.log(`📊 Distribuição página ${page}:`, {
     podcasts: { page: podcastPage, limit: podcastsNeeded },
     videos: { page: videoPage, limit: videosNeeded },
-    books: { page: bookPage, limit: booksNeeded }
+    books: { page: bookPage, limit: booksNeeded },
+    articles: { page: articlePage, limit: articlesNeeded }
   });
   
   // Requisições paralelas otimizadas - apenas os itens necessários
-  const [podcastsResult, videosResult, booksResult] = await Promise.allSettled([
+  const [podcastsResult, videosResult, booksResult, articlesResult] = await Promise.allSettled([
     fetchPaginatedContent('podcast', Math.max(1, podcastPage), Math.max(1, podcastsNeeded)),
     fetchPaginatedContent('aula', Math.max(1, videoPage), Math.max(1, videosNeeded)),
-    fetchPaginatedContent('livro', Math.max(1, bookPage), Math.max(1, booksNeeded))
+    fetchPaginatedContent('livro', Math.max(1, bookPage), Math.max(1, booksNeeded)),
+    fetchPaginatedContent('artigos', Math.max(1, articlePage), Math.max(1, articlesNeeded))
   ]);
   
   const allItems: SearchResult[] = [];
@@ -375,6 +382,11 @@ const performUnifiedPageFetch = async (
   if (booksResult.status === 'fulfilled') {
     allItems.push(...booksResult.value.items);
     console.log(`✅ Livros: ${booksResult.value.items.length} itens`);
+  }
+  
+  if (articlesResult.status === 'fulfilled') {
+    allItems.push(...articlesResult.value.items);
+    console.log(`✅ Artigos: ${articlesResult.value.items.length} itens`);
   }
   
   // Ordenar e limitar
@@ -461,15 +473,17 @@ const performFilteredSearch = async (
     // Fallback: carregar dataset básico
     console.log(`🔄 Carregando dataset para busca filtrada...`);
     try {
-      const [podcastsResult, videosResult, booksResult] = await Promise.allSettled([
+      const [podcastsResult, videosResult, booksResult, articlesResult] = await Promise.allSettled([
         fetchPaginatedContent('podcast', 1, 25),
         fetchPaginatedContent('aula', 1, 25),
-        fetchPaginatedContent('livro', 1, 15)
+        fetchPaginatedContent('livro', 1, 15),
+        fetchPaginatedContent('artigos', 1, 15)
       ]);
 
       if (podcastsResult.status === 'fulfilled') allContent.push(...podcastsResult.value.items);
       if (videosResult.status === 'fulfilled') allContent.push(...videosResult.value.items);
       if (booksResult.status === 'fulfilled') allContent.push(...booksResult.value.items);
+      if (articlesResult.status === 'fulfilled') allContent.push(...articlesResult.value.items);
     } catch (error) {
       console.error('❌ Erro carregando dataset para busca filtrada:', error);
     }
@@ -583,12 +597,15 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
 };
 
 const transformToSearchResult = (item: any, tipo: string): SearchResult => {
-  console.log(`🔄 LANGUAGE INTEGRATION: Transformando ${tipo}:`, {
+  console.log(`🔄 ARTIGOS INTEGRATION: Transformando ${tipo}:`, {
     originalId: item.id,
     titulo: item.titulo || item.podcast_titulo || item.episodio_titulo,
     idioma: item.idioma,
     categorias: item.categorias,
-    podcast_titulo: item.podcast_titulo
+    categoria: item.categoria,
+    data_publicacao: item.data_publicacao,
+    url: item.url,
+    tipo_documento: item.tipo_documento
   });
   
   const realId = String(item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000);
@@ -599,29 +616,35 @@ const transformToSearchResult = (item: any, tipo: string): SearchResult => {
     subjectForBadge = getSubjectFromCategories(item.categorias) || 'Podcast';
     console.log(`🏷️ PODCAST BADGE: "${subjectForBadge}" (de categorias) em vez de "${item.podcast_titulo}"`);
   } else {
-    subjectForBadge = getSubjectFromCategories(item.categorias) || getSubject(tipo);
+    subjectForBadge = getSubjectFromCategories(item.categorias) || 
+                     (item.categoria ? item.categoria : '') || 
+                     getSubject(tipo);
   }
+  
+  // ✅ NOVO: Extrair ano de data_publicacao para artigos
+  const extractedYear = extractYearFromDate(item.data_publicacao || item.ano || item.data_lancamento);
   
   const baseResult: SearchResult = {
     id: realId,
     originalId: String(item.id || item.episodio_id || item.podcast_id),
     title: item.titulo || item.podcast_titulo || item.episodio_titulo || item.title || 'Título não disponível',
     author: item.autor || item.canal || item.publicador || 'Link Business School',
-    year: item.ano || (item.data_lancamento ? new Date(item.data_lancamento).getFullYear() : new Date().getFullYear()),
+    year: extractedYear,
     description: item.descricao || 'Descrição não disponível',
     subject: subjectForBadge,
-    type: tipo === 'livro' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
+    type: tipo === 'livro' || tipo === 'artigos' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
     thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
-    categories: item.categorias || []
+    categories: Array.isArray(item.categorias) ? item.categorias : (item.categoria ? [item.categoria] : [])
   };
 
   console.log(`✅ RESULTADO FINAL: ${baseResult.type} com subject="${baseResult.subject}" para badge`);
 
-  if (tipo === 'livro') {
-    baseResult.pdfUrl = item.arquivo;
+  if (tipo === 'livro' || tipo === 'artigos') {
+    baseResult.pdfUrl = item.arquivo || item.url;
     baseResult.pages = item.paginas;
-    baseResult.language = item.language;
-    baseResult.documentType = item.tipo_documento || 'Livro';
+    baseResult.language = item.language ? mapLanguageCode(item.language) : mapLanguageCode(item.idioma);
+    baseResult.documentType = tipo === 'artigos' ? 'Artigo' : (item.tipo_documento || 'Livro');
+    console.log(`📚 ${tipo.toUpperCase()}: documentType="${baseResult.documentType}", language="${baseResult.language}", pdfUrl="${baseResult.pdfUrl?.substring(0, 50)}..."`);
   } else if (tipo === 'aula') {
     baseResult.embedUrl = item.embed_url;
     baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : undefined;
@@ -815,6 +838,28 @@ const sortResults = (results: SearchResult[], sortBy: string, query?: string): S
   }
 };
 
+const extractYearFromDate = (dateValue: any): number => {
+  if (!dateValue) return new Date().getFullYear();
+  
+  // Se já é um número, retornar diretamente
+  if (typeof dateValue === 'number') return dateValue;
+  
+  // Se é string "desconhecida", retornar ano atual
+  if (typeof dateValue === 'string' && dateValue.toLowerCase().includes('desconhecida')) {
+    return new Date().getFullYear();
+  }
+  
+  // Tentar extrair ano de string de data
+  if (typeof dateValue === 'string') {
+    const dateObj = new Date(dateValue);
+    if (!isNaN(dateObj.getTime())) {
+      return dateObj.getFullYear();
+    }
+  }
+  
+  return new Date().getFullYear();
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -822,21 +867,22 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📨 PODCAST BADGE CORRECTION - Nova busca:', requestBody);
+    console.log('📨 ARTIGOS INTEGRATION - Nova busca:', requestBody);
     
     const result = await performSearch(requestBody);
     
-    // LOG CRÍTICO: Verificar badges dos podcasts
+    // LOG CRÍTICO: Verificar artigos nos resultados
     if (result.results && result.results.length > 0) {
-      const podcastResults = result.results.filter((r: any) => r.type === 'podcast');
-      if (podcastResults.length > 0) {
-        console.log('🎧 VERIFICAÇÃO BADGES PODCASTS:', {
-          totalPodcasts: podcastResults.length,
-          primeiroPodcast: {
-            title: podcastResults[0].title.substring(0, 50),
-            subject: podcastResults[0].subject,
-            program: podcastResults[0].program,
-            badgeCorreto: podcastResults[0].subject !== podcastResults[0].program
+      const articleResults = result.results.filter((r: any) => r.documentType === 'Artigo');
+      if (articleResults.length > 0) {
+        console.log('📄 VERIFICAÇÃO ARTIGOS:', {
+          totalArtigos: articleResults.length,
+          primeiroArtigo: {
+            title: articleResults[0].title.substring(0, 50),
+            documentType: articleResults[0].documentType,
+            author: articleResults[0].author,
+            year: articleResults[0].year,
+            pdfUrl: articleResults[0].pdfUrl?.substring(0, 50)
           }
         });
       }
@@ -848,7 +894,7 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error('❌ Erro na busca com correção de badges:', error);
+    console.error('❌ Erro na busca com integração de artigos:', error);
     
     return new Response(JSON.stringify({
       success: false,

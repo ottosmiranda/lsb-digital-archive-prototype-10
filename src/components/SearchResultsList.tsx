@@ -33,6 +33,21 @@ const SearchResultsList = ({
     enabled: enableInfiniteScroll
   });
 
+  // ✅ LOG TEMPORÁRIO: Verificar dados dos podcasts
+  const podcastResults = results.filter(r => r.type === 'podcast');
+  if (podcastResults.length > 0) {
+    console.group('🎧 SEARCH LIST - Verificação badges podcasts');
+    podcastResults.slice(0, 3).forEach((podcast, index) => {
+      console.log(`Podcast ${index + 1}:`, {
+        title: podcast.title.substring(0, 40) + '...',
+        subject: podcast.subject,
+        program: (podcast as any).program,
+        badgeOK: podcast.subject !== (podcast as any).program
+      });
+    });
+    console.groupEnd();
+  }
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'video':

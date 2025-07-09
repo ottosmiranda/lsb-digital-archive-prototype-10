@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -540,16 +541,27 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
 };
 
 const transformToSearchResult = (item: any, tipo: string): SearchResult => {
-  console.log(`🔄 ID CORRECTION: Transformando item:`, {
-    tipo,
+  console.log(`🔄 PODCAST BADGE CORRECTION: Transformando ${tipo}:`, {
     originalId: item.id,
-    titulo: item.titulo || item.podcast_titulo || item.title,
+    titulo: item.titulo || item.podcast_titulo || item.episodio_titulo,
     categorias: item.categorias,
-    apiId: `Usando ID real da API: ${item.id}`
+    podcast_titulo: item.podcast_titulo
   });
   
   // CORREÇÃO CRÍTICA: Usar ID real da API como ID principal
   const realId = String(item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000);
+  
+  // ✅ CORREÇÃO PRINCIPAL: Para podcasts, usar categorias para subject (badges)
+  let subjectForBadge: string;
+  
+  if (tipo === 'podcast') {
+    // Para podcasts: usar categorias para badges, preservar podcast_titulo separadamente
+    subjectForBadge = getSubjectFromCategories(item.categorias) || 'Podcast';
+    console.log(`🏷️ PODCAST BADGE: "${subjectForBadge}" (de categorias) em vez de "${item.podcast_titulo}"`);
+  } else {
+    // Para outros tipos: usar categorias ou fallback padrão
+    subjectForBadge = getSubjectFromCategories(item.categorias) || getSubject(tipo);
+  }
   
   const baseResult: SearchResult = {
     id: realId,
@@ -558,14 +570,13 @@ const transformToSearchResult = (item: any, tipo: string): SearchResult => {
     author: item.autor || item.canal || item.publicador || 'Link Business School',
     year: item.ano || (item.data_lancamento ? new Date(item.data_lancamento).getFullYear() : new Date().getFullYear()),
     description: item.descricao || 'Descrição não disponível',
-    // ✅ CORRIGIDO: Para podcasts, usar podcast_titulo como subject
-    subject: tipo === 'podcast' ? (item.podcast_titulo || getSubjectFromCategories(item.categorias) || getSubject(tipo)) : (getSubjectFromCategories(item.categorias) || getSubject(tipo)),
+    subject: subjectForBadge, // ✅ CORRIGIDO: usar categorias para badges
     type: tipo === 'livro' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
     thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
     categories: item.categorias || [] // ✅ Categorias para filtros
   };
 
-  console.log(`✅ ID REAL USADO: ${realId} para ${baseResult.type} "${baseResult.title}" com subject: "${baseResult.subject}"`);
+  console.log(`✅ RESULTADO FINAL: ${baseResult.type} com subject="${baseResult.subject}" para badge`);
 
   if (tipo === 'livro') {
     baseResult.pdfUrl = item.arquivo;
@@ -589,7 +600,7 @@ const getSubjectFromCategories = (categorias: string[]): string => {
   if (!categorias || !Array.isArray(categorias) || categorias.length === 0) {
     return '';
   }
-  // Capitalizar primeira letra e retornar primeira categoria
+  // ✅ CORREÇÃO: Capitalizar primeira letra da primeira categoria para badges
   const firstCategory = categorias[0];
   return firstCategory.charAt(0).toUpperCase() + firstCategory.slice(1);
 };
@@ -769,21 +780,24 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📨 Nova Arquitetura de Busca (IDs REAIS):', requestBody);
+    console.log('📨 PODCAST BADGE CORRECTION - Nova busca:', requestBody);
     
     const result = await performSearch(requestBody);
     
-    // LOG CRÍTICO: Verificar se IDs são reais
+    // LOG CRÍTICO: Verificar badges dos podcasts
     if (result.results && result.results.length > 0) {
-      console.log('🔍 VERIFICAÇÃO DE IDs REAIS:', {
-        primeiroResultado: {
-          id: result.results[0].id,
-          originalId: result.results[0].originalId,
-          tipo: result.results[0].type,
-          title: result.results[0].title.substring(0, 50)
-        },
-        totalResultados: result.results.length
-      });
+      const podcastResults = result.results.filter((r: any) => r.type === 'podcast');
+      if (podcastResults.length > 0) {
+        console.log('🎧 VERIFICAÇÃO BADGES PODCASTS:', {
+          totalPodcasts: podcastResults.length,
+          primeiroPodcast: {
+            title: podcastResults[0].title.substring(0, 50),
+            subject: podcastResults[0].subject,
+            program: podcastResults[0].program,
+            badgeCorreto: podcastResults[0].subject !== podcastResults[0].program
+          }
+        });
+      }
     }
     
     return new Response(JSON.stringify(result), {
@@ -792,7 +806,7 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error('❌ Erro na nova arquitetura:', error);
+    console.error('❌ Erro na busca com correção de badges:', error);
     
     return new Response(JSON.stringify({
       success: false,

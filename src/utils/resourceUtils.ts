@@ -18,3 +18,12 @@ export function getTypeBadgeColor(type: string) {
     default: return 'bg-gray-100 text-gray-800';
   }
 }
+
+export function getTypeBadgeLabel(type: string, documentType?: string) {
+  switch (type) {
+    case 'video': return 'Vídeo';
+    case 'titulo': return documentType === 'Artigo' ? 'Artigo' : 'Livro';
+    case 'podcast': return 'Podcast';
+    default: return 'Recurso';
+  }
+}

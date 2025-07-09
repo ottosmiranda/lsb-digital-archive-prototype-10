@@ -1,4 +1,3 @@
-
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import InfiniteContentSkeleton from '@/components/skeletons/InfiniteContentSkeleton';
+import { getTypeBadgeLabel, getTypeBadgeColor } from '@/utils/resourceUtils';
 
 interface SearchResultsListProps {
   results: SearchResult[];
@@ -61,17 +61,10 @@ const SearchResultsList = ({
     }
   };
 
-  const getTypeBadge = (type: string) => {
-    switch (type) {
-      case 'video':
-        return { label: 'Vídeo', color: 'bg-red-100 text-red-800' };
-      case 'titulo':
-        return { label: 'Livro', color: 'bg-blue-100 text-blue-800' };
-      case 'podcast':
-        return { label: 'Podcast', color: 'bg-purple-100 text-purple-800' };
-      default:
-        return { label: 'Recurso', color: 'bg-gray-100 text-gray-800' };
-    }
+  const getTypeBadge = (type: string, documentType?: string) => {
+    const label = getTypeBadgeLabel(type, documentType);
+    const color = getTypeBadgeColor(type);
+    return { label, color };
   };
 
   const handleResourceClick = (result: SearchResult) => {
@@ -112,7 +105,7 @@ const SearchResultsList = ({
     <div ref={containerRef} className="space-y-6">
       <div className="space-y-4">
         {results.map((result) => {
-          const typeBadge = getTypeBadge(result.type);
+          const typeBadge = getTypeBadge(result.type, result.documentType);
           
           return (
             <Card key={result.id} className="group hover-lift animate-fade-in">
@@ -193,7 +186,7 @@ const SearchResultsList = ({
                     >
                       {result.type === 'video' && 'Assistir'}
                       {result.type === 'podcast' && 'Ouvir'}
-                      {result.type === 'titulo' && 'Ler'}
+                      {result.type === 'titulo' && (result.documentType === 'Artigo' ? 'Ler' : 'Ler')}
                     </Button>
                   </div>
                 </div>

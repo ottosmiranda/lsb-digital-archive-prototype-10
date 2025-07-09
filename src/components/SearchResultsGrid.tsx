@@ -1,4 +1,3 @@
-
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import InfiniteContentSkeleton from '@/components/skeletons/InfiniteContentSkeleton';
+import { getTypeBadgeLabel, getTypeBadgeColor } from '@/utils/resourceUtils';
 
 interface SearchResultsGridProps {
   results: SearchResult[];
@@ -61,29 +61,10 @@ const SearchResultsGrid = ({
     }
   };
 
-  const getTypeBadge = (type: string) => {
-    switch (type) {
-      case 'video':
-        return {
-          label: 'Vídeo',
-          color: 'bg-red-100 text-red-800'
-        };
-      case 'titulo':
-        return {
-          label: 'Livro',
-          color: 'bg-blue-100 text-blue-800'
-        };
-      case 'podcast':
-        return {
-          label: 'Podcast',
-          color: 'bg-purple-100 text-purple-800'
-        };
-      default:
-        return {
-          label: 'Recurso',
-          color: 'bg-gray-100 text-gray-800'
-        };
-    }
+  const getTypeBadge = (type: string, documentType?: string) => {
+    const label = getTypeBadgeLabel(type, documentType);
+    const color = getTypeBadgeColor(type);
+    return { label, color };
   };
 
   const handleResourceClick = (result: SearchResult) => {
@@ -124,7 +105,7 @@ const SearchResultsGrid = ({
     <div ref={containerRef} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {results.map(result => {
-          const typeBadge = getTypeBadge(result.type);
+          const typeBadge = getTypeBadge(result.type, result.documentType);
           return (
             <Card key={result.id} className="group hover-lift animate-fade-in">
               <CardContent className="p-0">
@@ -201,7 +182,7 @@ const SearchResultsGrid = ({
                     >
                       {result.type === 'video' && 'Assistir Vídeo'}
                       {result.type === 'podcast' && 'Ouvir Podcast'}
-                      {result.type === 'titulo' && 'Ler Agora'}
+                      {result.type === 'titulo' && (result.documentType === 'Artigo' ? 'Ler Artigo' : 'Ler Agora')}
                     </Button>
                   </div>
                 </div>

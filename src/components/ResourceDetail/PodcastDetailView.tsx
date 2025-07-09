@@ -1,5 +1,4 @@
 
-
 import { useEffect, useRef } from "react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -31,8 +30,11 @@ const PodcastDetailView = ({ podcast }: PodcastDetailViewProps) => {
     }
   };
 
-  // Extract program name from podcast.subject (which contains podcast_titulo)
-  const programTitle = podcast.subject || podcast.title;
+  // ✅ CORRIGIDO: Usar podcast_titulo para título, categories para badges
+  const programTitle = (podcast as any).podcast_titulo || podcast.title;
+  const badgeCategories = podcast.categories && podcast.categories.length > 0 
+    ? podcast.categories 
+    : [podcast.subject]; // Fallback para subject se não houver categories
   
   return (
     <div className="min-h-screen bg-white">
@@ -46,7 +48,7 @@ const PodcastDetailView = ({ podcast }: PodcastDetailViewProps) => {
           publisher={podcast.author}
           episodeCount={podcast.episodes ? parseInt(`${podcast.episodes}`) : 0}
           year={podcast.year}
-          categories={[programTitle]}
+          categories={badgeCategories} {/* ✅ CORRIGIDO: Usar categories para badges */}
           description={podcast.description || `Programa de podcast "${programTitle}" com episódios disponíveis.`}
           onPlayLatest={handlePlayLatest}
         />
@@ -63,4 +65,3 @@ const PodcastDetailView = ({ podcast }: PodcastDetailViewProps) => {
 };
 
 export default PodcastDetailView;
-

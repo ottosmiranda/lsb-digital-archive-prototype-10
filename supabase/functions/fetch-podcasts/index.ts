@@ -47,12 +47,12 @@ interface TransformedPodcast {
   categories?: string[];
 }
 
-// ✅ CORRIGIDO: Capitalizar primeira categoria para uso em filtros
+// ✅ CORRIGIDO: Usar primeira categoria para subject (badge) e capitalizar
 const getSubjectFromCategories = (categorias: string[]): string => {
   if (!categorias || !Array.isArray(categorias) || categorias.length === 0) {
-    return '';
+    return 'Podcast';
   }
-  // Capitalizar primeira letra e retornar primeira categoria
+  // Capitalizar primeira letra da primeira categoria para uso em badges
   const firstCategory = categorias[0];
   return firstCategory.charAt(0).toUpperCase() + firstCategory.slice(1);
 };
@@ -121,13 +121,12 @@ const handler = async (req: Request): Promise<Response> => {
       return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
     };
 
-    // ✅ CORRIGIDO: Transform episodes usando podcast_titulo como subject principal
+    // ✅ CORRIGIDO: subject agora usa categorias (para badges), podcast_titulo é preservado separadamente
     const transformedPodcasts: TransformedPodcast[] = data.conteudo.map((episode) => {
-      // CORREÇÃO CRÍTICA: Usar podcast_titulo como subject, categorias para filtros
-      const subject = episode.podcast_titulo || 'Podcast';
-      const categoryForFilters = getSubjectFromCategories(episode.categorias);
+      // CORREÇÃO: Usar categorias para subject (badges), preservar podcast_titulo
+      const subject = getSubjectFromCategories(episode.categorias);
       
-      console.log(`🏷️ Podcast "${episode.episodio_titulo}": subject="${subject}", categorias=${JSON.stringify(episode.categorias)}, categoryForFilters="${categoryForFilters}"`);
+      console.log(`🏷️ Podcast "${episode.episodio_titulo}": subject="${subject}" (from categorias), podcast_titulo="${episode.podcast_titulo}"`);
       
       return {
         id: episode.episodio_id,
@@ -136,17 +135,17 @@ const handler = async (req: Request): Promise<Response> => {
         author: episode.publicador || 'Autor não informado',
         description: episode.descricao || 'Descrição não disponível',
         year: episode.data_lancamento ? new Date(episode.data_lancamento).getFullYear() : 2024,
-        subject: subject, // ✅ CORRIGIDO: Usar podcast_titulo como subject
+        subject: subject, // ✅ CORRIGIDO: Usar categorias para badges
         duration: episode.duracao_ms ? formatDuration(episode.duracao_ms) : undefined,
         thumbnail: episode.imagem_url,
         embedUrl: episode.embed_url,
-        podcast_titulo: episode.podcast_titulo,
+        podcast_titulo: episode.podcast_titulo, // ✅ Preservar título do programa separadamente
         episodio_id: episode.episodio_id,
-        categories: episode.categorias || [] // ✅ Categorias completas para filtros
+        categories: episode.categorias || [] // ✅ Categorias completas
       };
     });
 
-    console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items with correct subject (podcast_titulo) for page ${page}`);
+    console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items with subject from categories for page ${page}`);
 
     // Extract program info from first episode if filtering by podcast title
     let programInfo = null;

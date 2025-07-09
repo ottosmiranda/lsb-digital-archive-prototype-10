@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Resource } from '@/types/resourceTypes';
 import { useDataLoader } from './useDataLoader';
@@ -167,7 +168,7 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
   return { resource, loading: dataLoading || loading, error, retrying };
 };
 
-// Helper function to transform SearchResult to Resource
+// ✅ CORRIGIDO: Helper function para manter subject como categorias para badges
 function transformToResource(item: any): Resource {
   return {
     id: String(item.id),
@@ -181,13 +182,15 @@ function transformToResource(item: any): Resource {
     thumbnail: item.thumbnail,
     description: item.description,
     year: item.year,
-    subject: item.subject,
+    subject: item.subject, // ✅ Manter subject como está (categorias para badges)
     embedUrl: item.embedUrl,
     pdfUrl: item.pdfUrl,
     fullDescription: item.description,
     tags: item.subject ? [item.subject] : undefined,
     language: item.language,
     documentType: item.documentType,
-    categories: item.categories || []
+    categories: item.categories || [],
+    // ✅ NOVO: Preservar podcast_titulo se disponível
+    podcast_titulo: item.podcast_titulo
   };
 }

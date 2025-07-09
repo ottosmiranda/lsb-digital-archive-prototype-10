@@ -1,3 +1,4 @@
+
 import { Resource } from '@/types/resourceTypes';
 import { API_BASE_URL } from './api/apiConfig';
 
@@ -92,9 +93,15 @@ export class ResourceByIdService {
   private static transformToResource(data: any, resourceType: string, requestedId: string): Resource {
     console.log(`🔄 Transformando dados para Resource:`, { resourceType, data });
 
-    // ✅ CORRIGIDO: For podcasts, the response is an array - usar podcast_titulo como subject
+    // ✅ CORRIGIDO: Para podcasts, usar categorias para subject (badges)
     if (resourceType === 'podcast' && Array.isArray(data)) {
       const podcast = data[0]; // Get the first episode
+      
+      // Use categories for subject (badges)
+      const subject = podcast.categorias && podcast.categorias.length > 0 
+        ? podcast.categorias[0].charAt(0).toUpperCase() + podcast.categorias[0].slice(1)
+        : 'Podcast';
+      
       return {
         id: podcast.episodio_id || requestedId, // Use real episode ID
         originalId: podcast.episodio_id || requestedId,
@@ -102,13 +109,15 @@ export class ResourceByIdService {
         author: podcast.publicador || 'Autor desconhecido',
         year: new Date(podcast.data_lancamento || Date.now()).getFullYear(),
         description: podcast.descricao || 'Descrição não disponível',
-        subject: podcast.podcast_titulo || 'Podcast', // ✅ CORRIGIDO: Usar podcast_titulo como subject
+        subject: subject, // ✅ CORRIGIDO: Usar categorias para badges
         type: 'podcast',
         thumbnail: podcast.imagem_url,
         duration: podcast.duracao_ms ? this.formatDuration(podcast.duracao_ms) : undefined,
         embedUrl: podcast.embed_url,
-        categories: podcast.categorias || [podcast.podcast_titulo || 'Podcast'],
-        episodes: 1
+        categories: podcast.categorias || [],
+        episodes: 1,
+        // ✅ Preservar título do programa para uso na página de detalhes
+        podcast_titulo: podcast.podcast_titulo
       };
     }
 
@@ -132,7 +141,7 @@ export class ResourceByIdService {
       };
     }
 
-    // ✅ CORRIGIDO: For videos/classes - usar ano dinâmico da API
+    // For videos/classes
     if (resourceType === 'video') {
       const videoYear = data.ano || new Date().getFullYear(); // Use dynamic year from API
       console.log(`📅 VIDEO DETAIL YEAR TRANSFORMATION: ${data.titulo?.substring(0, 30)}... - Year: ${videoYear} (from API: ${data.ano})`);
@@ -142,7 +151,7 @@ export class ResourceByIdService {
         originalId: data.id || requestedId,
         title: data.titulo || 'Vídeo sem título',
         author: data.canal || 'Canal desconhecido',
-        year: videoYear, // ✅ CORRIGIDO: Using dynamic year from API individual endpoint
+        year: videoYear, // Using dynamic year from API individual endpoint
         description: data.descricao || 'Descrição não disponível',
         subject: data.categorias?.[0] || 'Empreendedorismo',
         type: 'video',

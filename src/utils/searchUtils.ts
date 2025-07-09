@@ -1,4 +1,3 @@
-
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
 // Função para converter duração em minutos totais
@@ -219,6 +218,16 @@ export const filterResults = (
         item.pais?.toLowerCase().includes(filterLang.toLowerCase())
       );
       if (!matchesLanguage) {
+        return false;
+      }
+    }
+
+    // NOVO: Document type filter (for books vs articles)
+    if (filters.documentType.length > 0) {
+      const matchesDocumentType = filters.documentType.some(filterDocType =>
+        item.documentType?.toLowerCase().includes(filterDocType.toLowerCase())
+      );
+      if (!matchesDocumentType) {
         return false;
       }
     }

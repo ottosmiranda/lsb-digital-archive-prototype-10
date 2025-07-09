@@ -30,11 +30,9 @@ const PodcastDetailView = ({ podcast }: PodcastDetailViewProps) => {
     }
   };
 
-  // ✅ CORRIGIDO: Usar podcast_titulo para título, categories para badges
+  // ✅ CORRIGIDO: Usar podcast_titulo para título, subject para badges
   const programTitle = (podcast as any).podcast_titulo || podcast.title;
-  const badgeCategories = podcast.categories && podcast.categories.length > 0 
-    ? podcast.categories 
-    : [podcast.subject]; // Fallback para subject se não houver categories
+  const badgeCategory = podcast.subject; // Para badges (categorias da API)
   
   return (
     <div className="min-h-screen bg-white">
@@ -48,7 +46,7 @@ const PodcastDetailView = ({ podcast }: PodcastDetailViewProps) => {
           publisher={podcast.author}
           episodeCount={podcast.episodes ? parseInt(`${podcast.episodes}`) : 0}
           year={podcast.year}
-          categories={badgeCategories} {/* ✅ CORRIGIDO: Usar categories para badges */}
+          categories={badgeCategory ? [badgeCategory] : []}
           description={podcast.description || `Programa de podcast "${programTitle}" com episódios disponíveis.`}
           onPlayLatest={handlePlayLatest}
         />

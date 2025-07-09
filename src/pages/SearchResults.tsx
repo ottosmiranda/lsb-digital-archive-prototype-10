@@ -41,6 +41,11 @@ const SearchResults = () => {
     handlePageChange(1); 
   };
 
+  const handleClearQuery = () => {
+    setQuery('');
+    handlePageChange(1);
+  };
+
   // Scroll to top when the search results page is opened (only on mount)
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -64,6 +69,7 @@ const SearchResults = () => {
       onClearFilters={handleClearFilters}
       onQuickSearch={handleQuickSearch}
       onRefreshData={forceRefresh}
+      onClearQuery={handleClearQuery}
     />
   );
 };

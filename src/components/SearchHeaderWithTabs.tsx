@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Book, Play, Headphones, Grid3X3, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ViewToggle from '@/components/ViewToggle';
+import SearchQueryClearButton from '@/components/SearchQueryClearButton';
 
 interface SearchHeaderWithTabsProps {
   query: string;
@@ -14,6 +15,7 @@ interface SearchHeaderWithTabsProps {
   onSortChange: (value: string) => void;
   onViewChange: (view: 'grid' | 'list') => void;
   onContentTypeChange: (type: string) => void;
+  onClearQuery?: () => void;
 }
 
 const SearchHeaderWithTabs = ({ 
@@ -24,7 +26,8 @@ const SearchHeaderWithTabs = ({
   activeContentType,
   onSortChange, 
   onViewChange,
-  onContentTypeChange
+  onContentTypeChange,
+  onClearQuery
 }: SearchHeaderWithTabsProps) => {
   const contentTypes = [
     { id: 'all', label: 'Todos', icon: Grid3X3 },
@@ -50,9 +53,14 @@ const SearchHeaderWithTabs = ({
       {/* Search Results Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold lsb-primary">
-            {query ? `Resultados para "${query}"` : 'Resultados da busca'}
-          </h1>
+          <div className="flex items-center">
+            <h1 className="text-2xl font-bold lsb-primary">
+              {query ? `Resultados para "${query}"` : 'Resultados da busca'}
+            </h1>
+            {query && onClearQuery && (
+              <SearchQueryClearButton onClear={onClearQuery} />
+            )}
+          </div>
           <p className="text-gray-600 mt-1">
             {getResultDescription()}
           </p>

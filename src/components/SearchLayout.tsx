@@ -31,6 +31,7 @@ interface SearchLayoutProps {
   onClearFilters: () => void;
   onQuickSearch?: (query: string) => void;
   onRefreshData?: () => Promise<void>;
+  onClearQuery?: () => void;
 }
 
 const SearchLayout = ({
@@ -49,7 +50,8 @@ const SearchLayout = ({
   onPageChange,
   onClearFilters,
   onQuickSearch,
-  onRefreshData
+  onRefreshData,
+  onClearQuery
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [activeContentType, setActiveContentType] = useState('all');
@@ -177,6 +179,7 @@ const SearchLayout = ({
             onSortChange={onSortChange}
             onViewChange={setView}
             onContentTypeChange={handleContentTypeChange}
+            onClearQuery={onClearQuery}
           />
         )}
         

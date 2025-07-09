@@ -1,4 +1,5 @@
-import { Search, Filter, Command } from 'lucide-react';
+
+import { Search, Filter, Command, Book, Play, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -22,15 +23,18 @@ const Hero = () => {
   const filterOptions = [
     {
       id: 'titulo',
-      label: 'Livros & Artigos'
+      label: 'Livros & Artigos',
+      icon: Book
     },
     {
       id: 'video',
-      label: 'Vídeos'
+      label: 'Vídeos',
+      icon: Play
     },
     {
       id: 'podcast',
-      label: 'Podcasts'
+      label: 'Podcasts',
+      icon: Headphones
     }
   ];
 
@@ -79,7 +83,7 @@ const Hero = () => {
                 {/* Filter Chips */}
                 <div className="flex flex-wrap gap-2 justify-center">
                   {filterOptions.map(filter => <Badge key={filter.id} variant={activeFilters.includes(filter.id) ? "default" : "outline"} className={`cursor-pointer transition-all duration-200 px-4 py-2 ${activeFilters.includes(filter.id) ? 'bg-lsb-accent text-lsb-primary hover:bg-lsb-accent/90' : 'bg-white/20 text-white border-white/30 hover:bg-white/30'}`} onClick={() => toggleFilter(filter.id)}>
-                      <Filter className="h-3 w-3 mr-1" />
+                      <filter.icon className="h-3 w-3 mr-1" />
                       {filter.label}
                     </Badge>)}
                 </div>

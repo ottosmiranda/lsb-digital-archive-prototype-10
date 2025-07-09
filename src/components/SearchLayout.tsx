@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
 import StreamlinedSearchFilters from '@/components/StreamlinedSearchFilters';
@@ -13,7 +13,6 @@ import DataRefreshButton from '@/components/DataRefreshButton';
 import SearchDebugInfo from '@/components/SearchDebugInfo';
 import Footer from '@/components/Footer';
 import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
-import { useDataLoader } from '@/hooks/useDataLoader';
 
 interface SearchLayoutProps {
   query: string;
@@ -57,14 +56,6 @@ const SearchLayout = ({
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [activeContentType, setActiveContentType] = useState('all');
 
-  // NOVO: Carregar todos os dados para cálculo correto de contagens
-  const { allData } = useDataLoader();
-  
-  // NOVO: allData já é um array de SearchResult[], não precisa de transformação
-  const allResults = useMemo(() => {
-    return allData || [];
-  }, [allData]);
-
   // Sync activeContentType with filters.resourceType
   useEffect(() => {
     if (filters.resourceType.length === 1) {
@@ -94,8 +85,7 @@ const SearchLayout = ({
     showPagination,
     shouldShowSearch,
     showEmptyState,
-    showWelcomeState,
-    allResultsCount: allResults.length
+    showWelcomeState
   });
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
@@ -199,7 +189,6 @@ const SearchLayout = ({
               filters={filters}
               onFiltersChange={onFiltersChange}
               currentResults={currentResults}
-              allResults={allResults}
               activeContentType={activeContentType}
             />
           )}

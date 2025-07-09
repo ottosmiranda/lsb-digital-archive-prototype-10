@@ -13,15 +13,13 @@ interface StreamlinedSearchFiltersProps {
   onFiltersChange: (filters: SearchFilters, options?: { authorTyping?: boolean }) => void;
   currentResults?: SearchResult[];
   activeContentType?: string;
-  allResults?: SearchResult[]; // NOVO: Dados completos para cálculo de contagens
 }
 
 const StreamlinedSearchFilters = React.memo(({ 
   filters, 
   onFiltersChange, 
   currentResults = [],
-  activeContentType = 'all',
-  allResults = [] // NOVO: Dados completos com fallback
+  activeContentType = 'all'
 }: StreamlinedSearchFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
   
@@ -68,7 +66,6 @@ const StreamlinedSearchFilters = React.memo(({
             filters={filters}
             onFiltersChange={onFiltersChange}
             currentResults={currentResults}
-            allResults={allResults}
             openSections={openSections}
             onToggleSection={toggleSection}
             activeContentType={activeContentType}
@@ -102,7 +99,6 @@ const StreamlinedSearchFilters = React.memo(({
                 filters={filters}
                 onFiltersChange={onFiltersChange}
                 currentResults={currentResults}
-                allResults={allResults}
                 openSections={openSections}
                 onToggleSection={toggleSection}
                 activeContentType={activeContentType}

@@ -23,13 +23,15 @@ interface VideoItem {
   canal: string;
   imagem_url: string;
   categorias: string[];
-  pais: string;
+  idioma: string;
+  ano?: number; // Added ano field
+  pais?: string;
   embed_url: string;
   duracao: number;
 }
 
 interface TransformedVideo {
-  id: string; // Using real API ID instead of artificial number
+  id: string;
   originalId: string;
   title: string;
   type: 'video';
@@ -97,10 +99,14 @@ const handler = async (req: Request): Promise<Response> => {
     const data: VideoApiResponse = await response.json();
     console.log(`✅ API Response: ${data.conteudo.length} videos, page ${data.page}/${data.totalPages}`);
 
-    // Transform videos to match SearchResult interface using REAL IDs
+    // Transform videos to match SearchResult interface using REAL IDs and dynamic years
     const transformedVideos: TransformedVideo[] = data.conteudo.map((video) => {
+      const videoYear = video.ano || new Date().getFullYear(); // Use dynamic year with fallback
+      
+      console.log(`📅 Video year transformation: ${video.titulo.substring(0, 30)}... - Year: ${videoYear} (from API: ${video.ano})`);
+      
       return {
-        id: video.id, // Use REAL ID from API
+        id: video.id,
         originalId: video.id,
         title: video.titulo || 'Vídeo sem título',
         type: 'video' as const,
@@ -108,14 +114,14 @@ const handler = async (req: Request): Promise<Response> => {
         duration: video.duracao ? formatDuration(video.duracao) : undefined,
         thumbnail: video.imagem_url,
         description: video.descricao || 'Descrição não disponível',
-        year: 2024,
+        year: videoYear, // ✅ CORRIGIDO: Using dynamic year from API
         subject: video.categorias && video.categorias.length > 0 ? video.categorias[0] : 'Educação',
         embedUrl: video.embed_url,
         pais: video.pais
       };
     });
 
-    console.log(`✅ Videos transformed: ${transformedVideos.length} items using REAL IDs for page ${page}`);
+    console.log(`✅ Videos transformed: ${transformedVideos.length} items using REAL IDs and dynamic years for page ${page}`);
 
     return new Response(JSON.stringify({
       success: true,

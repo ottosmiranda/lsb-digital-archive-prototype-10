@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
@@ -70,7 +69,8 @@ const languageMapping: Record<string, string> = {
   'zh': 'Chinês',
   'zh-CN': 'Chinês',
   'ru': 'Russo',
-  'ru-RU': 'Russo'
+  'ru-RU': 'Russo',
+  'Und': 'Indefinido'
 };
 
 const mapLanguageCode = (idioma: string): string => {

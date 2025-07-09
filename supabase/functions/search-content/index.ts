@@ -95,7 +95,8 @@ const languageMapping: Record<string, string> = {
   'zh': 'Chinês',
   'zh-CN': 'Chinês',
   'ru': 'Russo',
-  'ru-RU': 'Russo'
+  'ru-RU': 'Russo',
+  'Und': 'Indefinido'
 };
 
 const mapLanguageCode = (idioma: string): string => {

@@ -611,6 +611,14 @@ const formatDuration = (durationMs: number): string => {
 
 const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResult[] => {
   return data.filter(item => {
+    // ✅ CRÍTICO: Validar resourceType primeiro para garantir tipos corretos
+    if (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) {
+      if (!filters.resourceType.includes(item.type)) {
+        console.log(`🚫 Item rejeitado por tipo: ${item.type} não está em ${filters.resourceType.join(', ')}`);
+        return false;
+      }
+    }
+
     if (filters.subject.length > 0) {
       const matchesSubject = filters.subject.some(filterSubject =>
         item.subject.toLowerCase().includes(filterSubject.toLowerCase())

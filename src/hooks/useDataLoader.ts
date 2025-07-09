@@ -1,5 +1,6 @@
+
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { SearchResult } from '@/types/searchTypes';
 import { ResourceLookupService } from '@/services/resourceLookupService';
 
@@ -118,5 +119,8 @@ export const useDataLoader = (loadAll: boolean = false) => {
     loadData();
   }, [loadData]);
 
-  return { allData, loading, error, loadData };
+  // Return dataLoaded based on whether we have data and are not loading
+  const dataLoaded = !loading && allData.length > 0;
+
+  return { allData, loading, error, loadData, dataLoaded };
 };

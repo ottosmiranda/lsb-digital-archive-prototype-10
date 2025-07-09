@@ -24,4 +24,5 @@ export interface Resource {
   pdfUrl?: string; // Add pdfUrl property for books
   documentType?: string; // Add documentType property for books
   categories?: string[]; // Add categories array property
+  podcast_titulo?: string; // Add podcast_titulo property for podcasts
 }

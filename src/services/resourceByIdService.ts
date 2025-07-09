@@ -133,14 +133,17 @@ export class ResourceByIdService {
       };
     }
 
-    // For videos/classes
+    // ✅ CORRIGIDO: For videos/classes - usar ano dinâmico da API
     if (resourceType === 'video') {
+      const videoYear = data.ano || new Date().getFullYear(); // Use dynamic year from API
+      console.log(`📅 VIDEO DETAIL YEAR TRANSFORMATION: ${data.titulo?.substring(0, 30)}... - Year: ${videoYear} (from API: ${data.ano})`);
+      
       return {
         id: data.id || requestedId, // Use real video ID
         originalId: data.id || requestedId,
         title: data.titulo || 'Vídeo sem título',
         author: data.canal || 'Canal desconhecido',
-        year: data.ano || new Date().getFullYear(),
+        year: videoYear, // ✅ CORRIGIDO: Using dynamic year from API individual endpoint
         description: data.descricao || 'Descrição não disponível',
         subject: data.categorias?.[0] || 'Empreendedorismo',
         type: 'video',

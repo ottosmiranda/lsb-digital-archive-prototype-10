@@ -1,3 +1,4 @@
+
 import React, { useMemo, useCallback } from 'react';
 import { X, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -80,15 +81,18 @@ const DynamicFilterContent = React.memo(({
       .sort((a, b) => b.count - a.count);
   }, [currentResults]);
 
-  // MELHORADO: Verificar se há anos válidos nos resultados atuais
+  // MELHORADO: Verificar se há anos válidos nos resultados atuais, incluindo vídeos
   const availableYears = useMemo(() => {
     const yearSet = new Set<number>();
     currentResults.forEach(result => {
+      console.log(`📅 Checking year for ${result.type}: ${result.title.substring(0, 30)}... - Year: ${result.year}`);
       if (result.year && result.year > 1900 && result.year <= currentYear) {
         yearSet.add(result.year);
       }
     });
-    return Array.from(yearSet).sort((a, b) => b - a);
+    const yearsArray = Array.from(yearSet).sort((a, b) => b - a);
+    console.log(`📅 Available years from current results:`, yearsArray);
+    return yearsArray;
   }, [currentResults]);
 
   const handleLanguageChange = useCallback((languageId: string, checked: boolean) => {
@@ -407,7 +411,7 @@ const DynamicFilterContent = React.memo(({
         </Collapsible>
       )}
 
-      {/* MELHORADO: Filtro de ano com validação aprimorada */}
+      {/* ✅ CORRIGIDO: Filtro de ano SEM badge "Campo não disponível" para vídeos */}
       {filterRelevance.year && (
         <Collapsible open={openSections.year} onOpenChange={() => onToggleSection('year')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -416,12 +420,6 @@ const DynamicFilterContent = React.memo(({
               {filters.year && (
                 <Badge variant="secondary" className="text-xs">
                   {filters.year}
-                </Badge>
-              )}
-              {activeContentType === 'video' && (
-                <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  Campo não disponível
                 </Badge>
               )}
               {availableYears.length > 0 && (

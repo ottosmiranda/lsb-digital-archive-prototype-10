@@ -101,8 +101,8 @@ const SearchHeaderWithTabs = ({
                 >
                   <IconComponent className={`h-4 w-4 ${
                     activeContentType === type.id 
-                      ? 'text-lsb-primary' 
-                      : 'text-gray-600'
+                      ? '!text-blue-700' 
+                      : '!text-slate-700'
                   }`} />
                   <span className="hidden sm:inline">{type.label}</span>
                   <span className="sm:hidden">{type.label.slice(0, 3)}</span>

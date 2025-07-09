@@ -10,7 +10,7 @@ import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import AuthorInput from '@/components/AuthorInput';
 import { useContentAwareFilters } from '@/hooks/useContentAwareFilters';
 import { useAllAuthors } from '@/hooks/useAllAuthors';
-import { extractAuthorsFromResults, extractProgramsFromResults, extractChannelsFromResults } from '@/utils/searchUtils';
+import { extractAuthorsFromResults, extractProgramsFromResults, extractChannelsFromResults, extractDocumentTypesFromResults } from '@/utils/searchUtils';
 
 // MELHORADO: Anos baseados em dados reais, não apenas últimos 10 anos
 const currentYear = new Date().getFullYear();
@@ -63,6 +63,12 @@ const DynamicFilterContent = React.memo(({
     filters.documentType.length,
     [filters]
   );
+
+  // NOVO: Extrair tipos de documento disponíveis nos resultados atuais
+  const availableDocumentTypes = useMemo(() => {
+    return extractDocumentTypesFromResults(currentResults)
+      .sort((a, b) => b.count - a.count);
+  }, [currentResults]);
 
   // NOVO: Extrair programas disponíveis nos resultados atuais
   const availablePrograms = useMemo(() => {
@@ -207,7 +213,7 @@ const DynamicFilterContent = React.memo(({
       )}
 
       {/* ✅ ADICIONADO: Filtro de Tipo de Item (apenas para títulos) */}
-      {filterRelevance.documentType && contentStats.availableDocumentTypes.length > 0 && (
+      {filterRelevance.documentType && availableDocumentTypes.length > 0 && (
         <Collapsible open={openSections.documentType} onOpenChange={() => onToggleSection('documentType')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-2">
@@ -218,22 +224,25 @@ const DynamicFilterContent = React.memo(({
                 </Badge>
               )}
               <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                Livros ({contentStats.availableDocumentTypes.length})
+                Itens ({availableDocumentTypes.reduce((sum, doc) => sum + doc.count, 0)})
               </Badge>
             </div>
             {openSections.documentType ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2">
             <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-              {contentStats.availableDocumentTypes.map((documentType) => (
-                <div key={documentType} className="flex items-center space-x-2">
+              {availableDocumentTypes.map((documentType) => (
+                <div key={documentType.name} className="flex items-center space-x-2">
                   <Checkbox
-                    id={`documentType-${documentType}`}
-                    checked={filters.documentType.includes(documentType)}
-                    onCheckedChange={(checked) => handleDocumentTypeChange(documentType, !!checked)}
+                    id={`documentType-${documentType.name}`}
+                    checked={filters.documentType.includes(documentType.name)}
+                    onCheckedChange={(checked) => handleDocumentTypeChange(documentType.name, !!checked)}
                   />
-                  <Label htmlFor={`documentType-${documentType}`} className="text-sm cursor-pointer">
-                    {documentType}
+                  <Label htmlFor={`documentType-${documentType.name}`} className="text-sm cursor-pointer flex-1">
+                    <div className="flex justify-between items-center">
+                      <span>{documentType.name}</span>
+                      <span className="text-xs text-gray-500">({documentType.count})</span>
+                    </div>
                   </Label>
                 </div>
               ))}

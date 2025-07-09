@@ -112,6 +112,24 @@ export const extractChannelsFromResults = (results: SearchResult[]): { name: str
   }));
 };
 
+// Extract unique document types with counts from search results
+export const extractDocumentTypesFromResults = (results: SearchResult[]): { name: string; count: number }[] => {
+  const docTypeMap = new Map<string, number>();
+  
+  results.forEach(result => {
+    if (result.type === 'titulo' && result.documentType && result.documentType.trim() !== '' && 
+        result.documentType !== 'Tipo desconhecido') {
+      const currentCount = docTypeMap.get(result.documentType) || 0;
+      docTypeMap.set(result.documentType, currentCount + 1);
+    }
+  });
+  
+  return Array.from(docTypeMap.entries()).map(([name, count]) => ({
+    name,
+    count
+  }));
+};
+
 // Mapping for pais (country code) to language.
 // This is a simplified example. A more comprehensive mapping might be needed.
 const countryToLanguage: Record<string, string> = {

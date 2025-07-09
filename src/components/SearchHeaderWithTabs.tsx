@@ -99,13 +99,15 @@ const SearchHeaderWithTabs = ({
                   value={type.id}
                   className="flex items-center gap-2 px-4 py-3 data-[state=active]:bg-white data-[state=active]:text-lsb-primary"
                 >
-                  <IconComponent 
-                    className="h-4 w-4"
+                  <div 
                     style={{
                       color: activeContentType === type.id ? '#1d4ed8' : '#374151',
-                      opacity: 1
+                      opacity: 1,
+                      display: 'inline-flex'
                     }}
-                  />
+                  >
+                    <IconComponent className="h-4 w-4" />
+                  </div>
                   <span className="hidden sm:inline">{type.label}</span>
                   <span className="sm:hidden">{type.label.slice(0, 3)}</span>
                 </TabsTrigger>

@@ -1,48 +1,51 @@
 
-import Navigation from '@/components/Navigation';
-import Hero from '@/components/Hero';
-import FeaturedHighlights from '@/components/FeaturedHighlights';
-import MostAccessed from '@/components/MostAccessed';
-import FeaturedMedia from '@/components/FeaturedMedia';
-import RecentAdditions from '@/components/RecentAdditions';
-import QuickAccess from '@/components/QuickAccess';
-import ExternalResources from '@/components/ExternalResources';
-import Footer from '@/components/Footer';
-import HomepageErrorState from '@/components/HomepageErrorState';
-import { HomepageContentProvider, useHomepageContentContext } from '@/contexts/HomepageContentContext';
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import Navigation from "@/components/Navigation";
+import Hero from "@/components/Hero";
+import QuickAccess from "@/components/QuickAccess";
+import FeaturedHighlights from "@/components/FeaturedHighlights";
+import MostAccessed from "@/components/MostAccessed";
+import RecentAdditions from "@/components/RecentAdditions";
+import FeaturedMedia from "@/components/FeaturedMedia";
+import FeaturedCollections from "@/components/FeaturedCollections";
+import ExternalResources from "@/components/ExternalResources";
+import Footer from "@/components/Footer";
+import EndpointTester from "@/components/EndpointTester";
 
-const IndexContent = () => {
-  const { error, retry, isUsingFallback } = useHomepageContentContext();
+const Index = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Handle auth state changes if needed
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
       <Hero />
       
-      {/* Show error state if there are issues with the API */}
-      <HomepageErrorState 
-        error={error} 
-        onRetry={retry} 
-        isUsingFallback={isUsingFallback} 
-      />
+      {/* Componente temporário para testes */}
+      <div className="container mx-auto px-4 py-8">
+        <EndpointTester />
+      </div>
       
-      {/* Nova ordem das seções conforme solicitado */}
-      <FeaturedHighlights />
-      <MostAccessed />
-      <FeaturedMedia />
-      <RecentAdditions />
-      <QuickAccess />
-      <ExternalResources />
+      <div className="container mx-auto px-4 space-y-16 pb-16">
+        <QuickAccess />
+        <FeaturedHighlights />
+        <MostAccessed />
+        <RecentAdditions />
+        <FeaturedMedia />
+        <FeaturedCollections />
+        <ExternalResources />
+      </div>
       <Footer />
     </div>
-  );
-};
-
-const Index = () => {
-  return (
-    <HomepageContentProvider>
-      <IndexContent />
-    </HomepageContentProvider>
   );
 };
 

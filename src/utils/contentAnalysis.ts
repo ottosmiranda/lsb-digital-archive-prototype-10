@@ -1,3 +1,4 @@
+
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
 export interface ContentStats {
@@ -58,18 +59,10 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
         break;
     }
 
-    // ✅ DEBUG: Verificar idiomas detectados no frontend
+    // ✅ CORRIGIDO: Detectar idiomas de VÍDEOS também (não apenas livros)
     if (item.language && item.language.trim() !== '' && item.language !== 'Não especificado') {
-      console.log(`🌐 FRONTEND DEBUG: Language detected: "${item.language}" for ${item.type}: "${item.title.substring(0, 30)}..."`);
       languageSet.add(item.language);
-      
-      // ✅ DEBUG CRÍTICO: Verificar se "Und" está chegando ao frontend
-      if (item.language === 'Und') {
-        console.error(`🚨 PROBLEMA DETECTADO: "Und" chegou ao frontend! Item: "${item.title.substring(0, 30)}..."`);
-      }
-      if (item.language === 'Indefinido') {
-        console.log(`✅ CORRETO: "Indefinido" detectado no frontend! Item: "${item.title.substring(0, 30)}..."`);
-      }
+      console.log(`🌐 Language detected: ${item.language} for ${item.type}: ${item.title.substring(0, 30)}...`);
     }
     
     // ✅ MANTIDO: Mapear país para idioma (para vídeos antigos sem idioma)
@@ -126,14 +119,6 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
     bookCount: stats.bookCount,
     podcastCount: stats.podcastCount
   });
-
-  // ✅ DEBUG CRÍTICO: Verificar se "Und" está nas languages disponíveis
-  if (stats.availableLanguages.includes('Und')) {
-    console.error(`🚨 PROBLEMA CRÍTICO: "Und" está nas availableLanguages!`, stats.availableLanguages);
-  }
-  if (stats.availableLanguages.includes('Indefinido')) {
-    console.log(`✅ CORRETO: "Indefinido" está nas availableLanguages!`, stats.availableLanguages);
-  }
 
   return stats;
 };

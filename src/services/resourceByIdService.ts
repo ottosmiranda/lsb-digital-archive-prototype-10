@@ -1,4 +1,3 @@
-
 import { Resource } from '@/types/resourceTypes';
 import { API_BASE_URL } from './api/apiConfig';
 
@@ -93,7 +92,7 @@ export class ResourceByIdService {
   private static transformToResource(data: any, resourceType: string, requestedId: string): Resource {
     console.log(`🔄 Transformando dados para Resource:`, { resourceType, data });
 
-    // For podcasts, the response is an array
+    // ✅ CORRIGIDO: For podcasts, the response is an array - usar podcast_titulo como subject
     if (resourceType === 'podcast' && Array.isArray(data)) {
       const podcast = data[0]; // Get the first episode
       return {
@@ -103,7 +102,7 @@ export class ResourceByIdService {
         author: podcast.publicador || 'Autor desconhecido',
         year: new Date(podcast.data_lancamento || Date.now()).getFullYear(),
         description: podcast.descricao || 'Descrição não disponível',
-        subject: podcast.podcast_titulo || 'Podcast',
+        subject: podcast.podcast_titulo || 'Podcast', // ✅ CORRIGIDO: Usar podcast_titulo como subject
         type: 'podcast',
         thumbnail: podcast.imagem_url,
         duration: podcast.duracao_ms ? this.formatDuration(podcast.duracao_ms) : undefined,

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Resource } from '@/types/resourceTypes';
 import { useDataLoader } from './useDataLoader';
@@ -189,6 +188,6 @@ function transformToResource(item: any): Resource {
     tags: item.subject ? [item.subject] : undefined,
     language: item.language,
     documentType: item.documentType,
-    categories: item.categories
+    categories: item.categories || []
   };
 }

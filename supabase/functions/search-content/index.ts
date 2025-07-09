@@ -558,9 +558,11 @@ const transformToSearchResult = (item: any, tipo: string): SearchResult => {
     author: item.autor || item.canal || item.publicador || 'Link Business School',
     year: item.ano || (item.data_lancamento ? new Date(item.data_lancamento).getFullYear() : new Date().getFullYear()),
     description: item.descricao || 'Descrição não disponível',
-    subject: getSubjectFromCategories(item.categorias) || getSubject(tipo),
+    // ✅ CORRIGIDO: Para podcasts, usar podcast_titulo como subject
+    subject: tipo === 'podcast' ? (item.podcast_titulo || getSubjectFromCategories(item.categorias) || getSubject(tipo)) : (getSubjectFromCategories(item.categorias) || getSubject(tipo)),
     type: tipo === 'livro' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
-    thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
+    thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
+    categories: item.categorias || [] // ✅ Categorias para filtros
   };
 
   console.log(`✅ ID REAL USADO: ${realId} para ${baseResult.type} "${baseResult.title}" com subject: "${baseResult.subject}"`);

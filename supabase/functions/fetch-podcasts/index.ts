@@ -28,7 +28,7 @@ interface PodcastEpisodeItem {
   url: string;
   embed_url: string;
   imagem_url: string;
-  categorias: string[]; // ✅ ADICIONADO: Array de categorias da API
+  categorias: string[];
 }
 
 interface TransformedPodcast {
@@ -44,10 +44,10 @@ interface TransformedPodcast {
   embedUrl?: string;
   podcast_titulo?: string;
   episodio_id?: string;
-  categories?: string[]; // ✅ ADICIONADO: Categorias completas
+  categories?: string[];
 }
 
-// ✅ NOVA FUNÇÃO: Extrair assunto das categorias
+// ✅ CORRIGIDO: Capitalizar primeira categoria para uso em filtros
 const getSubjectFromCategories = (categorias: string[]): string => {
   if (!categorias || !Array.isArray(categorias) || categorias.length === 0) {
     return '';
@@ -121,13 +121,13 @@ const handler = async (req: Request): Promise<Response> => {
       return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
     };
 
-    // Transform episodes to match SearchResult interface using REAL IDs
+    // ✅ CORRIGIDO: Transform episodes usando podcast_titulo como subject principal
     const transformedPodcasts: TransformedPodcast[] = data.conteudo.map((episode) => {
-      // ✅ CORRIGIDO: Usar categorias da API como assunto principal
-      const subjectFromCategories = getSubjectFromCategories(episode.categorias);
-      const subject = subjectFromCategories || episode.podcast_titulo || 'Podcast';
+      // CORREÇÃO CRÍTICA: Usar podcast_titulo como subject, categorias para filtros
+      const subject = episode.podcast_titulo || 'Podcast';
+      const categoryForFilters = getSubjectFromCategories(episode.categorias);
       
-      console.log(`🏷️ Podcast "${episode.episodio_titulo}": categorias=${JSON.stringify(episode.categorias)}, subject="${subject}"`);
+      console.log(`🏷️ Podcast "${episode.episodio_titulo}": subject="${subject}", categorias=${JSON.stringify(episode.categorias)}, categoryForFilters="${categoryForFilters}"`);
       
       return {
         id: episode.episodio_id,
@@ -136,17 +136,17 @@ const handler = async (req: Request): Promise<Response> => {
         author: episode.publicador || 'Autor não informado',
         description: episode.descricao || 'Descrição não disponível',
         year: episode.data_lancamento ? new Date(episode.data_lancamento).getFullYear() : 2024,
-        subject: subject, // ✅ CORRIGIDO: Usar categoria como assunto
+        subject: subject, // ✅ CORRIGIDO: Usar podcast_titulo como subject
         duration: episode.duracao_ms ? formatDuration(episode.duracao_ms) : undefined,
         thumbnail: episode.imagem_url,
         embedUrl: episode.embed_url,
         podcast_titulo: episode.podcast_titulo,
         episodio_id: episode.episodio_id,
-        categories: episode.categorias || [] // ✅ ADICIONADO: Categorias completas
+        categories: episode.categorias || [] // ✅ Categorias completas para filtros
       };
     });
 
-    console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items with categories for page ${page}`);
+    console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items with correct subject (podcast_titulo) for page ${page}`);
 
     // Extract program info from first episode if filtering by podcast title
     let programInfo = null;
@@ -157,7 +157,7 @@ const handler = async (req: Request): Promise<Response> => {
         publisher: firstEpisode.publicador,
         thumbnail: firstEpisode.imagem_url,
         description: `Programa de podcast com ${data.total} episódios disponíveis.`,
-        categories: firstEpisode.categorias || [] // ✅ ADICIONADO: Categorias do programa
+        categories: firstEpisode.categorias || []
       };
     }
 

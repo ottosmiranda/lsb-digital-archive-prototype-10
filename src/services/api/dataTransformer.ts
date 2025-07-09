@@ -1,3 +1,4 @@
+
 import { SearchResult } from '@/types/searchTypes';
 
 export class DataTransformer {
@@ -8,11 +9,11 @@ export class DataTransformer {
       titulo: item.titulo || item.podcast_titulo || item.title
     });
     
-    // CORREÇÃO CRÍTICA: Usar ID real da API como ID principal, mas convertido para número
+    // CORREÇÃO CRÍTICA: Usar ID real da API como ID principal
     const realId = item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000;
     
     const baseResult: SearchResult = {
-      id: String(realId), // ✅ CORRIGIDO: Convertido para string para compatibilidade
+      id: realId, // ✅ CORRIGIDO: ID real da API como número
       originalId: String(item.id || item.episodio_id || item.podcast_id), // Backup do ID original
       title: item.titulo || item.podcast_titulo || item.episodio_titulo || item.title || 'Título não disponível',
       author: item.autor || item.canal || item.publicador || 'Link Business School',

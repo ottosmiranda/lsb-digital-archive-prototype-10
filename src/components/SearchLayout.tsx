@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -59,9 +60,9 @@ const SearchLayout = ({
   // NOVO: Carregar todos os dados para cálculo correto de contagens
   const { allData } = useDataLoader();
   
-  // NOVO: Usar todos os dados para contagens dos filtros
+  // NOVO: allData já é um array de SearchResult[], não precisa de transformação
   const allResults = useMemo(() => {
-    return allData ? [...allData.titles, ...allData.videos, ...allData.podcasts] : [];
+    return allData || [];
   }, [allData]);
 
   // Sync activeContentType with filters.resourceType

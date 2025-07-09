@@ -47,7 +47,8 @@ const DynamicFilterContent = React.memo(({
     filters.year || 
     filters.duration ||
     filters.program.length > 0 ||
-    filters.channel.length > 0,
+    filters.channel.length > 0 ||
+    filters.documentType.length > 0,
     [filters]
   );
 
@@ -58,7 +59,8 @@ const DynamicFilterContent = React.memo(({
     (filters.year ? 1 : 0) + 
     (filters.duration ? 1 : 0) +
     filters.program.length +
-    filters.channel.length,
+    filters.channel.length +
+    filters.documentType.length,
     [filters]
   );
 
@@ -108,6 +110,14 @@ const DynamicFilterContent = React.memo(({
     onFiltersChange({ ...filters, subject: newSubjects });
   }, [filters, onFiltersChange]);
 
+  // ✅ ADICIONADO: Handler para mudança de tipo de documento
+  const handleDocumentTypeChange = useCallback((documentTypeId: string, checked: boolean) => {
+    const newDocumentTypes = checked 
+      ? [...filters.documentType, documentTypeId]
+      : filters.documentType.filter((dt: string) => dt !== documentTypeId);
+    onFiltersChange({ ...filters, documentType: newDocumentTypes });
+  }, [filters, onFiltersChange]);
+
   const handleProgramChange = useCallback((programId: string, checked: boolean) => {
     const newPrograms = checked 
       ? [...filters.program, programId]
@@ -155,7 +165,7 @@ const DynamicFilterContent = React.memo(({
       year: '',
       duration: '',
       language: [],
-      documentType: [],
+      documentType: [], // ✅ ADICIONADO: Limpar documentType
       program: [],
       channel: []
     });
@@ -194,6 +204,42 @@ const DynamicFilterContent = React.memo(({
             </Badge>
           ))}
         </div>
+      )}
+
+      {/* ✅ ADICIONADO: Filtro de Tipo de Item (apenas para títulos) */}
+      {filterRelevance.documentType && contentStats.availableDocumentTypes.length > 0 && (
+        <Collapsible open={openSections.documentType} onOpenChange={() => onToggleSection('documentType')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium">Tipo de Item</Label>
+              {filters.documentType.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {filters.documentType.length}
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                Livros ({contentStats.availableDocumentTypes.length})
+              </Badge>
+            </div>
+            {openSections.documentType ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
+              {contentStats.availableDocumentTypes.map((documentType) => (
+                <div key={documentType} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`documentType-${documentType}`}
+                    checked={filters.documentType.includes(documentType)}
+                    onCheckedChange={(checked) => handleDocumentTypeChange(documentType, !!checked)}
+                  />
+                  <Label htmlFor={`documentType-${documentType}`} className="text-sm cursor-pointer">
+                    {documentType}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {/* NOVO: Filtro de Programa (apenas para podcasts) */}
@@ -304,7 +350,6 @@ const DynamicFilterContent = React.memo(({
         </Collapsible>
       )}
 
-      {/* NOVO: Filtro de Autor com Dropdown */}
       <Collapsible open={openSections.author} onOpenChange={() => onToggleSection('author')}>
         <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">
@@ -374,7 +419,6 @@ const DynamicFilterContent = React.memo(({
         </CollapsibleContent>
       </Collapsible>
 
-      {/* ✅ CORRIGIDO: Filtro de idioma SEM badge "Campo não disponível" para vídeos */}
       {filterRelevance.language && contentStats.availableLanguages.length > 0 && (
         <Collapsible open={openSections.language} onOpenChange={() => onToggleSection('language')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -385,14 +429,12 @@ const DynamicFilterContent = React.memo(({
                   {filters.language.length}
                 </Badge>
               )}
-              {/* ✅ REMOVIDO: Badge "Campo não disponível" para vídeos */}
               {activeContentType === 'podcast' && (
                 <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
                   <AlertCircle className="h-3 w-3 mr-1" />
                   Campo não disponível
                 </Badge>
               )}
-              {/* ✅ ADICIONADO: Badge informativo para vídeos e livros */}
               {(activeContentType === 'video' || activeContentType === 'titulo') && (
                 <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                   Disponível ({contentStats.availableLanguages.length})
@@ -418,7 +460,6 @@ const DynamicFilterContent = React.memo(({
         </Collapsible>
       )}
 
-      {/* ✅ CORRIGIDO: Filtro de ano SEM badge "Campo não disponível" para vídeos */}
       {filterRelevance.year && (
         <Collapsible open={openSections.year} onOpenChange={() => onToggleSection('year')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -445,7 +486,6 @@ const DynamicFilterContent = React.memo(({
                 </SelectTrigger>
                 <SelectContent className="max-h-48">
                   <SelectItem value="all">Todos os anos</SelectItem>
-                  {/* Mostrar primeiro os anos disponíveis nos resultados atuais */}
                   {availableYears.length > 0 && (
                     <>
                       <SelectItem disabled value="separator-available" className="text-xs text-gray-500 font-medium">

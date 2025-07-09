@@ -11,6 +11,7 @@ export interface ContentStats {
   podcastCount: number;
   availableLanguages: string[];
   availableSubjects: string[];
+  availableDocumentTypes: string[]; // ✅ ADICIONADO: Tipos de documento disponíveis
   hasItemsWithDuration: boolean;
   hasItemsWithPages: boolean;
 }
@@ -22,6 +23,7 @@ export interface FilterRelevance {
   year: boolean;
   duration: boolean;
   pages: boolean;
+  documentType: boolean; // ✅ ADICIONADO: Relevância do filtro de tipo de documento
 }
 
 export const analyzeContent = (results: SearchResult[]): ContentStats => {
@@ -35,12 +37,14 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
     podcastCount: 0,
     availableLanguages: [],
     availableSubjects: [],
+    availableDocumentTypes: [], // ✅ ADICIONADO
     hasItemsWithDuration: false,
     hasItemsWithPages: false,
   };
 
   const languageSet = new Set<string>();
   const subjectSet = new Set<string>();
+  const documentTypeSet = new Set<string>(); // ✅ ADICIONADO
 
   results.forEach(item => {
     // Contagem por tipo
@@ -57,6 +61,12 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
         stats.hasPodcasts = true;
         stats.podcastCount++;
         break;
+    }
+
+    // ✅ ADICIONADO: Detectar tipos de documento para títulos (livros + artigos)
+    if (item.type === 'titulo' && item.documentType && item.documentType.trim() !== '') {
+      documentTypeSet.add(item.documentType.trim());
+      console.log(`📚 Document type detected: ${item.documentType} for: ${item.title.substring(0, 30)}...`);
     }
 
     // ✅ CORRIGIDO: Detectar idiomas de VÍDEOS também (não apenas livros)
@@ -112,9 +122,11 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
 
   stats.availableLanguages = Array.from(languageSet).sort();
   stats.availableSubjects = Array.from(subjectSet).sort();
+  stats.availableDocumentTypes = Array.from(documentTypeSet).sort(); // ✅ ADICIONADO
 
   console.log(`📊 Content Analysis Results:`, {
     languages: stats.availableLanguages,
+    documentTypes: stats.availableDocumentTypes, // ✅ ADICIONADO
     videoCount: stats.videoCount,
     bookCount: stats.bookCount,
     podcastCount: stats.podcastCount
@@ -136,6 +148,7 @@ export const determineFilterRelevance = (
       year: true,
       duration: false,
       pages: stats.hasItemsWithPages,
+      documentType: stats.availableDocumentTypes.length > 0, // ✅ ADICIONADO: Relevante para títulos
     };
   }
 
@@ -147,6 +160,7 @@ export const determineFilterRelevance = (
       year: true,
       duration: stats.hasItemsWithDuration,
       pages: false,
+      documentType: false, // ✅ ADICIONADO: Não relevante para vídeos
     };
   }
 
@@ -158,6 +172,7 @@ export const determineFilterRelevance = (
       year: true,
       duration: stats.hasItemsWithDuration,
       pages: false,
+      documentType: false, // ✅ ADICIONADO: Não relevante para podcasts
     };
   }
 
@@ -169,6 +184,7 @@ export const determineFilterRelevance = (
     year: stats.hasBooks || stats.hasPodcasts || stats.hasVideos,
     duration: (stats.hasVideos || stats.hasPodcasts) && stats.hasItemsWithDuration,
     pages: stats.hasBooks && stats.hasItemsWithPages,
+    documentType: stats.hasBooks && stats.availableDocumentTypes.length > 0, // ✅ ADICIONADO: Relevante quando há livros
   };
 };
 
@@ -180,32 +196,37 @@ export const getFilterPriority = (
 
   // Prioridades baseadas no tipo de conteúdo ativo
   if (activeContentType === 'titulo') {
-    priorities.subject = 1;
-    priorities.language = 2;
-    priorities.author = 3;
-    priorities.pages = 4;
-    priorities.year = 5;
+    priorities.documentType = 1; // ✅ ADICIONADO: Alta prioridade para títulos
+    priorities.subject = 2;
+    priorities.language = 3;
+    priorities.author = 4;
+    priorities.pages = 5;
+    priorities.year = 6;
   } else if (activeContentType === 'video') {
     priorities.subject = 1;
     priorities.duration = 2;
     priorities.language = 3;
     priorities.author = 4;
     priorities.year = 5;
+    priorities.documentType = 99; // ✅ ADICIONADO: Baixa prioridade para vídeos
   } else if (activeContentType === 'podcast') {
     priorities.subject = 1; // ✅ CORRIGIDO: Assunto agora é prioridade para podcasts
     priorities.author = 2;
     priorities.duration = 3;
     priorities.year = 4;
+    priorities.documentType = 99; // ✅ ADICIONADO: Baixa prioridade para podcasts
   } else {
     // Para 'all', priorizar baseado na quantidade de cada tipo
     priorities.subject = 1;
     
     if (stats.bookCount > stats.videoCount + stats.podcastCount) {
-      priorities.language = 2;
-      priorities.duration = 4;
+      priorities.documentType = 2; // ✅ ADICIONADO: Alta prioridade quando há muitos livros
+      priorities.language = 3;
+      priorities.duration = 5;
     } else {
       priorities.duration = 2;
       priorities.language = 4;
+      priorities.documentType = 6; // ✅ ADICIONADO: Menor prioridade quando há poucos livros
     }
     
     priorities.author = 3;

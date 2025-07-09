@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -71,6 +70,48 @@ type SearchType = 'paginated' | 'global' | 'filtered';
 
 // Cache global otimizado
 const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+// ✅ ATUALIZADO: Mapeamento de códigos de idioma (mesmo do fetch-videos)
+const languageMapping: Record<string, string> = {
+  'en': 'Inglês',
+  'en-US': 'Inglês',
+  'en-GB': 'Inglês',
+  'pt': 'Português',
+  'pt-BR': 'Português',
+  'pt-PT': 'Português',
+  'es': 'Espanhol',
+  'es-ES': 'Espanhol',
+  'es-MX': 'Espanhol',
+  'fr': 'Francês',
+  'fr-FR': 'Francês',
+  'de': 'Alemão',
+  'de-DE': 'Alemão',
+  'it': 'Italiano',
+  'it-IT': 'Italiano',
+  'ja': 'Japonês',
+  'ja-JP': 'Japonês',
+  'ko': 'Coreano',
+  'ko-KR': 'Coreano',
+  'zh': 'Chinês',
+  'zh-CN': 'Chinês',
+  'ru': 'Russo',
+  'ru-RU': 'Russo'
+};
+
+const mapLanguageCode = (idioma: string): string => {
+  if (!idioma) return 'Não especificado';
+  
+  if (languageMapping[idioma]) {
+    return languageMapping[idioma];
+  }
+  
+  const prefix = idioma.split('-')[0];
+  if (languageMapping[prefix]) {
+    return languageMapping[prefix];
+  }
+  
+  return idioma.charAt(0).toUpperCase() + idioma.slice(1);
+};
 
 // DETECTOR DE TIPO DE BUSCA (SRP)
 const detectSearchType = (query: string, filters: SearchFilters): SearchType => {
@@ -541,25 +582,22 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
 };
 
 const transformToSearchResult = (item: any, tipo: string): SearchResult => {
-  console.log(`🔄 PODCAST BADGE CORRECTION: Transformando ${tipo}:`, {
+  console.log(`🔄 LANGUAGE INTEGRATION: Transformando ${tipo}:`, {
     originalId: item.id,
     titulo: item.titulo || item.podcast_titulo || item.episodio_titulo,
+    idioma: item.idioma,
     categorias: item.categorias,
     podcast_titulo: item.podcast_titulo
   });
   
-  // CORREÇÃO CRÍTICA: Usar ID real da API como ID principal
   const realId = String(item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000);
   
-  // ✅ CORREÇÃO PRINCIPAL: Para podcasts, usar categorias para subject (badges)
   let subjectForBadge: string;
   
   if (tipo === 'podcast') {
-    // Para podcasts: usar categorias para badges, preservar podcast_titulo separadamente
     subjectForBadge = getSubjectFromCategories(item.categorias) || 'Podcast';
     console.log(`🏷️ PODCAST BADGE: "${subjectForBadge}" (de categorias) em vez de "${item.podcast_titulo}"`);
   } else {
-    // Para outros tipos: usar categorias ou fallback padrão
     subjectForBadge = getSubjectFromCategories(item.categorias) || getSubject(tipo);
   }
   
@@ -570,10 +608,10 @@ const transformToSearchResult = (item: any, tipo: string): SearchResult => {
     author: item.autor || item.canal || item.publicador || 'Link Business School',
     year: item.ano || (item.data_lancamento ? new Date(item.data_lancamento).getFullYear() : new Date().getFullYear()),
     description: item.descricao || 'Descrição não disponível',
-    subject: subjectForBadge, // ✅ CORRIGIDO: usar categorias para badges
+    subject: subjectForBadge,
     type: tipo === 'livro' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
     thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
-    categories: item.categorias || [] // ✅ Categorias para filtros
+    categories: item.categorias || []
   };
 
   console.log(`✅ RESULTADO FINAL: ${baseResult.type} com subject="${baseResult.subject}" para badge`);
@@ -587,6 +625,9 @@ const transformToSearchResult = (item: any, tipo: string): SearchResult => {
     baseResult.embedUrl = item.embed_url;
     baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : undefined;
     baseResult.channel = item.canal || 'Canal desconhecido';
+    // ✅ CORRIGIDO: Adicionar language para vídeos
+    baseResult.language = item.idioma ? mapLanguageCode(item.idioma) : undefined;
+    console.log(`🌐 VIDEO LANGUAGE: ${item.idioma} -> ${baseResult.language}`);
   } else if (tipo === 'podcast') {
     baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : undefined;
     baseResult.embedUrl = item.embed_url;

@@ -23,8 +23,8 @@ interface VideoItem {
   canal: string;
   imagem_url: string;
   categorias: string[];
-  idioma: string;
-  ano?: number; // Added ano field
+  idioma: string; // Added idioma field
+  ano?: number;
   pais?: string;
   embed_url: string;
   duracao: number;
@@ -43,7 +43,53 @@ interface TransformedVideo {
   subject: string;
   embedUrl?: string;
   pais?: string;
+  language?: string; // ✅ ADICIONADO: Campo language para vídeos
 }
+
+// ✅ NOVO: Mapeamento de códigos de idioma ISO para nomes legíveis
+const languageMapping: Record<string, string> = {
+  'en': 'Inglês',
+  'en-US': 'Inglês',
+  'en-GB': 'Inglês',
+  'pt': 'Português',
+  'pt-BR': 'Português',
+  'pt-PT': 'Português',
+  'es': 'Espanhol',
+  'es-ES': 'Espanhol',
+  'es-MX': 'Espanhol',
+  'fr': 'Francês',
+  'fr-FR': 'Francês',
+  'de': 'Alemão',
+  'de-DE': 'Alemão',
+  'it': 'Italiano',
+  'it-IT': 'Italiano',
+  'ja': 'Japonês',
+  'ja-JP': 'Japonês',
+  'ko': 'Coreano',
+  'ko-KR': 'Coreano',
+  'zh': 'Chinês',
+  'zh-CN': 'Chinês',
+  'ru': 'Russo',
+  'ru-RU': 'Russo'
+};
+
+const mapLanguageCode = (idioma: string): string => {
+  if (!idioma) return 'Não especificado';
+  
+  // Tentar mapeamento exato primeiro
+  if (languageMapping[idioma]) {
+    return languageMapping[idioma];
+  }
+  
+  // Tentar mapeamento por prefixo (ex: 'en-AU' -> 'en')
+  const prefix = idioma.split('-')[0];
+  if (languageMapping[prefix]) {
+    return languageMapping[prefix];
+  }
+  
+  // Fallback: retornar o código original capitalizado
+  return idioma.charAt(0).toUpperCase() + idioma.slice(1);
+};
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) {
@@ -60,11 +106,11 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('🎬 Starting optimized video API fetch...');
+    console.log('🎬 Starting optimized video API fetch with LANGUAGE support...');
     
     // Parse request body for pagination parameters
     let page = 1;
-    let limit = 10; // Default limit for optimization
+    let limit = 10;
     
     if (req.method === 'POST') {
       try {
@@ -99,11 +145,12 @@ const handler = async (req: Request): Promise<Response> => {
     const data: VideoApiResponse = await response.json();
     console.log(`✅ API Response: ${data.conteudo.length} videos, page ${data.page}/${data.totalPages}`);
 
-    // Transform videos to match SearchResult interface using REAL IDs and dynamic years
+    // ✅ CORRIGIDO: Transform videos incluindo language
     const transformedVideos: TransformedVideo[] = data.conteudo.map((video) => {
-      const videoYear = video.ano || new Date().getFullYear(); // Use dynamic year with fallback
+      const videoYear = video.ano || new Date().getFullYear();
+      const mappedLanguage = mapLanguageCode(video.idioma);
       
-      console.log(`📅 Video year transformation: ${video.titulo.substring(0, 30)}... - Year: ${videoYear} (from API: ${video.ano})`);
+      console.log(`🌐 Video language transformation: ${video.titulo.substring(0, 30)}... - Idioma: ${video.idioma} -> Language: ${mappedLanguage}`);
       
       return {
         id: video.id,
@@ -114,14 +161,15 @@ const handler = async (req: Request): Promise<Response> => {
         duration: video.duracao ? formatDuration(video.duracao) : undefined,
         thumbnail: video.imagem_url,
         description: video.descricao || 'Descrição não disponível',
-        year: videoYear, // ✅ CORRIGIDO: Using dynamic year from API
+        year: videoYear,
         subject: video.categorias && video.categorias.length > 0 ? video.categorias[0] : 'Educação',
         embedUrl: video.embed_url,
-        pais: video.pais
+        pais: video.pais,
+        language: mappedLanguage // ✅ ADICIONADO: Idioma mapeado para nome legível
       };
     });
 
-    console.log(`✅ Videos transformed: ${transformedVideos.length} items using REAL IDs and dynamic years for page ${page}`);
+    console.log(`✅ Videos transformed with LANGUAGE: ${transformedVideos.length} items for page ${page}`);
 
     return new Response(JSON.stringify({
       success: true,

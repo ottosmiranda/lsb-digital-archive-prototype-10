@@ -59,26 +59,28 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
         break;
     }
 
-    // Detectar idiomas disponíveis
-    if (item.language) {
+    // ✅ CORRIGIDO: Detectar idiomas de VÍDEOS também (não apenas livros)
+    if (item.language && item.language.trim() !== '' && item.language !== 'Não especificado') {
       languageSet.add(item.language);
+      console.log(`🌐 Language detected: ${item.language} for ${item.type}: ${item.title.substring(0, 30)}...`);
     }
     
-    // Mapear país para idioma (para vídeos)
-    if (item.pais) {
+    // ✅ MANTIDO: Mapear país para idioma (para vídeos antigos sem idioma)
+    if (item.pais && !item.language) {
       const countryToLanguage: Record<string, string> = {
         'BR': 'Português',
         'PT': 'Português', 
-        'US': 'English',
-        'GB': 'English',
-        'ES': 'Español',
-        'FR': 'Français',
+        'US': 'Inglês',
+        'GB': 'Inglês',
+        'ES': 'Espanhol',
+        'FR': 'Francês',
         'IT': 'Italiano',
-        'DE': 'Deutsch',
+        'DE': 'Alemão',
       };
       const language = countryToLanguage[item.pais.toUpperCase()];
       if (language) {
         languageSet.add(language);
+        console.log(`🌐 Language from country: ${language} (${item.pais}) for ${item.type}`);
       }
     }
 
@@ -111,6 +113,13 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
   stats.availableLanguages = Array.from(languageSet).sort();
   stats.availableSubjects = Array.from(subjectSet).sort();
 
+  console.log(`📊 Content Analysis Results:`, {
+    languages: stats.availableLanguages,
+    videoCount: stats.videoCount,
+    bookCount: stats.bookCount,
+    podcastCount: stats.podcastCount
+  });
+
   return stats;
 };
 
@@ -134,7 +143,7 @@ export const determineFilterRelevance = (
     return {
       subject: stats.availableSubjects.length > 0,
       author: true,
-      language: stats.availableLanguages.length > 0,
+      language: stats.availableLanguages.length > 0, // ✅ CORRIGIDO: Vídeos agora têm idioma
       year: true,
       duration: stats.hasItemsWithDuration,
       pages: false,
@@ -143,9 +152,9 @@ export const determineFilterRelevance = (
 
   if (activeContentType === 'podcast') {
     return {
-      subject: stats.availableSubjects.length > 0, // ✅ CORRIGIDO: Agora podcasts têm assuntos
+      subject: stats.availableSubjects.length > 0,
       author: true,
-      language: false,
+      language: false, // Podcasts ainda não têm idioma na API
       year: true,
       duration: stats.hasItemsWithDuration,
       pages: false,
@@ -156,7 +165,7 @@ export const determineFilterRelevance = (
   return {
     subject: stats.availableSubjects.length > 0,
     author: true,
-    language: stats.availableLanguages.length > 0,
+    language: stats.availableLanguages.length > 0, // ✅ Inclui idiomas de vídeos e livros
     year: stats.hasBooks || stats.hasPodcasts || stats.hasVideos,
     duration: (stats.hasVideos || stats.hasPodcasts) && stats.hasItemsWithDuration,
     pages: stats.hasBooks && stats.hasItemsWithPages,

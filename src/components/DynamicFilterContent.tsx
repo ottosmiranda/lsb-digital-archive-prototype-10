@@ -1,4 +1,3 @@
-
 import React, { useMemo, useCallback } from 'react';
 import { X, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -375,6 +374,7 @@ const DynamicFilterContent = React.memo(({
         </CollapsibleContent>
       </Collapsible>
 
+      {/* ✅ CORRIGIDO: Filtro de idioma SEM badge "Campo não disponível" para vídeos */}
       {filterRelevance.language && contentStats.availableLanguages.length > 0 && (
         <Collapsible open={openSections.language} onOpenChange={() => onToggleSection('language')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -385,10 +385,17 @@ const DynamicFilterContent = React.memo(({
                   {filters.language.length}
                 </Badge>
               )}
+              {/* ✅ REMOVIDO: Badge "Campo não disponível" para vídeos */}
               {activeContentType === 'podcast' && (
                 <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
                   <AlertCircle className="h-3 w-3 mr-1" />
                   Campo não disponível
+                </Badge>
+              )}
+              {/* ✅ ADICIONADO: Badge informativo para vídeos e livros */}
+              {(activeContentType === 'video' || activeContentType === 'titulo') && (
+                <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                  Disponível ({contentStats.availableLanguages.length})
                 </Badge>
               )}
             </div>

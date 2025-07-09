@@ -93,6 +93,7 @@ export class NewApiService {
     videos: SearchResult[];
     books: SearchResult[];
     podcasts: SearchResult[];
+    articles: SearchResult[];
   }> {
     const requestId = `homepage_optimized_${Date.now()}`;
     
@@ -117,20 +118,23 @@ export class NewApiService {
       const results = await Promise.allSettled([
         this.fetchContentScalable('livro', undefined, false),   // Homepage: ~12 livros
         this.fetchContentScalable('aula', undefined, false),    // Homepage: ~12 vídeos
-        this.fetchContentScalable('podcast', undefined, false)  // Homepage: ~12 podcasts
+        this.fetchContentScalable('podcast', undefined, false), // Homepage: ~12 podcasts
+        this.fetchContentScalable('artigos', undefined, false)  // Homepage: ~12 artigos
       ]);
 
       const books = results[0].status === 'fulfilled' ? results[0].value : [];
       const videos = results[1].status === 'fulfilled' ? results[1].value : [];
       const podcasts = results[2].status === 'fulfilled' ? results[2].value : [];
+      const articles = results[3].status === 'fulfilled' ? results[3].value : [];
 
-      const totalItems = books.length + videos.length + podcasts.length;
+      const totalItems = books.length + videos.length + podcasts.length + articles.length;
       
       console.group('📋 RELATÓRIO HOMEPAGE OTIMIZADA');
       console.log(`📊 Total: ${totalItems} (otimizado para performance)`);
       console.log(`📚 Livros: ${books.length}`);
       console.log(`🎬 Vídeos: ${videos.length}`);
       console.log(`🎧 Podcasts: ${podcasts.length}`);
+      console.log(`📄 Artigos: ${articles.length}`);
       console.groupEnd();
 
       if (totalItems === 0) {
@@ -141,7 +145,7 @@ export class NewApiService {
       }
 
       console.groupEnd();
-      return { videos, books, podcasts };
+      return { videos, books, podcasts, articles };
       
     } catch (error) {
       console.error(`❌ ${requestId} - Falha homepage:`, error);
@@ -194,21 +198,23 @@ export class NewApiService {
       const results = await Promise.allSettled([
         this.contentDiscovery.discoverTotalContent('livro'),
         this.contentDiscovery.discoverTotalContent('aula'), 
-        this.contentDiscovery.discoverTotalContent('podcast')
+        this.contentDiscovery.discoverTotalContent('podcast'),
+        this.contentDiscovery.discoverTotalContent('artigos')
       ]);
 
       // Usar números EXATOS conhecidos
       const books = results[0].status === 'fulfilled' ? results[0].value : 30;
       const videos = results[1].status === 'fulfilled' ? results[1].value : 300;  
       const podcasts = results[2].status === 'fulfilled' ? results[2].value : 2512;
+      const articles = results[3].status === 'fulfilled' ? results[3].value : 35;
 
-      const counts: ContentCounts = { videos, books, podcasts };
+      const counts: ContentCounts = { videos, books, podcasts, articles };
       
       // Cache por 45 minutos (contagens são estáveis)
       this.cacheManager.setCache(cacheKey, counts, 45 * 60 * 1000);
       
       console.log(`✅ ${requestId} - Contagens EXATAS descobertas:`, counts);
-      console.log(`🎯 NÚMEROS GARANTIDOS: ${podcasts} podcasts, ${videos} vídeos, ${books} livros`);
+      console.log(`🎯 NÚMEROS GARANTIDOS: ${podcasts} podcasts, ${videos} vídeos, ${books} livros, ${articles} artigos`);
       console.groupEnd();
       return counts;
       

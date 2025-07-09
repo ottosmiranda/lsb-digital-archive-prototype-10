@@ -47,22 +47,3 @@ export const HOMEPAGE_CONFIG = {
   aula: { limit: 12 },
   livro: { limit: 12 }
 };
-
-// NOVOS ENDPOINTS PARA BUSCA POR ID ÚNICO
-export const RESOURCE_BY_ID_ENDPOINTS = {
-  video: `${API_BASE_URL}/conteudo-lbs/aula`,
-  titulo: `${API_BASE_URL}/conteudo-lbs/livro`, 
-  podcast: `${API_BASE_URL}/conteudo-lbs/podcast`
-};
-
-// Função utilitária para construir URL por ID
-export const getResourceByIdUrl = (type: string, id: string): string => {
-  const typeMap: Record<string, string> = {
-    'video': 'aula',
-    'titulo': 'livro',
-    'podcast': 'podcast'
-  };
-  
-  const apiType = typeMap[type] || type;
-  return `${API_BASE_URL}/conteudo-lbs/${apiType}/${id}`;
-};

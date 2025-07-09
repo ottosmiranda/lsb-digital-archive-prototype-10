@@ -35,38 +35,42 @@ export interface ApiResourceResponse {
 }
 
 export class ResourceByIdService {
-  private static readonly TIMEOUT_MS = 8000;
+  private static readonly TIMEOUT_MS = 6000; // Reduced timeout for faster failures
 
   static async fetchResourceById(id: string, resourceType: string): Promise<Resource | null> {
-    console.log(`🔍 Buscando recurso por ID REAL: ${id}, tipo: ${resourceType}`);
+    console.log(`🎯 BUSCA OTIMIZADA: ${resourceType} ID ${id}`);
     
     try {
       const endpoint = this.getEndpointForType(resourceType, id);
       
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Timeout para ${resourceType} ID ${id}`)), this.TIMEOUT_MS);
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT_MS);
       
-      const fetchPromise = fetch(endpoint, {
+      const response = await fetch(endpoint, {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-        }
+        },
+        signal: controller.signal
       });
-
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status} para ${resourceType} ID ${id}`);
       }
 
       const data = await response.json();
-      console.log(`✅ Dados recebidos para ${resourceType} ID ${id}:`, data);
+      console.log(`✅ SUCESSO: ${resourceType} ID ${id}`, data);
       
       return this.transformToResource(data, resourceType, id);
       
     } catch (error) {
-      console.error(`❌ Erro ao buscar ${resourceType} ID ${id}:`, error);
+      if (error.name === 'AbortError') {
+        console.log(`⏰ TIMEOUT: ${resourceType} ID ${id} (${this.TIMEOUT_MS}ms)`);
+      } else {
+        console.log(`❌ ERRO: ${resourceType} ID ${id}:`, error);
+      }
       return null;
     }
   }

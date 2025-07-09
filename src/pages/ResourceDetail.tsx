@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import LoadingSkeleton from '@/components/ResourceDetail/LoadingSkeleton';
+import EnhancedLoadingSkeleton from '@/components/ResourceDetail/EnhancedLoadingSkeleton';
 import ResourceNotFound from '@/components/ResourceDetail/ResourceNotFound';
 import ResourceBreadcrumb from '@/components/ResourceDetail/ResourceBreadcrumb';
 import BackButton from '@/components/ResourceDetail/BackButton';
@@ -16,25 +16,44 @@ import { useResourceById } from '@/hooks/useResourceById';
 
 const ResourceDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { resource, loading, error } = useResourceById(id);
+  const { resource, loading, error, retrying } = useResourceById(id);
 
   // Scroll to top when component mounts or when resource changes
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id, resource]);
 
-  console.group('🎯 RESOURCE DETAIL DEBUG (REAL IDs)');
+  console.group('🎯 RESOURCE DETAIL DEBUG (OPTIMIZED)');
   console.log('📋 URL ID:', id);
   console.log('📋 Resource found:', resource ? { id: resource.id, type: resource.type, title: resource.title.substring(0, 50) + '...' } : 'null');
   console.log('📋 Loading:', loading);
+  console.log('📋 Retrying:', retrying);
   console.log('📋 Error:', error);
   console.groupEnd();
 
-  // Loading skeleton
-  if (loading) return <><Navigation /><LoadingSkeleton /></>;
+  // Enhanced loading with retry states
+  if (loading) {
+    const loadingMessage = retrying 
+      ? 'Aguardando dados serem carregados...' 
+      : 'Carregando recurso...';
+      
+    return (
+      <>
+        <Navigation />
+        <EnhancedLoadingSkeleton retrying={retrying} message={loadingMessage} />
+      </>
+    );
+  }
   
-  // Resource not found
-  if (!resource || error) return <><Navigation /><ResourceNotFound /></>;
+  // Resource not found - but provide more context
+  if (!resource || error) {
+    return (
+      <>
+        <Navigation />
+        <ResourceNotFound />
+      </>
+    );
+  }
 
   // If podcast detected
   if (resource.type === 'podcast') {

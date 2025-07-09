@@ -1,6 +1,7 @@
 
 export interface Resource {
   id: number;
+  originalId?: string; // Add originalId property to store API's original identifier
   title: string;
   type: 'video' | 'titulo' | 'podcast';
   author: string;

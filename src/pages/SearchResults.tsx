@@ -1,9 +1,11 @@
 
 import { useEffect } from "react";
 import { useSearchResults } from '@/hooks/useSearchResults';
+import { useSearchParams } from 'react-router-dom';
 import SearchLayout from '@/components/SearchLayout';
 
 const SearchResults = () => {
+  const [, setSearchParams] = useSearchParams();
   const {
     query,
     filters,
@@ -42,18 +44,10 @@ const SearchResults = () => {
   };
 
   const handleClearQuery = () => {
-    setQuery('');
-    handleFilterChange({
-      resourceType: ['all'],
-      subject: [],
-      author: [],
-      year: '',
-      duration: '',
-      language: [],
-      documentType: [],
-      program: [],
-      channel: [],
-    });
+    // Criar nova URL com apenas filtros=all, removendo q completamente
+    const newSearchParams = new URLSearchParams();
+    newSearchParams.set('filtros', 'all');
+    setSearchParams(newSearchParams);
     handlePageChange(1);
   };
 

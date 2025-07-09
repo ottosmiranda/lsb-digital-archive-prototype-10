@@ -228,7 +228,7 @@ const fetchPaginatedContent = async (
   }
 };
 
-// BUSCA PAGINADA REAL (NOVA IMPLEMENTAÇÃO)
+// ✅ CORRIGIDO: BUSCA PAGINADA AGORA INCLUI ARTIGOS
 const performPaginatedSearch = async (
   searchParams: SearchRequest
 ): Promise<any> => {
@@ -241,48 +241,125 @@ const performPaginatedSearch = async (
     throw new Error('Nenhum tipo de conteúdo especificado para busca paginada');
   }
   
-  // Para busca paginada, processar apenas o primeiro tipo (mantém consistência)
   const contentType = activeTypes[0];
-  const apiType = contentType === 'titulo' ? 'livro' : contentType === 'video' ? 'aula' : 'podcast';
   
-  const cacheKey = getCacheKey('paginated', `${apiType}_page${page}_limit${resultsPerPage}`);
-  
-  if (isValidCache(cacheKey)) {
-    const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT Paginado: ${cached.results.length} itens`);
-    return cached;
-  }
-  
-  try {
-    const { items, total } = await fetchPaginatedContent(apiType, page, resultsPerPage);
+  // ✅ CRÍTICO: Para 'titulo', buscar AMBOS livros E artigos
+  if (contentType === 'titulo') {
+    console.log(`📚 ARTIGOS INTEGRATION: Buscando livros + artigos para tipo 'titulo'`);
     
-    const totalPages = Math.ceil(total / resultsPerPage);
+    const cacheKey = getCacheKey('paginated', `titulo_combined_page${page}_limit${resultsPerPage}`);
     
-    const response = {
-      success: true,
-      results: items,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalResults: total,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1
-      },
-      searchInfo: {
-        query: '',
-        appliedFilters: filters,
-        sortBy
+    if (isValidCache(cacheKey)) {
+      const cached = getCache(cacheKey);
+      console.log(`📦 Cache HIT Paginado (Livros+Artigos): ${cached.results.length} itens`);
+      return cached;
+    }
+    
+    try {
+      // Buscar livros e artigos em paralelo
+      const [livrosResult, artigosResult] = await Promise.allSettled([
+        fetchPaginatedContent('livro', page, Math.ceil(resultsPerPage / 2)),
+        fetchPaginatedContent('artigos', page, Math.floor(resultsPerPage / 2))
+      ]);
+      
+      const allItems: SearchResult[] = [];
+      let totalResults = 0;
+      
+      if (livrosResult.status === 'fulfilled') {
+        allItems.push(...livrosResult.value.items);
+        totalResults += livrosResult.value.total;
+        console.log(`✅ Livros: ${livrosResult.value.items.length} itens`);
+      } else {
+        console.error('❌ Erro ao buscar livros:', livrosResult.reason);
       }
-    };
+      
+      if (artigosResult.status === 'fulfilled') {
+        allItems.push(...artigosResult.value.items);
+        totalResults += artigosResult.value.total;
+        console.log(`✅ Artigos: ${artigosResult.value.items.length} itens`);
+        
+        // LOG CRÍTICO para debug
+        const artigos = artigosResult.value.items.filter(item => item.documentType === 'Artigo');
+        console.log(`📄 VERIFICAÇÃO ARTIGOS na busca paginada: ${artigos.length} artigos encontrados`);
+      } else {
+        console.error('❌ Erro ao buscar artigos:', artigosResult.reason);
+      }
+      
+      // Ordenar e limitar
+      const sortedItems = sortResults(allItems, sortBy);
+      const finalItems = sortedItems.slice(0, resultsPerPage);
+      
+      const totalPages = Math.ceil(totalResults / resultsPerPage);
+      
+      const response = {
+        success: true,
+        results: finalItems,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalResults,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1
+        },
+        searchInfo: {
+          query: '',
+          appliedFilters: filters,
+          sortBy
+        }
+      };
+      
+      setCache(cacheKey, response, 'paginated');
+      
+      console.log(`✅ Busca Paginada TÍTULO (Livros+Artigos) concluída: ${finalItems.length} itens, ${totalResults} total`);
+      return response;
+      
+    } catch (error) {
+      console.error('❌ Erro na busca paginada título:', error);
+      throw error;
+    }
+  } else {
+    // Para outros tipos (video, podcast), usar lógica original
+    const apiType = contentType === 'video' ? 'aula' : contentType;
     
-    setCache(cacheKey, response, 'paginated');
+    const cacheKey = getCacheKey('paginated', `${apiType}_page${page}_limit${resultsPerPage}`);
     
-    console.log(`✅ Busca Paginada concluída: ${items.length} itens, ${total} total`);
-    return response;
+    if (isValidCache(cacheKey)) {
+      const cached = getCache(cacheKey);
+      console.log(`📦 Cache HIT Paginado: ${cached.results.length} itens`);
+      return cached;
+    }
     
-  } catch (error) {
-    console.error('❌ Erro na busca paginada:', error);
-    throw error;
+    try {
+      const { items, total } = await fetchPaginatedContent(apiType, page, resultsPerPage);
+      
+      const totalPages = Math.ceil(total / resultsPerPage);
+      
+      const response = {
+        success: true,
+        results: items,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalResults: total,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1
+        },
+        searchInfo: {
+          query: '',
+          appliedFilters: filters,
+          sortBy
+        }
+      };
+      
+      setCache(cacheKey, response, 'paginated');
+      
+      console.log(`✅ Busca Paginada concluída: ${items.length} itens, ${total} total`);
+      return response;
+      
+    } catch (error) {
+      console.error('❌ Erro na busca paginada:', error);
+      throw error;
+    }
   }
 };
 
@@ -387,6 +464,10 @@ const performUnifiedPageFetch = async (
   if (articlesResult.status === 'fulfilled') {
     allItems.push(...articlesResult.value.items);
     console.log(`✅ Artigos: ${articlesResult.value.items.length} itens`);
+    
+    // LOG CRÍTICO para debug
+    const artigos = articlesResult.value.items.filter(item => item.documentType === 'Artigo');
+    console.log(`📄 VERIFICAÇÃO ARTIGOS na busca global: ${artigos.length} artigos encontrados`);
   }
   
   // Ordenar e limitar

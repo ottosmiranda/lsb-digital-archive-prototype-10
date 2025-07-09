@@ -3,23 +3,28 @@ import { SearchResult } from '@/types/searchTypes';
 
 export class DataTransformer {
   transformToSearchResult(item: any, tipo: string): SearchResult {
-    console.log(`🔄 Transformando item:`, {
+    console.log(`🔄 DATA TRANSFORMER - ID CORRECTION:`, {
       tipo,
-      id: item.id,
+      originalApiId: item.id,
       titulo: item.titulo || item.podcast_titulo || item.title
     });
     
+    // CORREÇÃO CRÍTICA: Usar ID real da API como ID principal
+    const realId = String(item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000);
+    
     const baseResult: SearchResult = {
-      id: Math.floor(Math.random() * 10000) + 1000,
-      originalId: item.id,
-      title: item.titulo || item.podcast_titulo || item.title || 'Título não disponível',
-      author: item.autor || item.canal || 'Link Business School',
-      year: item.ano || new Date().getFullYear(),
+      id: realId, // ✅ CORRIGIDO: ID real da API como ID principal
+      originalId: String(item.id || item.episodio_id || item.podcast_id), // Backup do ID original
+      title: item.titulo || item.podcast_titulo || item.episodio_titulo || item.title || 'Título não disponível',
+      author: item.autor || item.canal || item.publicador || 'Link Business School',
+      year: item.ano || (item.data_lancamento ? new Date(item.data_lancamento).getFullYear() : new Date().getFullYear()),
       description: item.descricao || 'Descrição não disponível',
       subject: this.getSubjectFromCategories(item.categorias) || this.getSubject(tipo),
       type: tipo === 'livro' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
       thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
     };
+
+    console.log(`✅ DATA TRANSFORMER - ID REAL USADO: ${realId} para ${baseResult.type}`);
 
     if (tipo === 'livro') {
       baseResult.pdfUrl = item.arquivo;

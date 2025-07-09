@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -27,7 +28,7 @@ interface SearchRequest {
 }
 
 interface SearchResult {
-  id: number;
+  id: string;
   originalId?: string;
   title: string;
   type: 'video' | 'titulo' | 'podcast';
@@ -540,17 +541,29 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
 };
 
 const transformToSearchResult = (item: any, tipo: string): SearchResult => {
-  const baseResult: SearchResult = {
-    id: Math.floor(Math.random() * 10000) + 1000,
+  console.log(`🔄 ID CORRECTION: Transformando item:`, {
+    tipo,
     originalId: item.id,
-    title: item.titulo || item.podcast_titulo || item.title || 'Título não disponível',
-    author: item.autor || item.canal || 'Link Business School',
-    year: item.ano || new Date().getFullYear(),
+    titulo: item.titulo || item.podcast_titulo || item.title,
+    apiId: `Usando ID real da API: ${item.id}`
+  });
+  
+  // CORREÇÃO CRÍTICA: Usar ID real da API como ID principal
+  const realId = String(item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000);
+  
+  const baseResult: SearchResult = {
+    id: realId, // ✅ CORRIGIDO: ID real da API como ID principal
+    originalId: String(item.id || item.episodio_id || item.podcast_id), // Backup do ID original
+    title: item.titulo || item.podcast_titulo || item.episodio_titulo || item.title || 'Título não disponível',
+    author: item.autor || item.canal || item.publicador || 'Link Business School',
+    year: item.ano || (item.data_lancamento ? new Date(item.data_lancamento).getFullYear() : new Date().getFullYear()),
     description: item.descricao || 'Descrição não disponível',
     subject: getSubjectFromCategories(item.categorias) || getSubject(tipo),
     type: tipo === 'livro' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
     thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
   };
+
+  console.log(`✅ ID REAL USADO: ${realId} para ${baseResult.type} "${baseResult.title}"`);
 
   if (tipo === 'livro') {
     baseResult.pdfUrl = item.arquivo;
@@ -744,9 +757,22 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📨 Nova Arquitetura de Busca:', requestBody);
+    console.log('📨 Nova Arquitetura de Busca (IDs REAIS):', requestBody);
     
     const result = await performSearch(requestBody);
+    
+    // LOG CRÍTICO: Verificar se IDs são reais
+    if (result.results && result.results.length > 0) {
+      console.log('🔍 VERIFICAÇÃO DE IDs REAIS:', {
+        primeiroResultado: {
+          id: result.results[0].id,
+          originalId: result.results[0].originalId,
+          tipo: result.results[0].type,
+          title: result.results[0].title.substring(0, 50)
+        },
+        totalResultados: result.results.length
+      });
+    }
     
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

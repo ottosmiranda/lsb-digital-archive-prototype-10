@@ -1,3 +1,4 @@
+
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -59,16 +60,18 @@ const SearchResultsList = ({
   };
 
   const handleResourceClick = (result: SearchResult) => {
-    console.group('🎯 LIST NAVIGATION DEBUG (REAL IDs)');
+    console.group('🎯 SEARCH LIST NAVIGATION (REAL IDs FIXED)');
     console.log('📋 Clicked resource:', {
       id: result.id,
+      originalId: result.originalId,
       type: result.type,
-      title: result.title.substring(0, 50) + '...'
+      title: result.title.substring(0, 50) + '...',
+      idCorrection: '✅ Usando ID real da API'
     });
     
-    // Use the real ID directly - no more artificial ID mapping
+    // ✅ CORRIGIDO: Usar o ID real que agora é consistente entre busca e homepage
     const navigationId = String(result.id);
-    console.log('🔗 Using REAL ID for navigation:', navigationId);
+    console.log('🔗 Using REAL API ID for navigation:', navigationId);
     
     const targetRoute = `/recurso/${navigationId}`;
     console.log('🔗 Navigating to:', targetRoute);

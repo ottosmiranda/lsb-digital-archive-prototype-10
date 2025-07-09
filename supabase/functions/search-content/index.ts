@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -545,6 +544,7 @@ const transformToSearchResult = (item: any, tipo: string): SearchResult => {
     tipo,
     originalId: item.id,
     titulo: item.titulo || item.podcast_titulo || item.title,
+    categorias: item.categorias,
     apiId: `Usando ID real da API: ${item.id}`
   });
   
@@ -552,8 +552,8 @@ const transformToSearchResult = (item: any, tipo: string): SearchResult => {
   const realId = String(item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000);
   
   const baseResult: SearchResult = {
-    id: realId, // ✅ CORRIGIDO: ID real da API como ID principal
-    originalId: String(item.id || item.episodio_id || item.podcast_id), // Backup do ID original
+    id: realId,
+    originalId: String(item.id || item.episodio_id || item.podcast_id),
     title: item.titulo || item.podcast_titulo || item.episodio_titulo || item.title || 'Título não disponível',
     author: item.autor || item.canal || item.publicador || 'Link Business School',
     year: item.ano || (item.data_lancamento ? new Date(item.data_lancamento).getFullYear() : new Date().getFullYear()),
@@ -563,7 +563,7 @@ const transformToSearchResult = (item: any, tipo: string): SearchResult => {
     thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
   };
 
-  console.log(`✅ ID REAL USADO: ${realId} para ${baseResult.type} "${baseResult.title}"`);
+  console.log(`✅ ID REAL USADO: ${realId} para ${baseResult.type} "${baseResult.title}" com subject: "${baseResult.subject}"`);
 
   if (tipo === 'livro') {
     baseResult.pdfUrl = item.arquivo;
@@ -587,7 +587,9 @@ const getSubjectFromCategories = (categorias: string[]): string => {
   if (!categorias || !Array.isArray(categorias) || categorias.length === 0) {
     return '';
   }
-  return categorias[0];
+  // Capitalizar primeira letra e retornar primeira categoria
+  const firstCategory = categorias[0];
+  return firstCategory.charAt(0).toUpperCase() + firstCategory.slice(1);
 };
 
 const getSubject = (tipo: string): string => {

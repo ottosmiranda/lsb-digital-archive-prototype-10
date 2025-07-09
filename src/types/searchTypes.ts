@@ -1,4 +1,3 @@
-
 export interface SearchResult {
   id: number;
   originalId?: string; // Add originalId for UUIDs from the API
@@ -19,6 +18,7 @@ export interface SearchResult {
   language?: string; // Add language field for books
   program?: string; // Add program field for podcasts (podcast_titulo)
   channel?: string; // Add channel field for videos (canal)
+  categories?: string[]; // ✅ ADICIONADO: Categorias para podcasts
 }
 
 export interface SearchFilters {

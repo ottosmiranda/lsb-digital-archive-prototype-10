@@ -82,9 +82,19 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
       }
     }
 
-    // Detectar assuntos disponíveis (categorias)
+    // ✅ CORRIGIDO: Detectar assuntos incluindo categorias de podcasts
     if (item.subject && item.subject.trim()) {
       subjectSet.add(item.subject.trim());
+    }
+    
+    // ✅ ADICIONADO: Incluir todas as categorias de podcasts nos assuntos disponíveis
+    if (item.type === 'podcast' && item.categories && Array.isArray(item.categories)) {
+      item.categories.forEach(category => {
+        if (category && category.trim()) {
+          const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+          subjectSet.add(capitalizedCategory);
+        }
+      });
     }
 
     // Verificar se há itens com duração
@@ -120,13 +130,12 @@ export const determineFilterRelevance = (
     };
   }
 
-  // ✅ CORRIGIDO: Vídeos TÊMM campo ano disponível na API
   if (activeContentType === 'video') {
     return {
       subject: stats.availableSubjects.length > 0,
       author: true,
       language: stats.availableLanguages.length > 0,
-      year: true, // ✅ CORRIGIDO: API fornece ano para vídeos
+      year: true,
       duration: stats.hasItemsWithDuration,
       pages: false,
     };
@@ -134,21 +143,21 @@ export const determineFilterRelevance = (
 
   if (activeContentType === 'podcast') {
     return {
-      subject: false, // API não fornece categorias para podcasts
+      subject: stats.availableSubjects.length > 0, // ✅ CORRIGIDO: Agora podcasts têm assuntos
       author: true,
-      language: false, // API não fornece idioma para podcasts
+      language: false,
       year: true,
       duration: stats.hasItemsWithDuration,
       pages: false,
     };
   }
 
-  // ✅ CORRIGIDO: Para 'all', incluir vídeos na lógica de anos
+  // Para 'all', incluir todas as opções
   return {
     subject: stats.availableSubjects.length > 0,
     author: true,
     language: stats.availableLanguages.length > 0,
-    year: stats.hasBooks || stats.hasPodcasts || stats.hasVideos, // ✅ CORRIGIDO: Incluir vídeos
+    year: stats.hasBooks || stats.hasPodcasts || stats.hasVideos,
     duration: (stats.hasVideos || stats.hasPodcasts) && stats.hasItemsWithDuration,
     pages: stats.hasBooks && stats.hasItemsWithPages,
   };
@@ -172,11 +181,12 @@ export const getFilterPriority = (
     priorities.duration = 2;
     priorities.language = 3;
     priorities.author = 4;
-    priorities.year = 5; // ✅ ADICIONADO: Prioridade para filtro de ano em vídeos
+    priorities.year = 5;
   } else if (activeContentType === 'podcast') {
-    priorities.author = 1;
-    priorities.duration = 2;
-    priorities.year = 3;
+    priorities.subject = 1; // ✅ CORRIGIDO: Assunto agora é prioridade para podcasts
+    priorities.author = 2;
+    priorities.duration = 3;
+    priorities.year = 4;
   } else {
     // Para 'all', priorizar baseado na quantidade de cada tipo
     priorities.subject = 1;

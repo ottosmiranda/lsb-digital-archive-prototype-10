@@ -28,10 +28,11 @@ interface PodcastEpisodeItem {
   url: string;
   embed_url: string;
   imagem_url: string;
+  categorias: string[]; // ✅ ADICIONADO: Array de categorias da API
 }
 
 interface TransformedPodcast {
-  id: string; // Using real episodio_id instead of artificial number
+  id: string;
   title: string;
   type: 'podcast';
   author: string;
@@ -43,7 +44,18 @@ interface TransformedPodcast {
   embedUrl?: string;
   podcast_titulo?: string;
   episodio_id?: string;
+  categories?: string[]; // ✅ ADICIONADO: Categorias completas
 }
+
+// ✅ NOVA FUNÇÃO: Extrair assunto das categorias
+const getSubjectFromCategories = (categorias: string[]): string => {
+  if (!categorias || !Array.isArray(categorias) || categorias.length === 0) {
+    return '';
+  }
+  // Capitalizar primeira letra e retornar primeira categoria
+  const firstCategory = categorias[0];
+  return firstCategory.charAt(0).toUpperCase() + firstCategory.slice(1);
+};
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
@@ -110,22 +122,31 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     // Transform episodes to match SearchResult interface using REAL IDs
-    const transformedPodcasts: TransformedPodcast[] = data.conteudo.map((episode) => ({
-      id: episode.episodio_id, // Use REAL episode ID from API
-      title: episode.episodio_titulo || 'Episódio sem título',
-      type: 'podcast' as const,
-      author: episode.publicador || 'Autor não informado',
-      description: episode.descricao || 'Descrição não disponível',
-      year: episode.data_lancamento ? new Date(episode.data_lancamento).getFullYear() : 2024,
-      subject: episode.podcast_titulo || 'Podcast',
-      duration: episode.duracao_ms ? formatDuration(episode.duracao_ms) : undefined,
-      thumbnail: episode.imagem_url,
-      embedUrl: episode.embed_url,
-      podcast_titulo: episode.podcast_titulo,
-      episodio_id: episode.episodio_id
-    }));
+    const transformedPodcasts: TransformedPodcast[] = data.conteudo.map((episode) => {
+      // ✅ CORRIGIDO: Usar categorias da API como assunto principal
+      const subjectFromCategories = getSubjectFromCategories(episode.categorias);
+      const subject = subjectFromCategories || episode.podcast_titulo || 'Podcast';
+      
+      console.log(`🏷️ Podcast "${episode.episodio_titulo}": categorias=${JSON.stringify(episode.categorias)}, subject="${subject}"`);
+      
+      return {
+        id: episode.episodio_id,
+        title: episode.episodio_titulo || 'Episódio sem título',
+        type: 'podcast' as const,
+        author: episode.publicador || 'Autor não informado',
+        description: episode.descricao || 'Descrição não disponível',
+        year: episode.data_lancamento ? new Date(episode.data_lancamento).getFullYear() : 2024,
+        subject: subject, // ✅ CORRIGIDO: Usar categoria como assunto
+        duration: episode.duracao_ms ? formatDuration(episode.duracao_ms) : undefined,
+        thumbnail: episode.imagem_url,
+        embedUrl: episode.embed_url,
+        podcast_titulo: episode.podcast_titulo,
+        episodio_id: episode.episodio_id,
+        categories: episode.categorias || [] // ✅ ADICIONADO: Categorias completas
+      };
+    });
 
-    console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items using REAL IDs for page ${page}`);
+    console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items with categories for page ${page}`);
 
     // Extract program info from first episode if filtering by podcast title
     let programInfo = null;
@@ -135,7 +156,8 @@ const handler = async (req: Request): Promise<Response> => {
         title: firstEpisode.podcast_titulo,
         publisher: firstEpisode.publicador,
         thumbnail: firstEpisode.imagem_url,
-        description: `Programa de podcast com ${data.total} episódios disponíveis.`
+        description: `Programa de podcast com ${data.total} episódios disponíveis.`,
+        categories: firstEpisode.categorias || [] // ✅ ADICIONADO: Categorias do programa
       };
     }
 

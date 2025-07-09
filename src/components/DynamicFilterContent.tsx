@@ -23,6 +23,7 @@ interface DynamicFilterContentProps {
   openSections: Record<string, boolean>;
   onToggleSection: (section: string) => void;
   activeContentType: string;
+  allResults?: SearchResult[]; // NOVO: Dados completos para cálculo de contagens
 }
 
 const DynamicFilterContent = React.memo(({ 
@@ -31,7 +32,8 @@ const DynamicFilterContent = React.memo(({
   currentResults, 
   openSections, 
   onToggleSection,
-  activeContentType
+  activeContentType,
+  allResults = [] // NOVO: Dados completos com fallback
 }: DynamicFilterContentProps) => {
   const { contentStats, filterRelevance } = useContentAwareFilters({
     currentResults,
@@ -64,23 +66,23 @@ const DynamicFilterContent = React.memo(({
     [filters]
   );
 
-  // NOVO: Extrair tipos de documento disponíveis nos resultados atuais
+  // CORRIGIDO: Usar dados completos para calcular contagens corretas
   const availableDocumentTypes = useMemo(() => {
-    return extractDocumentTypesFromResults(currentResults)
+    return extractDocumentTypesFromResults(allResults.length > 0 ? allResults : currentResults)
       .sort((a, b) => b.count - a.count);
-  }, [currentResults]);
+  }, [allResults, currentResults]);
 
-  // NOVO: Extrair programas disponíveis nos resultados atuais
+  // CORRIGIDO: Usar dados completos para programas
   const availablePrograms = useMemo(() => {
-    return extractProgramsFromResults(currentResults)
+    return extractProgramsFromResults(allResults.length > 0 ? allResults : currentResults)
       .sort((a, b) => b.count - a.count);
-  }, [currentResults]);
+  }, [allResults, currentResults]);
 
-  // NOVO: Extrair canais disponíveis nos resultados atuais
+  // CORRIGIDO: Usar dados completos para canais
   const availableChannels = useMemo(() => {
-    return extractChannelsFromResults(currentResults)
+    return extractChannelsFromResults(allResults.length > 0 ? allResults : currentResults)
       .sort((a, b) => b.count - a.count);
-  }, [currentResults]);
+  }, [allResults, currentResults]);
 
   // CORRIGIDO: Autores da página atual para comparação
   const currentPageAuthors = useMemo(() => {
@@ -212,7 +214,7 @@ const DynamicFilterContent = React.memo(({
         </div>
       )}
 
-      {/* ✅ ADICIONADO: Filtro de Tipo de Item (apenas para títulos) */}
+      {/* ✅ CORRIGIDO: Filtro de Tipo de Item com contagens corretas */}
       {filterRelevance.documentType && availableDocumentTypes.length > 0 && (
         <Collapsible open={openSections.documentType} onOpenChange={() => onToggleSection('documentType')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">

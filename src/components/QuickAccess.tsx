@@ -34,7 +34,7 @@ const QuickAccess = () => {
   const accessTypes = [
     {
       icon: Book,
-      label: 'Livros',
+      label: 'Livros & Artigos',
       href: '/buscar?filtros=titulo',
       color: 'from-blue-500 to-blue-600',
       count: counts.books,

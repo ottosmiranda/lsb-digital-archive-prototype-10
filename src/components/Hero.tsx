@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useSearchForm } from '@/hooks/useSearchForm';
 import EnhancedSearchSuggestions from '@/components/EnhancedSearchSuggestions';
+
 const Hero = () => {
   const {
     searchQuery,
@@ -17,16 +18,22 @@ const Hero = () => {
     handleSuggestionClick,
     handleSearchFocus
   } = useSearchForm();
-  const filterOptions = [{
-    id: 'titulo',
-    label: 'Livros'
-  }, {
-    id: 'video',
-    label: 'Vídeos'
-  }, {
-    id: 'podcast',
-    label: 'Podcasts'
-  }];
+
+  const filterOptions = [
+    {
+      id: 'titulo',
+      label: 'Livros & Artigos'
+    },
+    {
+      id: 'video',
+      label: 'Vídeos'
+    },
+    {
+      id: 'podcast',
+      label: 'Podcasts'
+    }
+  ];
+
   return <section className="relative bg-gradient-to-br from-lsb-primary via-blue-900 to-indigo-900">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
@@ -93,4 +100,5 @@ const Hero = () => {
       </div>
     </section>;
 };
+
 export default Hero;

@@ -115,14 +115,24 @@ const mapLanguageCode = (idioma: string): string => {
   return idioma.charAt(0).toUpperCase() + idioma.slice(1);
 };
 
-// DETECTOR DE TIPO DE BUSCA (SRP)
+// ✅ CORRIGIDO: DETECTOR DE TIPO DE BUSCA - DOCUMENTTYPE NÃO É MAIS "FILTERED"
 const detectSearchType = (query: string, filters: SearchFilters): SearchType => {
   const hasQuery = query && query.trim() !== '';
   const hasResourceTypeFilters = filters.resourceType.length > 0 && !filters.resourceType.includes('all');
+  
+  // ✅ CRÍTICO: documentType removido de hasOtherFilters - será tratado como paginação
   const hasOtherFilters = filters.subject.length > 0 || filters.author.length > 0 || 
                           filters.year || filters.duration || filters.language.length > 0 ||
-                          filters.documentType.length > 0 || filters.program.length > 0 || 
+                          filters.program.length > 0 || 
                           filters.channel.length > 0;
+
+  console.log('🔍 DETECTOR CORRIGIDO:', { 
+    hasQuery, 
+    hasResourceTypeFilters, 
+    hasOtherFilters, 
+    documentType: filters.documentType,
+    resultado: hasQuery || hasOtherFilters ? 'filtered' : hasResourceTypeFilters ? 'paginated' : 'global'
+  });
 
   // Busca global: filtro "Todos" ou sem filtros específicos
   if (filters.resourceType.includes('all') || (!hasResourceTypeFilters && !hasQuery && !hasOtherFilters)) {
@@ -228,14 +238,14 @@ const fetchPaginatedContent = async (
   }
 };
 
-// ✅ CORRIGIDO: BUSCA PAGINADA AGORA INCLUI ARTIGOS
+// ✅ CORRIGIDO: BUSCA PAGINADA AGORA TRATA DOCUMENTTYPE CORRETAMENTE
 const performPaginatedSearch = async (
   searchParams: SearchRequest
 ): Promise<any> => {
   const { filters, sortBy, page, resultsPerPage } = searchParams;
   const activeTypes = filters.resourceType.filter(type => type !== 'all');
   
-  console.log(`🎯 Busca Paginada: tipos ${activeTypes.join(', ')}, página ${page}`);
+  console.log(`🎯 Busca Paginada CORRIGIDA: tipos ${activeTypes.join(', ')}, página ${page}, documentType: ${filters.documentType.join(',')}`);
   
   if (activeTypes.length === 0) {
     throw new Error('Nenhum tipo de conteúdo especificado para busca paginada');
@@ -243,79 +253,166 @@ const performPaginatedSearch = async (
   
   const contentType = activeTypes[0];
   
-  // ✅ CRÍTICO: Para 'titulo', buscar AMBOS livros E artigos
+  // ✅ CRÍTICO: Para 'titulo', tratar documentType como filtro especial
   if (contentType === 'titulo') {
-    console.log(`📚 ARTIGOS INTEGRATION: Buscando livros + artigos para tipo 'titulo'`);
+    console.log(`📚 DOCUMENTTYPE FILTER DETECTION: ${filters.documentType.join(',')}`);
     
-    const cacheKey = getCacheKey('paginated', `titulo_combined_page${page}_limit${resultsPerPage}`);
-    
-    if (isValidCache(cacheKey)) {
-      const cached = getCache(cacheKey);
-      console.log(`📦 Cache HIT Paginado (Livros+Artigos): ${cached.results.length} itens`);
-      return cached;
-    }
-    
-    try {
-      // Buscar livros e artigos em paralelo
-      const [livrosResult, artigosResult] = await Promise.allSettled([
-        fetchPaginatedContent('livro', page, Math.ceil(resultsPerPage / 2)),
-        fetchPaginatedContent('artigos', page, Math.floor(resultsPerPage / 2))
-      ]);
+    // Se tem filtro de documentType, fazer busca completa e filtrar
+    if (filters.documentType.length > 0) {
+      const cacheKey = getCacheKey('paginated', `titulo_documentType_${filters.documentType.join('_')}_page${page}_limit${resultsPerPage}`);
       
-      const allItems: SearchResult[] = [];
-      let totalResults = 0;
-      
-      if (livrosResult.status === 'fulfilled') {
-        allItems.push(...livrosResult.value.items);
-        totalResults += livrosResult.value.total;
-        console.log(`✅ Livros: ${livrosResult.value.items.length} itens`);
-      } else {
-        console.error('❌ Erro ao buscar livros:', livrosResult.reason);
+      if (isValidCache(cacheKey)) {
+        const cached = getCache(cacheKey);
+        console.log(`📦 Cache HIT DocumentType: ${cached.results.length} itens`);
+        return cached;
       }
       
-      if (artigosResult.status === 'fulfilled') {
-        allItems.push(...artigosResult.value.items);
-        totalResults += artigosResult.value.total;
-        console.log(`✅ Artigos: ${artigosResult.value.items.length} itens`);
+      try {
+        console.log(`🔍 BUSCANDO TODOS OS LIVROS+ARTIGOS para filtrar documentType...`);
         
-        // LOG CRÍTICO para debug
-        const artigos = artigosResult.value.items.filter(item => item.documentType === 'Artigo');
-        console.log(`📄 VERIFICAÇÃO ARTIGOS na busca paginada: ${artigos.length} artigos encontrados`);
-      } else {
-        console.error('❌ Erro ao buscar artigos:', artigosResult.reason);
+        // Buscar TODOS os livros e artigos (páginas grandes para pegar tudo)
+        const [livrosResult, artigosResult] = await Promise.allSettled([
+          fetchPaginatedContent('livro', 1, 100), // Buscar até 100 livros
+          fetchPaginatedContent('artigos', 1, 100) // Buscar até 100 artigos
+        ]);
+        
+        const allItems: SearchResult[] = [];
+        
+        if (livrosResult.status === 'fulfilled') {
+          allItems.push(...livrosResult.value.items);
+          console.log(`✅ Livros carregados: ${livrosResult.value.items.length} itens`);
+        }
+        
+        if (artigosResult.status === 'fulfilled') {
+          allItems.push(...artigosResult.value.items);
+          console.log(`✅ Artigos carregados: ${artigosResult.value.items.length} itens`);
+        }
+        
+        console.log(`📊 TOTAL ITEMS ANTES DO FILTRO: ${allItems.length}`);
+        
+        // ✅ APLICAR FILTRO DE DOCUMENTTYPE
+        const filteredItems = allItems.filter(item => {
+          const matches = filters.documentType.some(filterType => {
+            const itemType = item.documentType?.toLowerCase() || '';
+            const filterTypeLower = filterType.toLowerCase();
+            
+            console.log(`🔍 Comparando: "${itemType}" contém "${filterTypeLower}"?`);
+            
+            return itemType.includes(filterTypeLower);
+          });
+          
+          if (matches) {
+            console.log(`✅ ITEM ACEITO: ${item.title.substring(0, 50)}... (${item.documentType})`);
+          }
+          
+          return matches;
+        });
+        
+        console.log(`📊 TOTAL ITEMS APÓS FILTRO DOCUMENTTYPE: ${filteredItems.length}`);
+        
+        // ✅ APLICAR PAGINAÇÃO NO RESULTADO FILTRADO
+        const startIndex = (page - 1) * resultsPerPage;
+        const paginatedItems = filteredItems.slice(startIndex, startIndex + resultsPerPage);
+        const totalPages = Math.ceil(filteredItems.length / resultsPerPage);
+        
+        console.log(`📄 PAGINAÇÃO: página ${page}, início ${startIndex}, itens ${paginatedItems.length}`);
+        
+        const response = {
+          success: true,
+          results: paginatedItems,
+          pagination: {
+            currentPage: page,
+            totalPages,
+            totalResults: filteredItems.length, // ✅ CONTAGEM CORRETA!
+            hasNextPage: page < totalPages,
+            hasPreviousPage: page > 1
+          },
+          searchInfo: {
+            query: '',
+            appliedFilters: filters,
+            sortBy
+          }
+        };
+        
+        setCache(cacheKey, response, 'paginated');
+        
+        console.log(`✅ DOCUMENTTYPE FILTER COMPLETO: ${paginatedItems.length} itens na página, ${filteredItems.length} total`);
+        return response;
+        
+      } catch (error) {
+        console.error('❌ Erro na busca paginada com documentType:', error);
+        throw error;
+      }
+    } else {
+      // Sem filtro de documentType, usar lógica original (livros + artigos)
+      console.log(`📚 TÍTULO sem filtro documentType - usando lógica original`);
+      
+      const cacheKey = getCacheKey('paginated', `titulo_combined_page${page}_limit${resultsPerPage}`);
+      
+      if (isValidCache(cacheKey)) {
+        const cached = getCache(cacheKey);
+        console.log(`📦 Cache HIT Paginado (Livros+Artigos): ${cached.results.length} itens`);
+        return cached;
       }
       
-      // Ordenar e limitar
-      const sortedItems = sortResults(allItems, sortBy);
-      const finalItems = sortedItems.slice(0, resultsPerPage);
-      
-      const totalPages = Math.ceil(totalResults / resultsPerPage);
-      
-      const response = {
-        success: true,
-        results: finalItems,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalResults,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1
-        },
-        searchInfo: {
-          query: '',
-          appliedFilters: filters,
-          sortBy
+      try {
+        // Buscar livros e artigos em paralelo
+        const [livrosResult, artigosResult] = await Promise.allSettled([
+          fetchPaginatedContent('livro', page, Math.ceil(resultsPerPage / 2)),
+          fetchPaginatedContent('artigos', page, Math.floor(resultsPerPage / 2))
+        ]);
+        
+        const allItems: SearchResult[] = [];
+        let totalResults = 0;
+        
+        if (livrosResult.status === 'fulfilled') {
+          allItems.push(...livrosResult.value.items);
+          totalResults += livrosResult.value.total;
+          console.log(`✅ Livros: ${livrosResult.value.items.length} itens`);
+        } else {
+          console.error('❌ Erro ao buscar livros:', livrosResult.reason);
         }
-      };
-      
-      setCache(cacheKey, response, 'paginated');
-      
-      console.log(`✅ Busca Paginada TÍTULO (Livros+Artigos) concluída: ${finalItems.length} itens, ${totalResults} total`);
-      return response;
-      
-    } catch (error) {
-      console.error('❌ Erro na busca paginada título:', error);
-      throw error;
+        
+        if (artigosResult.status === 'fulfilled') {
+          allItems.push(...artigosResult.value.items);
+          totalResults += artigosResult.value.total;
+          console.log(`✅ Artigos: ${artigosResult.value.items.length} itens`);
+        } else {
+          console.error('❌ Erro ao buscar artigos:', artigosResult.reason);
+        }
+        
+        // Ordenar e limitar
+        const sortedItems = sortResults(allItems, sortBy);
+        const finalItems = sortedItems.slice(0, resultsPerPage);
+        
+        const totalPages = Math.ceil(totalResults / resultsPerPage);
+        
+        const response = {
+          success: true,
+          results: finalItems,
+          pagination: {
+            currentPage: page,
+            totalPages,
+            totalResults,
+            hasNextPage: page < totalPages,
+            hasPreviousPage: page > 1
+          },
+          searchInfo: {
+            query: '',
+            appliedFilters: filters,
+            sortBy
+          }
+        };
+        
+        setCache(cacheKey, response, 'paginated');
+        
+        console.log(`✅ Busca Paginada TÍTULO (Livros+Artigos) concluída: ${finalItems.length} itens, ${totalResults} total`);
+        return response;
+        
+      } catch (error) {
+        console.error('❌ Erro na busca paginada título:', error);
+        throw error;
+      }
     }
   } else {
     // Para outros tipos (video, podcast), usar lógica original
@@ -622,6 +719,7 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
   console.log('📋 Parâmetros:', { 
     query: query || '(vazio)', 
     resourceTypes: filters.resourceType,
+    documentType: filters.documentType,
     page: searchParams.page,
     type: searchType
   });
@@ -948,23 +1046,24 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📨 ARTIGOS INTEGRATION - Nova busca:', requestBody);
+    console.log('📨 DOCUMENTTYPE FILTER - Nova busca:', requestBody);
     
     const result = await performSearch(requestBody);
     
     // LOG CRÍTICO: Verificar artigos nos resultados
     if (result.results && result.results.length > 0) {
       const articleResults = result.results.filter((r: any) => r.documentType === 'Artigo');
-      if (articleResults.length > 0) {
-        console.log('📄 VERIFICAÇÃO ARTIGOS:', {
+      const bookResults = result.results.filter((r: any) => r.documentType === 'Livro');
+      if (articleResults.length > 0 || bookResults.length > 0) {
+        console.log('📄 VERIFICAÇÃO DOCUMENTTYPE:', {
           totalArtigos: articleResults.length,
-          primeiroArtigo: {
-            title: articleResults[0].title.substring(0, 50),
-            documentType: articleResults[0].documentType,
-            author: articleResults[0].author,
-            year: articleResults[0].year,
-            pdfUrl: articleResults[0].pdfUrl?.substring(0, 50)
-          }
+          totalLivros: bookResults.length,
+          primeiroItem: result.results[0] ? {
+            title: result.results[0].title.substring(0, 50),
+            documentType: result.results[0].documentType,
+            author: result.results[0].author,
+            year: result.results[0].year
+          } : null
         });
       }
     }
@@ -975,7 +1074,7 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error('❌ Erro na busca com integração de artigos:', error);
+    console.error('❌ Erro na busca com documentType filter:', error);
     
     return new Response(JSON.stringify({
       success: false,

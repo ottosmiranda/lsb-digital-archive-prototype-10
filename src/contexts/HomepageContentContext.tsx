@@ -7,12 +7,14 @@ interface HomepageContent {
   videos: SearchResult[];
   books: SearchResult[];
   podcasts: SearchResult[];
+  articles: SearchResult[];
 }
 
 interface ContentCounts {
   videos: number;
   books: number;
   podcasts: number;
+  articles: number;
 }
 
 // Type definitions for rotated content data
@@ -63,7 +65,8 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   const [content, setContent] = useState<HomepageContent>({
     videos: [],
     books: [],
-    podcasts: []
+    podcasts: [],
+    articles: []
   });
   const [rotatedContent, setRotatedContent] = useState<RotatedContent>({
     weeklyHighlights: [],
@@ -72,7 +75,8 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   const [contentCounts, setContentCounts] = useState<ContentCounts>({
     videos: 0,
     books: 0,
-    podcasts: 0
+    podcasts: 0,
+    articles: 0
   });
   const [loading, setLoading] = useState(true);
   const [countsLoading, setCountsLoading] = useState(true);
@@ -80,7 +84,7 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   const [isUsingFallback, setIsUsingFallback] = useState(false);
   const [apiStatus, setApiStatus] = useState<any>({});
 
-  console.group('🏠 HomepageContentProvider - ENHANCED Constructor with Rotation');
+  console.group('🏠 HomepageContentProvider - ENHANCED Constructor with Rotation and Articles');
   console.log('📊 Provider initialized at:', new Date().toISOString());
   console.log('🔄 Initial state:', { loading, countsLoading, error, isUsingFallback });
   console.groupEnd();
@@ -136,7 +140,7 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   };
 
   const loadContentCounts = async () => {
-    console.group('📊 ENHANCED LOAD CONTENT COUNTS - Starting with timeout protection');
+    console.group('📊 ENHANCED LOAD CONTENT COUNTS - Starting with timeout protection and articles');
     console.log('⏰ Counts load started at:', new Date().toISOString());
     
     setCountsLoading(true);
@@ -158,7 +162,7 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
     } catch (err) {
       console.error('❌ Failed to load content counts:', err);
       
-      const emergencyCounts = { videos: 50, books: 100, podcasts: 500 };
+      const emergencyCounts = { videos: 50, books: 100, podcasts: 500, articles: 35 };
       setContentCounts(emergencyCounts);
       console.log('🆘 Using emergency counts:', emergencyCounts);
       
@@ -170,7 +174,7 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   };
 
   const loadContent = async () => {
-    console.group('🚀 DIAGNOSTIC loadContent - Phase 1: Starting data load with rotation support');
+    console.group('🚀 DIAGNOSTIC loadContent - Phase 1: Starting data load with rotation support and articles');
     console.log('⏰ Load started at:', new Date().toISOString());
     console.log('🔄 Setting loading state to true');
     
@@ -198,18 +202,21 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
         videos: homepageContent.videos.length,
         books: homepageContent.books.length,
         podcasts: homepageContent.podcasts.length,
-        totalItems: homepageContent.videos.length + homepageContent.books.length + homepageContent.podcasts.length,
+        articles: homepageContent.articles.length,
+        totalItems: homepageContent.videos.length + homepageContent.books.length + homepageContent.podcasts.length + homepageContent.articles.length,
         loadTimeMs: loadTime
       });
 
-      console.group('🔍 PHASE 1: Data validation and source detection');
+      console.group('🔍 PHASE 1: Data validation and source detection including articles');
       console.log('Videos sample:', homepageContent.videos.slice(0, 2));
       console.log('Books sample:', homepageContent.books.slice(0, 2));
       console.log('Podcasts sample:', homepageContent.podcasts.slice(0, 2));
+      console.log('Articles sample:', homepageContent.articles.slice(0, 2));
       
       const usingFallback = homepageContent.videos.some(v => v.id > 1000000) || 
                            homepageContent.books.some(b => b.id > 2000) ||
-                           homepageContent.podcasts.some(p => p.id > 1000);
+                           homepageContent.podcasts.some(p => p.id > 1000) ||
+                           homepageContent.articles.some(a => a.id > 2000);
       
       console.log('Data source:', usingFallback ? 'SUPABASE FALLBACK' : 'EXTERNAL API');
       console.groupEnd();
@@ -226,6 +233,7 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
         videos: homepageContent.videos.length,
         books: homepageContent.books.length,
         podcasts: homepageContent.podcasts.length,
+        articles: homepageContent.articles.length,
         isUsingFallback: usingFallback
       });
       
@@ -262,18 +270,18 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
         
         if (totalFallbackItems > 0) {
           console.log('✅ EMERGENCY: Fallback successful:', { videos: videos.length, books: books.length, podcasts: podcasts.length });
-          setContent({ videos, books, podcasts });
+          setContent({ videos, books, podcasts, articles: [] });
           await loadRotatedContent();
           setIsUsingFallback(true);
           setError(null);
         } else {
           console.log('❌ EMERGENCY: Fallback also failed - no content available');
-          setContent({ videos: [], books: [], podcasts: [] });
+          setContent({ videos: [], books: [], podcasts: [], articles: [] });
         }
         
       } catch (fallbackError) {
         console.error('❌ EMERGENCY: Final fallback failed:', fallbackError);
-        setContent({ videos: [], books: [], podcasts: [] });
+        setContent({ videos: [], books: [], podcasts: [], articles: [] });
       }
       
     } finally {

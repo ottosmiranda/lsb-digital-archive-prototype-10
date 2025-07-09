@@ -11,21 +11,21 @@ import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import FeaturedHighlightsSkeleton from '@/components/skeletons/FeaturedHighlightsSkeleton';
 
-// Função inteligente de mesclagem para garantir variedade
+// Função inteligente de mesclagem para garantir variedade incluindo artigos
 function getIntelligentMixedHighlights(allData: SearchResult[]): SearchResult[] {
   if (!allData || allData.length === 0) return [];
   
   const podcasts = allData.filter(item => item.type === "podcast");
   const videos = allData.filter(item => item.type === "video");
-  const livros = allData.filter(item => item.type === "titulo");
+  const livrosEArtigos = allData.filter(item => item.type === "titulo");
   
-  console.log('🎯 Intelligent mixing - Available:', {
+  console.log('🎯 Intelligent mixing - Available (including articles):', {
     podcasts: podcasts.length,
     videos: videos.length,
-    books: livros.length
+    booksAndArticles: livrosEArtigos.length
   });
   
-  // Padrão de mesclagem: livro, podcast, vídeo, livro, podcast, vídeo
+  // Padrão de mesclagem: livro/artigo, podcast, vídeo, livro/artigo, podcast, vídeo
   const pattern = ['titulo', 'podcast', 'video'];
   let picks: SearchResult[] = [];
   
@@ -34,8 +34,8 @@ function getIntelligentMixedHighlights(allData: SearchResult[]): SearchResult[] 
     const slotIndex = Math.floor(i / 3); // 0 ou 1 para cada tipo
     
     let item = null;
-    if (targetType === 'titulo' && livros[slotIndex]) {
-      item = livros[slotIndex];
+    if (targetType === 'titulo' && livrosEArtigos[slotIndex]) {
+      item = livrosEArtigos[slotIndex];
     } else if (targetType === 'podcast' && podcasts[slotIndex]) {
       item = podcasts[slotIndex];
     } else if (targetType === 'video' && videos[slotIndex]) {
@@ -44,7 +44,7 @@ function getIntelligentMixedHighlights(allData: SearchResult[]): SearchResult[] 
     
     // Fallback: se não tem o tipo desejado, pega qualquer um disponível
     if (!item) {
-      const remaining = [...podcasts, ...videos, ...livros];
+      const remaining = [...podcasts, ...videos, ...livrosEArtigos];
       const usedIds = picks.map(p => p.id);
       item = remaining.find(r => !usedIds.includes(r.id));
     }
@@ -54,11 +54,11 @@ function getIntelligentMixedHighlights(allData: SearchResult[]): SearchResult[] 
     }
   }
   
-  console.log('✅ Intelligent mixing result:', {
+  console.log('✅ Intelligent mixing result (including articles):', {
     total: picks.length,
     byType: {
       videos: picks.filter(p => p.type === 'video').length,
-      books: picks.filter(p => p.type === 'titulo').length,
+      booksAndArticles: picks.filter(p => p.type === 'titulo').length,
       podcasts: picks.filter(p => p.type === 'podcast').length
     },
     items: picks.map(p => `${p.type}: ${p.title?.substring(0, 30)}...`)
@@ -89,13 +89,14 @@ const FeaturedHighlights = () => {
   const { content, rotatedContent, loading } = useHomepageContentContext();
   const navigate = useNavigate();
 
-  console.group('⭐ PHASE 3: FeaturedHighlights Component with Rotation Support');
+  console.group('⭐ PHASE 3: FeaturedHighlights Component with Rotation Support and Articles');
   console.log('Loading state:', loading);
   console.log('Rotated weekly highlights:', rotatedContent.weeklyHighlights.length);
-  console.log('Raw content received:', {
+  console.log('Raw content received (including articles):', {
     videos: content.videos.length,
     books: content.books.length,
-    podcasts: content.podcasts.length
+    podcasts: content.podcasts.length,
+    articles: content.articles.length
   });
   console.groupEnd();
 
@@ -108,7 +109,7 @@ const FeaturedHighlights = () => {
   );
 
   const highlights = useMemo(() => {
-    console.log('🔄 PHASE 3: Processing FeaturedHighlights with rotation logic...');
+    console.log('🔄 PHASE 3: Processing FeaturedHighlights with rotation logic and articles...');
     
     // Prioridade 1: Usar conteúdo rotacionado se disponível
     if (rotatedContent.weeklyHighlights.length > 0) {
@@ -116,17 +117,17 @@ const FeaturedHighlights = () => {
       return rotatedContent.weeklyHighlights;
     }
     
-    // Prioridade 2: Fallback para lógica inteligente com dados da API
-    console.log('🔄 Fallback: Using intelligent mixing from API data...');
-    const allItems = [...content.videos, ...content.books, ...content.podcasts];
+    // Prioridade 2: Fallback para lógica inteligente com dados da API incluindo artigos
+    console.log('🔄 Fallback: Using intelligent mixing from API data including articles...');
+    const allItems = [...content.videos, ...content.books, ...content.podcasts, ...content.articles];
     const intelligentHighlights = getIntelligentMixedHighlights(allItems);
     
-    console.log('✅ PHASE 3: FeaturedHighlights processing completed:', {
+    console.log('✅ PHASE 3: FeaturedHighlights processing completed (with articles):', {
       source: rotatedContent.weeklyHighlights.length > 0 ? 'rotated_database' : 'intelligent_api_fallback',
       finalHighlightsCount: intelligentHighlights.length,
       highlightsByType: {
         videos: intelligentHighlights.filter(h => h.type === 'video').length,
-        books: intelligentHighlights.filter(h => h.type === 'titulo').length,
+        booksAndArticles: intelligentHighlights.filter(h => h.type === 'titulo').length,
         podcasts: intelligentHighlights.filter(h => h.type === 'podcast').length
       }
     });
@@ -134,7 +135,7 @@ const FeaturedHighlights = () => {
     return intelligentHighlights;
   }, [content, rotatedContent.weeklyHighlights]);
 
-  console.log('🎯 PHASE 3: FeaturedHighlights final state:', {
+  console.log('🎯 PHASE 3: FeaturedHighlights final state (with articles):', {
     loading,
     highlightsCount: highlights.length,
     usingRotatedContent: rotatedContent.weeklyHighlights.length > 0

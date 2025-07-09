@@ -48,19 +48,20 @@ const formatDate = (year: number) => {
 const RecentAdditions = () => {
   const { content, loading, error } = useHomepageContentContext();
 
-  console.log('🆕 RecentAdditions - Rendering with context data:', {
+  console.log('🆕 RecentAdditions - Rendering with context data including articles:', {
     loading,
     error,
     videosCount: content.videos.length,
     booksCount: content.books.length,
-    podcastsCount: content.podcasts.length
+    podcastsCount: content.podcasts.length,
+    articlesCount: content.articles.length
   });
 
-  // Get mixed recent items from homepage API
+  // Get mixed recent items from homepage API including articles
   const recentItems = useMemo(() => {
-    const allItems = [...content.videos, ...content.books, ...content.podcasts];
+    const allItems = [...content.videos, ...content.books, ...content.podcasts, ...content.articles];
     
-    console.log('🆕 RecentAdditions - Processing items:', {
+    console.log('🆕 RecentAdditions - Processing items including articles:', {
       totalItems: allItems.length,
       allItems: allItems.map(item => ({ id: item.id, title: item.title, type: item.type }))
     });
@@ -83,7 +84,7 @@ const RecentAdditions = () => {
       }));
   }, [content]);
 
-  console.log('🆕 RecentAdditions - Final recent items:', recentItems);
+  console.log('🆕 RecentAdditions - Final recent items including articles:', recentItems);
 
   if (loading) {
     console.log('🆕 RecentAdditions - Showing skeleton loader');

@@ -38,11 +38,10 @@ export class ResourceByIdService {
   private static readonly TIMEOUT_MS = 8000;
 
   static async fetchResourceById(id: string, resourceType: string): Promise<Resource | null> {
-    console.log(`🎯 Busca ESPECÍFICA: ${resourceType} com ID ${id}`);
+    console.log(`🔍 Buscando recurso por ID REAL: ${id}, tipo: ${resourceType}`);
     
     try {
       const endpoint = this.getEndpointForType(resourceType, id);
-      console.log(`📡 Endpoint: ${endpoint}`);
       
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error(`Timeout para ${resourceType} ID ${id}`)), this.TIMEOUT_MS);
@@ -58,20 +57,16 @@ export class ResourceByIdService {
       const response = await Promise.race([fetchPromise, timeoutPromise]);
       
       if (!response.ok) {
-        console.log(`❌ HTTP ${response.status} para ${resourceType} ID ${id}`);
-        return null;
+        throw new Error(`HTTP ${response.status} para ${resourceType} ID ${id}`);
       }
 
       const data = await response.json();
-      console.log(`✅ Dados recebidos para ${resourceType} ID ${id}`);
+      console.log(`✅ Dados recebidos para ${resourceType} ID ${id}:`, data);
       
-      const transformedResource = this.transformToResource(data, resourceType, id);
-      console.log(`🔄 Recurso transformado:`, { id: transformedResource.id, type: transformedResource.type, title: transformedResource.title.substring(0, 50) + '...' });
-      
-      return transformedResource;
+      return this.transformToResource(data, resourceType, id);
       
     } catch (error) {
-      console.log(`❌ Erro ao buscar ${resourceType} ID ${id}:`, error);
+      console.error(`❌ Erro ao buscar ${resourceType} ID ${id}:`, error);
       return null;
     }
   }

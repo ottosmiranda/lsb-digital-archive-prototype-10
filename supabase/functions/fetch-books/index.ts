@@ -116,12 +116,6 @@ const handler = async (req: Request): Promise<Response> => {
       };
     });
 
-    // Create type mapping data for client-side caching
-    const typeMappingData = transformedBooks.map(book => ({
-      id: book.id,
-      type: 'titulo' as const
-    }));
-
     console.log(`✅ Books transformed: ${transformedBooks.length} items using REAL IDs for page ${page}`);
 
     return new Response(JSON.stringify({
@@ -131,8 +125,7 @@ const handler = async (req: Request): Promise<Response> => {
       total: data.total,
       totalPages: data.totalPages,
       count: transformedBooks.length,
-      books: transformedBooks,
-      typeMapping: typeMappingData // Add type mapping for client-side cache
+      books: transformedBooks
     }), {
       status: 200,
       headers: {
@@ -151,8 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
       limit: 10,
       total: 0,
       totalPages: 0,
-      books: [],
-      typeMapping: []
+      books: []
     }), {
       status: 500,
       headers: {

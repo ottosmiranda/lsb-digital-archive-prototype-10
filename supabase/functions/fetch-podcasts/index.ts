@@ -125,12 +125,6 @@ const handler = async (req: Request): Promise<Response> => {
       episodio_id: episode.episodio_id
     }));
 
-    // Create type mapping data for client-side caching
-    const typeMappingData = transformedPodcasts.map(podcast => ({
-      id: podcast.id,
-      type: 'podcast' as const
-    }));
-
     console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items using REAL IDs for page ${page}`);
 
     // Extract program info from first episode if filtering by podcast title
@@ -153,8 +147,7 @@ const handler = async (req: Request): Promise<Response> => {
       totalPages: data.totalPages,
       count: transformedPodcasts.length,
       podcasts: transformedPodcasts,
-      programInfo,
-      typeMapping: typeMappingData // Add type mapping for client-side cache
+      programInfo
     }), {
       status: 200,
       headers: {
@@ -174,8 +167,7 @@ const handler = async (req: Request): Promise<Response> => {
       total: 0,
       totalPages: 0,
       podcasts: [],
-      programInfo: null,
-      typeMapping: []
+      programInfo: null
     }), {
       status: 500,
       headers: {

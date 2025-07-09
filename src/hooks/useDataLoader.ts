@@ -1,126 +1,59 @@
 
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
 import { SearchResult } from '@/types/searchTypes';
-import { ResourceLookupService } from '@/services/resourceLookupService';
+import { dataService } from '@/services/dataService';
 
-export const useDataLoader = (loadAll: boolean = false) => {
+export const useDataLoader = () => {
   const [allData, setAllData] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [usingFallback, setUsingFallback] = useState(false);
 
-  const loadData = useCallback(async () => {
-    if (loading) return;
-    
+  const loadData = async (forceRefresh: boolean = false) => {
+    console.log('🔄 useDataLoader: Starting data load, forceRefresh:', forceRefresh);
     setLoading(true);
-    setError(null);
-    
-    const startTime = Date.now();
-    console.log('🚀 Iniciando carregamento de dados...');
-
     try {
-      const promises = [];
+      const data = await dataService.loadData(forceRefresh);
+      console.log('✅ useDataLoader: Data loaded successfully, count:', data.length);
       
-      // Fetch videos
-      promises.push(
-        supabase.functions.invoke('fetch-videos', {
-          body: { 
-            page: 1, 
-            limit: loadAll ? 1000 : 12
-          }
-        }).then(response => {
-          if (response.error) throw response.error;
-          const data = response.data;
-          if (data?.success && data?.videos) {
-            // Save type mapping for videos
-            if (data.typeMapping) {
-              ResourceLookupService.batchSaveTypeMapping(data.typeMapping);
-            }
-            return { type: 'videos', data: data.videos };
-          }
-          return { type: 'videos', data: [] };
-        })
-      );
-
-      // Fetch books
-      promises.push(
-        supabase.functions.invoke('fetch-books', {
-          body: { 
-            page: 1, 
-            limit: loadAll ? 1000 : 12
-          }
-        }).then(response => {
-          if (response.error) throw response.error;
-          const data = response.data;
-          if (data?.success && data?.books) {
-            // Save type mapping for books
-            if (data.typeMapping) {
-              ResourceLookupService.batchSaveTypeMapping(data.typeMapping);
-            }
-            return { type: 'books', data: data.books };
-          }
-          return { type: 'books', data: [] };
-        })
-      );
-
-      // Fetch podcasts
-      promises.push(
-        supabase.functions.invoke('fetch-podcasts', {
-          body: { 
-            page: 1, 
-            limit: loadAll ? 1000 : 12
-          }
-        }).then(response => {
-          if (response.error) throw response.error;
-          const data = response.data;
-          if (data?.success && data?.podcasts) {
-            // Save type mapping for podcasts
-            if (data.typeMapping) {
-              ResourceLookupService.batchSaveTypeMapping(data.typeMapping);
-            }
-            return { type: 'podcasts', data: data.podcasts };
-          }
-          return { type: 'podcasts', data: [] };
-        })
-      );
-
-      const results = await Promise.allSettled(promises);
-      const allItems: SearchResult[] = [];
+      // Check if we're using fallback data
+      const fallbackDetected = dataService.isUsingFallbackData();
+      setUsingFallback(fallbackDetected);
       
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          const items = result.value.data;
-          allItems.push(...items);
-          console.log(`✅ ${result.value.type} carregados: ${items.length} itens`);
-        } else {
-          const types = ['videos', 'books', 'podcasts'];
-          console.error(`❌ Erro ao carregar ${types[index]}:`, result.reason);
-        }
-      });
-
-      setAllData(allItems);
+      if (fallbackDetected) {
+        console.warn('⚠️ useDataLoader: DETECTED FALLBACK DATA - Real JSON failed to load!');
+      } else {
+        console.log('✅ useDataLoader: Real JSON data loaded successfully');
+      }
       
-      const loadTime = Date.now() - startTime;
-      console.log(`🎉 Carregamento concluído: ${allItems.length} itens em ${loadTime}ms`);
-      
-      // Log cache statistics
-      const cacheStats = ResourceLookupService.getCacheStats();
-      console.log('📊 Cache Stats:', cacheStats);
-      
+      setAllData(data);
+      setDataLoaded(true);
     } catch (error) {
-      console.error('❌ Erro durante carregamento:', error);
-      setError(error instanceof Error ? error.message : 'Erro desconhecido');
+      console.error('❌ useDataLoader: Error loading data:', error);
+      setUsingFallback(true);
     } finally {
       setLoading(false);
     }
-  }, [loadAll, loading]);
+  };
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!dataLoaded) {
+      loadData();
+    }
+  }, [dataLoaded]);
 
-  // Return dataLoaded based on whether we have data and are not loading
-  const dataLoaded = !loading && allData.length > 0;
+  const forceRefresh = async () => {
+    console.log('🔄 useDataLoader: Force refresh triggered');
+    setDataLoaded(false);
+    await loadData(true);
+  };
 
-  return { allData, loading, error, loadData, dataLoaded };
+  return {
+    allData,
+    loading,
+    dataLoaded,
+    usingFallback,
+    setLoading,
+    forceRefresh
+  };
 };

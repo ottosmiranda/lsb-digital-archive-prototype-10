@@ -1,4 +1,3 @@
-
 // Configurações centralizadas para a API
 export const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
 
@@ -18,6 +17,23 @@ export interface ContentCounts {
   books: number;
   podcasts: number;
 }
+
+// ENDPOINTS DE ID ÚNICO
+export const UNIQUE_ID_ENDPOINTS = {
+  livro: (id: string) => `${API_BASE_URL}/conteudo-lbs/livro/${id}`,
+  aula: (id: string) => `${API_BASE_URL}/conteudo-lbs/aula/${id}`,
+  podcast: (id: string) => `${API_BASE_URL}/conteudo-lbs/podcast/${id}`
+};
+
+// CONFIGURAÇÃO PARA ENDPOINTS DE ID ÚNICO
+export const UNIQUE_ID_CONFIG = {
+  timeout: 8000, // 8 segundos
+  retries: 2,
+  headers: {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+  }
+};
 
 // CONFIGURAÇÃO ESCALÁVEL PARA NÚMEROS EXATOS
 export const SCALABLE_CONFIG = {

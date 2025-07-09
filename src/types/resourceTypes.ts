@@ -1,6 +1,7 @@
 
 export interface Resource {
   id: number;
+  originalId?: string; // ID original da API para vídeos e outros recursos
   title: string;
   type: 'video' | 'titulo' | 'podcast';
   author: string;

@@ -43,6 +43,17 @@ const SearchResults = () => {
 
   const handleClearQuery = () => {
     setQuery('');
+    handleFilterChange({
+      resourceType: ['all'],
+      subject: [],
+      author: [],
+      year: '',
+      duration: '',
+      language: [],
+      documentType: [],
+      program: [],
+      channel: [],
+    });
     handlePageChange(1);
   };
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Resource } from '@/types/resourceTypes';
 import { useDataLoader } from './useDataLoader';
@@ -26,42 +25,22 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         return;
       }
 
-      console.group('🔍 BUSCA HÍBRIDA DE RECURSO');
-      console.log('🎯 Target ID:', id);
+      console.group('🔍 BUSCA HÍBRIDA DE RECURSO (IDs REAIS)');
+      console.log('🎯 Target Real ID:', id);
 
-      // FASE 1: Busca no cache local
+      // FASE 1: Busca no cache local usando ID real
       if (allData && allData.length > 0) {
-        console.log('📊 Fase 1: Buscando no cache local...');
+        console.log('📊 Fase 1: Buscando no cache local com ID real...');
         
-        // Direct ID match
-        let foundResource = allData.find(item => String(item.id) === id);
-        
-        // originalId match for videos
-        if (!foundResource) {
-          foundResource = allData.find(item => 
-            item.type === 'video' && (item as any).originalId === id
-          );
-        }
-
-        // Smart numerical matching
-        if (!foundResource) {
-          const numericId = parseInt(id);
-          if (numericId >= 1000) {
-            const videos = allData.filter(item => item.type === 'video');
-            const videoMatches = videos
-              .map(v => ({ video: v, distance: Math.abs(v.id - numericId) }))
-              .sort((a, b) => a.distance - b.distance);
-            
-            if (videoMatches.length > 0 && videoMatches[0].distance < 1000) {
-              foundResource = videoMatches[0].video;
-            }
-          }
-        }
+        // Direct match with real ID
+        const foundResource = allData.find(item => String(item.id) === id);
 
         if (foundResource) {
-          console.log('✅ Fase 1 SUCCESS: Encontrado no cache local');
+          console.log('✅ Fase 1 SUCCESS: Encontrado no cache local com ID real');
+          
           const convertedResource: Resource = {
-            id: typeof foundResource.id === 'string' ? parseInt(id) : foundResource.id,
+            id: String(foundResource.id),
+            originalId: (foundResource as any).originalId || String(foundResource.id),
             title: foundResource.title,
             type: foundResource.type,
             author: foundResource.author,
@@ -91,21 +70,21 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         }
       }
 
-      // FASE 2: Busca na API por ID único (fallback)
+      // FASE 2: Busca na API usando ID real
       if (!dataLoading && !apiAttempted) {
-        console.log('📡 Fase 2: Buscando na API por ID único...');
+        console.log('📡 Fase 2: Buscando na API com ID real...');
         setApiAttempted(true);
         
-        // Tentar diferentes tipos de recursos
+        // Try different resource types with the REAL ID
         const resourceTypes = ['video', 'titulo', 'podcast'];
         
         for (const resourceType of resourceTypes) {
           try {
-            console.log(`🔍 Tentando buscar como ${resourceType}...`);
+            console.log(`🔍 Tentando buscar ${resourceType} com ID real: ${id}`);
             const apiResource = await ResourceByIdService.fetchResourceById(id, resourceType);
             
             if (apiResource) {
-              console.log(`✅ Fase 2 SUCCESS: Encontrado na API como ${resourceType}`);
+              console.log(`✅ Fase 2 SUCCESS: Encontrado na API como ${resourceType} com ID real`);
               setResource(apiResource);
               setLoading(false);
               setError(null);
@@ -113,12 +92,12 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
               return;
             }
           } catch (apiError) {
-            console.log(`❌ Falha ao buscar como ${resourceType}:`, apiError);
+            console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, apiError);
           }
         }
         
-        // Se chegou até aqui, não encontrou em lugar nenhum
-        console.log('💀 FALHA TOTAL: Recurso não encontrado em cache local nem na API');
+        // If we get here, resource not found anywhere
+        console.log('💀 FALHA TOTAL: Recurso não encontrado com ID real');
         setResource(null);
         setLoading(false);
         setError('Recurso não encontrado');

@@ -1,4 +1,3 @@
-
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,23 +59,16 @@ const SearchResultsList = ({
   };
 
   const handleResourceClick = (result: SearchResult) => {
-    console.group('🎯 LIST NAVIGATION DEBUG');
+    console.group('🎯 LIST NAVIGATION DEBUG (REAL IDs)');
     console.log('📋 Clicked resource:', {
       id: result.id,
-      originalId: (result as any).originalId,
       type: result.type,
       title: result.title.substring(0, 50) + '...'
     });
     
-    // For videos, prioritize originalId if available (UUID from API)
-    let navigationId: string;
-    if (result.type === 'video' && (result as any).originalId) {
-      navigationId = (result as any).originalId;
-      console.log('🎬 Using originalId for video navigation:', navigationId);
-    } else {
-      navigationId = String(result.id);
-      console.log('📄 Using standard id for navigation:', navigationId);
-    }
+    // Use the real ID directly - no more artificial ID mapping
+    const navigationId = String(result.id);
+    console.log('🔗 Using REAL ID for navigation:', navigationId);
     
     const targetRoute = `/recurso/${navigationId}`;
     console.log('🔗 Navigating to:', targetRoute);

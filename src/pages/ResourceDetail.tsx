@@ -23,6 +23,13 @@ const ResourceDetail = () => {
     window.scrollTo(0, 0);
   }, [id, resource]);
 
+  console.group('🎯 RESOURCE DETAIL DEBUG (REAL IDs)');
+  console.log('📋 URL ID:', id);
+  console.log('📋 Resource found:', resource ? { id: resource.id, type: resource.type, title: resource.title.substring(0, 50) + '...' } : 'null');
+  console.log('📋 Loading:', loading);
+  console.log('📋 Error:', error);
+  console.groupEnd();
+
   // Loading skeleton
   if (loading) return <><Navigation /><LoadingSkeleton /></>;
   

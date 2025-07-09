@@ -38,7 +38,7 @@ export class ResourceByIdService {
   private static readonly TIMEOUT_MS = 8000;
 
   static async fetchResourceById(id: string, resourceType: string): Promise<Resource | null> {
-    console.log(`🔍 Buscando recurso por ID: ${id}, tipo: ${resourceType}`);
+    console.log(`🔍 Buscando recurso por ID REAL: ${id}, tipo: ${resourceType}`);
     
     try {
       const endpoint = this.getEndpointForType(resourceType, id);
@@ -89,11 +89,11 @@ export class ResourceByIdService {
   private static transformToResource(data: any, resourceType: string, requestedId: string): Resource {
     console.log(`🔄 Transformando dados para Resource:`, { resourceType, data });
 
-    // Para podcasts, a resposta é um array
+    // For podcasts, the response is an array
     if (resourceType === 'podcast' && Array.isArray(data)) {
-      const podcast = data[0]; // Pegar o primeiro episódio
+      const podcast = data[0]; // Get the first episode
       return {
-        id: parseInt(requestedId) || Math.floor(Math.random() * 10000) + 1000,
+        id: podcast.episodio_id || requestedId, // Use real episode ID
         originalId: podcast.episodio_id || requestedId,
         title: podcast.episodio_titulo || podcast.podcast_titulo || 'Podcast sem título',
         author: podcast.publicador || 'Autor desconhecido',
@@ -109,10 +109,10 @@ export class ResourceByIdService {
       };
     }
 
-    // Para livros
+    // For books
     if (resourceType === 'titulo') {
       return {
-        id: parseInt(requestedId) || Math.floor(Math.random() * 10000) + 1000,
+        id: data.id || requestedId, // Use real book ID
         originalId: data.id || requestedId,
         title: data.titulo || 'Livro sem título',
         author: data.autor || 'Autor desconhecido',
@@ -129,10 +129,10 @@ export class ResourceByIdService {
       };
     }
 
-    // Para vídeos/aulas
+    // For videos/classes
     if (resourceType === 'video') {
       return {
-        id: parseInt(requestedId) || Math.floor(Math.random() * 10000) + 1000,
+        id: data.id || requestedId, // Use real video ID
         originalId: data.id || requestedId,
         title: data.titulo || 'Vídeo sem título',
         author: data.canal || 'Canal desconhecido',

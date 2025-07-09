@@ -1,5 +1,4 @@
 
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
@@ -32,7 +31,7 @@ interface PodcastEpisodeItem {
 }
 
 interface TransformedPodcast {
-  id: number;
+  id: string; // Using real episodio_id instead of artificial number
   title: string;
   type: 'podcast';
   author: string;
@@ -110,9 +109,9 @@ const handler = async (req: Request): Promise<Response> => {
       return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
     };
 
-    // Transform episodes to match SearchResult interface
-    const transformedPodcasts: TransformedPodcast[] = data.conteudo.map((episode, index) => ({
-      id: (page - 1) * limit + index + 2000, // Generate unique IDs based on page and position
+    // Transform episodes to match SearchResult interface using REAL IDs
+    const transformedPodcasts: TransformedPodcast[] = data.conteudo.map((episode) => ({
+      id: episode.episodio_id, // Use REAL episode ID from API
       title: episode.episodio_titulo || 'Episódio sem título',
       type: 'podcast' as const,
       author: episode.publicador || 'Autor não informado',
@@ -126,7 +125,7 @@ const handler = async (req: Request): Promise<Response> => {
       episodio_id: episode.episodio_id
     }));
 
-    console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items for page ${page}`);
+    console.log(`✅ Podcasts transformed: ${transformedPodcasts.length} items using REAL IDs for page ${page}`);
 
     // Extract program info from first episode if filtering by podcast title
     let programInfo = null;
@@ -180,4 +179,3 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 serve(handler);
-

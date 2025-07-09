@@ -29,7 +29,7 @@ interface BookItem {
 }
 
 interface TransformedBook {
-  id: number;
+  id: string; // Using real API ID instead of artificial number
   title: string;
   type: 'titulo';
   author: string;
@@ -89,8 +89,8 @@ const handler = async (req: Request): Promise<Response> => {
     const data: BookApiResponse = await response.json();
     console.log(`✅ API Response: ${data.conteudo.length} books, page ${data.page}/${data.totalPages}`);
 
-    // Transform books to match SearchResult interface
-    const transformedBooks: TransformedBook[] = data.conteudo.map((book, index) => {
+    // Transform books to match SearchResult interface using REAL IDs
+    const transformedBooks: TransformedBook[] = data.conteudo.map((book) => {
       let description = book.descricao;
       if (!description || description.trim() === '') {
         description = `Livro de ${book.autor} sobre ${book.categorias && book.categorias.length > 0 ? book.categorias[0] : 'diversos temas'}, ${book.paginas} páginas.`;
@@ -100,7 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
       const defaultThumbnail = '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png';
 
       return {
-        id: (page - 1) * limit + index + 3000, // Generate unique IDs based on page and position
+        id: book.id, // Use REAL ID from API
         title: book.titulo || 'Livro sem título',
         type: 'titulo' as const,
         author: book.autor || 'Autor não informado',
@@ -116,7 +116,7 @@ const handler = async (req: Request): Promise<Response> => {
       };
     });
 
-    console.log(`✅ Books transformed: ${transformedBooks.length} items for page ${page}`);
+    console.log(`✅ Books transformed: ${transformedBooks.length} items using REAL IDs for page ${page}`);
 
     return new Response(JSON.stringify({
       success: true,

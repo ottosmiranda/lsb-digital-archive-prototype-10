@@ -29,7 +29,7 @@ interface VideoItem {
 }
 
 interface TransformedVideo {
-  id: number;
+  id: string; // Using real API ID instead of artificial number
   originalId: string;
   title: string;
   type: 'video';
@@ -41,18 +41,6 @@ interface TransformedVideo {
   subject: string;
   embedUrl?: string;
   pais?: string;
-}
-
-// Create a simple hash function to convert string IDs to unique numbers
-function stringToHash(str: string): number {
-  let hash = 0;
-  if (str.length === 0) return hash;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return Math.abs(hash) + 1000;
 }
 
 function formatDuration(minutes: number): string {
@@ -109,12 +97,10 @@ const handler = async (req: Request): Promise<Response> => {
     const data: VideoApiResponse = await response.json();
     console.log(`✅ API Response: ${data.conteudo.length} videos, page ${data.page}/${data.totalPages}`);
 
-    // Transform videos to match SearchResult interface
+    // Transform videos to match SearchResult interface using REAL IDs
     const transformedVideos: TransformedVideo[] = data.conteudo.map((video) => {
-      const hashedId = stringToHash(video.id);
-      
       return {
-        id: hashedId,
+        id: video.id, // Use REAL ID from API
         originalId: video.id,
         title: video.titulo || 'Vídeo sem título',
         type: 'video' as const,
@@ -129,7 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
       };
     });
 
-    console.log(`✅ Videos transformed: ${transformedVideos.length} items for page ${page}`);
+    console.log(`✅ Videos transformed: ${transformedVideos.length} items using REAL IDs for page ${page}`);
 
     return new Response(JSON.stringify({
       success: true,

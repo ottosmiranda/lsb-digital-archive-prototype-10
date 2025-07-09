@@ -1,6 +1,6 @@
 
 export interface Resource {
-  id: number;
+  id: string; // Changed from number to string to match real API IDs
   originalId?: string; // ID original da API para vídeos e outros recursos
   title: string;
   type: 'video' | 'titulo' | 'podcast';

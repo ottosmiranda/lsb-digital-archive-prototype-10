@@ -120,12 +120,13 @@ export const determineFilterRelevance = (
     };
   }
 
+  // ✅ CORRIGIDO: Vídeos TÊMM campo ano disponível na API
   if (activeContentType === 'video') {
     return {
       subject: stats.availableSubjects.length > 0,
       author: true,
       language: stats.availableLanguages.length > 0,
-      year: false, // API não fornece ano para vídeos
+      year: true, // ✅ CORRIGIDO: API fornece ano para vídeos
       duration: stats.hasItemsWithDuration,
       pages: false,
     };
@@ -142,12 +143,12 @@ export const determineFilterRelevance = (
     };
   }
 
-  // Para 'all' ou quando há múltiplos tipos
+  // ✅ CORRIGIDO: Para 'all', incluir vídeos na lógica de anos
   return {
     subject: stats.availableSubjects.length > 0,
     author: true,
     language: stats.availableLanguages.length > 0,
-    year: stats.hasBooks || stats.hasPodcasts, // Apenas livros e podcasts têm ano
+    year: stats.hasBooks || stats.hasPodcasts || stats.hasVideos, // ✅ CORRIGIDO: Incluir vídeos
     duration: (stats.hasVideos || stats.hasPodcasts) && stats.hasItemsWithDuration,
     pages: stats.hasBooks && stats.hasItemsWithPages,
   };
@@ -171,6 +172,7 @@ export const getFilterPriority = (
     priorities.duration = 2;
     priorities.language = 3;
     priorities.author = 4;
+    priorities.year = 5; // ✅ ADICIONADO: Prioridade para filtro de ano em vídeos
   } else if (activeContentType === 'podcast') {
     priorities.author = 1;
     priorities.duration = 2;

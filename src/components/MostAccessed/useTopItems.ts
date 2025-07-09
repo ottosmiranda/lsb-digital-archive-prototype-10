@@ -39,7 +39,8 @@ function calculatePopularityScore(item: SearchResult): number {
   let score = 0;
   
   // Base score pelo ID (itens com IDs menores são "mais antigos" e podem ser mais populares)
-  const idScore = Math.max(1000 - (item.id || 1000), 100);
+  const numericId = typeof item.id === 'string' ? parseInt(item.id) || 1000 : item.id || 1000;
+  const idScore = Math.max(1000 - numericId, 100);
   score += idScore;
   
   // Bonus por tipo (podcasts tendem a ter mais replay value)

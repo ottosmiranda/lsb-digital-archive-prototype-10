@@ -207,9 +207,18 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
       console.log('Books sample:', homepageContent.books.slice(0, 2));
       console.log('Podcasts sample:', homepageContent.podcasts.slice(0, 2));
       
-      const usingFallback = homepageContent.videos.some(v => v.id > 1000000) || 
-                           homepageContent.books.some(b => b.id > 2000) ||
-                           homepageContent.podcasts.some(p => p.id > 1000);
+      const usingFallback = homepageContent.videos.some(v => {
+        const numericId = typeof v.id === 'string' ? parseInt(v.id) || 0 : v.id;
+        return numericId > 1000000;
+      }) || 
+      homepageContent.books.some(b => {
+        const numericId = typeof b.id === 'string' ? parseInt(b.id) || 0 : b.id;
+        return numericId > 2000;
+      }) ||
+      homepageContent.podcasts.some(p => {
+        const numericId = typeof p.id === 'string' ? parseInt(p.id) || 0 : p.id;
+        return numericId > 1000;
+      });
       
       console.log('Data source:', usingFallback ? 'SUPABASE FALLBACK' : 'EXTERNAL API');
       console.groupEnd();

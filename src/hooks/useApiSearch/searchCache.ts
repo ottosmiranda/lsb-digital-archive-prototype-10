@@ -29,11 +29,23 @@ export class SearchCache {
   }
 
   setCache(cacheKey: string, data: SearchResponse): void {
-    // Atualizar cache apenas com respostas válidas
-    if (data.results.length > 0 || data.pagination.totalResults === 0) {
+    // CORREÇÃO CRÍTICA: Permitir cache de páginas válidas vazias e respostas com erro
+    const isValidForCache = 
+      data.results.length > 0 || // Tem resultados
+      data.pagination.totalResults === 0 || // Busca realmente vazia
+      (data.pagination.totalPages > 0 && data.pagination.currentPage <= data.pagination.totalPages); // Página válida
+    
+    if (isValidForCache) {
       this.cache.set(cacheKey, {
         data,
         timestamp: Date.now()
+      });
+      
+      console.log(`📦 Cache UPDATED:`, {
+        page: data.pagination.currentPage,
+        results: data.results.length,
+        totalResults: data.pagination.totalResults,
+        success: data.success
       });
       
       // Limitar cache a 20 entradas
@@ -41,6 +53,13 @@ export class SearchCache {
         const firstKey = this.cache.keys().next().value;
         this.cache.delete(firstKey);
       }
+    } else {
+      console.warn(`🚫 Cache REJECTED - dados inválidos:`, {
+        results: data.results.length,
+        totalResults: data.pagination.totalResults,
+        currentPage: data.pagination.currentPage,
+        totalPages: data.pagination.totalPages
+      });
     }
   }
 

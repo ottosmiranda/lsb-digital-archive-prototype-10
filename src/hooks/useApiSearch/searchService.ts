@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { SearchFilters } from '@/types/searchTypes';
 import { SearchResponse } from './types';
+import { SequentialPaginationService } from '../../services/search/sequentialPaginationService';
 
 export class SearchService {
   async executeSearch(
@@ -12,70 +13,72 @@ export class SearchService {
     resultsPerPage: number
   ): Promise<SearchResponse> {
     const requestId = `search_${Date.now()}`;
-    console.group(`🔍 ${requestId} - API Search Request`);
-    console.log('📋 Parameters:', { query, filters, sortBy, page, resultsPerPage });
+    console.group(`🔍 ${requestId} - Nova Arquitetura de Busca Sequencial`);
     
     try {
-      const requestBody = {
-        query: query.trim() || '',
-        filters, 
-        sortBy,
+      // VALIDAÇÃO CRÍTICA: Verificar se a página é válida
+      if (!SequentialPaginationService.isValidPage(page, resultsPerPage)) {
+        console.warn(`❌ Página inválida: ${page}`);
+        const totalPages = SequentialPaginationService.getTotalPages(resultsPerPage);
+        
+        return {
+          success: false,
+          results: [],
+          pagination: {
+            currentPage: page,
+            totalPages,
+            totalResults: SequentialPaginationService.getTotalItems(),
+            hasNextPage: false,
+            hasPreviousPage: false
+          },
+          searchInfo: {
+            query,
+            appliedFilters: filters,
+            sortBy
+          },
+          error: `Página ${page} inválida. Total de páginas: ${totalPages}`
+        };
+      }
+
+      // IMPLEMENTAÇÃO: Usar paginação sequencial corrigida
+      const response = await SequentialPaginationService.fetchSequentialPage({
         page,
-        resultsPerPage
-      };
-      
-      console.log('📡 Edge function body:', requestBody);
-      
-      // Timeout de 30 segundos para evitar hangs
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Search timeout after 30 seconds')), 30000);
+        limit: resultsPerPage,
+        sortBy
       });
-      
-      const searchPromise = supabase.functions.invoke('search-content', {
-        body: requestBody
-      });
-      
-      const { data, error: searchError } = await Promise.race([searchPromise, timeoutPromise]);
 
-      if (searchError) {
-        console.error('❌ Edge function error:', searchError);
-        throw new Error(`Search function error: ${searchError.message}`);
-      }
-
-      if (!data || !data.success) {
-        console.error('❌ Edge function returned error:', data);
-        throw new Error(data?.error || 'Search failed - no data returned');
-      }
-
-      const response: SearchResponse = data;
-      
-      // VALIDAÇÃO CRÍTICA: Verificar se resposta é válida
-      if (!response.results || !Array.isArray(response.results)) {
-        console.error('❌ Invalid response structure:', response);
-        throw new Error('Invalid response structure from search function');
-      }
-      
-      // VALIDAÇÃO: Alertar sobre inconsistências
-      if (response.results.length === 0 && response.pagination.totalResults > 0) {
-        console.warn('⚠️ INCONSISTÊNCIA: 0 results mas totalResults > 0');
-      }
-
-      console.log('✅ Search successful:', {
-        results: response.results.length,
-        totalResults: response.pagination.totalResults,
-        currentPage: response.pagination.currentPage,
-        totalPages: response.pagination.totalPages
+      console.log(`✅ Busca sequencial bem-sucedida:`, {
+        results: response.items.length,
+        totalResults: response.totalResults,
+        currentPage: response.currentPage,
+        totalPages: response.totalPages,
+        distribution: response.distribution
       });
 
       console.groupEnd();
-      return response;
 
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Search failed';
-      console.error('❌ Search complete failure:', errorMessage);
+      return {
+        success: true,
+        results: response.items,
+        pagination: {
+          currentPage: response.currentPage,
+          totalPages: response.totalPages,
+          totalResults: response.totalResults,
+          hasNextPage: response.currentPage < response.totalPages,
+          hasPreviousPage: response.currentPage > 1
+        },
+        searchInfo: {
+          query,
+          appliedFilters: filters,
+          sortBy
+        }
+      };
+
+    } catch (error) {
+      console.error(`❌ Erro na busca sequencial:`, error);
+      console.groupEnd();
       
-      // Retornar resposta vazia em caso de erro
-      const errorResponse: SearchResponse = {
+      return {
         success: false,
         results: [],
         pagination: {
@@ -90,11 +93,8 @@ export class SearchService {
           appliedFilters: filters,
           sortBy
         },
-        error: errorMessage
+        error: error instanceof Error ? error.message : 'Erro desconhecido na busca'
       };
-      
-      console.groupEnd();
-      throw new Error(errorMessage);
     }
   }
 }

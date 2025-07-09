@@ -1,6 +1,6 @@
 
 export interface SearchResult {
-  id: number;
+  id: string; // ✅ CORRIGIDO: Padronizado como string para compatibilidade universal
   originalId?: string; // Add originalId for UUIDs from the API
   title: string;
   type: 'video' | 'titulo' | 'podcast';

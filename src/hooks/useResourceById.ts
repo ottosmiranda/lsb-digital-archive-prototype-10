@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { Resource } from '@/types/resourceTypes';
-import { useDataLoader } from './useDataLoader';
 import { ResourceByIdService } from '@/services/resourceByIdService';
+import { ResourceLookupService } from '@/services/resourceLookupService';
 
 interface UseResourceByIdResult {
   resource: Resource | null;
@@ -10,11 +11,9 @@ interface UseResourceByIdResult {
 }
 
 export const useResourceById = (id: string | undefined): UseResourceByIdResult => {
-  const { allData, loading: dataLoading } = useDataLoader();
   const [resource, setResource] = useState<Resource | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [apiAttempted, setApiAttempted] = useState(false);
 
   useEffect(() => {
     const findResource = async () => {
@@ -25,91 +24,97 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         return;
       }
 
-      console.group('🔍 BUSCA HÍBRIDA DE RECURSO (IDs REAIS)');
-      console.log('🎯 Target Real ID:', id);
+      console.group('🎯 BUSCA OTIMIZADA DE RECURSO');
+      console.log('🔍 Target ID:', id);
 
-      // FASE 1: Busca no cache local usando ID real
-      if (allData && allData.length > 0) {
-        console.log('📊 Fase 1: Buscando no cache local com ID real...');
+      try {
+        setLoading(true);
+        setError(null);
+
+        // FASE 1: Busca no cache de recursos
+        console.log('📦 Fase 1: Verificando cache de recursos...');
+        const cachedResource = ResourceLookupService.getCachedResource(id);
         
-        // Direct match with real ID
-        const foundResource = allData.find(item => String(item.id) === id);
-
-        if (foundResource) {
-          console.log('✅ Fase 1 SUCCESS: Encontrado no cache local com ID real');
-          
-          const convertedResource: Resource = {
-            id: String(foundResource.id),
-            originalId: (foundResource as any).originalId || String(foundResource.id),
-            title: foundResource.title,
-            type: foundResource.type,
-            author: foundResource.author,
-            duration: foundResource.duration,
-            pages: foundResource.pages,
-            episodes: foundResource.episodes ? 
-              (typeof foundResource.episodes === 'string' ? 
-                parseInt(foundResource.episodes.replace(/\D/g, '')) : foundResource.episodes) : undefined,
-            thumbnail: foundResource.thumbnail,
-            description: foundResource.description,
-            year: foundResource.year,
-            subject: foundResource.subject,
-            embedUrl: (foundResource as any).embedUrl,
-            pdfUrl: (foundResource as any).pdfUrl,
-            fullDescription: foundResource.description,
-            tags: foundResource.subject ? [foundResource.subject] : undefined,
-            language: (foundResource as any).language,
-            documentType: (foundResource as any).documentType,
-            categories: (foundResource as any).categories
-          };
-          
-          setResource(convertedResource);
+        if (cachedResource) {
+          console.log('✅ Fase 1 SUCCESS: Recurso encontrado no cache');
+          setResource(cachedResource);
           setLoading(false);
-          setError(null);
           console.groupEnd();
           return;
         }
-      }
 
-      // FASE 2: Busca na API usando ID real
-      if (!dataLoading && !apiAttempted) {
-        console.log('📡 Fase 2: Buscando na API com ID real...');
-        setApiAttempted(true);
+        // FASE 2: Busca tipo específico no mapeamento
+        console.log('🗺️ Fase 2: Consultando mapeamento de tipos...');
+        const resourceType = ResourceLookupService.getResourceType(id);
         
-        // Try different resource types with the REAL ID
+        if (resourceType) {
+          console.log(`✅ Tipo encontrado: ${resourceType}`);
+          console.log(`📡 Fase 2: Buscando diretamente na API /${resourceType}/${id}...`);
+          
+          const apiResource = await ResourceByIdService.fetchResourceById(id, resourceType);
+          
+          if (apiResource) {
+            console.log('✅ Fase 2 SUCCESS: Recurso encontrado na API com tipo específico');
+            
+            // Cache the resource for future use
+            ResourceLookupService.saveResourceCache(id, apiResource);
+            setResource(apiResource);
+            setLoading(false);
+            console.groupEnd();
+            return;
+          } else {
+            console.log('❌ Fase 2 FALHA: Recurso não encontrado na API com tipo específico');
+          }
+        } else {
+          console.log('⚠️ Tipo não encontrado no mapeamento');
+        }
+
+        // FASE 3: Fallback - busca em todos os tipos (apenas como emergência)
+        console.log('🆘 Fase 3: FALLBACK - Tentando todos os tipos...');
         const resourceTypes = ['video', 'titulo', 'podcast'];
         
         for (const resourceType of resourceTypes) {
           try {
-            console.log(`🔍 Tentando buscar ${resourceType} com ID real: ${id}`);
+            console.log(`🔍 Tentando ${resourceType} com ID: ${id}`);
             const apiResource = await ResourceByIdService.fetchResourceById(id, resourceType);
             
             if (apiResource) {
-              console.log(`✅ Fase 2 SUCCESS: Encontrado na API como ${resourceType} com ID real`);
+              console.log(`✅ Fase 3 SUCCESS: Encontrado como ${resourceType}`);
+              
+              // Save type mapping for future use
+              ResourceLookupService.saveTypeMapping(id, resourceType as any);
+              
+              // Cache the resource
+              ResourceLookupService.saveResourceCache(id, apiResource);
+              
               setResource(apiResource);
               setLoading(false);
-              setError(null);
               console.groupEnd();
               return;
             }
           } catch (apiError) {
-            console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, apiError);
+            console.log(`❌ Falha ao buscar ${resourceType}:`, apiError);
           }
         }
         
-        // If we get here, resource not found anywhere
-        console.log('💀 FALHA TOTAL: Recurso não encontrado com ID real');
+        // Se chegou aqui, recurso não foi encontrado
+        console.log('💀 FALHA TOTAL: Recurso não encontrado em nenhum endpoint');
         setResource(null);
         setLoading(false);
         setError('Recurso não encontrado');
+        
+      } catch (error) {
+        console.error('❌ Erro durante busca:', error);
+        setResource(null);
+        setLoading(false);
+        setError(error instanceof Error ? error.message : 'Erro desconhecido');
       }
       
       console.groupEnd();
     };
 
-    if (!dataLoading) {
-      findResource();
-    }
-  }, [id, allData, dataLoading, apiAttempted]);
+    findResource();
+  }, [id]);
 
-  return { resource, loading: dataLoading || loading, error };
+  return { resource, loading, error };
 };

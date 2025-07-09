@@ -62,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Parse request body for pagination parameters
     let page = 1;
-    let limit = 10; // Default limit for optimization
+    let limit = 10;
     
     if (req.method === 'POST') {
       try {
@@ -115,6 +115,12 @@ const handler = async (req: Request): Promise<Response> => {
       };
     });
 
+    // Create type mapping data for client-side caching
+    const typeMappingData = transformedVideos.map(video => ({
+      id: video.id,
+      type: 'video' as const
+    }));
+
     console.log(`✅ Videos transformed: ${transformedVideos.length} items using REAL IDs for page ${page}`);
 
     return new Response(JSON.stringify({
@@ -124,7 +130,8 @@ const handler = async (req: Request): Promise<Response> => {
       total: data.total,
       totalPages: data.totalPages,
       count: transformedVideos.length,
-      videos: transformedVideos
+      videos: transformedVideos,
+      typeMapping: typeMappingData // Add type mapping for client-side cache
     }), {
       status: 200,
       headers: {
@@ -143,7 +150,8 @@ const handler = async (req: Request): Promise<Response> => {
       limit: 10,
       total: 0,
       totalPages: 0,
-      videos: []
+      videos: [],
+      typeMapping: []
     }), {
       status: 500,
       headers: {

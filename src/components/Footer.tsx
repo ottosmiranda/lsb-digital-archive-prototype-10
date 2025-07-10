@@ -22,9 +22,10 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-link-dark text-white relative">
-      <div className="link-container">
-        <div className="py-16">
+    <footer className="bg-lsb-primary text-white relative">
+      <div className="lsb-container">
+        <div className="lsb-content">
+          <div className="py-16">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {/* Logo and Description */}
               <div className="lg:col-span-1">
@@ -50,7 +51,7 @@ const Footer = () => {
 
               {/* Institutional Links */}
               <div>
-                <h3 className="link-h3 text-link-cta mb-4">Institucional</h3>
+                <h3 className="font-semibold text-lg mb-4 text-lsb-accent">Institucional</h3>
                 <ul className="space-y-2">
                   {institutionalLinks.map((link) => (
                     <li key={link.label}>
@@ -67,7 +68,7 @@ const Footer = () => {
 
               {/* Quick Links */}
               <div>
-                <h3 className="link-h3 text-link-cta mb-4">Links Rápidos</h3>
+                <h3 className="font-semibold text-lg mb-4 text-lsb-accent">Links Rápidos</h3>
                 <ul className="space-y-2">
                   {quickLinks.map((link) => (
                     <li key={link.label}>
@@ -84,10 +85,10 @@ const Footer = () => {
 
               {/* Contact */}
               <div>
-                <h3 className="link-h3 text-link-cta mb-4">Contato</h3>
+                <h3 className="font-semibold text-lg mb-4 text-lsb-accent">Contato</h3>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
-                    <Mail className="h-4 w-4 text-link-cta" />
+                    <Mail className="h-4 w-4 text-lsb-accent" />
                     <a 
                       href="mailto:biblioteca@lsb.edu.br"
                       className="text-blue-200 hover:text-white transition-colors duration-150 text-sm"
@@ -96,11 +97,11 @@ const Footer = () => {
                     </a>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Phone className="h-4 w-4 text-link-cta" />
+                    <Phone className="h-4 w-4 text-lsb-accent" />
                     <span className="text-blue-200 text-sm">(11) 3456-7890</span>
                   </div>
                   <div className="flex items-start space-x-2">
-                    <MapPin className="h-4 w-4 text-link-cta mt-0.5" />
+                    <MapPin className="h-4 w-4 text-lsb-accent mt-0.5" />
                     <span className="text-blue-200 text-sm">
                       Rua do Conhecimento, 123<br />
                       São Paulo, SP - 01234-567
@@ -120,11 +121,12 @@ const Footer = () => {
             </div>
           </div>
         </div>
+      </div>
 
       {/* Scroll to Top Button */}
       <Button
         onClick={scrollToTop}
-        className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-link-cta hover:bg-link-cta/90 text-black shadow-lg hover-lift"
+        className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary shadow-lg hover-lift"
         size="sm"
       >
         <ArrowUp className="h-5 w-5" />

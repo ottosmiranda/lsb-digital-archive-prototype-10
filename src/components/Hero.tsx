@@ -38,31 +38,32 @@ const Hero = () => {
   ];
 
   return (
-    <section className="relative bg-gradient-to-br from-link-dark via-slate-800 to-slate-900">
+    <section className="relative bg-gradient-to-br from-lsb-primary via-blue-900 to-indigo-900">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
       </div>
 
-      <div className="link-container">
-        <div className="relative py-20 md:py-32">
-          <div className="text-center">
-            {/* Hero Content */}
-            <div className="animate-fade-in">
-              <h1 className="link-h1 text-white mb-6">
-                Sua fonte aberta de
-                <span className="block text-link-cta">conhecimento na LSB</span>
-              </h1>
-              
-              <p className="link-p1 text-link-white/90 mb-16 max-w-3xl mx-auto">
-                Explore livros, artigos, vídeos e podcasts sem precisar fazer login.
-              </p>
-            </div>
+      <div className="lsb-container">
+        <div className="lsb-content">
+          <div className="relative py-20 md:py-32">
+            <div className="text-center">
+              {/* Hero Content */}
+              <div className="animate-fade-in">
+                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+                  Sua fonte aberta de
+                  <span className="block text-lsb-accent">conhecimento na LSB</span>
+                </h1>
+                
+                <p className="text-xl md:text-2xl text-blue-100 mb-16 max-w-3xl mx-auto leading-relaxed">
+                  Explore livros, artigos, vídeos e podcasts sem precisar fazer login.
+                </p>
+              </div>
 
-            {/* Enhanced Search */}
-            <div className="animate-slide-up max-w-2xl mx-auto">
-              <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
-                <h3 className="link-h3 text-white mb-4">Busca Inteligente</h3>
+              {/* Enhanced Search */}
+              <div className="animate-slide-up max-w-2xl mx-auto">
+                <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+                  <h3 className="text-white font-semibold mb-4 text-lg">Busca Inteligente</h3>
                   
                   <form onSubmit={handleSearch} className="space-y-4">
                     {/* Search Input */}
@@ -83,9 +84,8 @@ const Hero = () => {
                         </kbd>
                         <Button
                           type="submit"
-                          variant="primary"
                           size="sm"
-                          className="px-4 py-2"
+                          className="px-4 py-2 bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary rounded-lg"
                         >
                           <Search className="h-4 w-4" />
                         </Button>
@@ -108,7 +108,7 @@ const Hero = () => {
                           variant={activeFilters.includes(filter.id) ? "default" : "outline"}
                           className={`cursor-pointer transition-all duration-200 px-4 py-2 ${
                             activeFilters.includes(filter.id)
-                              ? 'bg-link-cta text-black hover:bg-link-cta/90'
+                              ? 'bg-lsb-accent text-lsb-primary hover:bg-lsb-accent/90'
                               : 'bg-white/20 text-white border-white/30 hover:bg-white/30'
                           }`}
                           onClick={() => toggleFilter(filter.id)}
@@ -124,18 +124,19 @@ const Hero = () => {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Floating Elements */}
-        <div className="absolute top-20 left-10 animate-float opacity-20">
-          
-        </div>
-        <div
-          className="absolute bottom-20 right-10 animate-float opacity-20"
-          style={{ animationDelay: '1s' }}
-        >
-          
-        </div>
-      </section>
+      {/* Floating Elements */}
+      <div className="absolute top-20 left-10 animate-float opacity-20">
+        
+      </div>
+      <div
+        className="absolute bottom-20 right-10 animate-float opacity-20"
+        style={{ animationDelay: '1s' }}
+      >
+        
+      </div>
+    </section>
   );
 };
 

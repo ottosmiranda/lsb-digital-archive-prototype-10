@@ -88,16 +88,6 @@
     --lsb-neutral: 0 0% 100%;
     --lsb-section-bg: 210 20% 97%;
     --lsb-gray-line: 0 0% 88%;
-
-    /* Link School of Business - Institutional Colors */
-    --link-dark: 22 28 82;        /* #161C52 */
-    --link-light: 243 244 244;    /* #F3F4F4 */
-    --link-text: 22 28 82;        /* #161C52 */
-    --link-secondary: 105 119 148; /* #697794 */
-    --link-white: 255 255 255;    /* #FFFFFF */
-    --link-cta: 254 198 65;       /* #FEC641 */
-    --link-border: 229 231 235;   /* #E5E7EB */
-    --link-hover: 64 123 216;     /* #407BD8 */
   }
 
   .dark {
@@ -169,55 +159,6 @@
 
   .lsb-content {
     @apply max-w-[1320px] mx-auto;
-  }
-
-  /* Link School - Institutional Layout System */
-  .link-container {
-    @apply max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 lg:px-[30px];
-  }
-
-  /* Link Typography System */
-  .link-h1 {
-    @apply text-5xl font-bold text-link-text leading-[1.4];
-  }
-
-  .link-h2 {
-    @apply text-4xl font-bold text-link-text leading-[1.4];
-  }
-
-  .link-h3 {
-    @apply text-2xl font-medium text-link-text leading-[1.4];
-  }
-
-  .link-p1 {
-    @apply text-lg text-link-secondary leading-[1.4];
-  }
-
-  .link-p2 {
-    @apply text-base text-link-secondary leading-[1.4];
-  }
-
-  .link-p3 {
-    @apply text-sm text-link-secondary leading-[1.4];
-  }
-
-  /* Link Button System */
-  .btn-primary {
-    @apply bg-link-cta text-black rounded-lg px-6 py-4 text-base font-bold hover:bg-link-cta/90 transition-colors;
-  }
-
-  .btn-secondary {
-    @apply bg-white border border-link-border text-link-text rounded-lg px-6 py-4 text-base font-medium hover:border-link-hover hover:text-link-hover transition-colors;
-  }
-
-  /* Link Card System */
-  .link-card {
-    @apply bg-white border border-link-border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow;
-  }
-
-  /* Link Section Spacing */
-  .link-section {
-    @apply py-20 lg:py-[140px];
   }
 
   /* Existing LSB Classes */

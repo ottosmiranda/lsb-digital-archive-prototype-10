@@ -27,6 +27,33 @@
     
     <!-- Montserrat fallback font from Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Extension Conflict Prevention Script -->
+    <script>
+      // Prevent extension conflicts by protecting window properties
+      (function() {
+        const originalDefineProperty = Object.defineProperty;
+        const protectedProperties = ['ethereum'];
+        
+        Object.defineProperty = function(obj, prop, descriptor) {
+          if (obj === window && protectedProperties.includes(prop)) {
+            // If property exists and extension tries to redefine, skip silently
+            if (window.hasOwnProperty(prop)) {
+              console.warn(`Extension conflict prevented: Attempted to redefine window.${prop}`);
+              return obj;
+            }
+          }
+          return originalDefineProperty.call(this, obj, prop, descriptor);
+        };
+        
+        // Log extension detection for debugging
+        window.addEventListener('load', function() {
+          if (window.ethereum) {
+            console.log('Crypto wallet extension detected and managed safely');
+          }
+        });
+      })();
+    </script>
   </head>
 
   <body>

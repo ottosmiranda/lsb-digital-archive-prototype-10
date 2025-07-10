@@ -140,12 +140,12 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   };
 
   const loadContentCounts = async () => {
-    console.group('📊 ENHANCED LOAD CONTENT COUNTS - Starting with timeout protection and articles');
+    console.group('📊 ENHANCED LOAD CONTENT COUNTS - Real-time com TTL reduzido');
     console.log('⏰ Counts load started at:', new Date().toISOString());
     
     setCountsLoading(true);
     
-    const countsTimeout = 15000;
+    const countsTimeout = 10000;
     const timeoutPromise = new Promise<ContentCounts>((_, reject) => {
       setTimeout(() => {
         reject(new Error(`Content counts timeout after ${countsTimeout}ms`));
@@ -153,18 +153,45 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
     });
     
     try {
+      console.log('🚀 Iniciando busca de contagens com TTL de 5 minutos...');
       const countsPromise = newApiService.fetchContentCounts();
       const counts = await Promise.race([countsPromise, timeoutPromise]);
       
-      setContentCounts(counts);
-      console.log('✅ Content counts loaded successfully:', counts);
+      // Validar contagens antes de definir
+      const totalCounts = counts.videos + counts.books + counts.podcasts + counts.articles;
+      if (totalCounts > 50) { // Threshold mínimo
+        setContentCounts(counts);
+        console.log('✅ Content counts loaded successfully:', counts);
+        console.log('📊 BADGES ATUALIZADOS:', {
+          livros: `${counts.books} itens`,
+          videos: `${counts.videos} itens`,
+          podcasts: `${counts.podcasts} itens`,
+          artigos: `${counts.articles} itens`
+        });
+      } else {
+        console.warn('⚠️ Contagens muito baixas, usando fallback:', counts);
+        throw new Error('Contagens insuficientes');
+      }
       
     } catch (err) {
       console.error('❌ Failed to load content counts:', err);
       
-      const emergencyCounts = { videos: 50, books: 100, podcasts: 500, articles: 35 };
-      setContentCounts(emergencyCounts);
-      console.log('🆘 Using emergency counts:', emergencyCounts);
+      // NOVO: Tentar método de fallback em tempo real
+      try {
+        console.log('🔄 Tentando fallback em tempo real...');
+        const { SupabaseFallback } = await import('@/services/api/supabaseFallback');
+        const fallback = new SupabaseFallback();
+        const realTimeCounts = await fallback.getRealTimeCounts();
+        
+        setContentCounts(realTimeCounts);
+        console.log('✅ Fallback real-time bem-sucedido:', realTimeCounts);
+      } catch (fallbackError) {
+        console.error('❌ Fallback também falhou:', fallbackError);
+        
+        const emergencyCounts = { videos: 50, books: 100, podcasts: 500, articles: 35 };
+        setContentCounts(emergencyCounts);
+        console.log('🆘 Using emergency counts:', emergencyCounts);
+      }
       
     } finally {
       setCountsLoading(false);

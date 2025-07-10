@@ -52,6 +52,16 @@ export class CacheManager {
     this.cache.clear();
   }
 
+  // Novo método para invalidar cache específico
+  invalidateCache(pattern: string): void {
+    console.log(`🗑️ Invalidando cache com padrão: ${pattern}`);
+    const keysToDelete = Array.from(this.cache.keys()).filter(key => key.includes(pattern));
+    keysToDelete.forEach(key => {
+      this.cache.delete(key);
+      console.log(`🗑️ Cache removido: ${key}`);
+    });
+  }
+
   getCacheSize(): number {
     return this.cache.size;
   }

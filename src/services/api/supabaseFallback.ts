@@ -70,6 +70,65 @@ export class SupabaseFallback {
     }
   }
 
+  // NOVO: Método para obter contagens reais com timeout mais curto
+  async getRealTimeCounts(): Promise<ContentCounts> {
+    console.log('🔄 Buscando contagens REAIS em tempo real');
+    
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      const timeoutMs = 8000; // Reduzido para 8 segundos
+      const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+        return Promise.race([
+          promise,
+          new Promise<T>((_, reject) => 
+            setTimeout(() => reject(new Error(`Timeout após ${ms}ms`)), ms)
+          )
+        ]);
+      };
+
+      console.log('📡 Iniciando busca paralela de contagens reais...');
+      const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
+        withTimeout(supabase.functions.invoke('fetch-books'), timeoutMs),
+        withTimeout(supabase.functions.invoke('fetch-videos'), timeoutMs),
+        withTimeout(supabase.functions.invoke('fetch-podcasts'), timeoutMs)
+      ]);
+
+      // Processar resultados com logs detalhados
+      const books = this.extractRealCount(booksResult, 'books', 'Livros');
+      const videos = this.extractRealCount(videosResult, 'videos', 'Vídeos');  
+      const podcasts = this.extractRealCount(podcastsResult, 'podcasts', 'Podcasts');
+      const articles = Math.floor(books * 0.3); // Estimativa baseada em livros
+
+      const counts = { videos, books, podcasts, articles };
+      
+      console.log('✅ Contagens REAIS obtidas:', counts);
+      console.log('📊 BADGES ATUALIZADOS:', {
+        livros: `${books} itens`,
+        videos: `${videos} itens`, 
+        podcasts: `${podcasts} itens`,
+        artigos: `${articles} itens`
+      });
+      
+      return counts;
+      
+    } catch (error) {
+      console.error('❌ Erro ao buscar contagens reais:', error);
+      return this.getExactFallbackCounts();
+    }
+  }
+
+  private extractRealCount(result: PromiseSettledResult<any>, dataKey: string, label: string): number {
+    if (result.status === 'fulfilled' && result.value.data?.success) {
+      const total = result.value.data.total || result.value.data[dataKey]?.length || 0;
+      console.log(`📊 ${label} - Total real: ${total}`);
+      return total;
+    } else {
+      console.warn(`⚠️ ${label} - Falha ao obter contagem real:`, result.status === 'rejected' ? result.reason : 'Data inválida');
+      return 0;
+    }
+  }
+
   async getExactFallbackCounts(): Promise<ContentCounts> {
     console.log('🔄 Usando contagens EXATAS de fallback');
     

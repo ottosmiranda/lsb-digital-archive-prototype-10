@@ -1,12 +1,14 @@
 
-import { Book, Video, Headphones } from 'lucide-react';
+import { Book, Video, Headphones, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import QuickAccessSkeleton from '@/components/skeletons/QuickAccessSkeleton';
+import { newApiService } from '@/services/newApiService';
 
 const QuickAccess = () => {
   const { contentCounts, countsLoading, loading } = useHomepageContentContext();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Calculate display counts with enhanced formatting and timeout protection
   const counts = useMemo(() => {
@@ -30,6 +32,26 @@ const QuickAccess = () => {
     console.log('✅ QuickAccess - Formatted counts:', result);
     return result;
   }, [contentCounts, countsLoading]);
+
+  // NOVO: Função para refresh manual
+  const handleRefreshCounts = async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    console.log('🔄 Refresh manual solicitado pelo usuário');
+    
+    try {
+      const freshCounts = await newApiService.refreshContentCounts();
+      console.log('✅ Contagens atualizadas manualmente:', freshCounts);
+      
+      // Forçar re-render do contexto
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ Erro no refresh manual:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const accessTypes = [
     {
@@ -67,11 +89,26 @@ const QuickAccess = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-12 animate-fade-in">
-          <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
-            Acesso Rápido por Tipo de Material
-          </h2>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold lsb-primary">
+              Acesso Rápido por Tipo de Material
+            </h2>
+            {/* NOVO: Botão de refresh manual */}
+            <button
+              onClick={handleRefreshCounts}
+              disabled={isRefreshing}
+              className="p-2 text-lsb-primary hover:bg-lsb-accent rounded-full transition-colors disabled:opacity-50"
+              title="Atualizar contagens"
+            >
+              <RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Encontre rapidamente o tipo de conteúdo que você procura
+          </p>
+          {/* NOVO: Indicador de última atualização */}
+          <p className="text-xs text-gray-500 mt-2">
+            Números atualizados automaticamente a cada 5 minutos
           </p>
         </div>
 

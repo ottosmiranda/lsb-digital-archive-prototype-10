@@ -1,3 +1,4 @@
+
 import React, { useImperativeHandle, useState, forwardRef, useCallback } from "react";
 import { usePodcastProgramEpisodes } from "@/hooks/usePodcastProgramEpisodes";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
@@ -119,11 +120,11 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
         <div className="flex flex-col gap-5">
           {/* Main Player Section */}
           {embedUrl && (
-            <div className="bg-white rounded-xl border shadow-sm px-6 pt-6 pb-6">
+            <div className="bg-white rounded-[2px] border shadow-sm px-6 pt-6 pb-6">
               <h3 className="font-semibold text-lg mb-4">
                 {selectedEpisode ? selectedEpisode.title : "Player Principal"}
               </h3>
-              <div className="aspect-video w-full rounded-lg overflow-hidden">
+              <div className="w-full rounded-[2px] overflow-hidden" style={{ height: '352px' }}>
                 <iframe
                   src={selectedEpisode?.embedUrl || embedUrl}
                   width="100%"

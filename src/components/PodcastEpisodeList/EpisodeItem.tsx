@@ -1,6 +1,4 @@
 
-
-
 import { Play, Calendar, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,7 +79,7 @@ const EpisodeItem = ({
     const apiEpisode = episode as ApiEpisode;
     return (
       <div 
-        className={`flex items-center gap-4 px-4 py-3 bg-white border rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md ${
+        className={`flex items-center gap-4 px-4 py-3 bg-white border rounded-[2px] shadow-sm cursor-pointer transition-all hover:shadow-md ${
           isSelected ? "ring-2 ring-blue-500 bg-blue-50" : ""
         }`}
         onClick={onEpisodeSelect}
@@ -91,10 +89,10 @@ const EpisodeItem = ({
             <img 
               src={apiEpisode.thumbnail} 
               alt={apiEpisode.title}
-              className="w-14 h-14 rounded-lg object-cover"
+              className="w-14 h-14 rounded-[2px] object-cover"
             />
           ) : (
-            <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center">
+            <div className="w-14 h-14 bg-gray-100 rounded-[2px] flex items-center justify-center">
               <Play className="h-7 w-7 text-purple-600" />
             </div>
           )}
@@ -137,7 +135,7 @@ const EpisodeItem = ({
     const spotifyEpisode = episode as SpotifyEpisode;
     return (
       <div 
-        className={`flex items-center gap-4 px-4 py-3 bg-white border rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md ${
+        className={`flex items-center gap-4 px-4 py-3 bg-white border rounded-[2px] shadow-sm cursor-pointer transition-all hover:shadow-md ${
           isSelected ? "ring-2 ring-blue-500 bg-blue-50" : ""
         }`}
         onClick={onEpisodeSelect}
@@ -147,10 +145,10 @@ const EpisodeItem = ({
             <img 
               src={spotifyEpisode.images[0].url} 
               alt={spotifyEpisode.name}
-              className="w-14 h-14 rounded-lg object-cover"
+              className="w-14 h-14 rounded-[2px] object-cover"
             />
           ) : (
-            <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center">
+            <div className="w-14 h-14 bg-gray-100 rounded-[2px] flex items-center justify-center">
               <Play className="h-7 w-7 text-purple-600" />
             </div>
           )}
@@ -188,13 +186,13 @@ const EpisodeItem = ({
   const generatedEpisode = episode as GeneratedEpisode;
   return (
     <div 
-      className={`flex items-center gap-4 px-4 py-3 bg-white border rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md ${
+      className={`flex items-center gap-4 px-4 py-3 bg-white border rounded-[2px] shadow-sm cursor-pointer transition-all hover:shadow-md ${
         isSelected ? "ring-2 ring-blue-500 bg-blue-50" : ""
       }`}
       onClick={onEpisodeSelect}
     >
       <div className="flex-shrink-0">
-        <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center">
+        <div className="w-14 h-14 bg-gray-100 rounded-[2px] flex items-center justify-center">
           <Play className="h-7 w-7 text-purple-600" />
         </div>
       </div>
@@ -229,5 +227,3 @@ const EpisodeItem = ({
 };
 
 export default EpisodeItem;
-
-

@@ -17,6 +17,12 @@ export const isValidThumbnail = (url: string | null | undefined, contentType: st
   // Para Livros e Artigos (tipo 'titulo'), verificar se não é logo da plataforma
   if (!url) return false;
   
+  // 🔍 DEBUG TEMPORÁRIO: Log detalhado para investigar cache
+  console.group('🖼️ THUMBNAIL DEBUG - isValidThumbnail');
+  console.log('URL recebida:', url);
+  console.log('Content type:', contentType);
+  console.log('Timestamp:', new Date().toISOString());
+  
   // Detectar padrões conhecidos do logo da plataforma
   const logoPatterns = [
     'logo',
@@ -25,13 +31,21 @@ export const isValidThumbnail = (url: string | null | undefined, contentType: st
     'generic',
     'lsb',
     'biblioteca',
-    'biblio' // ✅ ADICIONADO: detecta "biblio", "BIBLIO", "Biblio", etc.
+    'biblio' // ✅ DETECTA: "biblio", "BIBLIO", "Biblio", etc.
   ];
   
   // Se a URL contém qualquer padrão de logo, considerar inválida
-  return !logoPatterns.some(pattern => 
+  const hasLogoPattern = logoPatterns.some(pattern => 
     url.toLowerCase().includes(pattern.toLowerCase())
   );
+  
+  console.log('Logo patterns checked:', logoPatterns);
+  console.log('Has logo pattern?', hasLogoPattern);
+  console.log('URL lowercase:', url.toLowerCase());
+  console.log('Detection result:', !hasLogoPattern);
+  console.groupEnd();
+  
+  return !hasLogoPattern;
 };
 
 /**
@@ -39,5 +53,15 @@ export const isValidThumbnail = (url: string | null | undefined, contentType: st
  * Returns whether to show image or placeholder
  */
 export const shouldShowImage = (thumbnail: string | null | undefined, contentType: string): boolean => {
-  return isValidThumbnail(thumbnail, contentType);
+  const result = isValidThumbnail(thumbnail, contentType);
+  
+  // 🔍 DEBUG TEMPORÁRIO: Log final para shouldShowImage
+  console.log('🎯 SHOULD SHOW IMAGE RESULT:', {
+    thumbnail: thumbnail?.substring(0, 50) + '...',
+    contentType,
+    result,
+    timestamp: new Date().toISOString()
+  });
+  
+  return result;
 };

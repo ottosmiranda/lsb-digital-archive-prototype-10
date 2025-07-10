@@ -1,6 +1,7 @@
+
 import { Star } from 'lucide-react';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -87,10 +88,10 @@ const typeBadgeColor = (type: string) => {
 };
 
 const FeaturedHighlights = () => {
-  const { content, rotatedContent, loading } = useHomepageContentContext();
+  const { content, rotatedContent, loading, clearAllCaches } = useHomepageContentContext();
   const navigate = useNavigate();
 
-  console.group('⭐ PHASE 3: FeaturedHighlights Component with Rotation Support and Articles');
+  console.group('⭐ PHASE 3: FeaturedHighlights Component with Rotation Support and Articles + CACHE BUSTER');
   console.log('Loading state:', loading);
   console.log('Rotated weekly highlights:', rotatedContent.weeklyHighlights.length);
   console.log('Raw content received (including articles):', {
@@ -100,6 +101,12 @@ const FeaturedHighlights = () => {
     articles: content.articles.length
   });
   console.groupEnd();
+
+  // 🔥 CACHE BUSTER: Limpar cache quando componente montar
+  useEffect(() => {
+    console.log('🔥 FeaturedHighlights mounted - Aplicando cache buster');
+    clearAllCaches();
+  }, [clearAllCaches]);
 
   const autoplayPlugin = useRef(
     Autoplay({
@@ -185,6 +192,15 @@ const FeaturedHighlights = () => {
                               src={item.thumbnail}
                               alt={item.title}
                               className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                              onError={(e) => {
+                                // 🔥 DEBUG: Log de erro de imagem
+                                console.error('🖼️ THUMBNAIL ERROR:', {
+                                  src: item.thumbnail,
+                                  title: item.title,
+                                  type: item.type,
+                                  error: e
+                                });
+                              }}
                             />
                           ) : (
                             <ThumbnailPlaceholder

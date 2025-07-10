@@ -7,25 +7,31 @@ export class SearchCache {
   private readonly cacheLimit = 2 * 60 * 1000; // 2 minutes
 
   getCacheKey(query: string, filters: SearchFilters, sortBy: string, page: number): string {
-    return JSON.stringify({ query, filters, sortBy, page });
+    // 🔥 CACHE BUSTER: Adicionar timestamp para forçar invalidação
+    const cacheBuster = Date.now();
+    return JSON.stringify({ query, filters, sortBy, page, cacheBuster });
   }
 
   isValidCache(cacheKey: string): boolean {
-    const cached = this.cache.get(cacheKey);
-    if (!cached) return false;
+    // 🔥 CACHE BUSTER TEMPORÁRIO: Sempre retornar false para forçar refresh
+    console.log('🔥 SEARCH CACHE BUSTER ATIVO - Forçando refresh de busca');
+    return false;
     
-    const now = Date.now();
-    const cacheAge = now - cached.timestamp;
-    const isValid = cacheAge < this.cacheLimit;
+    // const cached = this.cache.get(cacheKey);
+    // if (!cached) return false;
     
-    // VALIDAÇÃO CRÍTICA: Cache corrompido com resultados vazios
-    if (isValid && cached.data.results.length === 0 && cached.data.pagination.totalResults > 0) {
-      console.warn('🚨 CACHE CORROMPIDO detectado - removendo:', cacheKey);
-      this.cache.delete(cacheKey);
-      return false;
-    }
+    // const now = Date.now();
+    // const cacheAge = now - cached.timestamp;
+    // const isValid = cacheAge < this.cacheLimit;
     
-    return isValid;
+    // // VALIDAÇÃO CRÍTICA: Cache corrompido com resultados vazios
+    // if (isValid && cached.data.results.length === 0 && cached.data.pagination.totalResults > 0) {
+    //   console.warn('🚨 CACHE CORROMPIDO detectado - removendo:', cacheKey);
+    //   this.cache.delete(cacheKey);
+    //   return false;
+    // }
+    
+    // return isValid;
   }
 
   setCache(cacheKey: string, data: SearchResponse): void {
@@ -51,6 +57,12 @@ export class SearchCache {
 
   clearCache(): void {
     console.log('🧹 Clearing search cache completely');
+    this.cache.clear();
+  }
+
+  // 🔥 NOVO: Método para limpeza total forçada
+  forceFullCacheClear(): void {
+    console.log('🔥 SEARCH CACHE - LIMPEZA TOTAL FORÇADA');
     this.cache.clear();
   }
 }

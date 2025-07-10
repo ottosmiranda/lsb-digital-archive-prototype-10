@@ -45,6 +45,7 @@ interface HomepageContentContextType {
   retry: () => void;
   isUsingFallback: boolean;
   apiStatus: any;
+  clearAllCaches: () => void;
 }
 
 const HomepageContentContext = createContext<HomepageContentContextType | undefined>(undefined);
@@ -84,15 +85,63 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   const [isUsingFallback, setIsUsingFallback] = useState(false);
   const [apiStatus, setApiStatus] = useState<any>({});
 
-  console.group('🏠 HomepageContentProvider - ENHANCED Constructor with Rotation and Articles');
+  console.group('🏠 HomepageContentProvider - ENHANCED Constructor with Rotation and Articles + CACHE BUSTER');
   console.log('📊 Provider initialized at:', new Date().toISOString());
   console.log('🔄 Initial state:', { loading, countsLoading, error, isUsingFallback });
   console.groupEnd();
+
+  // 🔥 NOVO: Método para limpeza total de todos os caches
+  const clearAllCaches = () => {
+    console.group('🔥 LIMPEZA TOTAL DE TODOS OS CACHES');
+    console.log('⏰ Iniciando limpeza total em:', new Date().toISOString());
+    
+    // Limpar cache do NewApiService
+    try {
+      newApiService.clearCache();
+      console.log('✅ NewApiService cache limpo');
+    } catch (e) {
+      console.warn('⚠️ Erro ao limpar NewApiService cache:', e);
+    }
+    
+    // Limpar rotated content
+    setRotatedContent({
+      weeklyHighlights: [],
+      dailyMedia: { videos: [], podcasts: [] }
+    });
+    console.log('✅ Rotated content limpo');
+    
+    // Limpar storage caches
+    try {
+      sessionStorage.clear();
+      console.log('✅ SessionStorage limpo');
+    } catch (e) {
+      console.warn('⚠️ Erro ao limpar sessionStorage:', e);
+    }
+    
+    try {
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.includes('cache') || key.includes('api') || key.includes('content')) {
+          localStorage.removeItem(key);
+          console.log('🧹 LocalStorage key removida:', key);
+        }
+      });
+    } catch (e) {
+      console.warn('⚠️ Erro ao limpar localStorage:', e);
+    }
+    
+    console.log('🔥 LIMPEZA TOTAL CONCLUÍDA - Todos os caches foram limpos');
+    console.groupEnd();
+  };
 
   const loadRotatedContent = async () => {
     console.group('🔄 Loading rotated content from database...');
     
     try {
+      // 🔥 CACHE BUSTER: Adicionar timestamp para forçar refresh
+      const cacheBuster = Date.now();
+      console.log('🔥 Cache buster aplicado:', cacheBuster);
+      
       // Buscar conteúdo rotacionado ativo
       const { data: rotations, error: rotationError } = await supabase
         .from('featured_content_rotation')
@@ -201,13 +250,17 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   };
 
   const loadContent = async () => {
-    console.group('🚀 DIAGNOSTIC loadContent - Phase 1: Starting data load with rotation support and articles');
+    console.group('🚀 DIAGNOSTIC loadContent - Phase 1: Starting data load with CACHE BUSTER ACTIVE');
     console.log('⏰ Load started at:', new Date().toISOString());
+    console.log('🔥 CACHE BUSTER ATIVO - Todos os caches serão ignorados');
     console.log('🔄 Setting loading state to true');
     
     setLoading(true);
     setError(null);
     setIsUsingFallback(false);
+
+    // 🔥 CACHE BUSTER: Limpar todos os caches antes de carregar
+    clearAllCaches();
 
     try {
       const status = newApiService.getStatus();
@@ -219,7 +272,7 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
       console.log('Active Requests:', status.activeRequests);
       console.groupEnd();
 
-      console.log('📡 PHASE 1: Calling newApiService.fetchHomepageContent() with diagnostic timeouts...');
+      console.log('📡 PHASE 1: Calling newApiService.fetchHomepageContent() with CACHE BUSTER...');
       const startTime = Date.now();
       
       const homepageContent = await newApiService.fetchHomepageContent();
@@ -239,6 +292,17 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
       console.log('Books sample:', homepageContent.books.slice(0, 2));
       console.log('Podcasts sample:', homepageContent.podcasts.slice(0, 2));
       console.log('Articles sample:', homepageContent.articles.slice(0, 2));
+      
+      // 🔍 DEBUG: Verificar thumbnails dos livros
+      console.group('🖼️ BOOKS THUMBNAIL DEBUG');
+      homepageContent.books.slice(0, 3).forEach((book, index) => {
+        console.log(`Livro ${index + 1}:`, {
+          title: book.title.substring(0, 40) + '...',
+          thumbnail: book.thumbnail,
+          hasBiblio: book.thumbnail?.toLowerCase().includes('biblio')
+        });
+      });
+      console.groupEnd();
       
       const usingFallback = homepageContent.videos.some(v => v.id > 1000000) || 
                            homepageContent.books.some(b => b.id > 2000) ||
@@ -320,7 +384,7 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   };
 
   useEffect(() => {
-    console.log('🎯 useEffect triggered - Starting ENHANCED content and counts load with rotation');
+    console.log('🎯 useEffect triggered - Starting ENHANCED content and counts load with CACHE BUSTER');
     
     Promise.allSettled([
       loadContent(),
@@ -334,8 +398,10 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   }, []);
 
   const retry = () => {
-    console.log('🔄 Enhanced retry requested by user - clearing cache and reloading');
-    newApiService.clearCache();
+    console.log('🔄 Enhanced retry requested by user - FULL CACHE CLEAR and reloading');
+    
+    // 🔥 CACHE BUSTER: Limpeza total antes do retry
+    clearAllCaches();
     
     setError(null);
     setCountsLoading(true);
@@ -379,7 +445,8 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
         error,
         retry,
         isUsingFallback,
-        apiStatus
+        apiStatus,
+        clearAllCaches
       }}
     >
       {children}

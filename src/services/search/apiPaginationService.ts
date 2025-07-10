@@ -46,7 +46,7 @@ export class ApiPaginationService {
       const fetchPromise = fetch(url, {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
+          // ✅ REMOVIDO: 'Content-Type': 'application/json' que causava preflight OPTIONS
           'User-Agent': 'LSB-Paginated-Search/1.0'
         }
       });

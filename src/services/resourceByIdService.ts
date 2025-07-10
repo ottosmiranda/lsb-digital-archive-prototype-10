@@ -1,4 +1,3 @@
-
 import { Resource } from '@/types/resourceTypes';
 import { API_BASE_URL } from './api/apiConfig';
 
@@ -51,7 +50,6 @@ export class ResourceByIdService {
       const response = await fetch(endpoint, {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
         },
         signal: controller.signal
       });
@@ -107,7 +105,6 @@ export class ResourceByIdService {
       const response = await fetch(endpoint, {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
         },
         signal: controller.signal
       });

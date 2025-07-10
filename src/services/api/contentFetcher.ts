@@ -1,4 +1,3 @@
-
 import { API_BASE_URL, ContentType, SCALABLE_CONFIG, APIResponse } from './apiConfig';
 import { SearchResult } from '@/types/searchTypes';
 import { ApiTimeoutManager } from '../apiTimeoutManager';
@@ -95,7 +94,7 @@ export class ContentFetcher {
         signal: controller.signal,
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
+          // ✅ REMOVIDO: 'Content-Type': 'application/json' que causava preflight OPTIONS
           'User-Agent': 'LSB-ExactNumbers-Search/2.0'
         }
       });

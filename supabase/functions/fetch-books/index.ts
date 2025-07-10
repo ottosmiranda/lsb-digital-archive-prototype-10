@@ -76,6 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
+        // ✅ REMOVIDO: 'Content-Type': 'application/json' que causava preflight OPTIONS
         'User-Agent': 'LSB-Digital-Library/1.0'
       },
       signal: AbortSignal.timeout(10000)

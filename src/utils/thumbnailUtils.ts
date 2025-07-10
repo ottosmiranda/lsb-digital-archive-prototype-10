@@ -23,8 +23,9 @@ export const isValidThumbnail = (url: string | null | undefined, contentType: st
     'placeholder', 
     'default',
     'generic',
-    'lsb', // padrão específico da plataforma
-    'biblioteca' // outro padrão específico
+    'lsb',
+    'biblioteca',
+    'biblio' // ✅ ADICIONADO: detecta "biblio", "BIBLIO", "Biblio", etc.
   ];
   
   // Se a URL contém qualquer padrão de logo, considerar inválida

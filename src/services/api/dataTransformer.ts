@@ -3,18 +3,27 @@ import { SearchResult } from '@/types/searchTypes';
 
 export class DataTransformer {
   transformToSearchResult(item: any, tipo: string): SearchResult {
-    console.log(`🔄 DATA TRANSFORMER - ID CORRECTION:`, {
+    console.log(`🔄 DATA TRANSFORMER - ID VALIDATION:`, {
       tipo,
       originalApiId: item.id,
       titulo: item.titulo || item.podcast_titulo || item.title
     });
     
-    // CORREÇÃO CRÍTICA: Usar ID real da API como ID principal
-    const realId = item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000;
+    // ✅ CORREÇÃO CRÍTICA: Validar ID antes de processar
+    if (!item.id || item.id === 'undefined' || item.id === 'null' || item.id === '') {
+      console.error(`❌ DATA TRANSFORMER - ID INVÁLIDO REJEITADO:`, {
+        tipo,
+        item: item,
+        idProblema: item.id
+      });
+      return null; // Rejeitar completamente itens sem ID válido
+    }
+    
+    const realId = item.id; // Usar apenas o ID real da API
     
     const baseResult: SearchResult = {
-      id: realId, // ✅ CORRIGIDO: ID real da API como número
-      originalId: String(item.id || item.episodio_id || item.podcast_id), // Backup do ID original
+      id: realId, // ✅ CORRIGIDO: Apenas ID real da API
+      originalId: String(item.id),
       title: item.titulo || item.podcast_titulo || item.episodio_titulo || item.title || 'Título não disponível',
       author: item.autor || item.canal || item.publicador || 'Link Business School',
       year: this.extractYearFromDate(item.data_publicacao || item.ano || item.data_lancamento),
@@ -24,7 +33,7 @@ export class DataTransformer {
       thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
     };
 
-    console.log(`✅ DATA TRANSFORMER - ID REAL USADO: ${realId} para ${baseResult.type}`);
+    console.log(`✅ DATA TRANSFORMER - PROCESSAMENTO CONCLUÍDO: ${realId} para ${baseResult.type}`);
 
     if (tipo === 'livro' || tipo === 'artigos') {
       baseResult.pdfUrl = item.arquivo || item.url;

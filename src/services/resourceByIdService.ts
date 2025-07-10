@@ -1,4 +1,3 @@
-
 import { Resource } from '@/types/resourceTypes';
 import { API_BASE_URL } from './api/apiConfig';
 
@@ -37,13 +36,15 @@ export interface ApiResourceResponse {
 }
 
 export class ResourceByIdService {
-  private static readonly TIMEOUT_MS = 6000; // Reduced timeout for faster failures
+  private static readonly TIMEOUT_MS = 8000; // Aumentado para livros
 
   static async fetchResourceById(id: string, resourceType: string): Promise<Resource | null> {
-    console.log(`🎯 BUSCA OTIMIZADA: ${resourceType} ID ${id}`);
+    console.group(`🎯 FETCH RESOURCE BY ID - OTIMIZADO PARA LIVROS`);
+    console.log(`📋 Target: ${resourceType} ID ${id}`);
     
     try {
       const endpoint = this.getEndpointForType(resourceType, id);
+      console.log(`🔗 Endpoint: ${endpoint}`);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT_MS);
@@ -58,76 +59,63 @@ export class ResourceByIdService {
       clearTimeout(timeoutId);
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status} para ${resourceType} ID ${id}`);
+        console.error(`❌ HTTP ${response.status} para ${resourceType} ID ${id}`);
+        console.groupEnd();
+        return null;
       }
 
       const data = await response.json();
-      console.log(`✅ SUCESSO: ${resourceType} ID ${id}`, data);
+      console.log(`✅ API SUCCESS: ${resourceType} ID ${id}`, data);
       
-      return this.transformToResource(data, resourceType, id);
+      // ✅ CORREÇÃO: Transformar sempre, com fallbacks robustos
+      const transformedResource = this.transformToResource(data, resourceType, id);
+      
+      // ✅ NOVO: Validação final mais permissiva
+      if (transformedResource && this.isValidResource(transformedResource)) {
+        console.log(`✅ RECURSO VÁLIDO CRIADO:`, transformedResource.title);
+        console.groupEnd();
+        return transformedResource;
+      } else {
+        console.error(`❌ RECURSO INVÁLIDO APÓS TRANSFORMAÇÃO:`, transformedResource);
+        console.groupEnd();
+        return null;
+      }
       
     } catch (error) {
       if (error.name === 'AbortError') {
-        console.log(`⏰ TIMEOUT: ${resourceType} ID ${id} (${this.TIMEOUT_MS}ms)`);
+        console.error(`⏰ TIMEOUT: ${resourceType} ID ${id} (${this.TIMEOUT_MS}ms)`);
       } else {
-        console.log(`❌ ERRO: ${resourceType} ID ${id}:`, error);
+        console.error(`❌ ERRO FETCH: ${resourceType} ID ${id}:`, error);
       }
+      console.groupEnd();
       return null;
     }
   }
 
-  // ✅ NOVO: Validação robusta dos dados da API
-  private static validateApiData(data: any, resourceType: string, requestedId: string): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-    
-    console.group(`🔍 VALIDAÇÃO API DATA: ${resourceType} ID ${requestedId}`);
-    console.log('📋 Raw API data:', JSON.stringify(data, null, 2));
-    
-    if (!data) {
-      errors.push('Dados nulos ou indefinidos');
+  // ✅ NOVO: Validação mais permissiva e robusta
+  private static isValidResource(resource: Resource): boolean {
+    if (!resource) {
+      console.log('❌ VALIDAÇÃO: Recurso é null/undefined');
+      return false;
     }
     
-    // Validação específica por tipo
-    if (resourceType === 'livro' || resourceType === 'titulo' || resourceType === 'artigos') {
-      if (!data.titulo && !data.title) {
-        errors.push('Campo titulo/title obrigatório ausente');
-      }
-      if (!data.id) {
-        errors.push('Campo id obrigatório ausente');
-      }
-    } else if (resourceType === 'video') {
-      if (!data.titulo && !data.title) {
-        errors.push('Campo titulo/title obrigatório ausente');
-      }
-      if (!data.id) {
-        errors.push('Campo id obrigatório ausente');
-      }
-    } else if (resourceType === 'podcast') {
-      if (Array.isArray(data)) {
-        if (data.length === 0) {
-          errors.push('Array de podcasts vazio');
-        } else {
-          const podcast = data[0];
-          if (!podcast.episodio_titulo && !podcast.podcast_titulo) {
-            errors.push('Títulos do episódio/podcast ausentes');
-          }
-          if (!podcast.episodio_id && !podcast.podcast_id) {
-            errors.push('IDs do episódio/podcast ausentes');
-          }
-        }
-      } else {
-        errors.push('Dados de podcast devem ser um array');
-      }
+    if (!resource.id || resource.id.trim() === '') {
+      console.log('❌ VALIDAÇÃO: ID inválido:', resource.id);
+      return false;
     }
     
-    const isValid = errors.length === 0;
-    console.log(`📊 Validação resultado: ${isValid ? '✅ VÁLIDO' : '❌ INVÁLIDO'}`);
-    if (!isValid) {
-      console.log('📋 Erros encontrados:', errors);
+    if (!resource.title || resource.title.trim() === '' || resource.title === 'Título não disponível') {
+      console.log('❌ VALIDAÇÃO: Título inválido ou fallback:', resource.title);
+      return false;
     }
-    console.groupEnd();
     
-    return { isValid, errors };
+    if (!resource.type || !['video', 'titulo', 'podcast'].includes(resource.type)) {
+      console.log('❌ VALIDAÇÃO: Tipo inválido:', resource.type);
+      return false;
+    }
+    
+    console.log('✅ VALIDAÇÃO: Recurso válido');
+    return true;
   }
 
   private static getEndpointForType(resourceType: string, id: string): string {
@@ -186,34 +174,32 @@ export class ResourceByIdService {
   }
 
   private static transformToResource(data: any, resourceType: string, requestedId: string): Resource {
-    console.group(`🔄 TRANSFORMAÇÃO DE RECURSO: ${resourceType} ID ${requestedId}`);
-    console.log('📋 Dados a serem transformados:', data);
+    console.group(`🔄 TRANSFORMAÇÃO ROBUSTA: ${resourceType} ID ${requestedId}`);
+    console.log('📋 Raw API data:', data);
 
     try {
-      // ✅ CORRIGIDO: Para podcasts, usar categorias para subject (badges)
+      // ✅ MELHORADO: Para podcasts, usar categorias para subject (badges)
       if (resourceType === 'podcast' && Array.isArray(data)) {
-        const podcast = data[0]; // Get the first episode
+        const podcast = data[0];
         
-        // Use categories for subject (badges)
         const subject = podcast.categorias && podcast.categorias.length > 0 
           ? podcast.categorias[0].charAt(0).toUpperCase() + podcast.categorias[0].slice(1)
           : 'Podcast';
         
         const resource: Resource = {
-          id: podcast.episodio_id || podcast.podcast_id || requestedId, // ✅ Melhor fallback
+          id: podcast.episodio_id || podcast.podcast_id || requestedId,
           originalId: podcast.episodio_id || podcast.podcast_id || requestedId,
           title: podcast.episodio_titulo || podcast.podcast_titulo || 'Podcast sem título',
           author: podcast.publicador || 'Autor desconhecido',
           year: new Date(podcast.data_lancamento || Date.now()).getFullYear(),
           description: podcast.descricao || 'Descrição não disponível',
-          subject: subject, // ✅ CORRIGIDO: Usar categorias para badges
+          subject: subject,
           type: 'podcast',
           thumbnail: podcast.imagem_url,
           duration: podcast.duracao_ms ? this.formatDuration(podcast.duracao_ms) : undefined,
           embedUrl: podcast.embed_url,
           categories: podcast.categorias || [],
           episodes: 1,
-          // ✅ Preservar título do programa para uso na página de detalhes
           podcast_titulo: podcast.podcast_titulo
         };
         
@@ -222,19 +208,26 @@ export class ResourceByIdService {
         return resource;
       }
 
-      // For books and articles
+      // ✅ CORREÇÃO CRÍTICA: Para livros e artigos - Fallbacks mais robustos
       if (resourceType === 'titulo' || resourceType === 'livro' || resourceType === 'artigos') {
         const year = this.extractYearFromDate(data.data_publicacao || data.ano);
         const documentType = resourceType === 'artigos' ? 'Artigo' : (data.tipo_documento || 'Livro');
         
-        // ✅ MELHORADOS: Fallbacks mais robustos para campos essenciais
+        // ✅ FALLBACKS MAIS ROBUSTOS para campos essenciais
         const resourceId = data.id || requestedId;
-        const title = data.titulo || data.title || `${documentType} sem título`;
-        const author = data.autor || data.author || 'Autor desconhecido';
-        const description = data.descricao || data.description || 'Descrição não disponível';
+        const title = data.titulo || data.title || `${documentType} ID ${resourceId}`;
+        const author = data.autor || data.author || 'Link Business School';
+        const description = data.descricao || data.description || `${documentType} de ${author}`;
+        
+        // ✅ NOVO: Verificar se temos dados mínimos válidos
+        if (!resourceId || !title || title === 'Título não disponível') {
+          console.error('❌ DADOS INSUFICIENTES PARA TRANSFORMAÇÃO:', { resourceId, title });
+          console.groupEnd();
+          return null;
+        }
         
         const resource: Resource = {
-          id: String(resourceId), // ✅ Garantir que é string
+          id: String(resourceId),
           originalId: String(resourceId),
           title: title,
           author: author,
@@ -242,7 +235,7 @@ export class ResourceByIdService {
           description: description,
           subject: data.categorias?.[0] || data.categoria || 'Administração',
           type: 'titulo',
-          thumbnail: '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
+          thumbnail: data.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
           pages: data.paginas,
           pdfUrl: data.arquivo || data.url,
           language: this.mapLanguageCode(data.language || data.idioma),
@@ -255,22 +248,21 @@ export class ResourceByIdService {
         return resource;
       }
 
-      // For videos/classes
+      // ✅ MELHORADO: Para vídeos/classes
       if (resourceType === 'video') {
-        const videoYear = data.ano || new Date().getFullYear(); // Use dynamic year from API
+        const videoYear = data.ano || new Date().getFullYear();
         
-        // ✅ MELHORADOS: Fallbacks mais robustos para vídeos
         const resourceId = data.id || requestedId;
-        const title = data.titulo || data.title || 'Vídeo sem título';
+        const title = data.titulo || data.title || `Vídeo ID ${resourceId}`;
         const author = data.canal || data.author || 'Canal desconhecido';
-        const description = data.descricao || data.description || 'Descrição não disponível';
+        const description = data.descricao || data.description || `Vídeo de ${author}`;
         
         const resource: Resource = {
-          id: String(resourceId), // ✅ Garantir que é string
+          id: String(resourceId),
           originalId: String(resourceId),
           title: title,
           author: author,
-          year: videoYear, // Using dynamic year from API individual endpoint
+          year: videoYear,
           description: description,
           subject: data.categorias?.[0] || 'Empreendedorismo',
           type: 'video',
@@ -291,31 +283,8 @@ export class ResourceByIdService {
     } catch (error) {
       console.error('❌ ERRO NA TRANSFORMAÇÃO:', error);
       console.groupEnd();
-      throw error;
+      return null;
     }
-  }
-
-  // ✅ NOVO: Validação final do recurso transformado
-  private static validateResource(resource: Resource): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-    
-    if (!resource.id || resource.id === 'undefined' || resource.id === 'null') {
-      errors.push('ID inválido');
-    }
-    
-    if (!resource.title || resource.title.trim() === '') {
-      errors.push('Título inválido');
-    }
-    
-    if (!resource.author || resource.author.trim() === '') {
-      errors.push('Autor inválido');
-    }
-    
-    if (!resource.type || !['video', 'titulo', 'podcast'].includes(resource.type)) {
-      errors.push('Tipo inválido');
-    }
-    
-    return { isValid: errors.length === 0, errors };
   }
 
   private static extractYearFromDate(dateValue: any): number {

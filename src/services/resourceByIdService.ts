@@ -64,13 +64,6 @@ export class ResourceByIdService {
       const data = await response.json();
       console.log(`✅ SUCESSO: ${resourceType} ID ${id}`, data);
       
-      // ✅ NOVO: Validação robusta dos dados da API antes da transformação
-      const validationResult = this.validateApiData(data, resourceType, id);
-      if (!validationResult.isValid) {
-        console.error(`❌ VALIDAÇÃO FALHOU: ${resourceType} ID ${id}:`, validationResult.errors);
-        return null;
-      }
-      
       return this.transformToResource(data, resourceType, id);
       
     } catch (error) {
@@ -179,13 +172,6 @@ export class ResourceByIdService {
 
       const data = await response.json();
       console.log(`✅ SUCESSO ARTIGO: ID ${id}`, data);
-      
-      // ✅ NOVO: Validação para artigos também
-      const validationResult = this.validateApiData(data, 'artigos', id);
-      if (!validationResult.isValid) {
-        console.error(`❌ VALIDAÇÃO ARTIGO FALHOU: ID ${id}:`, validationResult.errors);
-        return null;
-      }
       
       return this.transformToResource(data, 'artigos', id);
       

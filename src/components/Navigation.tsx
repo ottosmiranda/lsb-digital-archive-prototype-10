@@ -25,9 +25,8 @@ const Navigation = () => {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="lsb-container">
-        <div className="lsb-content">
+    <nav className="bg-white shadow-sm border-b border-link-border">
+      <div className="link-container">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex-shrink-0">
@@ -50,8 +49,8 @@ const Navigation = () => {
                     to={item.path}
                     className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors ${
                       isActive(item.path)
-                        ? "border-lsb-primary text-lsb-primary"
-                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                        ? "border-link-text text-link-text"
+                        : "border-transparent text-link-secondary hover:border-link-hover hover:text-link-hover"
                     }`}
                   >
                     {item.label}
@@ -72,38 +71,37 @@ const Navigation = () => {
                 {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
             </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Mobile menu */}
-      {isOpen && (
-        <div className="md:hidden">
-          <div className="pt-2 pb-3 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors ${
-                  isActive(item.path)
-                    ? "bg-lsb-light border-lsb-primary text-lsb-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-300"
-                }`}
-                onClick={() => setIsOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
-            
-            {/* Mobile Search Bar - Only show on internal pages */}
-            {!isHomePage && (
-              <div className="px-3 py-2">
-                <CompactSearchBar />
-              </div>
-            )}
+        {/* Mobile menu */}
+        {isOpen && (
+          <div className="md:hidden">
+            <div className="pt-2 pb-3 space-y-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors ${
+                    isActive(item.path)
+                      ? "bg-link-light border-link-text text-link-text"
+                      : "border-transparent text-link-secondary hover:text-link-hover hover:bg-link-light hover:border-link-hover"
+                  }`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
+              
+              {/* Mobile Search Bar - Only show on internal pages */}
+              {!isHomePage && (
+                <div className="px-3 py-2">
+                  <CompactSearchBar />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </nav>
   );
 };

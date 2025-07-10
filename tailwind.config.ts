@@ -14,7 +14,7 @@ export default {
 			center: true,
 			padding: '2rem',
 			screens: {
-				'2xl': '1400px'
+				'2xl': '1200px'
 			}
 		},
 		extend: {
@@ -64,6 +64,16 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				link: {
+					dark: 'hsl(var(--link-dark))',
+					light: 'hsl(var(--link-light))',
+					text: 'hsl(var(--link-text))',
+					secondary: 'hsl(var(--link-secondary))',
+					white: 'hsl(var(--link-white))',
+					cta: 'hsl(var(--link-cta))',
+					border: 'hsl(var(--link-border))',
+					hover: 'hsl(var(--link-hover))'
 				},
 				lsb: {
 					primary: 'hsl(210 80% 20%)',

@@ -1,4 +1,3 @@
-
 import { Star } from 'lucide-react';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useMemo, useRef } from 'react';
@@ -11,7 +10,7 @@ import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import FeaturedHighlightsSkeleton from '@/components/skeletons/FeaturedHighlightsSkeleton';
-import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
+import { shouldShowImage } from '@/utils/thumbnailUtils';
 
 // Função inteligente de mesclagem para garantir variedade incluindo artigos
 function getIntelligentMixedHighlights(allData: SearchResult[]): SearchResult[] {
@@ -90,7 +89,6 @@ const typeBadgeColor = (type: string) => {
 const FeaturedHighlights = () => {
   const { content, rotatedContent, loading } = useHomepageContentContext();
   const navigate = useNavigate();
-  const { handleImageError } = useThumbnailFallback();
 
   console.group('⭐ PHASE 3: FeaturedHighlights Component with Rotation Support and Articles');
   console.log('Loading state:', loading);
@@ -182,20 +180,19 @@ const FeaturedHighlights = () => {
                     >
                       <CardContent className="p-0 h-full flex flex-col">
                         <div className="relative overflow-hidden rounded-t-lg">
-                          {item.thumbnail && (
+                          {shouldShowImage(item.thumbnail, item.type) ? (
                             <img 
                               src={item.thumbnail}
                               alt={item.title}
                               className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
-                              onError={handleImageError}
+                            />
+                          ) : (
+                            <ThumbnailPlaceholder
+                              type={item.type}
+                              className="w-full h-40"
+                              size="large"
                             />
                           )}
-                          <ThumbnailPlaceholder
-                            type={item.type}
-                            className="w-full h-40"
-                            size="large"
-                            style={{ display: item.thumbnail ? 'none' : 'flex' }}
-                          />
                           <Badge className="absolute top-3 left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
                             <Star className="h-3 w-3" />
                             Escolha da Equipe

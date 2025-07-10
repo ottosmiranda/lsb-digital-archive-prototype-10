@@ -8,6 +8,7 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import InfiniteContentSkeleton from '@/components/skeletons/InfiniteContentSkeleton';
 import { getTypeBadgeLabel, getTypeBadgeColor } from '@/utils/resourceUtils';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
+import { shouldShowImage } from '@/utils/thumbnailUtils';
 
 interface SearchResultsListProps {
   results: SearchResult[];
@@ -89,15 +90,6 @@ const SearchResultsList = ({
     navigate(targetRoute);
   };
 
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const target = e.currentTarget;
-    target.style.display = 'none';
-    const placeholder = target.nextElementSibling as HTMLElement;
-    if (placeholder) {
-      placeholder.style.display = 'flex';
-    }
-  };
-
   if (loading && results.length === 0) {
     return <InfiniteContentSkeleton count={6} variant="list" />;
   }
@@ -114,22 +106,19 @@ const SearchResultsList = ({
                 <div className="flex gap-4">
                   {/* Thumbnail */}
                   <div className="relative w-28 h-28 bg-gray-100 rounded flex-shrink-0 overflow-hidden">
-                    {result.thumbnail ? (
+                    {shouldShowImage(result.thumbnail, result.type) ? (
                       <img 
                         src={result.thumbnail} 
                         alt={result.title}
                         className="w-full h-full object-cover"
-                        onError={handleImageError}
                       />
-                    ) : null}
-                    
-                    {/* Placeholder using ThumbnailPlaceholder */}
-                    <ThumbnailPlaceholder
-                      type={result.type}
-                      className="absolute inset-0 w-28 h-28"
-                      size="medium"
-                      style={{ display: result.thumbnail ? 'none' : 'flex' }}
-                    />
+                    ) : (
+                      <ThumbnailPlaceholder
+                        type={result.type}
+                        className="w-28 h-28"
+                        size="medium"
+                      />
+                    )}
                   </div>
 
                   {/* Content */}

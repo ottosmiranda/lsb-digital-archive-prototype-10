@@ -8,7 +8,7 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import InfiniteContentSkeleton from '@/components/skeletons/InfiniteContentSkeleton';
 import { getTypeBadgeLabel, getTypeBadgeColor } from '@/utils/resourceUtils';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
-import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
+import { shouldShowImage } from '@/utils/thumbnailUtils';
 
 interface SearchResultsGridProps {
   results: SearchResult[];
@@ -90,15 +90,6 @@ const SearchResultsGrid = ({
     navigate(targetRoute);
   };
 
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const target = e.currentTarget;
-    target.style.display = 'none';
-    const placeholder = target.nextElementSibling as HTMLElement;
-    if (placeholder) {
-      placeholder.style.display = 'flex';
-    }
-  };
-
   if (loading && results.length === 0) {
     return <InfiniteContentSkeleton count={6} variant="grid" />;
   }
@@ -114,22 +105,19 @@ const SearchResultsGrid = ({
                 <div className="space-y-4">
                   {/* Thumbnail */}
                   <div className="relative h-40 bg-gray-100 rounded-t-lg overflow-hidden">
-                    {result.thumbnail ? (
+                    {shouldShowImage(result.thumbnail, result.type) ? (
                       <img 
                         src={result.thumbnail} 
                         alt={result.title}
                         className="w-full h-full object-cover"
-                        onError={handleImageError}
                       />
-                    ) : null}
-                    
-                    {/* Placeholder using ThumbnailPlaceholder */}
-                    <ThumbnailPlaceholder
-                      type={result.type}
-                      className="absolute inset-0 rounded-t-lg"
-                      size="large"
-                      style={{ display: result.thumbnail ? 'none' : 'flex' }}
-                    />
+                    ) : (
+                      <ThumbnailPlaceholder
+                        type={result.type}
+                        className="w-full h-full rounded-t-lg"
+                        size="large"
+                      />
+                    )}
                     
                     <div className="absolute top-2 left-2">
                       <Badge className={`${typeBadge.color} flex items-center gap-1`}>

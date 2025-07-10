@@ -1,4 +1,3 @@
-
 import { Book, Video, Headphones, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +7,7 @@ import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useMemo } from 'react';
 import RecentAdditionsSkeleton from '@/components/skeletons/RecentAdditionsSkeleton';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
+import { shouldShowImage } from '@/utils/thumbnailUtils';
 import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
 
 const getIcon = (type: string) => {
@@ -156,20 +156,21 @@ const RecentAdditions = () => {
                           </div>
                           <div className="flex-shrink-0">
                             <div className="w-20 h-20 relative overflow-hidden">
-                              {item.thumbnail && (
+                              {shouldShowImage(item.thumbnail, item.type) ? (
                                 <img 
                                   src={item.thumbnail} 
                                   alt={item.title}
                                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                   onError={handleImageError}
                                 />
+                              ) : (
+                                <ThumbnailPlaceholder
+                                  type={item.type as 'titulo' | 'video' | 'podcast'}
+                                  className="w-20 h-20"
+                                  size="small"
+                                  style={{ display: item.thumbnail ? 'none' : 'flex' }}
+                                />
                               )}
-                              <ThumbnailPlaceholder
-                                type={item.type as 'titulo' | 'video' | 'podcast'}
-                                className="w-20 h-20 absolute inset-0"
-                                size="small"
-                                style={{ display: item.thumbnail ? 'none' : 'flex' }}
-                              />
                             </div>
                           </div>
                         </div>

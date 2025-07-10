@@ -90,14 +90,14 @@ const SearchHeaderWithTabs = ({
       {/* Content Type Tabs */}
       <div className="border-b border-gray-200">
         <Tabs value={activeContentType} onValueChange={onContentTypeChange} className="w-full">
-          <TabsList className="grid grid-cols-4 w-full max-w-md h-auto p-1 bg-lsb-section">
+          <TabsList className="grid grid-cols-4 w-full max-w-lg h-auto p-1 bg-lsb-section">
             {contentTypes.map((type) => {
               const IconComponent = type.icon;
               return (
                 <TabsTrigger 
                   key={type.id} 
                   value={type.id}
-                  className="flex items-center gap-2 px-4 py-3 data-[state=active]:bg-white data-[state=active]:text-lsb-primary"
+                  className="flex items-center gap-2 px-2 sm:px-4 md:px-6 py-3 data-[state=active]:bg-white data-[state=active]:text-lsb-primary"
                 >
                   <div 
                     style={{

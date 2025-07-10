@@ -10,6 +10,14 @@ import { getTypeBadgeLabel, getTypeBadgeColor } from '@/utils/resourceUtils';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { getThumbnailDisplayLogic } from '@/utils/thumbnailUtils';
 
+interface SearchResultsListProps {
+  results: SearchResult[];
+  loading: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
+  enableInfiniteScroll?: boolean;
+}
+
 const SearchResultsList = ({ 
   results, 
   loading,

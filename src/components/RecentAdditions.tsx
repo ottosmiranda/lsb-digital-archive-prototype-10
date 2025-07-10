@@ -97,118 +97,120 @@ const RecentAdditions = () => {
 
   return (
     <section className="py-16 md:py-24 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12 animate-fade-in">
-          <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
-            Novidades no Acervo
-          </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Confira os materiais mais recentes adicionados à nossa biblioteca
-          </p>
-        </div>
-
-        {error && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
-            <p className="text-yellow-800 text-center">
-              ⚠️ Problemas ao carregar conteúdo recente. Mostrando dados disponíveis.
+      <div className="lsb-container">
+        <div className="lsb-content">
+          <div className="text-center mb-12 animate-fade-in">
+            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
+              Novidades no Acervo
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Confira os materiais mais recentes adicionados à nossa biblioteca
             </p>
           </div>
-        )}
 
-        {recentItems.length > 0 ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-              {recentItems.map((item, index) => {
-                const IconComponent = getIcon(item.type);
-                return (
-                  <Link key={item.type + '-' + item.id} to={`/recurso/${item.id}`}>
-                    <Card
-                      className="group hover-lift animate-fade-in cursor-pointer"
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                    >
-                      <CardContent className="p-6">
-                        <div className="flex items-start space-x-4">
-                          <div className="flex-shrink-0">
-                            <div className="w-12 h-12 bg-lsb-section rounded-lg flex items-center justify-center">
-                              <IconComponent className="h-6 w-6 lsb-primary" />
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0 pr-4">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Badge className={getTypeColor(item.type)}>
-                                {getTypeLabel(item.type)}
-                              </Badge>
-                              <Badge variant="outline" className="bg-lsb-accent text-lsb-primary border-lsb-accent">
-                                Novo
-                              </Badge>
-                              <div className="flex items-center text-xs text-gray-500">
-                                <Calendar className="h-3 w-3 mr-1" />
-                                {formatDate(parseInt(item.addedDate))}
+          {error && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
+              <p className="text-yellow-800 text-center">
+                ⚠️ Problemas ao carregar conteúdo recente. Mostrando dados disponíveis.
+              </p>
+            </div>
+          )}
+
+          {recentItems.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                {recentItems.map((item, index) => {
+                  const IconComponent = getIcon(item.type);
+                  return (
+                    <Link key={item.type + '-' + item.id} to={`/recurso/${item.id}`}>
+                      <Card
+                        className="group hover-lift animate-fade-in cursor-pointer"
+                        style={{ animationDelay: `${index * 0.1}s` }}
+                      >
+                        <CardContent className="p-6">
+                          <div className="flex items-start space-x-4">
+                            <div className="flex-shrink-0">
+                              <div className="w-12 h-12 bg-lsb-section rounded-lg flex items-center justify-center">
+                                <IconComponent className="h-6 w-6 lsb-primary" />
                               </div>
                             </div>
-                            <h3 className="font-semibold text-lg mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2">
-                              {item.title}
-                            </h3>
-                            <p className="text-sm text-gray-600 mb-2">{item.author}</p>
-                            <p className="text-sm text-gray-700 line-clamp-2">
-                              {item.description}
-                            </p>
-                          </div>
-                          <div className="flex-shrink-0">
-                            <div className="w-20 h-20 relative overflow-hidden">
-                              {shouldShowImage(item.thumbnail, item.type) ? (
-                                <img 
-                                  src={item.thumbnail} 
-                                  alt={item.title}
-                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                  onError={handleImageError}
-                                />
-                              ) : (
-                                <ThumbnailPlaceholder
-                                  type={item.type as 'titulo' | 'video' | 'podcast'}
-                                  className="w-20 h-20"
-                                  size="small"
-                                  style={{ display: item.thumbnail ? 'none' : 'flex' }}
-                                />
-                              )}
+                            <div className="flex-1 min-w-0 pr-4">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <Badge className={getTypeColor(item.type)}>
+                                  {getTypeLabel(item.type)}
+                                </Badge>
+                                <Badge variant="outline" className="bg-lsb-accent text-lsb-primary border-lsb-accent">
+                                  Novo
+                                </Badge>
+                                <div className="flex items-center text-xs text-gray-500">
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  {formatDate(parseInt(item.addedDate))}
+                                </div>
+                              </div>
+                              <h3 className="font-semibold text-lg mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2">
+                                {item.title}
+                              </h3>
+                              <p className="text-sm text-gray-600 mb-2">{item.author}</p>
+                              <p className="text-sm text-gray-700 line-clamp-2">
+                                {item.description}
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0">
+                              <div className="w-20 h-20 relative overflow-hidden">
+                                {shouldShowImage(item.thumbnail, item.type) ? (
+                                  <img 
+                                    src={item.thumbnail} 
+                                    alt={item.title}
+                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    onError={handleImageError}
+                                  />
+                                ) : (
+                                  <ThumbnailPlaceholder
+                                    type={item.type as 'titulo' | 'video' | 'podcast'}
+                                    className="w-20 h-20"
+                                    size="small"
+                                    style={{ display: item.thumbnail ? 'none' : 'flex' }}
+                                  />
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </div>
 
-            <div className="text-center mt-12">
-              <Link to="/buscar?ordenar=recentes">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
+              <div className="text-center mt-12">
+                <Link to="/buscar?ordenar=recentes">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
+                  >
+                    Ver Todas as Novidades
+                  </Button>
+                </Link>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-600">
+                {loading ? 'Carregando novidades...' : 'Nenhum conteúdo disponível no momento.'}
+              </p>
+              {!loading && (
+                <Button 
+                  onClick={() => window.location.reload()} 
+                  variant="outline" 
+                  className="mt-4"
                 >
-                  Ver Todas as Novidades
+                  Tentar Novamente
                 </Button>
-              </Link>
+              )}
             </div>
-          </>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-gray-600">
-              {loading ? 'Carregando novidades...' : 'Nenhum conteúdo disponível no momento.'}
-            </p>
-            {!loading && (
-              <Button 
-                onClick={() => window.location.reload()} 
-                variant="outline" 
-                className="mt-4"
-              >
-                Tentar Novamente
-              </Button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );

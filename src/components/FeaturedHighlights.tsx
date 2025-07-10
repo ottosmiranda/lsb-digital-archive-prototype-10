@@ -155,91 +155,93 @@ const FeaturedHighlights = () => {
 
   return (
     <section className="py-16 md:py-24 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12 animate-fade-in">
-          <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
-            Destaques da Semana
-          </h2>
-          <div className="w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
-        </div>
-
-        {highlights.length === 0 ? (
-          <div className="text-center my-12 text-lg text-gray-400">Nenhum destaque encontrado.</div>
-        ) : (
-          <div className="relative">
-            <Carousel
-              plugins={[autoplayPlugin.current]}
-              opts={{
-                align: "start",
-                loop: true,
-                dragFree: false,
-                containScroll: "trimSnaps",
-              }}
-              className="w-full"
-            >
-              <CarouselContent className="-ml-4">
-                {highlights.map((item, index) => (
-                  <CarouselItem key={`${item.type}-${item.id}`} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
-                    <Card
-                      className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                      onClick={() => navigate(`/recurso/${item.id}`)}
-                    >
-                      <CardContent className="p-0 h-full flex flex-col">
-                        <div className="relative overflow-hidden rounded-t-lg">
-                          {shouldShowImage(item.thumbnail, item.type) ? (
-                            <img 
-                              src={item.thumbnail}
-                              alt={item.title}
-                              className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
-                              onError={(e) => {
-                                // 🔥 DEBUG: Log de erro de imagem
-                                console.error('🖼️ THUMBNAIL ERROR:', {
-                                  src: item.thumbnail,
-                                  title: item.title,
-                                  type: item.type,
-                                  error: e
-                                });
-                              }}
-                            />
-                          ) : (
-                            <ThumbnailPlaceholder
-                              type={item.type}
-                              className="w-full h-40"
-                              size="large"
-                            />
-                          )}
-                          <Badge className="absolute top-3 left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
-                            <Star className="h-3 w-3" />
-                            Escolha da Equipe
-                          </Badge>
-                        </div>
-                        <div className="p-3 flex-1 flex flex-col">
-                          <Badge variant="outline" className={`mb-2 text-xs self-start ${typeBadgeColor(item.type)}`}>
-                            {typeBadge(item.type)}
-                          </Badge>
-                          <h3 className="font-semibold text-sm mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight flex-1">
-                            {item.title}
-                          </h3>
-                          <p className="text-xs text-gray-600 mb-3">{item.author}</p>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="w-full text-lsb-primary hover:bg-lsb-primary hover:text-white transition-all duration-300 text-xs"
-                          >
-                            Ver Detalhes
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious className="hidden md:flex -left-8" />
-              <CarouselNext className="hidden md:flex -right-8" />
-            </Carousel>
+      <div className="lsb-container">
+        <div className="lsb-content">
+          <div className="text-center mb-12 animate-fade-in">
+            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
+              Destaques da Semana
+            </h2>
+            <div className="w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
           </div>
-        )}
+
+          {highlights.length === 0 ? (
+            <div className="text-center my-12 text-lg text-gray-400">Nenhum destaque encontrado.</div>
+          ) : (
+            <div className="relative">
+              <Carousel
+                plugins={[autoplayPlugin.current]}
+                opts={{
+                  align: "start",
+                  loop: true,
+                  dragFree: false,
+                  containScroll: "trimSnaps",
+                }}
+                className="w-full"
+              >
+                <CarouselContent className="-ml-4">
+                  {highlights.map((item, index) => (
+                    <CarouselItem key={`${item.type}-${item.id}`} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                      <Card
+                        className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
+                        style={{ animationDelay: `${index * 0.1}s` }}
+                        onClick={() => navigate(`/recurso/${item.id}`)}
+                      >
+                        <CardContent className="p-0 h-full flex flex-col">
+                          <div className="relative overflow-hidden rounded-t-lg">
+                            {shouldShowImage(item.thumbnail, item.type) ? (
+                              <img 
+                                src={item.thumbnail}
+                                alt={item.title}
+                                className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                                onError={(e) => {
+                                  // 🔥 DEBUG: Log de erro de imagem
+                                  console.error('🖼️ THUMBNAIL ERROR:', {
+                                    src: item.thumbnail,
+                                    title: item.title,
+                                    type: item.type,
+                                    error: e
+                                  });
+                                }}
+                              />
+                            ) : (
+                              <ThumbnailPlaceholder
+                                type={item.type}
+                                className="w-full h-40"
+                                size="large"
+                              />
+                            )}
+                            <Badge className="absolute top-3 left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
+                              <Star className="h-3 w-3" />
+                              Escolha da Equipe
+                            </Badge>
+                          </div>
+                          <div className="p-3 flex-1 flex flex-col">
+                            <Badge variant="outline" className={`mb-2 text-xs self-start ${typeBadgeColor(item.type)}`}>
+                              {typeBadge(item.type)}
+                            </Badge>
+                            <h3 className="font-semibold text-sm mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight flex-1">
+                              {item.title}
+                            </h3>
+                            <p className="text-xs text-gray-600 mb-3">{item.author}</p>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="w-full text-lsb-primary hover:bg-lsb-primary hover:text-white transition-all duration-300 text-xs"
+                            >
+                              Ver Detalhes
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious className="hidden md:flex -left-8" />
+                <CarouselNext className="hidden md:flex -right-8" />
+              </Carousel>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

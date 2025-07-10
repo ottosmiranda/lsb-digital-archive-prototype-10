@@ -26,6 +26,7 @@ const ExternalResources = () => {
     stopOnInteraction: false,
     stopOnMouseEnter: false
   }));
+
   useEffect(() => {
     const loadResources = async () => {
       try {
@@ -70,6 +71,7 @@ const ExternalResources = () => {
     };
     loadResources();
   }, []);
+
   const getResourceConfig = (nome: string) => {
     const configs = {
       'SciELO Brasil': {
@@ -183,111 +185,119 @@ const ExternalResources = () => {
       highlight: 'Conteúdo especializado'
     };
   };
+
   const handleResourceClick = (url: string, name: string) => {
     console.log(`Accessing external resource: ${name}`);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
+
   if (loading) {
     return <ExternalResourcesSkeleton />;
   }
+
   if (error) {
     return (
       <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <p className="text-red-600">{error}</p>
+        <div className="lsb-container">
+          <div className="lsb-content">
+            <div className="text-center">
+              <p className="text-red-600">{error}</p>
+            </div>
           </div>
         </div>
       </section>
     );
   }
+
   return (
     <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12 animate-fade-in">
-          <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
-            Recursos Externos Recomendados
-          </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Explore bibliotecas digitais e bases de dados brasileiras cuidadosamente selecionadas 
-            para complementar sua pesquisa acadêmica
-          </p>
-          {usingFallback && <div className="mt-4">
-              <Badge variant="outline" className="text-yellow-700 border-yellow-300 bg-yellow-50">
-                Dados de fallback carregados
-              </Badge>
-            </div>}
-        </div>
+      <div className="lsb-container">
+        <div className="lsb-content">
+          <div className="text-center mb-12 animate-fade-in">
+            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
+              Recursos Externos Recomendados
+            </h2>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Explore bibliotecas digitais e bases de dados brasileiras cuidadosamente selecionadas 
+              para complementar sua pesquisa acadêmica
+            </p>
+            {usingFallback && <div className="mt-4">
+                <Badge variant="outline" className="text-yellow-700 border-yellow-300 bg-yellow-50">
+                  Dados de fallback carregados
+                </Badge>
+              </div>}
+          </div>
 
-        <div className="px-4">
-          <Carousel plugins={[autoplayPlugin.current]} opts={{
-          align: "start",
-          loop: true,
-          dragFree: false,
-          containScroll: "trimSnaps"
-        }} className="w-full">
-            <CarouselContent className="py-4" style={{
-            marginLeft: '-1rem',
-            paddingLeft: '1rem',
-            paddingRight: '1rem'
-          }}>
-              {resources.map((resource, index) => {
-              const config = getResourceConfig(resource.Nome);
-              const IconComponent = config.icon;
-              return <CarouselItem key={resource.Nome} className="basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4" style={{
-                paddingLeft: '1rem'
-              }}>
-                    <Card className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full mx-2" style={{
-                  animationDelay: `${index * 0.1}s`
-                }} onClick={() => handleResourceClick(resource.Link, resource.Nome)}>
-                      <CardContent className="p-4 h-full flex flex-col">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className={`w-10 h-10 bg-gradient-to-br ${config.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                            <IconComponent className="h-5 w-5 text-white" />
-                          </div>
-                          <Badge className="text-xs bg-green-100 text-green-800 border-0">
-                            Gratuito
-                          </Badge>
-                        </div>
-                        
-                        <div className="flex-1">
-                          <div className="mb-2">
-                            <Badge variant="outline" className="text-xs mb-2 border-gray-300">
-                              {config.category}
+          <div className="px-4">
+            <Carousel plugins={[autoplayPlugin.current]} opts={{
+            align: "start",
+            loop: true,
+            dragFree: false,
+            containScroll: "trimSnaps"
+          }} className="w-full">
+              <CarouselContent className="py-4" style={{
+              marginLeft: '-1rem',
+              paddingLeft: '1rem',
+              paddingRight: '1rem'
+            }}>
+                {resources.map((resource, index) => {
+                const config = getResourceConfig(resource.Nome);
+                const IconComponent = config.icon;
+                return <CarouselItem key={resource.Nome} className="basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4" style={{
+                  paddingLeft: '1rem'
+                }}>
+                      <Card className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full mx-2" style={{
+                    animationDelay: `${index * 0.1}s`
+                  }} onClick={() => handleResourceClick(resource.Link, resource.Nome)}>
+                        <CardContent className="p-4 h-full flex flex-col">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className={`w-10 h-10 bg-gradient-to-br ${config.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                              <IconComponent className="h-5 w-5 text-white" />
+                            </div>
+                            <Badge className="text-xs bg-green-100 text-green-800 border-0">
+                              Gratuito
                             </Badge>
                           </div>
                           
-                          <h3 className="font-semibold text-sm mb-2 group-hover:text-lsb-primary transition-colors line-clamp-2">
-                            {resource.Nome}
-                          </h3>
-                          
-                          <p className="text-xs text-gray-600 mb-2 line-clamp-1 flex-1">
-                            {resource.Descricao}
-                          </p>
-                          
-                          <div className="mb-3">
-                            <p className="text-xs font-medium text-lsb-primary">
-                              {config.highlight}
+                          <div className="flex-1">
+                            <div className="mb-2">
+                              <Badge variant="outline" className="text-xs mb-2 border-gray-300">
+                                {config.category}
+                              </Badge>
+                            </div>
+                            
+                            <h3 className="font-semibold text-sm mb-2 group-hover:text-lsb-primary transition-colors line-clamp-2">
+                              {resource.Nome}
+                            </h3>
+                            
+                            <p className="text-xs text-gray-600 mb-2 line-clamp-1 flex-1">
+                              {resource.Descricao}
                             </p>
+                            
+                            <div className="mb-3">
+                              <p className="text-xs font-medium text-lsb-primary">
+                                {config.highlight}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        
-                        <Button size="sm" className="w-full bg-lsb-primary hover:bg-lsb-primary/90 text-white border-0 group-hover:shadow-md transition-all text-xs">
-                          Acessar
-                          <ExternalLink className="ml-1 h-3 w-3" />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </CarouselItem>;
-            })}
-            </CarouselContent>
-            <CarouselPrevious className="hidden md:flex -left-8" />
-            <CarouselNext className="hidden md:flex -right-8" />
-          </Carousel>
-        </div>
+                          
+                          <Button size="sm" className="w-full bg-lsb-primary hover:bg-lsb-primary/90 text-white border-0 group-hover:shadow-md transition-all text-xs">
+                            Acessar
+                            <ExternalLink className="ml-1 h-3 w-3" />
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </CarouselItem>;
+              })}
+              </CarouselContent>
+              <CarouselPrevious className="hidden md:flex -left-8" />
+              <CarouselNext className="hidden md:flex -right-8" />
+            </Carousel>
+          </div>
 
-        <div className="text-center mt-12 space-y-4">
-          
+          <div className="text-center mt-12 space-y-4">
+            
+          </div>
         </div>
       </div>
     </section>

@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -73,6 +72,14 @@ export default {
 					section: 'hsl(210 20% 97%)',
 					gray: 'hsl(0 0% 88%)'
 				}
+			},
+			screens: {
+				'xs': '480px',
+				'sm': '640px',
+				'md': '768px',
+				'lg': '1024px',
+				'xl': '1280px',
+				'2xl': '1440px'
 			},
 			borderRadius: {
 				lg: '2px',

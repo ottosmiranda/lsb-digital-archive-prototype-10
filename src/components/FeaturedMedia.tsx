@@ -108,74 +108,76 @@ const FeaturedMedia = () => {
 
   return (
     <section className="py-16 md:py-24 bg-lsb-section">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12 animate-fade-in">
-          <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
-            Mídia em Destaque
-          </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Descubra nossos conteúdos audiovisuais mais populares
-          </p>
+      <div className="lsb-container">
+        <div className="lsb-content">
+          <div className="text-center mb-12 animate-fade-in">
+            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
+              Mídia em Destaque
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Descubra nossos conteúdos audiovisuais mais populares
+            </p>
+          </div>
+
+          <Tabs defaultValue="videos" className="w-full">
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+              <TabsTrigger value="videos">Vídeos</TabsTrigger>
+              <TabsTrigger value="podcasts">Podcasts</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="videos" className="animate-fade-in">
+              {videos.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                    {videos.map((video) => (
+                      <MediaCard key={video.id} item={video} type="video" />
+                    ))}
+                  </div>
+                  <div className="text-center mt-8">
+                    <Link to="/buscar?filtros=video">
+                      <Button
+                        variant="outline"
+                        className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
+                      >
+                        Ver Todos os Vídeos
+                      </Button>
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">Nenhum vídeo disponível no momento.</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="podcasts" className="animate-fade-in">
+              {podcasts.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                    {podcasts.map((podcast) => (
+                      <MediaCard key={podcast.id} item={podcast} type="podcast" />
+                    ))}
+                  </div>
+                  <div className="text-center mt-8">
+                    <Link to="/buscar?filtros=podcast">
+                      <Button
+                        variant="outline"
+                        className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
+                      >
+                        Ver Todos os Podcasts
+                      </Button>
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">Nenhum podcast disponível no momento.</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
-
-        <Tabs defaultValue="videos" className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
-            <TabsTrigger value="videos">Vídeos</TabsTrigger>
-            <TabsTrigger value="podcasts">Podcasts</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="videos" className="animate-fade-in">
-            {videos.length > 0 ? (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                  {videos.map((video) => (
-                    <MediaCard key={video.id} item={video} type="video" />
-                  ))}
-                </div>
-                <div className="text-center mt-8">
-                  <Link to="/buscar?filtros=video">
-                    <Button
-                      variant="outline"
-                      className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
-                    >
-                      Ver Todos os Vídeos
-                    </Button>
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-600">Nenhum vídeo disponível no momento.</p>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="podcasts" className="animate-fade-in">
-            {podcasts.length > 0 ? (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                  {podcasts.map((podcast) => (
-                    <MediaCard key={podcast.id} item={podcast} type="podcast" />
-                  ))}
-                </div>
-                <div className="text-center mt-8">
-                  <Link to="/buscar?filtros=podcast">
-                    <Button
-                      variant="outline"
-                      className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
-                    >
-                      Ver Todos os Podcasts
-                    </Button>
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-600">Nenhum podcast disponível no momento.</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
       </div>
     </section>
   );

@@ -150,91 +150,95 @@ const SearchLayout = ({
     <div className="min-h-screen bg-white">
       <Navigation />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {onRefreshData && (
-          <DataRefreshButton
-            onRefresh={onRefreshData}
-            loading={loading}
-            usingFallback={usingFallback}
-          />
-        )}
+      <div className="lsb-container">
+        <div className="lsb-content">
+          <div className="py-8">
+            {onRefreshData && (
+              <DataRefreshButton
+                onRefresh={onRefreshData}
+                loading={loading}
+                usingFallback={usingFallback}
+              />
+            )}
 
-        {/* Debug Info - apenas em desenvolvimento */}
-        <SearchDebugInfo
-          filters={filters}
-          totalResults={totalResults}
-          loading={loading}
-          hasActiveFilters={hasActiveFilters}
-          usingFallback={usingFallback}
-          query={query}
-        />
-
-        {!showWelcomeState && (
-          <SearchHeaderWithTabs 
-            query={query}
-            resultCount={totalResults}
-            sortBy={sortBy}
-            view={view}
-            activeContentType={activeContentType}
-            onSortChange={onSortChange}
-            onViewChange={setView}
-            onContentTypeChange={handleContentTypeChange}
-            onClearQuery={onClearQuery}
-          />
-        )}
-        
-        <div className="flex flex-col lg:flex-row gap-8 mt-8">
-          {!showWelcomeState && (
-            <StreamlinedSearchFilters 
+            {/* Debug Info - apenas em desenvolvimento */}
+            <SearchDebugInfo
               filters={filters}
-              onFiltersChange={onFiltersChange}
-              currentResults={currentResults}
-              activeContentType={activeContentType}
+              totalResults={totalResults}
+              loading={loading}
+              hasActiveFilters={hasActiveFilters}
+              usingFallback={usingFallback}
+              query={query}
             />
-          )}
-          
-          <div className="flex-1">
-            {showWelcomeState ? (
-              <SearchWelcomeState onQuickSearch={onQuickSearch || (() => {})} />
-            ) : (
-              <>
-                <FilterChips
+
+            {!showWelcomeState && (
+              <SearchHeaderWithTabs 
+                query={query}
+                resultCount={totalResults}
+                sortBy={sortBy}
+                view={view}
+                activeContentType={activeContentType}
+                onSortChange={onSortChange}
+                onViewChange={setView}
+                onContentTypeChange={handleContentTypeChange}
+                onClearQuery={onClearQuery}
+              />
+            )}
+            
+            <div className="flex flex-col lg:flex-row gap-8 mt-8">
+              {!showWelcomeState && (
+                <StreamlinedSearchFilters 
                   filters={filters}
-                  onRemoveFilter={handleRemoveFilter}
-                  onClearAll={onClearFilters}
+                  onFiltersChange={onFiltersChange}
+                  currentResults={currentResults}
+                  activeContentType={activeContentType}
                 />
-                
-                {showEmptyState ? (
-                  <EmptySearchState 
-                    query={query} 
-                    onClearFilters={onClearFilters} 
-                  />
+              )}
+              
+              <div className="flex-1">
+                {showWelcomeState ? (
+                  <SearchWelcomeState onQuickSearch={onQuickSearch || (() => {})} />
                 ) : (
                   <>
-                    {view === 'grid' ? (
-                      <SearchResultsGrid 
-                        results={currentResults}
-                        loading={loading}
+                    <FilterChips
+                      filters={filters}
+                      onRemoveFilter={handleRemoveFilter}
+                      onClearAll={onClearFilters}
+                    />
+                    
+                    {showEmptyState ? (
+                      <EmptySearchState 
+                        query={query} 
+                        onClearFilters={onClearFilters} 
                       />
                     ) : (
-                      <SearchResultsList 
-                        results={currentResults}
-                        loading={loading}
-                      />
-                    )}
-                    
-                    {/* CRÍTICO: Paginação sempre mostrada quando há resultados paginados */}
-                    {showPagination && (
-                      <SearchPagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={onPageChange}
-                      />
+                      <>
+                        {view === 'grid' ? (
+                          <SearchResultsGrid 
+                            results={currentResults}
+                            loading={loading}
+                          />
+                        ) : (
+                          <SearchResultsList 
+                            results={currentResults}
+                            loading={loading}
+                          />
+                        )}
+                        
+                        {/* CRÍTICO: Paginação sempre mostrada quando há resultados paginados */}
+                        {showPagination && (
+                          <SearchPagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={onPageChange}
+                          />
+                        )}
+                      </>
                     )}
                   </>
                 )}
-              </>
-            )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

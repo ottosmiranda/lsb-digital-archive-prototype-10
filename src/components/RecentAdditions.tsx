@@ -7,9 +7,8 @@ import { Link } from 'react-router-dom';
 import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useMemo } from 'react';
 import RecentAdditionsSkeleton from '@/components/skeletons/RecentAdditionsSkeleton';
-
-// Fallback image for missing thumbnails
-const PLACEHOLDER_THUMB = '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png';
+import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
+import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
 
 const getIcon = (type: string) => {
   switch (type) {
@@ -47,6 +46,7 @@ const formatDate = (year: number) => {
 
 const RecentAdditions = () => {
   const { content, loading, error } = useHomepageContentContext();
+  const { handleImageError } = useThumbnailFallback();
 
   console.log('🆕 RecentAdditions - Rendering with context data including articles:', {
     loading,
@@ -79,7 +79,7 @@ const RecentAdditions = () => {
         type: item.type,
         author: item.author,
         description: item.description,
-        thumbnail: item.thumbnail || PLACEHOLDER_THUMB,
+        thumbnail: item.thumbnail,
         addedDate: item.year.toString(),
       }));
   }, [content]);
@@ -155,15 +155,20 @@ const RecentAdditions = () => {
                             </p>
                           </div>
                           <div className="flex-shrink-0">
-                            <div className="w-20 h-20 bg-gray-200 rounded-lg overflow-hidden">
-                              <img 
-                                src={item.thumbnail} 
-                                alt={item.title}
-                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                onError={(e) => {
-                                  console.log('🖼️ Image load error for:', item.title);
-                                  e.currentTarget.src = PLACEHOLDER_THUMB;
-                                }}
+                            <div className="w-20 h-20 relative overflow-hidden">
+                              {item.thumbnail && (
+                                <img 
+                                  src={item.thumbnail} 
+                                  alt={item.title}
+                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                  onError={handleImageError}
+                                />
+                              )}
+                              <ThumbnailPlaceholder
+                                type={item.type as 'titulo' | 'video' | 'podcast'}
+                                className="w-20 h-20 absolute inset-0"
+                                size="small"
+                                style={{ display: item.thumbnail ? 'none' : 'flex' }}
                               />
                             </div>
                           </div>

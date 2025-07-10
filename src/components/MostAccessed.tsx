@@ -1,4 +1,6 @@
-import { Flame, ImageOff } from 'lucide-react';
+
+import { Flame } from 'lucide-react';
+import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import { useTopItems } from './MostAccessed/useTopItems';
 import MostAccessedSkeleton from '@/components/skeletons/MostAccessedSkeleton';
+import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
 
 const typeBadge = (type: string) => {
   switch (type) {
@@ -32,6 +35,7 @@ const typeBadgeColor = (type: string) => {
 const MostAccessed = () => {
   const { content, loading } = useHomepageContentContext();
   const navigate = useNavigate();
+  const { handleImageError } = useThumbnailFallback();
   
   // FASE 3: Debug component data reception
   console.group('🔥 PHASE 3: MostAccessed Component Diagnostics');
@@ -121,18 +125,20 @@ const MostAccessed = () => {
                   >
                     <CardContent className="p-0 h-full flex flex-col">
                       <div className="relative overflow-hidden rounded-t-lg">
-                        {item.thumbnail ? (
+                        {item.thumbnail && (
                           <img 
                             src={item.thumbnail}
                             alt={item.title}
                             className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                            onError={handleImageError}
                           />
-                        ) : (
-                          <div className="w-full h-40 bg-gray-200 flex items-center justify-center flex-col gap-2">
-                            <ImageOff className="w-8 h-8 text-gray-400" />
-                            <span className="text-gray-500 text-xs">Sem imagem</span>
-                          </div>
                         )}
+                        <ThumbnailPlaceholder
+                          type={item.type}
+                          className="w-full h-40"
+                          size="large"
+                          style={{ display: item.thumbnail ? 'none' : 'flex' }}
+                        />
                         <Badge className="absolute top-3 left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
                           <Flame className="h-3 w-3" />
                           Mais Acessado

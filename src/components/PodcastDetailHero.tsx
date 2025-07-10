@@ -4,9 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { User, Calendar, Tag, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ShareButtons from "@/components/ShareButtons";
+import ThumbnailPlaceholder from "@/components/ui/ThumbnailPlaceholder";
+import { useThumbnailFallback } from "@/hooks/useThumbnailFallback";
 import React from "react";
-
-const fallbackImg = "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=300&q=80";
 
 interface PodcastDetailHeroProps {
   cover?: string;
@@ -29,6 +29,7 @@ const PodcastDetailHero = ({
   description,
   onPlayLatest
 }: PodcastDetailHeroProps) => {
+  const { handleImageError } = useThumbnailFallback();
   const shareUrl = window.location.href;
   const shareTitle = title;
   const shareDescription = description;
@@ -39,14 +40,22 @@ const PodcastDetailHero = ({
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 py-[7px]">
         {/* Column 1: Cover Image */}
         <div className="flex-shrink-0">
-          <img 
-            src={cover || fallbackImg} 
-            alt={title} 
-            className="w-48 h-48 md:w-60 md:h-60 object-cover rounded-2xl border shadow-md bg-gray-200" 
-            onError={e => {
-              (e.target as HTMLImageElement).src = fallbackImg;
-            }} 
-          />
+          <div className="w-48 h-48 md:w-60 md:h-60 relative overflow-hidden rounded-lg border shadow-md bg-gray-200">
+            {cover && (
+              <img 
+                src={cover} 
+                alt={title} 
+                className="w-full h-full object-cover"
+                onError={handleImageError}
+              />
+            )}
+            <ThumbnailPlaceholder
+              type="podcast"
+              className="w-full h-full absolute inset-0 rounded-lg"
+              size="large"
+              style={{ display: cover ? 'none' : 'flex' }}
+            />
+          </div>
         </div>
 
         {/* Column 2: Program Info and Play Button */}

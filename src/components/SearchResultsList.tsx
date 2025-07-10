@@ -7,6 +7,7 @@ import { SearchResult } from '@/types/searchTypes';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import InfiniteContentSkeleton from '@/components/skeletons/InfiniteContentSkeleton';
 import { getTypeBadgeLabel, getTypeBadgeColor } from '@/utils/resourceUtils';
+import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 
 interface SearchResultsListProps {
   results: SearchResult[];
@@ -122,15 +123,13 @@ const SearchResultsList = ({
                       />
                     ) : null}
                     
-                    {/* Placeholder */}
-                    <div 
-                      className="absolute inset-0 bg-gray-50 flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-gray-200"
+                    {/* Placeholder using ThumbnailPlaceholder */}
+                    <ThumbnailPlaceholder
+                      type={result.type}
+                      className="absolute inset-0 w-28 h-28"
+                      size="medium"
                       style={{ display: result.thumbnail ? 'none' : 'flex' }}
-                    >
-                      {getTypeIcon(result.type)}
-                      <span className="text-xs mt-1 font-medium text-center">Thumbnail</span>
-                      <span className="text-xs text-center">Unavailable</span>
-                    </div>
+                    />
                   </div>
 
                   {/* Content */}

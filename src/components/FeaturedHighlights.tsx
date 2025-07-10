@@ -1,5 +1,6 @@
 
-import { Star, ImageOff } from 'lucide-react';
+import { Star } from 'lucide-react';
+import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import FeaturedHighlightsSkeleton from '@/components/skeletons/FeaturedHighlightsSkeleton';
+import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
 
 // Função inteligente de mesclagem para garantir variedade incluindo artigos
 function getIntelligentMixedHighlights(allData: SearchResult[]): SearchResult[] {
@@ -88,6 +90,7 @@ const typeBadgeColor = (type: string) => {
 const FeaturedHighlights = () => {
   const { content, rotatedContent, loading } = useHomepageContentContext();
   const navigate = useNavigate();
+  const { handleImageError } = useThumbnailFallback();
 
   console.group('⭐ PHASE 3: FeaturedHighlights Component with Rotation Support and Articles');
   console.log('Loading state:', loading);
@@ -179,18 +182,20 @@ const FeaturedHighlights = () => {
                     >
                       <CardContent className="p-0 h-full flex flex-col">
                         <div className="relative overflow-hidden rounded-t-lg">
-                          {item.thumbnail ? (
+                          {item.thumbnail && (
                             <img 
                               src={item.thumbnail}
                               alt={item.title}
                               className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                              onError={handleImageError}
                             />
-                          ) : (
-                            <div className="w-full h-40 bg-gray-200 flex items-center justify-center flex-col gap-2">
-                              <ImageOff className="w-8 h-8 text-gray-400" />
-                              <span className="text-gray-500 text-xs">Sem imagem</span>
-                            </div>
                           )}
+                          <ThumbnailPlaceholder
+                            type={item.type}
+                            className="w-full h-40"
+                            size="large"
+                            style={{ display: item.thumbnail ? 'none' : 'flex' }}
+                          />
                           <Badge className="absolute top-3 left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
                             <Star className="h-3 w-3" />
                             Escolha da Equipe

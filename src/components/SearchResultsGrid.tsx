@@ -7,6 +7,8 @@ import { SearchResult } from '@/types/searchTypes';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import InfiniteContentSkeleton from '@/components/skeletons/InfiniteContentSkeleton';
 import { getTypeBadgeLabel, getTypeBadgeColor } from '@/utils/resourceUtils';
+import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
+import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
 
 interface SearchResultsGridProps {
   results: SearchResult[];
@@ -121,15 +123,13 @@ const SearchResultsGrid = ({
                       />
                     ) : null}
                     
-                    {/* Placeholder */}
-                    <div 
-                      className="absolute inset-0 bg-gray-50 flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-gray-200"
+                    {/* Placeholder using ThumbnailPlaceholder */}
+                    <ThumbnailPlaceholder
+                      type={result.type}
+                      className="absolute inset-0 rounded-t-lg"
+                      size="large"
                       style={{ display: result.thumbnail ? 'none' : 'flex' }}
-                    >
-                      {getTypeIcon(result.type)}
-                      <span className="text-xs mt-2 font-medium">Miniatura</span>
-                      <span className="text-xs">Indisponível</span>
-                    </div>
+                    />
                     
                     <div className="absolute top-2 left-2">
                       <Badge className={`${typeBadge.color} flex items-center gap-1`}>

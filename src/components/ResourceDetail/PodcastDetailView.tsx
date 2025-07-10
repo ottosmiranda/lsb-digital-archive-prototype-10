@@ -37,7 +37,7 @@ const PodcastDetailView = ({ podcast }: PodcastDetailViewProps) => {
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
-      <div className="max-w-4xl mx-auto py-8 px-4 md:px-8">
+      <div className="max-w-[1320px] mx-auto py-8 px-4 md:px-8">
         <ResourceBreadcrumb title={programTitle} />
         <BackButton />
         <PodcastDetailHero

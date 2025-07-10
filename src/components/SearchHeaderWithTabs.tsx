@@ -90,7 +90,7 @@ const SearchHeaderWithTabs = ({
       {/* Content Type Tabs */}
       <div className="border-b border-gray-200">
         <Tabs value={activeContentType} onValueChange={onContentTypeChange} className="w-full">
-          <TabsList className="grid grid-cols-4 w-full max-w-lg h-auto p-1 bg-lsb-section">
+          <TabsList className="grid grid-cols-4 w-full max-w-lg h-auto p-1 bg-lsb-section gap-3">
             {contentTypes.map((type) => {
               const IconComponent = type.icon;
               return (

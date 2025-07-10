@@ -1,3 +1,4 @@
+
 import { Resource } from '@/types/resourceTypes';
 import { API_BASE_URL } from './api/apiConfig';
 
@@ -63,6 +64,13 @@ export class ResourceByIdService {
       const data = await response.json();
       console.log(`✅ SUCESSO: ${resourceType} ID ${id}`, data);
       
+      // ✅ NOVO: Validação robusta dos dados da API antes da transformação
+      const validationResult = this.validateApiData(data, resourceType, id);
+      if (!validationResult.isValid) {
+        console.error(`❌ VALIDAÇÃO FALHOU: ${resourceType} ID ${id}:`, validationResult.errors);
+        return null;
+      }
+      
       return this.transformToResource(data, resourceType, id);
       
     } catch (error) {
@@ -73,6 +81,60 @@ export class ResourceByIdService {
       }
       return null;
     }
+  }
+
+  // ✅ NOVO: Validação robusta dos dados da API
+  private static validateApiData(data: any, resourceType: string, requestedId: string): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    
+    console.group(`🔍 VALIDAÇÃO API DATA: ${resourceType} ID ${requestedId}`);
+    console.log('📋 Raw API data:', JSON.stringify(data, null, 2));
+    
+    if (!data) {
+      errors.push('Dados nulos ou indefinidos');
+    }
+    
+    // Validação específica por tipo
+    if (resourceType === 'livro' || resourceType === 'titulo' || resourceType === 'artigos') {
+      if (!data.titulo && !data.title) {
+        errors.push('Campo titulo/title obrigatório ausente');
+      }
+      if (!data.id) {
+        errors.push('Campo id obrigatório ausente');
+      }
+    } else if (resourceType === 'video') {
+      if (!data.titulo && !data.title) {
+        errors.push('Campo titulo/title obrigatório ausente');
+      }
+      if (!data.id) {
+        errors.push('Campo id obrigatório ausente');
+      }
+    } else if (resourceType === 'podcast') {
+      if (Array.isArray(data)) {
+        if (data.length === 0) {
+          errors.push('Array de podcasts vazio');
+        } else {
+          const podcast = data[0];
+          if (!podcast.episodio_titulo && !podcast.podcast_titulo) {
+            errors.push('Títulos do episódio/podcast ausentes');
+          }
+          if (!podcast.episodio_id && !podcast.podcast_id) {
+            errors.push('IDs do episódio/podcast ausentes');
+          }
+        }
+      } else {
+        errors.push('Dados de podcast devem ser um array');
+      }
+    }
+    
+    const isValid = errors.length === 0;
+    console.log(`📊 Validação resultado: ${isValid ? '✅ VÁLIDO' : '❌ INVÁLIDO'}`);
+    if (!isValid) {
+      console.log('📋 Erros encontrados:', errors);
+    }
+    console.groupEnd();
+    
+    return { isValid, errors };
   }
 
   private static getEndpointForType(resourceType: string, id: string): string {
@@ -118,6 +180,13 @@ export class ResourceByIdService {
       const data = await response.json();
       console.log(`✅ SUCESSO ARTIGO: ID ${id}`, data);
       
+      // ✅ NOVO: Validação para artigos também
+      const validationResult = this.validateApiData(data, 'artigos', id);
+      if (!validationResult.isValid) {
+        console.error(`❌ VALIDAÇÃO ARTIGO FALHOU: ID ${id}:`, validationResult.errors);
+        return null;
+      }
+      
       return this.transformToResource(data, 'artigos', id);
       
     } catch (error) {
@@ -131,82 +200,136 @@ export class ResourceByIdService {
   }
 
   private static transformToResource(data: any, resourceType: string, requestedId: string): Resource {
-    console.log(`🔄 Transformando dados para Resource:`, { resourceType, data });
+    console.group(`🔄 TRANSFORMAÇÃO DE RECURSO: ${resourceType} ID ${requestedId}`);
+    console.log('📋 Dados a serem transformados:', data);
 
-    // ✅ CORRIGIDO: Para podcasts, usar categorias para subject (badges)
-    if (resourceType === 'podcast' && Array.isArray(data)) {
-      const podcast = data[0]; // Get the first episode
+    try {
+      // ✅ CORRIGIDO: Para podcasts, usar categorias para subject (badges)
+      if (resourceType === 'podcast' && Array.isArray(data)) {
+        const podcast = data[0]; // Get the first episode
+        
+        // Use categories for subject (badges)
+        const subject = podcast.categorias && podcast.categorias.length > 0 
+          ? podcast.categorias[0].charAt(0).toUpperCase() + podcast.categorias[0].slice(1)
+          : 'Podcast';
+        
+        const resource: Resource = {
+          id: podcast.episodio_id || podcast.podcast_id || requestedId, // ✅ Melhor fallback
+          originalId: podcast.episodio_id || podcast.podcast_id || requestedId,
+          title: podcast.episodio_titulo || podcast.podcast_titulo || 'Podcast sem título',
+          author: podcast.publicador || 'Autor desconhecido',
+          year: new Date(podcast.data_lancamento || Date.now()).getFullYear(),
+          description: podcast.descricao || 'Descrição não disponível',
+          subject: subject, // ✅ CORRIGIDO: Usar categorias para badges
+          type: 'podcast',
+          thumbnail: podcast.imagem_url,
+          duration: podcast.duracao_ms ? this.formatDuration(podcast.duracao_ms) : undefined,
+          embedUrl: podcast.embed_url,
+          categories: podcast.categorias || [],
+          episodes: 1,
+          // ✅ Preservar título do programa para uso na página de detalhes
+          podcast_titulo: podcast.podcast_titulo
+        };
+        
+        console.log('✅ PODCAST TRANSFORMADO:', resource);
+        console.groupEnd();
+        return resource;
+      }
+
+      // For books and articles
+      if (resourceType === 'titulo' || resourceType === 'livro' || resourceType === 'artigos') {
+        const year = this.extractYearFromDate(data.data_publicacao || data.ano);
+        const documentType = resourceType === 'artigos' ? 'Artigo' : (data.tipo_documento || 'Livro');
+        
+        // ✅ MELHORADOS: Fallbacks mais robustos para campos essenciais
+        const resourceId = data.id || requestedId;
+        const title = data.titulo || data.title || `${documentType} sem título`;
+        const author = data.autor || data.author || 'Autor desconhecido';
+        const description = data.descricao || data.description || 'Descrição não disponível';
+        
+        const resource: Resource = {
+          id: String(resourceId), // ✅ Garantir que é string
+          originalId: String(resourceId),
+          title: title,
+          author: author,
+          year: year,
+          description: description,
+          subject: data.categorias?.[0] || data.categoria || 'Administração',
+          type: 'titulo',
+          thumbnail: '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
+          pages: data.paginas,
+          pdfUrl: data.arquivo || data.url,
+          language: this.mapLanguageCode(data.language || data.idioma),
+          documentType: documentType,
+          categories: Array.isArray(data.categorias) ? data.categorias : (data.categoria ? [data.categoria] : [])
+        };
+        
+        console.log('✅ LIVRO/ARTIGO TRANSFORMADO:', resource);
+        console.groupEnd();
+        return resource;
+      }
+
+      // For videos/classes
+      if (resourceType === 'video') {
+        const videoYear = data.ano || new Date().getFullYear(); // Use dynamic year from API
+        
+        // ✅ MELHORADOS: Fallbacks mais robustos para vídeos
+        const resourceId = data.id || requestedId;
+        const title = data.titulo || data.title || 'Vídeo sem título';
+        const author = data.canal || data.author || 'Canal desconhecido';
+        const description = data.descricao || data.description || 'Descrição não disponível';
+        
+        const resource: Resource = {
+          id: String(resourceId), // ✅ Garantir que é string
+          originalId: String(resourceId),
+          title: title,
+          author: author,
+          year: videoYear, // Using dynamic year from API individual endpoint
+          description: description,
+          subject: data.categorias?.[0] || 'Empreendedorismo',
+          type: 'video',
+          thumbnail: data.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
+          duration: data.duracao ? this.formatDuration(data.duracao * 1000) : undefined,
+          embedUrl: data.embed_url,
+          categories: data.categorias || [],
+          language: data.idioma
+        };
+        
+        console.log('✅ VÍDEO TRANSFORMADO:', resource);
+        console.groupEnd();
+        return resource;
+      }
+
+      throw new Error(`Tipo de recurso não suportado: ${resourceType}`);
       
-      // Use categories for subject (badges)
-      const subject = podcast.categorias && podcast.categorias.length > 0 
-        ? podcast.categorias[0].charAt(0).toUpperCase() + podcast.categorias[0].slice(1)
-        : 'Podcast';
-      
-      return {
-        id: podcast.episodio_id || requestedId, // Use real episode ID
-        originalId: podcast.episodio_id || requestedId,
-        title: podcast.episodio_titulo || podcast.podcast_titulo || 'Podcast sem título',
-        author: podcast.publicador || 'Autor desconhecido',
-        year: new Date(podcast.data_lancamento || Date.now()).getFullYear(),
-        description: podcast.descricao || 'Descrição não disponível',
-        subject: subject, // ✅ CORRIGIDO: Usar categorias para badges
-        type: 'podcast',
-        thumbnail: podcast.imagem_url,
-        duration: podcast.duracao_ms ? this.formatDuration(podcast.duracao_ms) : undefined,
-        embedUrl: podcast.embed_url,
-        categories: podcast.categorias || [],
-        episodes: 1,
-        // ✅ Preservar título do programa para uso na página de detalhes
-        podcast_titulo: podcast.podcast_titulo
-      };
+    } catch (error) {
+      console.error('❌ ERRO NA TRANSFORMAÇÃO:', error);
+      console.groupEnd();
+      throw error;
     }
+  }
 
-    // For books and articles
-    if (resourceType === 'titulo' || resourceType === 'livro' || resourceType === 'artigos') {
-      const year = this.extractYearFromDate(data.data_publicacao || data.ano);
-      const documentType = resourceType === 'artigos' ? 'Artigo' : (data.tipo_documento || 'Livro');
-      
-      return {
-        id: data.id || requestedId, // Use real book/article ID
-        originalId: data.id || requestedId,
-        title: data.titulo || `${documentType} sem título`,
-        author: data.autor || 'Autor desconhecido',
-        year: year,
-        description: data.descricao || 'Descrição não disponível',
-        subject: data.categorias?.[0] || data.categoria || 'Administração',
-        type: 'titulo',
-        thumbnail: '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
-        pages: data.paginas,
-        pdfUrl: data.arquivo || data.url,
-        language: this.mapLanguageCode(data.language || data.idioma),
-        documentType: documentType,
-        categories: Array.isArray(data.categorias) ? data.categorias : (data.categoria ? [data.categoria] : [])
-      };
+  // ✅ NOVO: Validação final do recurso transformado
+  private static validateResource(resource: Resource): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    
+    if (!resource.id || resource.id === 'undefined' || resource.id === 'null') {
+      errors.push('ID inválido');
     }
-
-    // For videos/classes
-    if (resourceType === 'video') {
-      const videoYear = data.ano || new Date().getFullYear(); // Use dynamic year from API
-      console.log(`📅 VIDEO DETAIL YEAR TRANSFORMATION: ${data.titulo?.substring(0, 30)}... - Year: ${videoYear} (from API: ${data.ano})`);
-      
-      return {
-        id: data.id || requestedId, // Use real video ID
-        originalId: data.id || requestedId,
-        title: data.titulo || 'Vídeo sem título',
-        author: data.canal || 'Canal desconhecido',
-        year: videoYear, // Using dynamic year from API individual endpoint
-        description: data.descricao || 'Descrição não disponível',
-        subject: data.categorias?.[0] || 'Empreendedorismo',
-        type: 'video',
-        thumbnail: data.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
-        duration: data.duracao ? this.formatDuration(data.duracao * 1000) : undefined,
-        embedUrl: data.embed_url,
-        categories: data.categorias || [],
-        language: data.idioma
-      };
+    
+    if (!resource.title || resource.title.trim() === '') {
+      errors.push('Título inválido');
     }
-
-    throw new Error(`Tipo de recurso não suportado: ${resourceType}`);
+    
+    if (!resource.author || resource.author.trim() === '') {
+      errors.push('Autor inválido');
+    }
+    
+    if (!resource.type || !['video', 'titulo', 'podcast'].includes(resource.type)) {
+      errors.push('Tipo inválido');
+    }
+    
+    return { isValid: errors.length === 0, errors };
   }
 
   private static extractYearFromDate(dateValue: any): number {

@@ -6,12 +6,14 @@ interface ThumbnailPlaceholderProps {
   type: 'titulo' | 'video' | 'podcast';
   className?: string;
   size?: 'small' | 'medium' | 'large';
+  style?: React.CSSProperties;
 }
 
 const ThumbnailPlaceholder = ({ 
   type, 
   className,
-  size = 'medium' 
+  size = 'medium',
+  style
 }: ThumbnailPlaceholderProps) => {
   const getIcon = () => {
     switch (type) {
@@ -68,6 +70,7 @@ const ThumbnailPlaceholder = ({
         getSizeStyles(),
         className
       )}
+      style={style}
     >
       <IconComponent className={cn('mb-1', getIconSize())} />
       <span className={cn('font-medium text-center leading-tight', getTextSize())}>

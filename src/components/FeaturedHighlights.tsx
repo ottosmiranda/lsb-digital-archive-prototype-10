@@ -1,3 +1,4 @@
+
 import { Star } from 'lucide-react';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useMemo, useRef } from 'react';
@@ -11,7 +12,6 @@ import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import FeaturedHighlightsSkeleton from '@/components/skeletons/FeaturedHighlightsSkeleton';
 import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
-import { getThumbnailDisplayLogic } from '@/utils/thumbnailUtils';
 
 // Função inteligente de mesclagem para garantir variedade incluindo artigos
 function getIntelligentMixedHighlights(allData: SearchResult[]): SearchResult[] {
@@ -90,6 +90,7 @@ const typeBadgeColor = (type: string) => {
 const FeaturedHighlights = () => {
   const { content, rotatedContent, loading } = useHomepageContentContext();
   const navigate = useNavigate();
+  const { handleImageError } = useThumbnailFallback();
 
   console.group('⭐ PHASE 3: FeaturedHighlights Component with Rotation Support and Articles');
   console.log('Loading state:', loading);
@@ -172,57 +173,54 @@ const FeaturedHighlights = () => {
               className="w-full"
             >
               <CarouselContent className="-ml-4">
-                {highlights.map((item, index) => {
-                  const { shouldShowImage, shouldShowPlaceholder, imageUrl } = getThumbnailDisplayLogic(item.thumbnail);
-                  
-                  return (
-                    <CarouselItem key={`${item.type}-${item.id}`} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
-                      <Card
-                        className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
-                        style={{ animationDelay: `${index * 0.1}s` }}
-                        onClick={() => navigate(`/recurso/${item.id}`)}
-                      >
-                        <CardContent className="p-0 h-full flex flex-col">
-                          <div className="relative overflow-hidden rounded-t-lg">
-                            {shouldShowImage ? (
-                              <img 
-                                src={imageUrl}
-                                alt={item.title}
-                                className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
-                              />
-                            ) : (
-                              <ThumbnailPlaceholder
-                                type={item.type}
-                                className="w-full h-40"
-                                size="large"
-                              />
-                            )}
-                            <Badge className="absolute top-3 left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
-                              <Star className="h-3 w-3" />
-                              Escolha da Equipe
-                            </Badge>
-                          </div>
-                          <div className="p-3 flex-1 flex flex-col">
-                            <Badge variant="outline" className={`mb-2 text-xs self-start ${typeBadgeColor(item.type)}`}>
-                              {typeBadge(item.type)}
-                            </Badge>
-                            <h3 className="font-semibold text-sm mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight flex-1">
-                              {item.title}
-                            </h3>
-                            <p className="text-xs text-gray-600 mb-3">{item.author}</p>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="w-full text-lsb-primary hover:bg-lsb-primary hover:text-white transition-all duration-300 text-xs"
-                            >
-                              Ver Detalhes
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </CarouselItem>
-                  );
-                })}
+                {highlights.map((item, index) => (
+                  <CarouselItem key={`${item.type}-${item.id}`} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                    <Card
+                      className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                      onClick={() => navigate(`/recurso/${item.id}`)}
+                    >
+                      <CardContent className="p-0 h-full flex flex-col">
+                        <div className="relative overflow-hidden rounded-t-lg">
+                          {item.thumbnail && (
+                            <img 
+                              src={item.thumbnail}
+                              alt={item.title}
+                              className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                              onError={handleImageError}
+                            />
+                          )}
+                          <ThumbnailPlaceholder
+                            type={item.type}
+                            className="w-full h-40"
+                            size="large"
+                            style={{ display: item.thumbnail ? 'none' : 'flex' }}
+                          />
+                          <Badge className="absolute top-3 left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
+                            <Star className="h-3 w-3" />
+                            Escolha da Equipe
+                          </Badge>
+                        </div>
+                        <div className="p-3 flex-1 flex flex-col">
+                          <Badge variant="outline" className={`mb-2 text-xs self-start ${typeBadgeColor(item.type)}`}>
+                            {typeBadge(item.type)}
+                          </Badge>
+                          <h3 className="font-semibold text-sm mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight flex-1">
+                            {item.title}
+                          </h3>
+                          <p className="text-xs text-gray-600 mb-3">{item.author}</p>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="w-full text-lsb-primary hover:bg-lsb-primary hover:text-white transition-all duration-300 text-xs"
+                          >
+                            Ver Detalhes
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </CarouselItem>
+                ))}
               </CarouselContent>
               <CarouselPrevious className="hidden md:flex -left-8" />
               <CarouselNext className="hidden md:flex -right-8" />

@@ -9,7 +9,6 @@ import InfiniteContentSkeleton from '@/components/skeletons/InfiniteContentSkele
 import { getTypeBadgeLabel, getTypeBadgeColor } from '@/utils/resourceUtils';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
-import { getThumbnailDisplayLogic } from '@/utils/thumbnailUtils';
 
 interface SearchResultsGridProps {
   results: SearchResult[];
@@ -91,6 +90,15 @@ const SearchResultsGrid = ({
     navigate(targetRoute);
   };
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.currentTarget;
+    target.style.display = 'none';
+    const placeholder = target.nextElementSibling as HTMLElement;
+    if (placeholder) {
+      placeholder.style.display = 'flex';
+    }
+  };
+
   if (loading && results.length === 0) {
     return <InfiniteContentSkeleton count={6} variant="grid" />;
   }
@@ -100,27 +108,28 @@ const SearchResultsGrid = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {results.map(result => {
           const typeBadge = getTypeBadge(result.type, result.documentType);
-          const { shouldShowImage, shouldShowPlaceholder, imageUrl } = getThumbnailDisplayLogic(result.thumbnail);
-          
           return (
             <Card key={result.id} className="group hover-lift animate-fade-in">
               <CardContent className="p-0">
                 <div className="space-y-4">
                   {/* Thumbnail */}
                   <div className="relative h-40 bg-gray-100 rounded-t-lg overflow-hidden">
-                    {shouldShowImage ? (
+                    {result.thumbnail ? (
                       <img 
-                        src={imageUrl} 
+                        src={result.thumbnail} 
                         alt={result.title}
                         className="w-full h-full object-cover"
+                        onError={handleImageError}
                       />
-                    ) : (
-                      <ThumbnailPlaceholder
-                        type={result.type}
-                        className="w-full h-40 rounded-t-lg"
-                        size="large"
-                      />
-                    )}
+                    ) : null}
+                    
+                    {/* Placeholder using ThumbnailPlaceholder */}
+                    <ThumbnailPlaceholder
+                      type={result.type}
+                      className="absolute inset-0 rounded-t-lg"
+                      size="large"
+                      style={{ display: result.thumbnail ? 'none' : 'flex' }}
+                    />
                     
                     <div className="absolute top-2 left-2">
                       <Badge className={`${typeBadge.color} flex items-center gap-1`}>
@@ -183,12 +192,14 @@ const SearchResultsGrid = ({
         })}
       </div>
 
+      {/* Infinite Scroll Loading */}
       {enableInfiniteScroll && shouldShowLoading && (
         <div ref={loadingRef}>
           <InfiniteContentSkeleton count={3} variant="grid" />
         </div>
       )}
 
+      {/* Load More Button (fallback) */}
       {!enableInfiniteScroll && hasMore && (
         <div className="text-center mt-8">
           <Button 

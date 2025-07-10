@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import ShareButtons from "@/components/ShareButtons";
 import ThumbnailPlaceholder from "@/components/ui/ThumbnailPlaceholder";
 import { useThumbnailFallback } from "@/hooks/useThumbnailFallback";
+import { getThumbnailDisplayLogic } from "@/utils/thumbnailUtils";
 import React from "react";
 
 interface PodcastDetailHeroProps {
@@ -29,10 +30,10 @@ const PodcastDetailHero = ({
   description,
   onPlayLatest
 }: PodcastDetailHeroProps) => {
-  const { handleImageError } = useThumbnailFallback();
   const shareUrl = window.location.href;
   const shareTitle = title;
   const shareDescription = description;
+  const { shouldShowImage, shouldShowPlaceholder, imageUrl } = getThumbnailDisplayLogic(cover);
 
   return (
     <section className="relative mb-8">
@@ -41,20 +42,19 @@ const PodcastDetailHero = ({
         {/* Column 1: Cover Image */}
         <div className="flex-shrink-0">
           <div className="w-48 h-48 md:w-60 md:h-60 relative overflow-hidden rounded-lg border shadow-md bg-gray-200">
-            {cover && (
+            {shouldShowImage ? (
               <img 
-                src={cover} 
+                src={imageUrl} 
                 alt={title} 
                 className="w-full h-full object-cover"
-                onError={handleImageError}
+              />
+            ) : (
+              <ThumbnailPlaceholder
+                type="podcast"
+                className="w-full h-full rounded-lg"
+                size="large"
               />
             )}
-            <ThumbnailPlaceholder
-              type="podcast"
-              className="w-full h-full absolute inset-0 rounded-lg"
-              size="large"
-              style={{ display: cover ? 'none' : 'flex' }}
-            />
           </div>
         </div>
 

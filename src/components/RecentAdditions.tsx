@@ -1,4 +1,3 @@
-
 import { Book, Video, Headphones, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +8,7 @@ import { useMemo } from 'react';
 import RecentAdditionsSkeleton from '@/components/skeletons/RecentAdditionsSkeleton';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
+import { getThumbnailDisplayLogic } from '@/utils/thumbnailUtils';
 
 const getIcon = (type: string) => {
   switch (type) {
@@ -46,7 +46,6 @@ const formatDate = (year: number) => {
 
 const RecentAdditions = () => {
   const { content, loading, error } = useHomepageContentContext();
-  const { handleImageError } = useThumbnailFallback();
 
   console.log('🆕 RecentAdditions - Rendering with context data including articles:', {
     loading,
@@ -120,6 +119,8 @@ const RecentAdditions = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               {recentItems.map((item, index) => {
                 const IconComponent = getIcon(item.type);
+                const { shouldShowImage, shouldShowPlaceholder, imageUrl } = getThumbnailDisplayLogic(item.thumbnail);
+                
                 return (
                   <Link key={item.type + '-' + item.id} to={`/recurso/${item.id}`}>
                     <Card
@@ -156,20 +157,19 @@ const RecentAdditions = () => {
                           </div>
                           <div className="flex-shrink-0">
                             <div className="w-20 h-20 relative overflow-hidden">
-                              {item.thumbnail && (
+                              {shouldShowImage ? (
                                 <img 
-                                  src={item.thumbnail} 
+                                  src={imageUrl} 
                                   alt={item.title}
                                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                  onError={handleImageError}
+                                />
+                              ) : (
+                                <ThumbnailPlaceholder
+                                  type={item.type as 'titulo' | 'video' | 'podcast'}
+                                  className="w-20 h-20"
+                                  size="small"
                                 />
                               )}
-                              <ThumbnailPlaceholder
-                                type={item.type as 'titulo' | 'video' | 'podcast'}
-                                className="w-20 h-20 absolute inset-0"
-                                size="small"
-                                style={{ display: item.thumbnail ? 'none' : 'flex' }}
-                              />
                             </div>
                           </div>
                         </div>

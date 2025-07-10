@@ -4,6 +4,7 @@ import { Resource } from '@/types/resourceTypes';
 import { useDataLoader } from './useDataLoader';
 import { ResourceByIdService } from '@/services/resourceByIdService';
 import { resourceLookupService } from '@/services/resourceLookupService';
+import { idValidationService } from '@/services/idValidationService';
 
 interface UseResourceByIdResult {
   resource: Resource | null;
@@ -30,8 +31,30 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         return;
       }
 
-      console.group('🔍 BUSCA OTIMIZADA DE RECURSO (COM VALIDAÇÃO ROBUSTA)');
+      console.group('🔍 BUSCA OTIMIZADA DE RECURSO (COM VALIDAÇÃO DE ID)');
       console.log('🎯 Target ID:', id);
+
+      // ✅ NOVA VALIDAÇÃO: Verificar formato do ID primeiro
+      const validation = idValidationService.validateId(id);
+      console.log('📋 ID Validation:', validation);
+
+      if (!validation.isValid) {
+        console.log('❌ ID INVÁLIDO DETECTADO - Abortando busca');
+        
+        // ✅ Rastrear ID inválido
+        idValidationService.trackInvalidIdOrigin(id, 'useResourceById', {
+          validationResult: validation,
+          dataLoaded,
+          allDataCount: allData?.length || 0
+        });
+
+        setResource(null);
+        setLoading(false);
+        setError(`ID inválido: ${validation.errorReason}`);
+        setRetrying(false);
+        console.groupEnd();
+        return;
+      }
 
       // FASE 1: Busca no cache de lookup primeiro (muito rápida)
       const resourceInfo = resourceLookupService.getResourceInfo(id);
@@ -47,7 +70,7 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
           console.log('✅ FASE 1 SUCCESS: Encontrado no cache local');
           const transformedResource = transformToResource(foundResource);
           
-          // ✅ NOVO: Validação do recurso transformado
+          // ✅ Validação do recurso transformado
           if (validateTransformedResource(transformedResource)) {
             setResource(transformedResource);
             setLoading(false);
@@ -84,7 +107,7 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
           console.log('✅ FASE 3 SUCCESS: Encontrado no cache geral');
           const transformedResource = transformToResource(foundResource);
           
-          // ✅ NOVO: Validação do recurso transformado
+          // ✅ Validação do recurso transformado
           if (validateTransformedResource(transformedResource)) {
             setResource(transformedResource);
             setLoading(false);
@@ -98,13 +121,13 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         }
       }
 
-      // FASE 4: Busca na API usando tipo específico se conhecido
-      if (!apiAttempted && resourceInfo?.type) {
-        console.log('📡 FASE 4: Busca tipo-específica na API:', resourceInfo.type);
+      // ✅ FASE 4: Só tentar API se ID passou na validação e tem tipo específico
+      if (!apiAttempted && validation.type) {
+        console.log('📡 FASE 4: Busca tipo-específica na API:', validation.type);
         setApiAttempted(true);
         
         try {
-          const apiResource = await ResourceByIdService.fetchResourceById(id, resourceInfo.type);
+          const apiResource = await ResourceByIdService.fetchResourceById(id, validation.type);
           if (apiResource && validateTransformedResource(apiResource)) {
             console.log('✅ FASE 4 SUCCESS: Encontrado na API tipo-específica');
             setResource(apiResource);
@@ -118,36 +141,6 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
           }
         } catch (apiError) {
           console.log('❌ FASE 4 FALHOU:', apiError);
-        }
-      }
-
-      // FASE 5: Busca na API tentando todos os tipos (último recurso)
-      if (!apiAttempted) {
-        console.log('📡 FASE 5: Busca na API - todos os tipos');
-        setApiAttempted(true);
-        
-        // ✅ MELHORADO: Ordem de busca baseada em probabilidade
-        const resourceTypes = resourceInfo?.type ? [resourceInfo.type] : ['titulo', 'video', 'podcast'];
-        
-        for (const resourceType of resourceTypes) {
-          try {
-            console.log(`🔍 Tentando buscar ${resourceType} com ID: ${id}`);
-            const apiResource = await ResourceByIdService.fetchResourceById(id, resourceType);
-            
-            if (apiResource && validateTransformedResource(apiResource)) {
-              console.log(`✅ FASE 5 SUCCESS: Encontrado na API como ${resourceType}`);
-              setResource(apiResource);
-              setLoading(false);
-              setError(null);
-              setRetrying(false);
-              console.groupEnd();
-              return;
-            } else if (apiResource) {
-              console.log(`❌ FASE 5: Recurso ${resourceType} inválido após validação`);
-            }
-          } catch (apiError) {
-            console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, apiError);
-          }
         }
       }
         
@@ -187,7 +180,7 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
   return { resource, loading: dataLoading || loading, error, retrying };
 };
 
-// ✅ NOVO: Validação robusta do recurso transformado
+// ✅ Validação robusta do recurso transformado
 function validateTransformedResource(resource: Resource): boolean {
   if (!resource) {
     console.log('❌ VALIDAÇÃO: Recurso é null/undefined');
@@ -218,7 +211,7 @@ function validateTransformedResource(resource: Resource): boolean {
   return true;
 }
 
-// ✅ MELHORADO: Helper function para manter subject como categorias para badges
+// ✅ Helper function para transformar item do cache
 function transformToResource(item: any): Resource {
   console.log('🔄 Transformando item do cache local:', item);
   
@@ -234,7 +227,7 @@ function transformToResource(item: any): Resource {
     thumbnail: item.thumbnail,
     description: item.description || 'Descrição não disponível',
     year: item.year || new Date().getFullYear(),
-    subject: item.subject || 'Assunto não especificado', // ✅ Manter subject como está (categorias para badges)
+    subject: item.subject || 'Assunto não especificado',
     embedUrl: item.embedUrl,
     pdfUrl: item.pdfUrl,
     fullDescription: item.description,
@@ -242,7 +235,6 @@ function transformToResource(item: any): Resource {
     language: item.language,
     documentType: item.documentType,
     categories: item.categories || [],
-    // ✅ NOVO: Preservar podcast_titulo se disponível
     podcast_titulo: item.podcast_titulo
   };
 }

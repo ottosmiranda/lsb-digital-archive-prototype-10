@@ -7,6 +7,7 @@ import { SearchResult } from '@/types/searchTypes';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import InfiniteContentSkeleton from '@/components/skeletons/InfiniteContentSkeleton';
 import { getTypeBadgeLabel, getTypeBadgeColor } from '@/utils/resourceUtils';
+import { idValidationService } from '@/services/idValidationService';
 
 interface SearchResultsGridProps {
   results: SearchResult[];
@@ -33,21 +34,6 @@ const SearchResultsGrid = ({
     enabled: enableInfiniteScroll
   });
 
-  // ✅ LOG TEMPORÁRIO: Verificar dados dos podcasts
-  const podcastResults = results.filter(r => r.type === 'podcast');
-  if (podcastResults.length > 0) {
-    console.group('🎧 SEARCH GRID - Verificação badges podcasts');
-    podcastResults.slice(0, 3).forEach((podcast, index) => {
-      console.log(`Podcast ${index + 1}:`, {
-        title: podcast.title.substring(0, 40) + '...',
-        subject: podcast.subject,
-        program: (podcast as any).program,
-        badgeOK: podcast.subject !== (podcast as any).program
-      });
-    });
-    console.groupEnd();
-  }
-
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'video':
@@ -68,18 +54,54 @@ const SearchResultsGrid = ({
   };
 
   const handleResourceClick = (result: SearchResult) => {
-    console.group('🎯 SEARCH GRID NAVIGATION (REAL IDs FIXED)');
+    console.group('🎯 SEARCH GRID NAVIGATION (WITH ID VALIDATION)');
     console.log('📋 Clicked resource:', {
       id: result.id,
       originalId: result.originalId,
       type: result.type,
-      title: result.title.substring(0, 50) + '...',
-      idCorrection: '✅ Usando ID real da API'
+      title: result.title.substring(0, 50) + '...'
     });
     
-    // ✅ CORRIGIDO: Usar o ID real que agora é consistente entre busca e homepage
+    // ✅ NOVA VALIDAÇÃO: Verificar ID antes de navegar
+    const validation = idValidationService.validateId(String(result.id));
+    
+    if (!validation.isValid) {
+      console.log('❌ INVALID ID DETECTED IN SEARCH GRID');
+      
+      // ✅ Rastrear origem do ID inválido
+      idValidationService.trackInvalidIdOrigin(
+        String(result.id), 
+        'SEARCH_GRID_CLICK', 
+        {
+          resultTitle: result.title,
+          resultType: result.type,
+          resultOriginalId: result.originalId,
+          searchContext: 'grid_view'
+        }
+      );
+
+      console.log('🔄 Attempting to use originalId as fallback');
+      
+      // ✅ Tentar usar originalId como fallback
+      const originalValidation = result.originalId ? 
+        idValidationService.validateId(result.originalId) : 
+        { isValid: false };
+
+      if (originalValidation.isValid && result.originalId) {
+        console.log('✅ Using valid originalId:', result.originalId);
+        navigate(`/recurso/${result.originalId}`);
+      } else {
+        console.log('❌ Both id and originalId are invalid, redirecting to search');
+        navigate('/buscar');
+      }
+      
+      console.groupEnd();
+      return;
+    }
+    
+    // ✅ ID válido - prosseguir normalmente
     const navigationId = String(result.id);
-    console.log('🔗 Using REAL API ID for navigation:', navigationId);
+    console.log('✅ Using valid ID for navigation:', navigationId);
     
     const targetRoute = `/recurso/${navigationId}`;
     console.log('🔗 Navigating to:', targetRoute);
@@ -106,10 +128,22 @@ const SearchResultsGrid = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {results.map(result => {
           const typeBadge = getTypeBadge(result.type, result.documentType);
+          
+          // ✅ NOVA VALIDAÇÃO: Marcar visualmente recursos com IDs inválidos
+          const validation = idValidationService.validateId(String(result.id));
+          const hasInvalidId = !validation.isValid;
+          
           return (
-            <Card key={result.id} className="group hover-lift animate-fade-in">
+            <Card key={result.id} className={`group hover-lift animate-fade-in ${hasInvalidId ? 'border-red-200 bg-red-50' : ''}`}>
               <CardContent className="p-0">
                 <div className="space-y-4">
+                  {/* ✅ Indicador visual para IDs inválidos */}
+                  {hasInvalidId && (
+                    <div className="bg-red-100 border border-red-200 rounded-t-lg p-2">
+                      <p className="text-xs text-red-600 font-medium">⚠️ ID inválido detectado</p>
+                    </div>
+                  )}
+                  
                   {/* Thumbnail */}
                   <div className="relative h-40 bg-gray-100 rounded-t-lg overflow-hidden">
                     {result.thumbnail ? (
@@ -177,12 +211,14 @@ const SearchResultsGrid = ({
                     </Badge>
 
                     <Button 
-                      className="w-full mt-4 bg-lsb-primary hover:bg-lsb-primary/90 text-white" 
+                      className={`w-full mt-4 ${hasInvalidId ? 'bg-red-500 hover:bg-red-600' : 'bg-lsb-primary hover:bg-lsb-primary/90'} text-white`}
                       onClick={() => handleResourceClick(result)}
                     >
-                      {result.type === 'video' && 'Assistir Vídeo'}
-                      {result.type === 'podcast' && 'Ouvir Podcast'}
-                      {result.type === 'titulo' && (result.documentType === 'Artigo' ? 'Ler Artigo' : 'Ler Agora')}
+                      {hasInvalidId ? 'Tentar Acessar' : (
+                        result.type === 'video' ? 'Assistir Vídeo' :
+                        result.type === 'podcast' ? 'Ouvir Podcast' :
+                        (result.documentType === 'Artigo' ? 'Ler Artigo' : 'Ler Agora')
+                      )}
                     </Button>
                   </div>
                 </div>

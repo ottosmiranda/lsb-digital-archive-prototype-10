@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import EnhancedLoadingSkeleton from '@/components/ResourceDetail/EnhancedLoadingSkeleton';
@@ -16,19 +16,34 @@ import { useResourceById } from '@/hooks/useResourceById';
 
 const ResourceDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { resource, loading, error, retrying } = useResourceById(id);
+  const navigate = useNavigate();
+  const { resource, loading, error, retrying, invalidId } = useResourceById(id);
 
   // Scroll to top when component mounts or when resource changes
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id, resource]);
 
-  console.group('🎯 RESOURCE DETAIL DEBUG (OPTIMIZED)');
+  // Redirect invalid IDs after a delay to show user-friendly message
+  useEffect(() => {
+    if (invalidId && !loading) {
+      console.log('🚫 ID inválido detectado, redirecionando em 3 segundos...');
+      const redirectTimer = setTimeout(() => {
+        console.log('🔄 Redirecionando para página de busca...');
+        navigate('/buscar', { replace: true });
+      }, 3000);
+      
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [invalidId, loading, navigate]);
+
+  console.group('🎯 RESOURCE DETAIL DEBUG (COM VALIDAÇÃO)');
   console.log('📋 URL ID:', id);
   console.log('📋 Resource found:', resource ? { id: resource.id, type: resource.type, title: resource.title.substring(0, 50) + '...' } : 'null');
   console.log('📋 Loading:', loading);
   console.log('📋 Retrying:', retrying);
   console.log('📋 Error:', error);
+  console.log('📋 Invalid ID:', invalidId);
   console.groupEnd();
 
   // Enhanced loading with retry states
@@ -45,8 +60,8 @@ const ResourceDetail = () => {
     );
   }
   
-  // Resource not found - but provide more context
-  if (!resource || error) {
+  // Resource not found - with context about invalid ID
+  if (!resource || error || invalidId) {
     return (
       <>
         <Navigation />

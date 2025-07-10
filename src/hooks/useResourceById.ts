@@ -1,16 +1,15 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Resource } from '@/types/resourceTypes';
 import { useDataLoader } from './useDataLoader';
 import { ResourceByIdService } from '@/services/resourceByIdService';
 import { resourceLookupService } from '@/services/resourceLookupService';
-import { ResourceIdValidator } from '@/services/resourceIdValidator';
 
 interface UseResourceByIdResult {
   resource: Resource | null;
   loading: boolean;
   error: string | null;
   retrying: boolean;
-  invalidId: boolean;
 }
 
 export const useResourceById = (id: string | undefined): UseResourceByIdResult => {
@@ -19,7 +18,6 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const [invalidId, setInvalidId] = useState(false);
   const [apiAttempted, setApiAttempted] = useState(false);
   const retryTimeoutRef = useRef<NodeJS.Timeout>();
 
@@ -29,38 +27,11 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         setResource(null);
         setLoading(false);
         setError('ID não fornecido');
-        setInvalidId(true);
         return;
       }
 
-      console.group('🔍 BUSCA DE RECURSO COM VALIDAÇÃO DE ID');
+      console.group('🔍 BUSCA OTIMIZADA DE RECURSO (COM VALIDAÇÃO ROBUSTA)');
       console.log('🎯 Target ID:', id);
-
-      // NOVA FASE 0: Validação prévia do ID
-      const validation = ResourceIdValidator.validateResourceId(id);
-      console.log('📊 Resultado da validação:', validation);
-
-      // Se é um ID conhecido como inválido, redirecionar imediatamente
-      if (ResourceIdValidator.isKnownInvalidId(id)) {
-        console.log('🚫 ID conhecido como inválido, redirecionando...');
-        setResource(null);
-        setLoading(false);
-        setError('Recurso não existe - ID inválido');
-        setInvalidId(true);
-        console.groupEnd();
-        return;
-      }
-
-      // Se validação sugere redirect, não tentar buscar
-      if (validation.suggestedAction === 'redirect') {
-        console.log('🚫 Validação sugere redirecionamento direto');
-        setResource(null);
-        setLoading(false);
-        setError('Formato de ID não reconhecido');
-        setInvalidId(true);
-        console.groupEnd();
-        return;
-      }
 
       // FASE 1: Busca no cache de lookup primeiro (muito rápida)
       const resourceInfo = resourceLookupService.getResourceInfo(id);
@@ -76,11 +47,11 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
           console.log('✅ FASE 1 SUCCESS: Encontrado no cache local');
           const transformedResource = transformToResource(foundResource);
           
+          // ✅ NOVO: Validação do recurso transformado
           if (validateTransformedResource(transformedResource)) {
             setResource(transformedResource);
             setLoading(false);
             setError(null);
-            setInvalidId(false);
             console.groupEnd();
             return;
           } else {
@@ -94,6 +65,7 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         console.log('⏳ AGUARDANDO: Dados ainda carregando, tentando novamente...');
         setRetrying(true);
         
+        // Retry após um delay
         retryTimeoutRef.current = setTimeout(() => {
           console.log('🔄 RETRY: Tentando buscar novamente após dados carregarem');
           findResource();
@@ -112,12 +84,12 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
           console.log('✅ FASE 3 SUCCESS: Encontrado no cache geral');
           const transformedResource = transformToResource(foundResource);
           
+          // ✅ NOVO: Validação do recurso transformado
           if (validateTransformedResource(transformedResource)) {
             setResource(transformedResource);
             setLoading(false);
             setError(null);
             setRetrying(false);
-            setInvalidId(false);
             console.groupEnd();
             return;
           } else {
@@ -126,20 +98,19 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         }
       }
 
-      // FASE 4: Busca na API somente se ID passou na validação prévia
-      if (!apiAttempted && validation.suggestedAction === 'proceed') {
-        console.log('📡 FASE 4: Busca na API com tipo validado:', validation.type);
+      // FASE 4: Busca na API usando tipo específico se conhecido
+      if (!apiAttempted && resourceInfo?.type) {
+        console.log('📡 FASE 4: Busca tipo-específica na API:', resourceInfo.type);
         setApiAttempted(true);
         
         try {
-          const apiResource = await ResourceByIdService.fetchResourceById(id, validation.type);
+          const apiResource = await ResourceByIdService.fetchResourceById(id, resourceInfo.type);
           if (apiResource && validateTransformedResource(apiResource)) {
-            console.log('✅ FASE 4 SUCCESS: Encontrado na API');
+            console.log('✅ FASE 4 SUCCESS: Encontrado na API tipo-específica');
             setResource(apiResource);
             setLoading(false);
             setError(null);
             setRetrying(false);
-            setInvalidId(false);
             console.groupEnd();
             return;
           } else if (apiResource) {
@@ -150,12 +121,13 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         }
       }
 
-      // FASE 5: Fallback inteligente para IDs com baixa confiança
-      if (!apiAttempted && validation.suggestedAction === 'fallback') {
-        console.log('📡 FASE 5: Fallback inteligente para ID suspeito');
+      // FASE 5: Busca na API tentando todos os tipos (último recurso)
+      if (!apiAttempted) {
+        console.log('📡 FASE 5: Busca na API - todos os tipos');
         setApiAttempted(true);
         
-        const resourceTypes = ['titulo', 'video', 'podcast'];
+        // ✅ MELHORADO: Ordem de busca baseada em probabilidade
+        const resourceTypes = resourceInfo?.type ? [resourceInfo.type] : ['titulo', 'video', 'podcast'];
         
         for (const resourceType of resourceTypes) {
           try {
@@ -168,9 +140,10 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
               setLoading(false);
               setError(null);
               setRetrying(false);
-              setInvalidId(false);
               console.groupEnd();
               return;
+            } else if (apiResource) {
+              console.log(`❌ FASE 5: Recurso ${resourceType} inválido após validação`);
             }
           } catch (apiError) {
             console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, apiError);
@@ -178,13 +151,12 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         }
       }
         
-      // Se chegou aqui, recurso definitivamente não foi encontrado
-      console.log('💀 FALHA TOTAL: Recurso não encontrado');
+      // Se chegou aqui, recurso não foi encontrado
+      console.log('💀 FALHA TOTAL: Recurso não encontrado ou inválido');
       setResource(null);
       setLoading(false);
-      setError('Recurso não encontrado ou não existe');
+      setError('Recurso não encontrado ou dados inválidos');
       setRetrying(false);
-      setInvalidId(true);
       
       console.groupEnd();
     };
@@ -210,10 +182,9 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
     setRetrying(false);
     setError(null);
     setLoading(true);
-    setInvalidId(false);
   }, [id]);
 
-  return { resource, loading: dataLoading || loading, error, retrying, invalidId };
+  return { resource, loading: dataLoading || loading, error, retrying };
 };
 
 // ✅ NOVO: Validação robusta do recurso transformado
@@ -263,7 +234,7 @@ function transformToResource(item: any): Resource {
     thumbnail: item.thumbnail,
     description: item.description || 'Descrição não disponível',
     year: item.year || new Date().getFullYear(),
-    subject: item.subject || 'Assunto não especificado',
+    subject: item.subject || 'Assunto não especificado', // ✅ Manter subject como está (categorias para badges)
     embedUrl: item.embedUrl,
     pdfUrl: item.pdfUrl,
     fullDescription: item.description,
@@ -271,6 +242,7 @@ function transformToResource(item: any): Resource {
     language: item.language,
     documentType: item.documentType,
     categories: item.categories || [],
+    // ✅ NOVO: Preservar podcast_titulo se disponível
     podcast_titulo: item.podcast_titulo
   };
 }

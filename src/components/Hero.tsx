@@ -39,36 +39,20 @@ const Hero = () => {
   ];
 
   return (
-    <section className="relative min-h-screen bg-gradient-to-br from-lsb-primary via-blue-900 to-indigo-900 overflow-hidden">
-      {/* Enhanced Background Patterns */}
+    <section className="relative h-screen bg-gradient-to-br from-lsb-primary via-blue-900 to-indigo-900 overflow-hidden">
+      {/* Simplified Background */}
       <div className="absolute inset-0">
         {/* Primary gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-transparent to-purple-600/20"></div>
         
-        {/* Geometric patterns */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-10 w-32 h-32 border border-white/30 rounded-[2px] animate-float"></div>
-          <div className="absolute top-40 right-20 w-20 h-20 border border-lsb-accent/50 rounded-[2px] animate-float" style={{ animationDelay: '1s' }}></div>
-          <div className="absolute bottom-40 left-20 w-24 h-24 border border-white/20 rounded-[2px] animate-float" style={{ animationDelay: '2s' }}></div>
-          <div className="absolute bottom-20 right-40 w-16 h-16 border border-lsb-accent/40 rounded-[2px] animate-float" style={{ animationDelay: '0.5s' }}></div>
-        </div>
-
-        {/* Floating Icons */}
-        <div className="absolute inset-0 pointer-events-none">
-          <Book className="absolute top-32 left-1/4 h-8 w-8 text-white/20 animate-float" style={{ animationDelay: '3s' }} />
-          <Play className="absolute top-1/3 right-1/4 h-6 w-6 text-lsb-accent/30 animate-float" style={{ animationDelay: '1.5s' }} />
-          <Headphones className="absolute bottom-1/3 left-1/3 h-7 w-7 text-white/25 animate-float" style={{ animationDelay: '2.5s' }} />
-          <Sparkles className="absolute bottom-40 right-1/3 h-5 w-5 text-lsb-accent/40 animate-float" style={{ animationDelay: '0.8s' }} />
-        </div>
-
         {/* Radial gradient overlay */}
         <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-black/20"></div>
       </div>
 
-      <div className="lsb-container relative z-10">
-        <div className="lsb-content">
-          <div className="relative py-20 md:py-32">
-            <div className="text-center">
+      <div className="lsb-container relative z-10 h-full">
+        <div className="lsb-content h-full">
+          <div className="relative h-full flex items-center justify-center">
+            <div className="text-center w-full">
               {/* Enhanced Hero Content */}
               <div className="animate-fade-in mb-12">
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
@@ -148,24 +132,6 @@ const Hero = () => {
                       ))}
                     </div>
                   </form>
-
-                  {/* Search Statistics */}
-                  <div className="mt-8 pt-6 border-t border-white/20">
-                    <div className="grid grid-cols-3 gap-6 text-center">
-                      <div>
-                        <div className="text-2xl font-bold text-lsb-accent">1.000+</div>
-                        <div className="text-sm text-blue-200">Recursos</div>
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-lsb-accent">50+</div>
-                        <div className="text-sm text-blue-200">Categorias</div>
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-lsb-accent">100%</div>
-                        <div className="text-sm text-blue-200">Gratuito</div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>

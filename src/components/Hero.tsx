@@ -1,9 +1,8 @@
 
-import { Search, Filter, Command, Book, Play, Headphones, Sparkles, Users, Clock, Shield } from 'lucide-react';
+import { Search, Filter, Command, Book, Play, Headphones, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { useSearchForm } from '@/hooks/useSearchForm';
 import EnhancedSearchSuggestions from '@/components/EnhancedSearchSuggestions';
 
@@ -36,29 +35,6 @@ const Hero = () => {
       id: 'podcast',
       label: 'Podcasts',
       icon: Headphones
-    }
-  ];
-
-  const valueCards = [
-    {
-      icon: Shield,
-      title: 'Acesso Gratuito',
-      description: 'Sem necessidade de login'
-    },
-    {
-      icon: Sparkles,
-      title: 'Conteúdo Curado',
-      description: 'Qualidade garantida'
-    },
-    {
-      icon: Users,
-      title: 'Para Todos',
-      description: 'Comunidade LSB'
-    },
-    {
-      icon: Clock,
-      title: 'Sempre Atualizado',
-      description: 'Novos recursos diários'
     }
   ];
 
@@ -95,11 +71,6 @@ const Hero = () => {
             <div className="text-center">
               {/* Enhanced Hero Content */}
               <div className="animate-fade-in mb-12">
-                <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 mb-6">
-                  <Sparkles className="h-4 w-4 text-lsb-accent mr-2" />
-                  <span className="text-white/90 text-sm font-medium">Biblioteca Digital da LSB</span>
-                </div>
-                
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
                   Descubra o poder do
                   <span className="block text-lsb-accent bg-gradient-to-r from-lsb-accent to-yellow-300 bg-clip-text text-transparent">
@@ -113,19 +84,6 @@ const Hero = () => {
                     Livros, vídeos, podcasts e muito mais - tudo gratuito e sem necessidade de login.
                   </span>
                 </p>
-              </div>
-
-              {/* Value Proposition Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 animate-slide-up">
-                {valueCards.map((card, index) => (
-                  <Card key={index} className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/15 transition-all duration-300 hover:scale-105">
-                    <CardContent className="p-4 text-center">
-                      <card.icon className="h-8 w-8 text-lsb-accent mx-auto mb-2" />
-                      <h3 className="font-semibold text-white text-sm mb-1">{card.title}</h3>
-                      <p className="text-blue-200 text-xs">{card.description}</p>
-                    </CardContent>
-                  </Card>
-                ))}
               </div>
 
               {/* Enhanced Search Section */}

@@ -90,6 +90,7 @@
     --lsb-section-bg: 210 20% 97%;
     --lsb-section-gray: 225 28% 92%;
     --lsb-gray-line: 0 0% 88%;
+    --lsb-hover-blue: 210 65% 21%;
   }
 
   .dark {
@@ -190,6 +191,10 @@
 
   .border-lsb-gray {
     border-color: hsl(var(--lsb-gray-line));
+  }
+
+  .bg-lsb-hover-blue {
+    background-color: hsl(var(--lsb-hover-blue));
   }
 
   /* Enhanced Animations */

@@ -97,7 +97,7 @@ const SearchHeaderWithTabs = ({
                 <TabsTrigger 
                   key={type.id} 
                   value={type.id}
-                  className="flex items-center justify-center gap-2 w-[145px] h-11 px-4 py-3 text-white data-[state=active]:bg-lsb-accent data-[state=active]:text-lsb-primary hover:bg-blue-600 data-[state=active]:hover:bg-lsb-accent"
+                  className="flex items-center justify-center gap-2 w-[145px] h-11 px-4 py-3 text-white data-[state=active]:bg-lsb-accent data-[state=active]:text-lsb-primary hover:bg-lsb-hover-blue data-[state=active]:hover:bg-lsb-accent"
                 >
                   <div 
                     style={{

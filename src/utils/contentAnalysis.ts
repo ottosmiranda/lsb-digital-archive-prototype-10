@@ -1,4 +1,3 @@
-
 import { SearchResult, SearchFilters } from '@/types/searchTypes';
 
 export interface ContentStats {
@@ -47,6 +46,10 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
   const documentTypeSet = new Set<string>(); // ✅ ADICIONADO
 
   results.forEach(item => {
+    // ✅ CORREÇÃO: Verificação de segurança para propriedades undefined
+    const safeTitle = item.title || 'Título não disponível';
+    const titlePreview = safeTitle.length > 30 ? safeTitle.substring(0, 30) + '...' : safeTitle;
+
     // Contagem por tipo
     switch (item.type) {
       case 'titulo':
@@ -66,13 +69,13 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
     // ✅ ADICIONADO: Detectar tipos de documento para títulos (livros + artigos)
     if (item.type === 'titulo' && item.documentType && item.documentType.trim() !== '') {
       documentTypeSet.add(item.documentType.trim());
-      console.log(`📚 Document type detected: ${item.documentType} for: ${item.title.substring(0, 30)}...`);
+      console.log(`📚 Document type detected: ${item.documentType} for: ${titlePreview}`);
     }
 
     // ✅ CORRIGIDO: Detectar idiomas de VÍDEOS também (não apenas livros)
     if (item.language && item.language.trim() !== '' && item.language !== 'Não especificado') {
       languageSet.add(item.language);
-      console.log(`🌐 Language detected: ${item.language} for ${item.type}: ${item.title.substring(0, 30)}...`);
+      console.log(`🌐 Language detected: ${item.language} for ${item.type}: ${titlePreview}`);
     }
     
     // ✅ MANTIDO: Mapear país para idioma (para vídeos antigos sem idioma)

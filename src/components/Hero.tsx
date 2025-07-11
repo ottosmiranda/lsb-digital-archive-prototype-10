@@ -39,7 +39,7 @@ const Hero = () => {
   ];
 
   return (
-    <section className="relative h-screen bg-gradient-to-br from-lsb-primary via-blue-900 to-indigo-900 overflow-hidden">
+    <section className="relative h-screen bg-gradient-to-br from-[#10284E] to-[#102840] overflow-hidden">
       {/* Simplified Background */}
       <div className="absolute inset-0">
         {/* Primary gradient overlay */}
@@ -55,18 +55,15 @@ const Hero = () => {
             <div className="text-center w-full">
               {/* Enhanced Hero Content */}
               <div className="animate-fade-in mb-12">
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-                  Descubra o poder do
+                <h1 className="text-6xl font-bold tracking-[-0.04em] leading-none text-white mb-6">
+                  Conhecimento ao
                   <span className="block text-lsb-accent bg-gradient-to-r from-lsb-accent to-yellow-300 bg-clip-text text-transparent">
-                    conhecimento acessível
+                    seu alcance
                   </span>
                 </h1>
                 
-                <p className="text-xl md:text-2xl text-blue-100 mb-8 max-w-4xl mx-auto leading-relaxed">
-                  Explore nossa biblioteca digital com milhares de recursos educacionais em Libras. 
-                  <span className="block mt-2 text-lg text-blue-200">
-                    Livros, vídeos, podcasts e muito mais - tudo gratuito e sem necessidade de login.
-                  </span>
+                <p className="text-2xl font-normal tracking-[-0.02em] leading-[1.4] mb-6 text-blue-100 max-w-4xl mx-auto">
+                  Explore livros, artigos, vídeos e podcasts em um único lugar
                 </p>
               </div>
 
@@ -75,7 +72,7 @@ const Hero = () => {
                 <div className="bg-white/10 backdrop-blur-lg rounded-[2px] p-8 border border-white/20 shadow-2xl">
                   <div className="flex items-center justify-center mb-6">
                     <Search className="h-6 w-6 text-lsb-accent mr-3" />
-                    <h3 className="text-white font-semibold text-xl">Busca Inteligente</h3>
+                    <h3 className="text-white font-semibold text-xl">Busca no acervo</h3>
                   </div>
                   
                   <form onSubmit={handleSearch} className="space-y-6">

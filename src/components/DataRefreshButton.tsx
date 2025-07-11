@@ -1,4 +1,5 @@
 
+
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -33,9 +34,9 @@ const DataRefreshButton = ({ onRefresh, loading, usingFallback }: DataRefreshBut
   }
 
   return (
-    <div className="flex items-center gap-2 p-3 mb-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+    <div className="flex items-center gap-2 p-3 mb-4 bg-[#FEC641]/10 border border-[#FEC641]/30 rounded-lg">
       <div className="flex-1">
-        <p className="text-sm text-yellow-800">
+        <p className="text-sm text-[#B78A00]">
           Os dados podem não estar atualizados. Clique para recarregar.
         </p>
       </div>

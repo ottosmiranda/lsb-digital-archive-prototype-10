@@ -1,3 +1,4 @@
+
 import { Book, Video, Headphones, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -109,8 +110,8 @@ const RecentAdditions = () => {
           </div>
 
           {error && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
-              <p className="text-yellow-800 text-center">
+            <div className="bg-[#FEC641]/10 border border-[#FEC641]/30 rounded-lg p-4 mb-8">
+              <p className="text-[#B78A00] text-center">
                 ⚠️ Problemas ao carregar conteúdo recente. Mostrando dados disponíveis.
               </p>
             </div>

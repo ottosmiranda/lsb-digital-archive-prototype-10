@@ -1,4 +1,5 @@
 
+
 import { Search, Filter, Command, Book, Play, Headphones, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,7 +49,7 @@ const Hero = () => {
               <div className="animate-fade-in mb-12">
                 <h1 className="text-6xl font-bold tracking-[-0.04em] leading-none text-white mb-6">
                   Conhecimento ao
-                  <span className="block text-lsb-accent bg-gradient-to-r from-lsb-accent to-yellow-300 bg-clip-text text-transparent">
+                  <span className="block text-lsb-accent bg-gradient-to-r from-lsb-accent to-[#FEC641] bg-clip-text text-transparent">
                     seu alcance
                   </span>
                 </h1>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Database, BookOpen, Users, Globe, FileText, Microscope, TrendingUp, GraduationCap, Leaf, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -113,7 +114,7 @@ const ExternalResources = () => {
       'Institute of Education Sciences': {
         icon: GraduationCap,
         category: 'Pesquisa Educacional',
-        color: 'from-yellow-500 to-yellow-600',
+        color: 'from-[#FEC641]/80 to-[#FEC641]',
         highlight: 'Dados educacionais'
       },
       'IPA Instituto de Pesquisas Ambientais': {
@@ -222,7 +223,7 @@ const ExternalResources = () => {
               para complementar sua pesquisa acadêmica
             </p>
             {usingFallback && <div className="mt-4">
-                <Badge variant="outline" className="text-yellow-700 border-yellow-300 bg-yellow-50">
+                <Badge variant="outline" className="text-[#B78A00] border-[#FEC641]/30 bg-[#FEC641]/10">
                   Dados de fallback carregados
                 </Badge>
               </div>}

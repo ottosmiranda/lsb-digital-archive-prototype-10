@@ -1,4 +1,5 @@
 
+
 import { AlertCircle, RefreshCw, Settings, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,7 +25,7 @@ const SpotifyErrorDisplay = ({
 }: SpotifyErrorDisplayProps) => {
   const getStatusBadge = () => {
     const statusConfig = {
-      authenticating: { color: "bg-yellow-100 text-yellow-800", text: "Autenticando" },
+      authenticating: { color: "bg-[#FEC641]/10 text-[#B78A00]", text: "Autenticando" },
       failed: { color: "bg-red-100 text-red-800", text: "Falhou" },
       success: { color: "bg-green-100 text-green-800", text: "Conectado" },
       idle: { color: "bg-gray-100 text-gray-800", text: "Aguardando" }

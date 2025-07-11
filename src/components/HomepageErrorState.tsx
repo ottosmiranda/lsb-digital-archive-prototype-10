@@ -1,4 +1,5 @@
 
+
 import { RefreshCw, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,7 +23,7 @@ const HomepageErrorState = ({ error, onRetry, isUsingFallback, apiStatus }: Home
     switch (status) {
       case 'healthy': return 'bg-green-100 text-green-800';
       case 'unhealthy': return 'bg-red-100 text-red-800';
-      default: return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-[#FEC641]/10 text-[#B78A00]';
     }
   };
 

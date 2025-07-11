@@ -67,7 +67,7 @@ export default {
 				},
 				lsb: {
 					primary: 'hsl(210 80% 20%)',
-					accent: 'hsl(45 100% 63%)',
+					accent: 'hsl(45 99% 63%)',
 					neutral: 'hsl(0 0% 100%)',
 					section: 'hsl(210 20% 97%)',
 					gray: 'hsl(0 0% 88%)'

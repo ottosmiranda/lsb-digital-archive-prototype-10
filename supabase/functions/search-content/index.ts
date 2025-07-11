@@ -1,5 +1,5 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,199 +7,359 @@ const corsHeaders = {
 }
 
 interface SearchFilters {
-  resourceType: string[]
-  subject: string[]
-  author: string[]
-  year: string
-  duration: string
-  language: string[]
-  documentType: string[]
-  program: string[]
-  channel: string[]
+  resourceType: string[];
+  subject: string[];
+  author: string[];
+  year: string;
+  duration: string;
+  language: string[];
+  documentType: string[];
+  program: string[];
+  channel: string[];
+}
+
+interface SearchRequest {
+  query: string;
+  filters: SearchFilters;
+  sortBy: string;
+  page: number;
+  resultsPerPage: number;
 }
 
 interface SearchResult {
-  id: number
-  originalId?: string
-  title: string
-  type: 'video' | 'titulo' | 'podcast'
-  author: string
-  duration?: string
-  pages?: number
-  episodes?: string | number
-  thumbnail?: string
-  description: string
-  year: number | null
-  subject: string
-  embedUrl?: string
-  pdfUrl?: string
-  documentType?: string
-  pais?: string
-  language?: string
-  program?: string
-  channel?: string
-  categories?: string[]
+  id: string;
+  originalId?: string;
+  title: string;
+  type: 'video' | 'titulo' | 'podcast';
+  author: string;
+  duration?: string;
+  pages?: number;
+  episodes?: string | number;
+  thumbnail?: string;
+  description: string;
+  year: number | null;
+  subject: string;
+  embedUrl?: string;
+  pdfUrl?: string;
+  documentType?: string;
+  pais?: string;
+  language?: string;
+  program?: string;
+  channel?: string;
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+// CONFIGURAÇÕES DA API
+const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
+
+const TIMEOUTS = {
+  singleRequest: 8000,
+  paginatedBatch: 12000,
+  globalOperation: 25000,
+  healthCheck: 3000,
+  querySearch: 15000
+};
+
+const CACHE_STRATEGIES = {
+  paginated: { ttl: 10 * 60 * 1000, prefix: 'paginated' },
+  global: { ttl: 15 * 60 * 1000, prefix: 'global' },
+  filtered: { ttl: 2 * 60 * 1000, prefix: 'filtered' },
+  queryBased: { ttl: 5 * 60 * 1000, prefix: 'query' }
+};
+
+type SearchType = 'paginated' | 'global' | 'filtered' | 'queryBased';
+
+const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+// MAPEAMENTO DE IDIOMAS
+const languageMapping: Record<string, string> = {
+  'en': 'Inglês',
+  'en-US': 'Inglês',
+  'en-GB': 'Inglês',
+  'pt': 'Português',
+  'pt-BR': 'Português',
+  'pt-PT': 'Português',
+  'es': 'Espanhol',
+  'es-ES': 'Espanhol',
+  'es-MX': 'Espanhol',
+  'fr': 'Francês',
+  'fr-FR': 'Francês',
+  'de': 'Alemão',
+  'de-DE': 'Alemão',
+  'it': 'Italiano',
+  'it-IT': 'Italiano',
+  'ja': 'Japonês',
+  'ja-JP': 'Japonês',
+  'ko': 'Coreano',
+  'ko-KR': 'Coreano',
+  'zh': 'Chinês',
+  'zh-CN': 'Chinês',
+  'ru': 'Russo',
+  'ru-RU': 'Russo',
+  'Und': 'Indefinido',
+  'desconhecido': 'Não especificado'
+};
+
+const mapLanguageCode = (idioma: string): string => {
+  if (!idioma) return 'Não especificado';
+  
+  if (languageMapping[idioma]) {
+    return languageMapping[idioma];
+  }
+  
+  const prefix = idioma.split('-')[0];
+  if (languageMapping[prefix]) {
+    return languageMapping[prefix];
+  }
+  
+  return idioma.charAt(0).toUpperCase() + idioma.slice(1);
+};
+
+// DETECTOR DE TIPO DE BUSCA CORRIGIDO
+const detectSearchType = (query: string, filters: SearchFilters): SearchType => {
+  const cleanQuery = query?.trim() || '';
+  const hasQuery = cleanQuery !== '';
+  
+  console.log('🔍 Search Type Detection:', { 
+    query: `"${query}"`,
+    cleanQuery: `"${cleanQuery}"`,
+    hasQuery,
+    resourceType: filters.resourceType,
+    isAll: filters.resourceType.includes('all'),
+    hasResourceTypeFilters: filters.resourceType.length > 0 && !filters.resourceType.includes('all')
+  });
+
+  // PRIORIDADE 1: Query sempre tem precedência ABSOLUTA
+  if (hasQuery) {
+    console.log(`🎯 QUERY DETECTADA: "${cleanQuery}" → QUERY-BASED SEARCH`);
+    return 'queryBased';
   }
 
-  try {
-    const { query, filters, sortBy, page, resultsPerPage } = await req.json()
-    const requestId = `search_${Date.now()}`
-    
-    console.log(`🔍 ${requestId} - Edge Function Search Request`)
-    console.log('📋 Parameters:', { query, filters, sortBy, page, resultsPerPage })
+  // PRIORIDADE 2: Filtros de tipo específico
+  const hasResourceTypeFilters = filters.resourceType.length > 0 && !filters.resourceType.includes('all');
+  const hasOtherFilters = filters.subject.length > 0 || filters.author.length > 0 || 
+                          filters.year || filters.duration || filters.language.length > 0 ||
+                          filters.program.length > 0 || filters.channel.length > 0;
 
-    const response = await performPaginatedSearch(query, filters, sortBy, page, resultsPerPage, requestId)
+  if (hasResourceTypeFilters) {
+    console.log(`📋 FILTRO ESPECÍFICO: ${filters.resourceType.join(', ')} → PAGINATED SEARCH`);
+    return 'paginated';
+  }
+
+  if (hasOtherFilters) {
+    console.log('🔍 OUTROS FILTROS ATIVOS → FILTERED SEARCH');
+    return 'filtered';
+  }
+  
+  // PRIORIDADE 3: Busca global (filtro "Todos" ou sem filtros)
+  console.log('🌍 SEM FILTROS ESPECÍFICOS → GLOBAL SEARCH');
+  return 'global';
+};
+
+// FUNÇÕES DE CACHE
+const getCacheKey = (strategy: SearchType, identifier: string): string => {
+  const config = CACHE_STRATEGIES[strategy];
+  return `${config.prefix}_${identifier}`;
+};
+
+const isValidCache = (cacheKey: string): boolean => {
+  // Cache buster para Warren
+  if (cacheKey.toLowerCase().includes('warren')) {
+    console.log('🔥 WARREN CACHE BUSTER ATIVO - FORÇANDO REFRESH TOTAL');
+    return false;
+  }
+  
+  const cached = globalCache.get(cacheKey);
+  if (!cached) return false;
+  
+  const isValid = (Date.now() - cached.timestamp) < cached.ttl;
+  
+  if (isValid && Array.isArray(cached.data) && cached.data.length === 0) {
+    console.warn(`🚨 Cache corrompido detectado: ${cacheKey}`);
+    globalCache.delete(cacheKey);
+    return false;
+  }
+  
+  return isValid;
+};
+
+const setCache = (cacheKey: string, data: any, strategy: SearchType): void => {
+  // Não cachear Warren durante debug
+  if (cacheKey.toLowerCase().includes('warren')) {
+    console.log('🔥 WARREN - NÃO CACHEANDO DURANTE DEBUG');
+    return;
+  }
+  
+  const config = CACHE_STRATEGIES[strategy];
+  
+  if (Array.isArray(data) && data.length === 0 && strategy !== 'filtered' && strategy !== 'queryBased') {
+    console.warn(`⚠️ Não cacheando resultado vazio: ${cacheKey}`);
+    return;
+  }
+  
+  globalCache.set(cacheKey, {
+    data,
+    timestamp: Date.now(),
+    ttl: config.ttl
+  });
+  
+  console.log(`📦 Cache SET [${strategy}]: ${cacheKey} (${Array.isArray(data) ? data.length : 'N/A'} items)`);
+};
+
+const getCache = (cacheKey: string): any => {
+  const cached = globalCache.get(cacheKey);
+  return cached?.data || null;
+};
+
+// FUNÇÃO PARA BUSCAR DADOS DA API
+const fetchFromAPI = async (endpoint: string, timeout: number = TIMEOUTS.singleRequest): Promise<any> => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  console.log(`🌐 Fetching: ${url}`);
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`Timeout after ${timeout}ms`)), timeout);
+  });
+  
+  const fetchPromise = fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'LSB-Search/1.0'
+    }
+  });
+
+  const response = await Promise.race([fetchPromise, timeoutPromise]);
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} for ${url}`);
+  }
+
+  return await response.json();
+};
+
+// TRANSFORMAR DADOS DA API
+const transformApiItem = (item: any): SearchResult => {
+  const realId = String(item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000);
+  
+  let subjectForBadge: string;
+  
+  if (item.tipo === 'podcast') {
+    subjectForBadge = getSubjectFromCategories(item.categorias) || 'Podcast';
+  } else {
+    subjectForBadge = getSubjectFromCategories(item.categorias) || 
+                     (item.categoria ? item.categoria : '') || 
+                     getSubject(item.tipo);
+  }
+  
+  const extractedYear = extractYearFromDate(item.data_publicacao || item.data_lancamento || item.ano);
+  
+  const baseResult: SearchResult = {
+    id: realId,
+    originalId: String(item.id || item.episodio_id || item.podcast_id),
+    title: item.titulo || item.episodio_titulo || item.title || 'Título não disponível',
+    author: item.autor || item.canal || item.publicador || 'Link Business School',
+    year: extractedYear,
+    description: item.descricao || 'Descrição não disponível',
+    subject: subjectForBadge,
+    type: item.tipo === 'livro' || item.tipo === 'artigos' ? 'titulo' : item.tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
+    thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
+  };
+
+  // Propriedades específicas por tipo
+  if (item.tipo === 'livro' || item.tipo === 'artigos') {
+    baseResult.pdfUrl = item.arquivo || item.url;
+    baseResult.pages = item.paginas;
+    baseResult.language = item.language ? mapLanguageCode(item.language) : mapLanguageCode(item.idioma);
+    baseResult.documentType = item.tipo === 'artigos' ? 'Artigo' : (item.tipo_documento || 'Livro');
+  } else if (item.tipo === 'aula') {
+    baseResult.embedUrl = item.embed_url;
+    baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : (item.duracao ? formatDurationFromSeconds(item.duracao) : undefined);
+    baseResult.channel = item.canal || 'Canal desconhecido';
+    baseResult.language = item.idioma ? mapLanguageCode(item.idioma) : undefined;
+  } else if (item.tipo === 'podcast') {
+    baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : undefined;
+    baseResult.embedUrl = item.embed_url;
+    baseResult.program = item.podcast_titulo || 'Programa desconhecido';
+  }
+
+  return baseResult;
+};
+
+// BUSCA POR QUERY - Mantida sem alterações para Warren
+const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  const requestId = `query_search_${Date.now()}`;
+  console.group(`🔥 ${requestId} - QUERY-BASED SEARCH`);
+  console.log('📋 QUERY PARAMETERS:', { 
+    query: `"${query}"`, 
+    page, 
+    resultsPerPage
+  });
+  
+  const cacheKey = getCacheKey('queryBased', `${query}_page${page}_limit${resultsPerPage}_sort${sortBy}`);
+  
+  // Para Warren, NUNCA usar cache
+  const isWarren = query.toLowerCase().includes('warren');
+  if (!isWarren && isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Query: ${cached.results.length} itens de ${cached.pagination.totalResults} totais`);
+    console.groupEnd();
+    return cached;
+  }
+  
+  try {
+    const apiUrl = `/conteudo-lbs/search?q=${encodeURIComponent(query)}&page=${page}&limit=${resultsPerPage}`;
     
-    return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  } catch (error) {
-    console.error('❌ Edge function error:', error)
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message,
+    console.log('🌐 QUERY API CALL:', `${API_BASE_URL}${apiUrl}`);
+    
+    const data = await fetchFromAPI(apiUrl, TIMEOUTS.querySearch);
+    
+    console.log('📊 QUERY API RESPONSE:', {
+      query: data.query,
+      total: data.total,
+      totalPages: data.totalPages,
+      currentPage: data.page,
+      itemsReceived: data.conteudo?.length || 0
+    });
+    
+    if (!data.conteudo || !Array.isArray(data.conteudo)) {
+      console.warn(`⚠️ Query search sem conteúdo: "${query}"`);
+      const emptyResponse = {
+        success: true,
         results: [],
-        pagination: { currentPage: 1, totalPages: 0, totalResults: 0, hasNextPage: false, hasPreviousPage: false }
-      }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    )
-  }
-})
-
-async function performPaginatedSearch(
-  query: string,
-  filters: SearchFilters,
-  sortBy: string,
-  page: number,
-  resultsPerPage: number,
-  requestId: string
-) {
-  console.log(`🚀 ${requestId} - Starting paginated search`)
-  console.log('🔍 Search parameters:', { query, filters, sortBy, page, resultsPerPage })
-
-  try {
-    let allItems: SearchResult[] = []
-    
-    // Determinar quais tipos buscar
-    const shouldSearchBooks = !filters.resourceType.length || 
-                             filters.resourceType.includes('all') || 
-                             filters.resourceType.includes('titulo')
-    
-    const shouldSearchArticles = !filters.resourceType.length || 
-                                filters.resourceType.includes('all') || 
-                                filters.resourceType.includes('titulo')
-    
-    const shouldSearchVideos = !filters.resourceType.length || 
-                              filters.resourceType.includes('all') || 
-                              filters.resourceType.includes('video')
-    
-    const shouldSearchPodcasts = !filters.resourceType.length || 
-                                filters.resourceType.includes('all') || 
-                                filters.resourceType.includes('podcast')
-
-    console.log(`📊 ${requestId} - Search targets:`, {
-      books: shouldSearchBooks,
-      articles: shouldSearchArticles, 
-      videos: shouldSearchVideos,
-      podcasts: shouldSearchPodcasts
-    })
-
-    // Buscar dados em paralelo conforme necessário
-    const promises: Promise<SearchResult[]>[] = []
-    
-    if (shouldSearchBooks) {
-      console.log(`📚 ${requestId} - Fetching books...`)
-      promises.push(fetchFromAPI('livro', requestId))
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalResults: 0,
+          hasNextPage: false,
+          hasPreviousPage: false
+        },
+        searchInfo: {
+          query,
+          appliedFilters: filters,
+          sortBy
+        }
+      };
+      console.groupEnd();
+      return emptyResponse;
     }
     
-    if (shouldSearchArticles) {
-      console.log(`📄 ${requestId} - Fetching articles...`)
-      promises.push(fetchFromAPI('artigos', requestId))
+    const transformedItems = data.conteudo.map((item: any) => transformApiItem(item));
+    
+    // Aplicar filtros apenas se necessário
+    let filteredItems = transformedItems;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(transformedItems, filters);
     }
     
-    if (shouldSearchVideos) {
-      console.log(`🎬 ${requestId} - Fetching videos...`)
-      promises.push(fetchFromAPI('aula', requestId))
-    }
+    const sortedItems = sortResults(filteredItems, sortBy, query);
     
-    if (shouldSearchPodcasts) {
-      console.log(`🎧 ${requestId} - Fetching podcasts...`)
-      promises.push(fetchFromAPI('podcast', requestId))
-    }
-
-    // Aguardar todas as buscas
-    const results = await Promise.allSettled(promises)
+    // Usar sempre os totais da API externa
+    const totalResults = data.total || 0;
+    const totalPages = data.totalPages || Math.ceil(totalResults / resultsPerPage);
     
-    results.forEach((result, index) => {
-      const types = ['books', 'articles', 'videos', 'podcasts']
-      const activeTypes = []
-      if (shouldSearchBooks) activeTypes.push('books')
-      if (shouldSearchArticles) activeTypes.push('articles') 
-      if (shouldSearchVideos) activeTypes.push('videos')
-      if (shouldSearchPodcasts) activeTypes.push('podcasts')
-      
-      const typeName = activeTypes[index] || `type_${index}`
-      
-      if (result.status === 'fulfilled') {
-        const items = result.value
-        console.log(`✅ ${requestId} - ${typeName}: ${items.length} items loaded`)
-        allItems.push(...items)
-      } else {
-        console.error(`❌ ${requestId} - ${typeName} failed:`, result.reason)
-      }
-    })
-
-    console.log(`📦 ${requestId} - Total items before filtering: ${allItems.length}`)
-
-    // DEPURAÇÃO CRÍTICA: Aplicar filtros com logs detalhados
-    const filteredItems = applyFilters(allItems, query, filters, requestId)
-    console.log(`🔍 ${requestId} - Items after filtering: ${filteredItems.length}`)
-
-    // DEPURAÇÃO CRÍTICA: Aplicar ordenação com logs detalhados  
-    const sortedItems = sortResults(filteredItems, sortBy, query, requestId)
-    console.log(`📊 ${requestId} - Items after sorting: ${sortedItems.length}`)
-
-    // Calcular paginação
-    const totalResults = sortedItems.length
-    const totalPages = Math.ceil(totalResults / resultsPerPage)
-    const startIndex = (page - 1) * resultsPerPage
-    const endIndex = startIndex + resultsPerPage
-    const paginatedResults = sortedItems.slice(startIndex, endIndex)
-
-    console.log(`📄 ${requestId} - Pagination:`, {
-      totalResults,
-      totalPages,
-      currentPage: page,
-      startIndex,
-      endIndex,
-      paginatedResults: paginatedResults.length
-    })
-
-    // VERIFICAÇÃO FINAL
-    if (paginatedResults.length === 0 && totalResults > 0) {
-      console.error(`❌ ${requestId} - CRITICAL: Paginated results empty but total > 0`)
-      console.log('🔍 Debug info:', {
-        totalResults,
-        page,
-        resultsPerPage,
-        startIndex,
-        endIndex,
-        sortedItemsLength: sortedItems.length
-      })
-    }
-
     const response = {
       success: true,
-      results: paginatedResults,
+      results: sortedItems,
       pagination: {
         currentPage: page,
         totalPages,
@@ -212,356 +372,721 @@ async function performPaginatedSearch(
         appliedFilters: filters,
         sortBy
       }
+    };
+    
+    if (!isWarren) {
+      setCache(cacheKey, response, 'queryBased');
     }
-
-    console.log(`✅ ${requestId} - Search completed successfully`)
-    return response
-
+    
+    console.log(`✅ Query search: ${sortedItems.length} resultados DESTA PÁGINA de ${totalResults} totais`);
+    console.groupEnd();
+    return response;
+    
   } catch (error) {
-    console.error(`❌ ${requestId} - Search failed:`, error)
-    throw error
+    console.error(`❌ Query search falhou para "${query}":`, error);
+    console.groupEnd();
+    
+    return {
+      success: false,
+      results: [],
+      pagination: {
+        currentPage: page,
+        totalPages: 0,
+        totalResults: 0,
+        hasNextPage: false,
+        hasPreviousPage: false
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      },
+      error: error.message
+    };
   }
-}
+};
 
-async function fetchFromAPI(tipo: string, requestId: string): Promise<SearchResult[]> {
-  const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1'
-  console.log(`📡 ${requestId} - Fetching ${tipo} from API...`)
+// BUSCA GLOBAL CORRIGIDA - Para filtro "Todos"
+const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  const requestId = `global_search_${Date.now()}`;
+  console.group(`🌍 ${requestId} - GLOBAL SEARCH (Filtro Todos)`);
+  console.log(`📋 Global search - página ${page}, limit ${resultsPerPage}`);
+  
+  const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Global: ${cached.results.length} itens`);
+    console.groupEnd();
+    return cached;
+  }
   
   try {
-    // Para livros e artigos, buscar com limite alto para pegar todos
-    const limit = tipo === 'livro' || tipo === 'artigos' ? 100 : 500
-    const url = `${API_BASE_URL}/conteudo-lbs?tipo=${tipo}&limit=${limit}`
+    // CORREÇÃO: Buscar mais dados de cada tipo para ter variedade suficiente
+    const itemsPerType = Math.max(50, resultsPerPage * 2); // Buscar pelo menos 50 de cada tipo
     
-    console.log(`🌐 ${requestId} - API URL: ${url}`)
+    console.log(`📊 Buscando ${itemsPerType} itens de cada tipo para mix global`);
     
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'LSB-Search/1.0'
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} for ${tipo}`)
+    const [livrosData, aulasData, podcastsData] = await Promise.allSettled([
+      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation)
+    ]);
+    
+    const allItems: SearchResult[] = [];
+    
+    // Processar livros
+    if (livrosData.status === 'fulfilled' && livrosData.value.conteudo) {
+      const livros = livrosData.value.conteudo.map((item: any) => transformApiItem(item));
+      allItems.push(...livros);
+      console.log(`✅ Livros carregados: ${livros.length}`);
     }
-
-    const data = await response.json()
-    const items = data.conteudo || []
     
-    console.log(`📊 ${requestId} - ${tipo}: Raw API returned ${items.length} items`)
+    // Processar aulas/vídeos
+    if (aulasData.status === 'fulfilled' && aulasData.value.conteudo) {
+      const aulas = aulasData.value.conteudo.map((item: any) => transformApiItem(item));
+      allItems.push(...aulas);
+      console.log(`✅ Vídeos carregados: ${aulas.length}`);
+    }
     
-    // Transformar dados para o formato esperado
-    const transformedItems = items.map((item: any) => transformToSearchResult(item, tipo))
+    // Processar podcasts
+    if (podcastsData.status === 'fulfilled' && podcastsData.value.conteudo) {
+      const podcasts = podcastsData.value.conteudo.map((item: any) => transformApiItem(item));
+      allItems.push(...podcasts);
+      console.log(`✅ Podcasts carregados: ${podcasts.length}`);
+    }
     
-    console.log(`✅ ${requestId} - ${tipo}: Transformed ${transformedItems.length} items`)
-    return transformedItems
+    console.log(`📊 Total de itens combinados: ${allItems.length}`);
+    
+    // Aplicar filtros se necessário
+    let filteredItems = allItems;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(allItems, filters);
+      console.log(`🔍 Após filtros: ${filteredItems.length} itens`);
+    }
+    
+    // Ordenar resultados
+    const sortedItems = sortResults(filteredItems, sortBy, query);
+    console.log(`📊 Após ordenação: ${sortedItems.length} itens`);
+    
+    // CORREÇÃO: Paginação correta dos resultados combinados
+    const totalResults = sortedItems.length;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    const startIndex = (page - 1) * resultsPerPage;
+    const endIndex = startIndex + resultsPerPage;
+    const paginatedItems = sortedItems.slice(startIndex, endIndex);
+    
+    console.log(`📄 Paginação: ${startIndex}-${endIndex} de ${totalResults} (página ${page}/${totalPages})`);
+    
+    const response = {
+      success: true,
+      results: paginatedItems,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalResults,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      }
+    };
+    
+    setCache(cacheKey, response, 'global');
+    
+    console.log(`✅ Global search: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
+    console.groupEnd();
+    return response;
     
   } catch (error) {
-    console.error(`❌ ${requestId} - Failed to fetch ${tipo}:`, error)
-    return []
+    console.error(`❌ Global search falhou:`, error);
+    console.groupEnd();
+    
+    return {
+      success: false,
+      results: [],
+      pagination: {
+        currentPage: page,
+        totalPages: 0,
+        totalResults: 0,
+        hasNextPage: false,
+        hasPreviousPage: false
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      },
+      error: error.message
+    };
   }
-}
+};
 
-function transformToSearchResult(item: any, tipo: string): SearchResult {
-  const baseResult = {
-    id: item.id || Math.random(),
-    originalId: item.id?.toString(),
-    title: item.titulo || item.title || 'Título não disponível',
-    author: item.autor || item.author || 'Autor desconhecido',
-    description: item.descricao || item.description || 'Descrição não disponível',
-    year: item.ano || item.year || new Date().getFullYear(),
-    subject: item.assunto || item.subject || 'Geral',
-    thumbnail: item.thumbnail || item.capa || null
-  }
-
-  switch (tipo) {
-    case 'livro':
-      return {
-        ...baseResult,
-        type: 'titulo' as const,
-        pages: item.paginas || item.pages,
-        pdfUrl: item.pdf_url || item.pdfUrl,
-        documentType: 'Livro',
-        language: item.idioma || 'Português'
-      }
-    
-    case 'artigos':
-      return {
-        ...baseResult,
-        type: 'titulo' as const,
-        pages: item.paginas || item.pages,
-        pdfUrl: item.pdf_url || item.pdfUrl,
-        documentType: 'Artigo',
-        language: item.idioma || 'Português'
-      }
-    
-    case 'aula':
-      return {
-        ...baseResult,
-        type: 'video' as const,
-        duration: item.duracao || item.duration,
-        embedUrl: item.embed_url || item.embedUrl,
-        channel: item.canal || item.channel,
-        pais: item.pais || 'BR'
-      }
-    
-    case 'podcast':
-      return {
-        ...baseResult,
-        type: 'podcast' as const,
-        duration: item.duracao || item.duration,
-        embedUrl: item.embed_url || item.embedUrl,
-        program: item.podcast_titulo || item.program,
-        episodes: item.episodios || item.episodes,
-        categories: item.categorias || item.categories || []
-      }
-    
-    default:
-      return {
-        ...baseResult,
-        type: 'titulo' as const
-      }
-  }
-}
-
-function applyFilters(
-  items: SearchResult[], 
-  query: string, 
-  filters: SearchFilters,
-  requestId: string
-): SearchResult[] {
-  console.log(`🔍 ${requestId} - Applying filters to ${items.length} items`)
-  console.log(`📋 ${requestId} - Filters:`, filters)
+// BUSCA PAGINADA CORRIGIDA - Para filtros específicos
+const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
-  let filteredItems = [...items]
-  const originalCount = filteredItems.length
-
-  // Query filter
-  if (query?.trim()) {
-    const queryLower = query.toLowerCase()
-    filteredItems = filteredItems.filter(item => {
-      const searchText = `${item.title} ${item.author} ${item.description}`.toLowerCase()
-      return searchText.includes(queryLower)
-    })
-    console.log(`🔤 ${requestId} - After query filter: ${filteredItems.length} items (query: "${query}")`)
+  const requestId = `paginated_search_${Date.now()}`;
+  console.group(`📄 ${requestId} - PAGINATED SEARCH`);
+  console.log(`📋 Paginated search - tipos: ${filters.resourceType.join(', ')}, página ${page}`);
+  
+  const cacheKey = getCacheKey('paginated', `${filters.resourceType.join('_')}_page${page}_limit${resultsPerPage}_sort${sortBy}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Paginated: ${cached.results.length} itens`);
+    console.groupEnd();
+    return cached;
   }
-
-  // Resource type filter - CRÍTICO: Corrigir lógica
-  if (filters.resourceType?.length > 0) {
-    const hasAll = filters.resourceType.includes('all')
-    const hasTitulo = filters.resourceType.includes('titulo')
+  
+  try {
+    const allItems: SearchResult[] = [];
+    let totalResultsFromAPI = 0;
+    let totalPagesFromAPI = 0;
     
-    console.log(`🏷️ ${requestId} - Resource type filter:`, {
-      filterTypes: filters.resourceType,
-      hasAll,
-      hasTitulo
-    })
-    
-    if (!hasAll) {
-      filteredItems = filteredItems.filter(item => {
-        // Se filtro inclui 'titulo', aceitar tanto 'titulo' quanto itens do tipo 'titulo'
-        if (hasTitulo && item.type === 'titulo') {
-          return true
+    // CORREÇÃO: Buscar dados baseado nos tipos de recurso com paginação correta
+    for (const resourceType of filters.resourceType) {
+      if (resourceType === 'titulo') {
+        // CORREÇÃO ESPECIAL: Para 'titulo', buscar TANTO livros quanto artigos
+        try {
+          console.log(`📚 Buscando 'titulo' - fazendo chamadas paralelas para livros E artigos - página ${page}`);
+          
+          // Distribuir limite proporcionalmente (47 livros : 35 artigos = ~57% : 43%)
+          const limitLivros = Math.ceil(resultsPerPage * 0.57);
+          const limitArtigos = resultsPerPage - limitLivros;
+          
+          console.log(`📊 Distribuição: ${limitLivros} livros + ${limitArtigos} artigos = ${resultsPerPage} total`);
+          
+          const [livrosResponse, artigosResponse] = await Promise.allSettled([
+            fetchFromAPI(`/conteudo-lbs?tipo=livro&page=${page}&limit=${limitLivros}`, TIMEOUTS.paginatedBatch),
+            fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=${page}&limit=${limitArtigos}`, TIMEOUTS.paginatedBatch)
+          ]);
+          
+          let totalLivros = 0;
+          let totalArtigos = 0;
+          
+          // Processar livros
+          if (livrosResponse.status === 'fulfilled' && livrosResponse.value.conteudo) {
+            const livros = livrosResponse.value.conteudo.map((item: any) => transformApiItem(item));
+            allItems.push(...livros);
+            totalLivros = livrosResponse.value.total || 0;
+            console.log(`✅ Livros: ${livros.length} carregados de ${totalLivros} totais`);
+          }
+          
+          // Processar artigos
+          if (artigosResponse.status === 'fulfilled' && artigosResponse.value.conteudo) {
+            const artigos = artigosResponse.value.conteudo.map((item: any) => transformApiItem(item));
+            allItems.push(...artigos);
+            totalArtigos = artigosResponse.value.total || 0;
+            console.log(`✅ Artigos: ${artigos.length} carregados de ${totalArtigos} totais`);
+          }
+          
+          // TOTAIS COMBINADOS para Livros & Artigos
+          const totalCombinado = totalLivros + totalArtigos;
+          totalResultsFromAPI = Math.max(totalResultsFromAPI, totalCombinado);
+          totalPagesFromAPI = Math.max(totalPagesFromAPI, Math.ceil(totalCombinado / resultsPerPage));
+          
+          console.log(`📊 TITULO COMBINADO: ${totalCombinado} total (${totalLivros} livros + ${totalArtigos} artigos)`);
+          
+        } catch (error) {
+          console.warn(`⚠️ Falha ao buscar titulo (livros + artigos):`, error);
         }
-        // Para outros tipos, verificar correspondência direta
-        return filters.resourceType.includes(item.type)
-      })
-      console.log(`🏷️ ${requestId} - After resource type filter: ${filteredItems.length} items`)
+        
+      } else {
+        // Tipos simples: video ou podcast
+        let apiType = '';
+        
+        if (resourceType === 'video') {
+          apiType = 'aula';
+        } else if (resourceType === 'podcast') {
+          apiType = 'podcast';
+        }
+        
+        if (apiType) {
+          try {
+            console.log(`🔍 Buscando ${apiType} - página ${page}, limit ${resultsPerPage}`);
+            
+            const data = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=${page}&limit=${resultsPerPage}`, TIMEOUTS.paginatedBatch);
+            
+            console.log(`📊 API Response para ${apiType}:`, {
+              total: data.total,
+              totalPages: data.totalPages,
+              currentPage: data.page || page,
+              itemsReceived: data.conteudo?.length || 0
+            });
+            
+            if (data.conteudo && Array.isArray(data.conteudo)) {
+              const items = data.conteudo.map((item: any) => transformApiItem(item));
+              allItems.push(...items);
+              
+              // CORREÇÃO: Usar os totais da API quando disponível
+              if (data.total) {
+                totalResultsFromAPI = Math.max(totalResultsFromAPI, data.total);
+              }
+              if (data.totalPages) {
+                totalPagesFromAPI = Math.max(totalPagesFromAPI, data.totalPages);
+              }
+            }
+          } catch (error) {
+            console.warn(`⚠️ Falha ao buscar ${apiType}:`, error);
+          }
+        }
+      }
     }
-  }
-
-  // Subject filter
-  if (filters.subject?.length > 0) {
-    filteredItems = filteredItems.filter(item =>
-      filters.subject.some(filterSubject =>
-        item.subject?.toLowerCase().includes(filterSubject.toLowerCase())
-      )
-    )
-    console.log(`📚 ${requestId} - After subject filter: ${filteredItems.length} items`)
-  }
-
-  // Author filter
-  if (filters.author?.length > 0) {
-    filteredItems = filteredItems.filter(item =>
-      filters.author.some(filterAuthor =>
-        item.author?.toLowerCase().includes(filterAuthor.toLowerCase())
-      )
-    )
-    console.log(`👤 ${requestId} - After author filter: ${filteredItems.length} items`)
-  }
-
-  // Year filter
-  if (filters.year?.trim()) {
-    const filterYear = parseInt(filters.year)
-    if (!isNaN(filterYear)) {
-      filteredItems = filteredItems.filter(item => item.year === filterYear)
-      console.log(`📅 ${requestId} - After year filter: ${filteredItems.length} items`)
+    
+    console.log(`📊 Items carregados: ${allItems.length}`);
+    console.log(`📊 Totais da API: ${totalResultsFromAPI} resultados, ${totalPagesFromAPI} páginas`);
+    
+    // Aplicar filtros se necessário
+    let filteredItems = allItems;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(allItems, filters);
+      console.log(`🔍 Após filtros: ${filteredItems.length} itens`);
     }
+    
+    // Ordenar resultados
+    const sortedItems = sortResults(filteredItems, sortBy, query);
+    
+    // CORREÇÃO: Usar totais da API se disponível, senão calcular
+    const finalTotalResults = totalResultsFromAPI > 0 ? totalResultsFromAPI : sortedItems.length;
+    const finalTotalPages = totalPagesFromAPI > 0 ? totalPagesFromAPI : Math.ceil(finalTotalResults / resultsPerPage);
+    
+    const response = {
+      success: true,
+      results: sortedItems,
+      pagination: {
+        currentPage: page,
+        totalPages: finalTotalPages,
+        totalResults: finalTotalResults,
+        hasNextPage: page < finalTotalPages,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      }
+    };
+    
+    setCache(cacheKey, response, 'paginated');
+    
+    console.log(`✅ Paginated search: ${sortedItems.length} itens na página ${page} de ${finalTotalResults} totais (${finalTotalPages} páginas)`);
+    console.groupEnd();
+    return response;
+    
+  } catch (error) {
+    console.error(`❌ Paginated search falhou:`, error);
+    console.groupEnd();
+    
+    // Fallback para busca global em caso de erro
+    return await performGlobalSearch(searchParams);
   }
+};
 
-  // Duration filter
-  if (filters.duration?.trim()) {
-    filteredItems = filteredItems.filter(item => matchesDurationFilter(item.duration, filters.duration))
-    console.log(`⏱️ ${requestId} - After duration filter: ${filteredItems.length} items`)
+// BUSCA FILTRADA - Mantida sem grandes alterações
+const performFilteredSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  console.log(`🔍 Filtered search - filtros ativos detectados`);
+  
+  const cacheKey = getCacheKey('filtered', `${JSON.stringify(filters)}_page${page}_sort${sortBy}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Filtered: ${cached.results.length} itens`);
+    return cached;
   }
+  
+  try {
+    // Para busca filtrada, buscar dados globais e aplicar filtros
+    const globalParams = { ...searchParams, filters: { ...filters, resourceType: ['all'] } };
+    const globalData = await performGlobalSearch(globalParams);
+    
+    if (!globalData.success) {
+      return globalData;
+    }
+    
+    // Aplicar filtros específicos
+    let filteredItems = globalData.results;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(globalData.results, filters);
+    }
+    
+    const sortedItems = sortResults(filteredItems, sortBy, query);
+    
+    // Paginação dos resultados filtrados
+    const startIndex = (page - 1) * resultsPerPage;
+    const endIndex = startIndex + resultsPerPage;
+    const paginatedItems = sortedItems.slice(startIndex, endIndex);
+    
+    const totalResults = sortedItems.length;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    
+    const response = {
+      success: true,
+      results: paginatedItems,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalResults,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      }
+    };
+    
+    setCache(cacheKey, response, 'filtered');
+    
+    console.log(`✅ Filtered search concluída: ${paginatedItems.length} resultados`);
+    return response;
+    
+  } catch (error) {
+    console.error(`❌ Filtered search falhou:`, error);
+    return await performGlobalSearch(searchParams);
+  }
+};
 
-  // Language filter
-  if (filters.language?.length > 0) {
-    filteredItems = filteredItems.filter(item =>
-      filters.language.some(filterLang =>
+// COORDENADOR PRINCIPAL
+const performSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const searchType = detectSearchType(searchParams.query, searchParams.filters);
+  
+  console.log(`🎯 SEARCH COORDINATOR: Tipo detectado = ${searchType}`);
+  console.log(`📋 Parâmetros:`, {
+    query: `"${searchParams.query}"`,
+    page: searchParams.page,
+    resourceType: searchParams.filters.resourceType,
+    hasOtherFilters: hasActiveFilters(searchParams.filters)
+  });
+
+  switch (searchType) {
+    case 'queryBased':
+      console.log('🎯 Executando QUERY-BASED search');
+      return await performQueryBasedSearch(searchParams);
+    
+    case 'paginated':
+      console.log('📄 Executando PAGINATED search');
+      return await performPaginatedSearch(searchParams);
+    
+    case 'filtered':
+      console.log('🔍 Executando FILTERED search');
+      return await performFilteredSearch(searchParams);
+    
+    case 'global':
+    default:
+      console.log('🌍 Executando GLOBAL search');
+      return await performGlobalSearch(searchParams);
+  }
+};
+
+// FUNÇÕES AUXILIARES
+const getSubjectFromCategories = (categorias: string[]): string => {
+  if (!categorias || categorias.length === 0) return '';
+  
+  const categoryMap: Record<string, string> = {
+    'negócios': 'Negócios',
+    'empresários': 'Empreendedorismo', 
+    'business': 'Negócios',
+    'podcast': 'Podcast',
+    'tecnologia': 'Tecnologia',
+    'educação': 'Educação',
+    'economia': 'Economia',
+    'finanças': 'Finanças'
+  };
+  
+  for (const categoria of categorias) {
+    const mapped = categoryMap[categoria.toLowerCase()];
+    if (mapped) return mapped;
+  }
+  
+  return categorias[0].charAt(0).toUpperCase() + categorias[0].slice(1);
+};
+
+const getSubject = (tipo: string): string => {
+  const typeMap: Record<string, string> = {
+    'podcast': 'Podcast',
+    'video': 'Vídeo', 
+    'aula': 'Educação',
+    'livro': 'Literatura',
+    'artigos': 'Artigo',
+    'titulo': 'Publicação'
+  };
+  
+  return typeMap[tipo] || 'Conteúdo';
+};
+
+const hasActiveFilters = (filters: SearchFilters): boolean => {
+  return filters.resourceType.length > 0 && !filters.resourceType.includes('all') ||
+         filters.subject.length > 0 ||
+         filters.author.length > 0 ||
+         filters.year.trim() !== '' ||
+         filters.duration.trim() !== '' ||
+         filters.language.length > 0 ||
+         filters.documentType.length > 0 ||
+         filters.program.length > 0 ||
+         filters.channel.length > 0;
+};
+
+const formatDurationFromSeconds = (durationSeconds: number): string => {
+  const minutes = Math.floor(durationSeconds / 60);
+  const hours = Math.floor(minutes / 60);
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  }
+  return `${minutes}m`;
+};
+
+const formatDuration = (durationMs: number): string => {
+  const minutes = Math.floor(durationMs / 60000);
+  const hours = Math.floor(minutes / 60);
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  }
+  return `${minutes}m`;
+};
+
+const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResult[] => {
+  return data.filter(item => {
+    if (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) {
+      if (!filters.resourceType.includes(item.type)) {
+        return false;
+      }
+    }
+
+    if (filters.subject.length > 0) {
+      const matchesSubject = filters.subject.some(filterSubject =>
+        item.subject.toLowerCase().includes(filterSubject.toLowerCase())
+      );
+      if (!matchesSubject) return false;
+    }
+
+    if (filters.author.length > 0) {
+      const matchesAuthor = filters.author.some(filterAuthor =>
+        item.author.toLowerCase().includes(filterAuthor.toLowerCase())
+      );
+      if (!matchesAuthor) return false;
+    }
+
+    if (filters.year.trim()) {
+      const filterYear = parseInt(filters.year);
+      if (!isNaN(filterYear) && item.year !== filterYear) return false;
+    }
+
+    if (filters.duration.trim()) {
+      if (!matchesDurationFilter(item.duration, filters.duration)) return false;
+    }
+
+    if (filters.language.length > 0) {
+      const matchesLanguage = filters.language.some(filterLang =>
         item.language?.toLowerCase().includes(filterLang.toLowerCase()) ||
         item.pais?.toLowerCase().includes(filterLang.toLowerCase())
-      )
-    )
-    console.log(`🌐 ${requestId} - After language filter: ${filteredItems.length} items`)
-  }
+      );
+      if (!matchesLanguage) return false;
+    }
 
-  // Document type filter
-  if (filters.documentType?.length > 0) {
-    filteredItems = filteredItems.filter(item =>
-      filters.documentType.some(filterDocType =>
-        item.documentType?.toLowerCase().includes(filterDocType.toLowerCase())
-      )
-    )
-    console.log(`📄 ${requestId} - After document type filter: ${filteredItems.length} items`)
-  }
+    if (filters.documentType.length > 0) {
+      if (!item.documentType || !filters.documentType.includes(item.documentType)) return false;
+    }
 
-  // Program filter (for podcasts)
-  if (filters.program?.length > 0) {
-    filteredItems = filteredItems.filter(item => {
-      if (item.type !== 'podcast') return false
-      return filters.program.some(filterProgram =>
-        item.program?.toLowerCase().includes(filterProgram.toLowerCase())
-      )
-    })
-    console.log(`🎧 ${requestId} - After program filter: ${filteredItems.length} items`)
-  }
+    if (filters.program.length > 0) {
+      if (item.type !== 'podcast' || !item.program) return false;
+      const matchesProgram = filters.program.some(filterProgram =>
+        item.program!.toLowerCase().includes(filterProgram.toLowerCase())
+      );
+      if (!matchesProgram) return false;
+    }
 
-  // Channel filter (for videos)
-  if (filters.channel?.length > 0) {
-    filteredItems = filteredItems.filter(item => {
-      if (item.type !== 'video') return false
-      return filters.channel.some(filterChannel =>
-        item.channel?.toLowerCase().includes(filterChannel.toLowerCase())
-      )
-    })
-    console.log(`📺 ${requestId} - After channel filter: ${filteredItems.length} items`)
-  }
+    if (filters.channel.length > 0) {
+      if (item.type !== 'video' || !item.channel) return false;
+      const matchesChannel = filters.channel.some(filterChannel =>
+        item.channel!.toLowerCase().includes(filterChannel.toLowerCase())
+      );
+      if (!matchesChannel) return false;
+    }
 
-  console.log(`✅ ${requestId} - Filtering complete: ${originalCount} → ${filteredItems.length} items`)
+    return true;
+  });
+};
+
+const matchesDurationFilter = (itemDuration: string | undefined, filterDuration: string): boolean => {
+  if (!itemDuration || !filterDuration) return true;
   
-  // DEBUG: Se perdemos todos os itens, investigar
-  if (originalCount > 0 && filteredItems.length === 0) {
-    console.error(`🚨 ${requestId} - ALL ITEMS FILTERED OUT! Original: ${originalCount}`)
-    console.log('🔍 Sample original items:')
-    items.slice(0, 3).forEach((item, i) => {
-      console.log(`  ${i + 1}. ${item.title} (type: ${item.type}, subject: ${item.subject})`)
-    })
-  }
+  const minutes = parseDurationToMinutes(itemDuration);
   
-  return filteredItems
-}
+  switch (filterDuration.toLowerCase()) {
+    case 'short':
+      return minutes > 0 && minutes <= 10;
+    case 'medium':
+      return minutes > 10 && minutes <= 30;
+    case 'long':
+      return minutes > 30;
+    default:
+      return true;
+  }
+};
 
-function sortResults(
-  results: SearchResult[], 
-  sortBy: string, 
-  query?: string,
-  requestId?: string
-): SearchResult[] {
-  if (requestId) {
-    console.log(`📊 ${requestId} - Sorting ${results.length} items by: ${sortBy}`)
+const parseDurationToMinutes = (duration: string): number => {
+  if (!duration) return 0;
+  
+  let totalMinutes = 0;
+  const durationStr = duration.toLowerCase().trim();
+  
+  const hoursMatch = durationStr.match(/(\d+)h/);
+  if (hoursMatch) {
+    totalMinutes += parseInt(hoursMatch[1]) * 60;
   }
   
-  const sortedResults = [...results]
+  const minutesMatch = durationStr.match(/(\d+)m/);
+  if (minutesMatch) {
+    totalMinutes += parseInt(minutesMatch[1]);
+  }
+  
+  if (!hoursMatch && !minutesMatch) {
+    const numberMatch = durationStr.match(/(\d+)/);
+    if (numberMatch) {
+      totalMinutes = parseInt(numberMatch[1]);
+    }
+  }
+  
+  return totalMinutes;
+};
+
+const sortResults = (results: SearchResult[], sortBy: string, query?: string): SearchResult[] => {
+  const sortedResults = [...results];
   
   switch (sortBy) {
     case 'relevance':
       if (query?.trim()) {
-        const queryLower = query.toLowerCase()
-        sortedResults.sort((a, b) => {
-          const aTitle = a.title?.toLowerCase() || ''
-          const bTitle = b.title?.toLowerCase() || ''
-          const aStartsWithQuery = aTitle.startsWith(queryLower)
-          const bStartsWithQuery = bTitle.startsWith(queryLower)
+        const queryLower = query.toLowerCase();
+        return sortedResults.sort((a, b) => {
+          const aTitle = a.title.toLowerCase();
+          const bTitle = b.title.toLowerCase();
+          const aStartsWithQuery = aTitle.startsWith(queryLower);
+          const bStartsWithQuery = bTitle.startsWith(queryLower);
           
-          if (aStartsWithQuery && !bStartsWithQuery) return -1
-          if (!aStartsWithQuery && bStartsWithQuery) return 1
+          if (aStartsWithQuery && !bStartsWithQuery) return -1;
+          if (!aStartsWithQuery && bStartsWithQuery) return 1;
           
-          return aTitle.localeCompare(bTitle)
-        })
-      } else {
-        sortedResults.sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+          return aTitle.localeCompare(bTitle);
+        });
       }
-      break
+      return sortedResults.sort((a, b) => a.title.localeCompare(b.title));
       
     case 'title':
-      sortedResults.sort((a, b) => (a.title || '').localeCompare(b.title || ''))
-      break
+      return sortedResults.sort((a, b) => a.title.localeCompare(b.title));
       
     case 'recent':
-      sortedResults.sort((a, b) => (b.year || 0) - (a.year || 0))
-      break
+      return sortedResults.sort((a, b) => (b.year || 0) - (a.year || 0));
       
     case 'accessed':
-      const typeOrder = { 'podcast': 3, 'video': 2, 'titulo': 1 }
-      sortedResults.sort((a, b) => {
-        const orderA = typeOrder[a.type] || 0
-        const orderB = typeOrder[b.type] || 0
-        if (orderA !== orderB) return orderB - orderA
-        return (a.title || '').localeCompare(b.title || '')
-      })
-      break
-  }
-  
-  if (requestId) {
-    console.log(`✅ ${requestId} - Sorting complete: ${sortedResults.length} items`)
-  }
-  
-  return sortedResults
-}
-
-function matchesDurationFilter(itemDuration: string | undefined, filterDuration: string): boolean {
-  if (!itemDuration || !filterDuration) return true
-  
-  const minutes = parseDurationToMinutes(itemDuration)
-  
-  switch (filterDuration.toLowerCase()) {
-    case 'short':
-      return minutes > 0 && minutes <= 10
-    case 'medium':
-      return minutes > 10 && minutes <= 30
-    case 'long':
-      return minutes > 30
+      const typeOrder = { 'podcast': 3, 'video': 2, 'titulo': 1 };
+      return sortedResults.sort((a, b) => {
+        const orderA = typeOrder[a.type as keyof typeof typeOrder] || 0;
+        const orderB = typeOrder[b.type as keyof typeof typeOrder] || 0;
+        if (orderA !== orderB) return orderB - orderA;
+        return a.title.localeCompare(b.title);
+      });
+      
     default:
-      return true
+      return sortedResults;
   }
-}
+};
 
-function parseDurationToMinutes(duration: string): number {
-  if (!duration) return 0
+const extractYearFromDate = (dateValue: any): number => {
+  if (!dateValue) return new Date().getFullYear();
   
-  let totalMinutes = 0
-  const durationStr = duration.toLowerCase().trim()
+  if (typeof dateValue === 'number') return dateValue;
   
-  // Extrair horas
-  const hoursMatch = durationStr.match(/(\d+)h/)
-  if (hoursMatch) {
-    totalMinutes += parseInt(hoursMatch[1]) * 60
+  if (typeof dateValue === 'string' && dateValue.toLowerCase().includes('desconhecida')) {
+    return new Date().getFullYear();
   }
   
-  // Extrair minutos
-  const minutesMatch = durationStr.match(/(\d+)m/)
-  if (minutesMatch) {
-    totalMinutes += parseInt(minutesMatch[1])
-  }
-  
-  // Se só tem número (assumir minutos)
-  if (!hoursMatch && !minutesMatch) {
-    const numberMatch = durationStr.match(/(\d+)/)
-    if (numberMatch) {
-      totalMinutes = parseInt(numberMatch[1])
+  if (typeof dateValue === 'string') {
+    const dateObj = new Date(dateValue);
+    if (!isNaN(dateObj.getTime())) {
+      return dateObj.getFullYear();
     }
   }
   
-  return totalMinutes
-}
+  return new Date().getFullYear();
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const requestBody = await req.json();
+    
+    // Log especial para Warren
+    if (requestBody.query && requestBody.query.toLowerCase().includes('warren')) {
+      console.log('🔥 WARREN REQUEST DETECTED:', {
+        query: requestBody.query,
+        page: requestBody.page,
+        resultsPerPage: requestBody.resultsPerPage
+      });
+    }
+    
+    console.log('📨 SEARCH REQUEST:', {
+      query: requestBody.query,
+      resourceType: requestBody.filters?.resourceType,
+      page: requestBody.page,
+      type: requestBody.query ? 'QUERY' : (requestBody.filters?.resourceType?.length > 0 && !requestBody.filters.resourceType.includes('all') ? 'FILTERED' : 'GLOBAL')
+    });
+    
+    const result = await performSearch(requestBody);
+    
+    // Log especial para Warren response
+    if (requestBody.query && requestBody.query.toLowerCase().includes('warren')) {
+      console.log('🔥 WARREN RESPONSE:', {
+        totalResults: result.pagination?.totalResults,
+        totalPages: result.pagination?.totalPages,
+        currentPage: result.pagination?.currentPage,
+        resultsCount: result.results?.length
+      });
+    }
+    
+    console.log('📤 SEARCH RESPONSE:', {
+      success: result.success,
+      resultsCount: result.results?.length,
+      totalResults: result.pagination?.totalResults,
+      totalPages: result.pagination?.totalPages,
+      currentPage: result.pagination?.currentPage
+    });
+    
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro na busca:', error);
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message,
+      results: [],
+      pagination: {
+        currentPage: 1,
+        totalPages: 0,
+        totalResults: 0,
+        hasNextPage: false,
+        hasPreviousPage: false
+      }
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+    });
+  }
+});

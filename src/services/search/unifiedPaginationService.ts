@@ -26,16 +26,16 @@ export class UnifiedPaginationService {
   private static readonly CONTENT_TOTALS = {
     podcasts: 2512,
     videos: 300,
-    books: 47,     // ✅ REAL: 47 livros
-    articles: 35   // ✅ REAL: 35 artigos
+    books: 47,
+    articles: 35
   };
 
-  // ✅ CORREÇÃO: Total combinado REAL
+  // ✅ CORREÇÃO: Total combinado REAL CORRETO
   private static readonly TOTAL_ITEMS = 
     this.CONTENT_TOTALS.podcasts + 
     this.CONTENT_TOTALS.videos + 
     this.CONTENT_TOTALS.books +
-    this.CONTENT_TOTALS.articles; // ✅ REAL: 2894
+    this.CONTENT_TOTALS.articles; // ✅ REAL: 2894 (não mais números menores)
 
   static calculatePageDistribution(page: number, limit: number): ContentTypeDistribution {
     const startIndex = (page - 1) * limit;

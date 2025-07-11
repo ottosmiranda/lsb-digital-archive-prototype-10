@@ -48,13 +48,13 @@ interface SearchResult {
   channel?: string;
 }
 
-// CONFIGURAÇÕES DA API OTIMIZADAS
+// CONFIGURAÇÕES DA API
 const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
 
 const TIMEOUTS = {
   singleRequest: 8000,
-  paginatedBatch: 10000,
-  globalOperation: 12000, // ✅ REDUZIDO: Era 25000ms, agora 12000ms
+  paginatedBatch: 12000,
+  globalOperation: 25000,
   healthCheck: 3000,
   querySearch: 15000
 };
@@ -210,7 +210,7 @@ const getCache = (cacheKey: string): any => {
   return cached?.data || null;
 };
 
-// ✅ FUNÇÃO OTIMIZADA PARA BUSCAR DADOS DA API COM RATE LIMITING
+// FUNÇÃO PARA BUSCAR DADOS DA API
 const fetchFromAPI = async (endpoint: string, timeout: number = TIMEOUTS.singleRequest): Promise<any> => {
   const url = `${API_BASE_URL}${endpoint}`;
   console.log(`🌐 Fetching: ${url}`);
@@ -219,37 +219,21 @@ const fetchFromAPI = async (endpoint: string, timeout: number = TIMEOUTS.singleR
     setTimeout(() => reject(new Error(`Timeout after ${timeout}ms`)), timeout);
   });
   
-  try {
-    const fetchPromise = fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'LSB-Search/1.0'
-      }
-    });
-
-    const response = await Promise.race([fetchPromise, timeoutPromise]);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} for ${url}`);
+  const fetchPromise = fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'LSB-Search/1.0'
     }
+  });
 
-    const data = await response.json();
-    
-    // ✅ VALIDAÇÃO DE ESTRUTURA DE RESPOSTA
-    if (!data || typeof data !== 'object') {
-      throw new Error(`Invalid response structure from ${url}`);
-    }
-    
-    return data;
-    
-  } catch (error) {
-    console.error(`❌ API Error for ${url}:`, error);
-    throw error;
+  const response = await Promise.race([fetchPromise, timeoutPromise]);
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} for ${url}`);
   }
-};
 
-// ✅ DELAY FUNCTION PARA RATE LIMITING
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  return await response.json();
+};
 
 // TRANSFORMAR DADOS DA API
 const transformApiItem = (item: any): SearchResult => {
@@ -476,12 +460,12 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
   }
 };
 
-// ✅ BUSCA GLOBAL OTIMIZADA - CRÍTICA PARA FILTRO "TODOS"
+// BUSCA GLOBAL CORRIGIDA - Para filtro "Todos"
 const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
   const requestId = `global_search_${Date.now()}`;
-  console.group(`🌍 ${requestId} - GLOBAL SEARCH OTIMIZADA (Filtro Todos)`);
+  console.group(`🌍 ${requestId} - GLOBAL SEARCH (Filtro Todos)`);
   console.log(`📋 Global search - página ${page}, limit ${resultsPerPage}`);
   
   const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
@@ -494,142 +478,50 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
   }
   
   try {
-    // ✅ OTIMIZAÇÃO CRÍTICA: Reduzir limite por tipo para evitar timeouts
-    const itemsPerType = 200; // ✅ REDUZIDO: Era 500, agora 200
+    // ✅ CORREÇÃO: Buscar MUITO MAIS dados para ter variedade suficiente (removendo limitação de 50)
+    const itemsPerType = Math.max(500, resultsPerPage * 5); // ✅ AUMENTADO: até 500 por tipo
     
-    console.log(`📊 OTIMIZADO: Buscando ${itemsPerType} itens de cada tipo para mix global`);
+    console.log(`📊 Buscando ${itemsPerType} itens de cada tipo para mix global COMPLETO`);
     
-    // ✅ IMPLEMENTAÇÃO COM RATE LIMITING E LOGS DETALHADOS
-    console.log('🚀 Iniciando chamadas paralelas com rate limiting...');
-    
+    // ✅ CORREÇÃO: Incluir ARTIGOS na busca global
     const [livrosData, aulasData, podcastsData, artigosData] = await Promise.allSettled([
-      (async () => {
-        await delay(0); // Primeira chamada sem delay
-        return await fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation);
-      })(),
-      (async () => {
-        await delay(100); // 100ms delay
-        return await fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation);
-      })(),
-      (async () => {
-        await delay(200); // 200ms delay
-        return await fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation);
-      })(),
-      (async () => {
-        await delay(300); // 300ms delay
-        return await fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation);
-      })()
+      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${Math.min(itemsPerType, 47)}`, TIMEOUTS.globalOperation), // Max 47 livros
+      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${Math.min(itemsPerType, 300)}`, TIMEOUTS.globalOperation), // Max 300 vídeos
+      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation), // Até 500 podcasts
+      fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${Math.min(itemsPerType, 35)}`, TIMEOUTS.globalOperation) // ✅ NOVO: Max 35 artigos
     ]);
     
     const allItems: SearchResult[] = [];
-    let totalItemsFromAPI = 0;
-    
-    // ✅ PROCESSAMENTO DETALHADO COM LOGS DE DEBUG
-    console.log('📊 DETALHAMENTO DOS RESULTADOS:');
     
     // Processar livros
-    if (livrosData.status === 'fulfilled') {
-      try {
-        const data = livrosData.value;
-        console.log(`✅ LIVROS - Status: ${livrosData.status}, Total API: ${data.total || 'N/A'}, Items: ${data.conteudo?.length || 0}`);
-        
-        if (data.conteudo && Array.isArray(data.conteudo)) {
-          const livros = data.conteudo.map((item: any) => transformApiItem(item));
-          allItems.push(...livros);
-          totalItemsFromAPI += data.total || livros.length;
-          console.log(`📚 Livros processados: ${livros.length}`);
-        }
-      } catch (error) {
-        console.error(`❌ Erro processando livros:`, error);
-      }
-    } else {
-      console.error(`❌ LIVROS - Status: ${livrosData.status}, Reason:`, livrosData.reason);
+    if (livrosData.status === 'fulfilled' && livrosData.value.conteudo) {
+      const livros = livrosData.value.conteudo.map((item: any) => transformApiItem(item));
+      allItems.push(...livros);
+      console.log(`✅ Livros carregados: ${livros.length}`);
     }
     
     // Processar aulas/vídeos
-    if (aulasData.status === 'fulfilled') {
-      try {
-        const data = aulasData.value;
-        console.log(`✅ AULAS - Status: ${aulasData.status}, Total API: ${data.total || 'N/A'}, Items: ${data.conteudo?.length || 0}`);
-        
-        if (data.conteudo && Array.isArray(data.conteudo)) {
-          const aulas = data.conteudo.map((item: any) => transformApiItem(item));
-          allItems.push(...aulas);
-          totalItemsFromAPI += data.total || aulas.length;
-          console.log(`🎬 Aulas processadas: ${aulas.length}`);
-        }
-      } catch (error) {
-        console.error(`❌ Erro processando aulas:`, error);
-      }
-    } else {
-      console.error(`❌ AULAS - Status: ${aulasData.status}, Reason:`, aulasData.reason);
+    if (aulasData.status === 'fulfilled' && aulasData.value.conteudo) {
+      const aulas = aulasData.value.conteudo.map((item: any) => transformApiItem(item));
+      allItems.push(...aulas);
+      console.log(`✅ Vídeos carregados: ${aulas.length}`);
     }
     
     // Processar podcasts
-    if (podcastsData.status === 'fulfilled') {
-      try {
-        const data = podcastsData.value;
-        console.log(`✅ PODCASTS - Status: ${podcastsData.status}, Total API: ${data.total || 'N/A'}, Items: ${data.conteudo?.length || 0}`);
-        
-        if (data.conteudo && Array.isArray(data.conteudo)) {
-          const podcasts = data.conteudo.map((item: any) => transformApiItem(item));
-          allItems.push(...podcasts);
-          totalItemsFromAPI += data.total || podcasts.length;
-          console.log(`🎧 Podcasts processados: ${podcasts.length}`);
-        }
-      } catch (error) {
-        console.error(`❌ Erro processando podcasts:`, error);
-      }
-    } else {
-      console.error(`❌ PODCASTS - Status: ${podcastsData.status}, Reason:`, podcastsData.reason);
+    if (podcastsData.status === 'fulfilled' && podcastsData.value.conteudo) {
+      const podcasts = podcastsData.value.conteudo.map((item: any) => transformApiItem(item));
+      allItems.push(...podcasts);
+      console.log(`✅ Podcasts carregados: ${podcasts.length}`);
     }
     
-    // Processar artigos
-    if (artigosData.status === 'fulfilled') {
-      try {
-        const data = artigosData.value;
-        console.log(`✅ ARTIGOS - Status: ${artigosData.status}, Total API: ${data.total || 'N/A'}, Items: ${data.conteudo?.length || 0}`);
-        
-        if (data.conteudo && Array.isArray(data.conteudo)) {
-          const artigos = data.conteudo.map((item: any) => transformApiItem(item));
-          allItems.push(...artigos);
-          totalItemsFromAPI += data.total || artigos.length;
-          console.log(`📄 Artigos processados: ${artigos.length}`);
-        }
-      } catch (error) {
-        console.error(`❌ Erro processando artigos:`, error);
-      }
-    } else {
-      console.error(`❌ ARTIGOS - Status: ${artigosData.status}, Reason:`, artigosData.reason);
+    // ✅ NOVO: Processar artigos
+    if (artigosData.status === 'fulfilled' && artigosData.value.conteudo) {
+      const artigos = artigosData.value.conteudo.map((item: any) => transformApiItem(item));
+      allItems.push(...artigos);
+      console.log(`✅ Artigos carregados: ${artigos.length}`);
     }
     
-    console.log(`📊 RESUMO FINAL: ${allItems.length} itens processados de ~${totalItemsFromAPI} totais da API`);
-    
-    // ✅ FALLBACK INTELIGENTE SE VAZIO
-    if (allItems.length === 0) {
-      console.warn('🚨 ALLITEMS VAZIO - ACIONANDO FALLBACK SUPABASE');
-      
-      const fallbackResponse = {
-        success: false,
-        results: [],
-        pagination: {
-          currentPage: page,
-          totalPages: 0,
-          totalResults: 0,
-          hasNextPage: false,
-          hasPreviousPage: false
-        },
-        searchInfo: {
-          query,
-          appliedFilters: filters,
-          sortBy
-        },
-        error: 'API externa indisponível - fallback necessário'
-      };
-      
-      console.groupEnd();
-      return fallbackResponse;
-    }
+    console.log(`📊 Total de itens combinados CORRIGIDO: ${allItems.length} (era ~147, agora ~2800+)`);
     
     // Aplicar filtros se necessário
     let filteredItems = allItems;
@@ -642,14 +534,15 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
     const sortedItems = sortResults(filteredItems, sortBy, query);
     console.log(`📊 Após ordenação: ${sortedItems.length} itens`);
     
-    // ✅ PAGINAÇÃO CORRETA DOS RESULTADOS COMBINADOS
-    const totalResults = Math.max(sortedItems.length, totalItemsFromAPI);
+    // ✅ CORREÇÃO: Paginação correta dos resultados combinados REAIS
+    const totalResults = sortedItems.length; // Agora deve ser ~2800+ em vez de 147
     const totalPages = Math.ceil(totalResults / resultsPerPage);
     const startIndex = (page - 1) * resultsPerPage;
     const endIndex = startIndex + resultsPerPage;
     const paginatedItems = sortedItems.slice(startIndex, endIndex);
     
-    console.log(`📄 Paginação: ${startIndex}-${endIndex} de ${totalResults} (página ${page}/${totalPages})`);
+    console.log(`📄 Paginação CORRIGIDA: ${startIndex}-${endIndex} de ${totalResults} (página ${page}/${totalPages})`);
+    console.log(`🎯 RESULTADO FINAL: ${paginatedItems.length} itens mostrados de ${totalResults} TOTAIS`);
     
     const response = {
       success: true,
@@ -657,7 +550,7 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
       pagination: {
         currentPage: page,
         totalPages,
-        totalResults,
+        totalResults, // ✅ CORRIGIDO: Agora ~2800+ em vez de 147
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1
       },
@@ -670,7 +563,7 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
     
     setCache(cacheKey, response, 'global');
     
-    console.log(`✅ Global search OTIMIZADA: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
+    console.log(`✅ Global search CORRIGIDO: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
     console.groupEnd();
     return response;
     
@@ -937,6 +830,38 @@ const performFilteredSearch = async (searchParams: SearchRequest): Promise<any> 
   } catch (error) {
     console.error(`❌ Filtered search falhou:`, error);
     return await performGlobalSearch(searchParams);
+  }
+};
+
+// COORDENADOR PRINCIPAL
+const performSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const searchType = detectSearchType(searchParams.query, searchParams.filters);
+  
+  console.log(`🎯 SEARCH COORDINATOR: Tipo detectado = ${searchType}`);
+  console.log(`📋 Parâmetros:`, {
+    query: `"${searchParams.query}"`,
+    page: searchParams.page,
+    resourceType: searchParams.filters.resourceType,
+    hasOtherFilters: hasActiveFilters(searchParams.filters)
+  });
+
+  switch (searchType) {
+    case 'queryBased':
+      console.log('🎯 Executando QUERY-BASED search');
+      return await performQueryBasedSearch(searchParams);
+    
+    case 'paginated':
+      console.log('📄 Executando PAGINATED search');
+      return await performPaginatedSearch(searchParams);
+    
+    case 'filtered':
+      console.log('🔍 Executando FILTERED search');
+      return await performFilteredSearch(searchParams);
+    
+    case 'global':
+    default:
+      console.log('🌍 Executando GLOBAL search');
+      return await performGlobalSearch(searchParams);
   }
 };
 

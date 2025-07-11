@@ -610,11 +610,12 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
         try {
           console.log(`📚 Buscando 'titulo' - fazendo chamadas paralelas para livros E artigos - página ${page}`);
           
-          // Distribuir limite proporcionalmente (47 livros : 35 artigos = ~57% : 43%)
-          const limitLivros = Math.ceil(resultsPerPage * 0.57);
+          // ✅ CORREÇÃO: Distribuir limite com proporções REAIS (47:35 = 0.573:0.427)
+          const totalTitulos = 47 + 35; // 82 títulos totais
+          const limitLivros = Math.ceil(resultsPerPage * (47 / totalTitulos)); // 0.573
           const limitArtigos = resultsPerPage - limitLivros;
           
-          console.log(`📊 Distribuição: ${limitLivros} livros + ${limitArtigos} artigos = ${resultsPerPage} total`);
+          console.log(`📊 Distribuição CORRIGIDA: ${limitLivros} livros (${47}/82=${(47/82).toFixed(3)}) + ${limitArtigos} artigos (${35}/82=${(35/82).toFixed(3)}) = ${resultsPerPage} total`);
           
           const [livrosResponse, artigosResponse] = await Promise.allSettled([
             fetchFromAPI(`/conteudo-lbs?tipo=livro&page=${page}&limit=${limitLivros}`, TIMEOUTS.paginatedBatch),
@@ -628,7 +629,8 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
           if (livrosResponse.status === 'fulfilled' && livrosResponse.value.conteudo) {
             const livros = livrosResponse.value.conteudo.map((item: any) => transformApiItem(item));
             allItems.push(...livros);
-            totalLivros = livrosResponse.value.total || 0;
+            // ✅ CORREÇÃO: Usar total REAL da API (47)
+            totalLivros = livrosResponse.value.total || 47;
             console.log(`✅ Livros: ${livros.length} carregados de ${totalLivros} totais`);
           }
           
@@ -636,16 +638,18 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
           if (artigosResponse.status === 'fulfilled' && artigosResponse.value.conteudo) {
             const artigos = artigosResponse.value.conteudo.map((item: any) => transformApiItem(item));
             allItems.push(...artigos);
-            totalArtigos = artigosResponse.value.total || 0;
+            // ✅ CORREÇÃO: Usar total REAL da API (35)
+            totalArtigos = artigosResponse.value.total || 35;
             console.log(`✅ Artigos: ${artigos.length} carregados de ${totalArtigos} totais`);
           }
           
-          // TOTAIS COMBINADOS para Livros & Artigos
-          const totalCombinado = totalLivros + totalArtigos;
+          // ✅ CORREÇÃO: TOTAIS COMBINADOS REAIS para Livros & Artigos
+          const totalCombinado = totalLivros + totalArtigos; // 47 + 35 = 82
           totalResultsFromAPI = Math.max(totalResultsFromAPI, totalCombinado);
           totalPagesFromAPI = Math.max(totalPagesFromAPI, Math.ceil(totalCombinado / resultsPerPage));
           
-          console.log(`📊 TITULO COMBINADO: ${totalCombinado} total (${totalLivros} livros + ${totalArtigos} artigos)`);
+          console.log(`📊 TITULO COMBINADO CORRIGIDO: ${totalCombinado} total (${totalLivros} livros + ${totalArtigos} artigos)`);
+          console.log(`📄 PÁGINAS CALCULADAS: ${Math.ceil(totalCombinado / resultsPerPage)} páginas (${totalCombinado}÷${resultsPerPage})`);
           
         } catch (error) {
           console.warn(`⚠️ Falha ao buscar titulo (livros + artigos):`, error);
@@ -694,7 +698,7 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
     }
     
     console.log(`📊 Items carregados ANTES dos filtros: ${allItems.length}`);
-    console.log(`📊 Totais da API: ${totalResultsFromAPI} resultados, ${totalPagesFromAPI} páginas`);
+    console.log(`📊 Totais REAIS da API: ${totalResultsFromAPI} resultados, ${totalPagesFromAPI} páginas`);
     
     // CORREÇÃO CRÍTICA: Aplicar filtros APENAS para filtros de refinamento (não resourceType)
     let filteredItems = allItems;
@@ -739,7 +743,7 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
     
     setCache(cacheKey, response, 'paginated');
     
-    console.log(`✅ Paginated search FINAL: ${sortedItems.length} itens na página ${page} de ${finalTotalResults} totais (${finalTotalPages} páginas)`);
+    console.log(`✅ Paginated search FINAL CORRIGIDO: ${sortedItems.length} itens na página ${page} de ${finalTotalResults} totais (${finalTotalPages} páginas)`);
     console.groupEnd();
     return response;
     

@@ -1,4 +1,3 @@
-
 import { SearchResult } from '@/types/searchTypes';
 import { ApiPaginationService } from './apiPaginationService';
 
@@ -23,17 +22,20 @@ export interface UnifiedPageResponse {
 }
 
 export class UnifiedPaginationService {
-  // TOTAIS CONHECIDOS DA API
+  // ✅ CORREÇÃO: TOTAIS REAIS DA API EXTERNA
   private static readonly CONTENT_TOTALS = {
     podcasts: 2512,
     videos: 300,
-    books: 30
+    books: 47,     // ✅ REAL: 47 livros
+    articles: 35   // ✅ REAL: 35 artigos
   };
 
+  // ✅ CORREÇÃO: Total combinado REAL
   private static readonly TOTAL_ITEMS = 
     this.CONTENT_TOTALS.podcasts + 
     this.CONTENT_TOTALS.videos + 
-    this.CONTENT_TOTALS.books; // 2842
+    this.CONTENT_TOTALS.books +
+    this.CONTENT_TOTALS.articles; // ✅ REAL: 2894
 
   static calculatePageDistribution(page: number, limit: number): ContentTypeDistribution {
     const startIndex = (page - 1) * limit;
@@ -41,15 +43,24 @@ export class UnifiedPaginationService {
     
     console.log(`📊 Calculando distribuição para página ${page} (índices ${startIndex}-${endIndex})`);
     
-    // Calcular proporções baseadas nos totais reais
-    const podcastRatio = this.CONTENT_TOTALS.podcasts / this.TOTAL_ITEMS; // ~0.88
-    const videoRatio = this.CONTENT_TOTALS.videos / this.TOTAL_ITEMS; // ~0.11
-    const bookRatio = this.CONTENT_TOTALS.books / this.TOTAL_ITEMS; // ~0.01
+    // ✅ CORREÇÃO: Calcular proporções baseadas nos totais REAIS
+    const podcastRatio = this.CONTENT_TOTALS.podcasts / this.TOTAL_ITEMS; // ~0.868
+    const videoRatio = this.CONTENT_TOTALS.videos / this.TOTAL_ITEMS; // ~0.104
+    const bookRatio = this.CONTENT_TOTALS.books / this.TOTAL_ITEMS; // ~0.016
+    const articleRatio = this.CONTENT_TOTALS.articles / this.TOTAL_ITEMS; // ~0.012
+    
+    console.log(`📊 Proporções REAIS:`, {
+      podcasts: `${(podcastRatio * 100).toFixed(1)}%`,
+      videos: `${(videoRatio * 100).toFixed(1)}%`,
+      books: `${(bookRatio * 100).toFixed(1)}%`,
+      articles: `${(articleRatio * 100).toFixed(1)}%`
+    });
     
     // Distribuir itens proporcionalmente
     const podcastsNeeded = Math.round(limit * podcastRatio);
     const videosNeeded = Math.round(limit * videoRatio);
-    const booksNeeded = limit - podcastsNeeded - videosNeeded; // Resto para livros
+    const booksNeeded = Math.round(limit * bookRatio);
+    const articlesNeeded = limit - podcastsNeeded - videosNeeded - booksNeeded; // Resto para artigos
     
     // Calcular páginas correspondentes para cada tipo
     const podcastPage = Math.ceil((startIndex * podcastRatio + 1) / podcastsNeeded) || 1;
@@ -67,11 +78,11 @@ export class UnifiedPaginationService {
       },
       books: { 
         page: Math.max(1, bookPage), 
-        limit: Math.max(1, booksNeeded) 
+        limit: Math.max(1, booksNeeded + articlesNeeded) // Combinar livros e artigos
       }
     };
     
-    console.log(`📋 Distribuição calculada:`, distribution);
+    console.log(`📋 Distribuição calculada CORRIGIDA:`, distribution);
     return distribution;
   }
 
@@ -178,5 +189,16 @@ export class UnifiedPaginationService {
 
   static getTotalItems(): number {
     return this.TOTAL_ITEMS;
+  }
+
+  // ✅ NOVO: Método para obter totais específicos por tipo
+  static getContentTotals() {
+    return {
+      podcasts: this.CONTENT_TOTALS.podcasts,
+      videos: this.CONTENT_TOTALS.videos,
+      books: this.CONTENT_TOTALS.books,
+      articles: this.CONTENT_TOTALS.articles,
+      combined_titles: this.CONTENT_TOTALS.books + this.CONTENT_TOTALS.articles // 82 livros + artigos
+    };
   }
 }

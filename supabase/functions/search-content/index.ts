@@ -391,27 +391,24 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
   }
 };
 
-// ✅ FUNÇÃO: Busca filtrada (placeholder)
+// ✅ FUNÇÃO: Busca filtrada - fallback para busca global
 const performFilteredSearch = async (searchParams: SearchRequest): Promise<any> => {
-  console.log('🔍 Performing filtered search...');
-  // Por enquanto, usar busca global como fallback
+  console.log('🔍 Filtered search - usando fallback para global...');
   return await performGlobalSearch(searchParams);
 };
 
-// ✅ FUNÇÃO: Busca paginada (placeholder)
+// ✅ FUNÇÃO: Busca paginada - fallback para busca global  
 const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any> => {
-  console.log('📄 Performing paginated search...');
-  // Por enquanto, usar busca global como fallback
+  console.log('📄 Paginated search - usando fallback para global...');
   return await performGlobalSearch(searchParams);
 };
 
-// ✅ FUNÇÃO: Busca global (placeholder)
+// ✅ FUNÇÃO: Busca global - retorna resposta vazia estruturada
 const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
-  console.log('🌍 Performing global search...');
+  console.log('🌍 Global search - retornando resposta vazia estruturada...');
   
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
-  // Retornar resposta vazia estruturada
   return {
     success: true,
     results: [],
@@ -436,7 +433,7 @@ const getSubjectFromCategories = (categorias: string[]): string => {
   
   const categoryMap: Record<string, string> = {
     'negócios': 'Negócios',
-    'empresários': 'Empreendedorismo',
+    'empresários': 'Empreendedorismo', 
     'business': 'Negócios',
     'podcast': 'Podcast',
     'tecnologia': 'Tecnologia',
@@ -457,7 +454,7 @@ const getSubjectFromCategories = (categorias: string[]): string => {
 const getSubject = (tipo: string): string => {
   const typeMap: Record<string, string> = {
     'podcast': 'Podcast',
-    'video': 'Vídeo',
+    'video': 'Vídeo', 
     'aula': 'Educação',
     'livro': 'Literatura',
     'artigos': 'Artigo',

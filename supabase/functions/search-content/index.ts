@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -150,16 +151,16 @@ const detectSearchType = (query: string, filters: SearchFilters): SearchType => 
   return 'paginated';
 };
 
-// FUNÇÕES DE CACHE
+// FUNÇÕES DE CACHE - 🔥 CORREÇÃO CRÍTICA: DESABILITAR CACHE PARA WARREN
 const getCacheKey = (strategy: SearchType, identifier: string): string => {
   const config = CACHE_STRATEGIES[strategy];
   return `${config.prefix}_${identifier}`;
 };
 
 const isValidCache = (cacheKey: string): boolean => {
-  // 🔥 CACHE BUSTER PARA DEBUG: Desabilitar cache temporariamente para Warren
+  // 🔥 CACHE BUSTER TOTAL PARA WARREN - SEMPRE FORÇAR REFRESH
   if (cacheKey.toLowerCase().includes('warren')) {
-    console.log('🔥 CACHE BUSTER ATIVO para Warren - forçando refresh');
+    console.log('🔥 WARREN CACHE BUSTER ATIVO - FORÇANDO REFRESH TOTAL');
     return false;
   }
   
@@ -178,6 +179,12 @@ const isValidCache = (cacheKey: string): boolean => {
 };
 
 const setCache = (cacheKey: string, data: any, strategy: SearchType): void => {
+  // 🔥 NÃO CACHEAR WARREN DURANTE O DEBUG
+  if (cacheKey.toLowerCase().includes('warren')) {
+    console.log('🔥 WARREN - NÃO CACHEANDO DURANTE DEBUG');
+    return;
+  }
+  
   const config = CACHE_STRATEGIES[strategy];
   
   if (Array.isArray(data) && data.length === 0 && strategy !== 'filtered' && strategy !== 'queryBased') {
@@ -272,51 +279,65 @@ const transformApiItem = (item: any): SearchResult => {
   return baseResult;
 };
 
-// 🔥 BUSCA POR QUERY - CORREÇÃO CRÍTICA DA PAGINAÇÃO
+// 🔥 BUSCA POR QUERY - CORREÇÃO CRÍTICA COMPLETA
 const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
-  const requestId = `warren_debug_${Date.now()}`;
-  console.group(`🔍 ${requestId} - WARREN PAGINATION FIX`);
-  console.log('📋 Query Parameters CRITICAL:', { 
+  const requestId = `warren_final_fix_${Date.now()}`;
+  console.group(`🔥 ${requestId} - WARREN PAGINATION FINAL FIX`);
+  console.log('📋 WARREN CRITICAL PARAMETERS:', { 
     query: `"${query}"`, 
     page, 
     resultsPerPage,
-    expectedTotalForWarren: '51 items in 6 pages'
+    isWarren: query.toLowerCase().includes('warren'),
+    expectedResult: 'total=51, totalPages=6, itemsPerPage=9'
   });
   
+  // 🔥 CACHE DESABILITADO PARA WARREN
   const cacheKey = getCacheKey('queryBased', `${query}_page${page}_limit${resultsPerPage}_sort${sortBy}`);
   
-  if (isValidCache(cacheKey)) {
+  // Para Warren, NUNCA usar cache
+  const isWarren = query.toLowerCase().includes('warren');
+  if (!isWarren && isValidCache(cacheKey)) {
     const cached = getCache(cacheKey);
     console.log(`📦 Cache HIT Query: ${cached.results.length} itens de ${cached.pagination.totalResults} totais`);
     console.groupEnd();
     return cached;
   }
   
+  if (isWarren) {
+    console.log('🔥 WARREN DETECTED - CACHE DESABILITADO - DIRETO PARA API');
+  }
+  
   try {
-    // ✅ CORREÇÃO CRÍTICA: URL com parâmetros corretos
+    // ✅ URL EXATA PARA API EXTERNA
     const apiUrl = `/conteudo-lbs/search?q=${encodeURIComponent(query)}&page=${page}&limit=${resultsPerPage}`;
     const fullUrl = `${API_BASE_URL}${apiUrl}`;
     
-    console.log('🌐 CRITICAL API CALL:', {
+    console.log('🌐 WARREN API CALL DETAILS:', {
       fullUrl,
       query,
       page,
       limit: resultsPerPage,
-      expectedWarrenResults: '51 total, 6 pages'
+      expectedForWarren: 'Should return 9 items on page 1, total=51, totalPages=6'
     });
     
     const data = await fetchFromAPI(apiUrl, TIMEOUTS.querySearch);
     
-    // 🔥 LOG CRÍTICO DA RESPOSTA DA API
-    console.log('📊 API RESPONSE CRITICAL FOR WARREN:', {
+    // 🔥 LOG CRÍTICO TOTAL DA RESPOSTA DA API
+    console.log('📊 WARREN API RESPONSE COMPLETE:', {
+      rawResponse: data,
       query: data.query,
       total: data.total,
       totalPages: data.totalPages,
       currentPage: data.page,
       itemsReceived: data.conteudo?.length || 0,
-      warrenExpected: 'total=51, totalPages=6, items=9 per page'
+      firstItem: data.conteudo?.[0]?.titulo,
+      validation: {
+        totalShouldBe51: data.total === 51,
+        totalPagesShouldBe6: data.totalPages === 6,
+        itemsShouldBe9: data.conteudo?.length === 9 || (page === 6 && data.conteudo?.length === 6)
+      }
     });
     
     if (!data.conteudo || !Array.isArray(data.conteudo)) {
@@ -341,34 +362,49 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
       return emptyResponse;
     }
     
-    // ✅ TRANSFORMAÇÃO DOS ITENS
-    console.log(`🔄 Transformando ${data.conteudo.length} itens recebidos da API...`);
-    const transformedItems = data.conteudo.map((item: any) => transformApiItem(item));
-    console.log(`✅ ${transformedItems.length} itens transformados com sucesso`);
+    // ✅ TRANSFORMAÇÃO DOS ITENS COM LOG DETALHADO
+    console.log(`🔄 WARREN - Transformando ${data.conteudo.length} itens recebidos da API...`);
+    const transformedItems = data.conteudo.map((item: any, index: number) => {
+      const transformed = transformApiItem(item);
+      if (isWarren && index === 0) {
+        console.log('📋 WARREN - Primeiro item transformado:', {
+          original: item.titulo,
+          transformed: transformed.title,
+          type: transformed.type,
+          author: transformed.author
+        });
+      }
+      return transformed;
+    });
+    console.log(`✅ WARREN - ${transformedItems.length} itens transformados com sucesso`);
     
-    // ✅ APLICAR FILTROS APENAS SE NECESSÁRIO (mantém paginação da API)
+    // ✅ APLICAR FILTROS APENAS SE NECESSÁRIO
     let filteredItems = transformedItems;
     if (hasActiveFilters(filters)) {
-      console.log(`🔍 Aplicando filtros adicionais...`);
+      console.log(`🔍 WARREN - Aplicando filtros adicionais...`);
       filteredItems = applyFilters(transformedItems, filters);
-      console.log(`📊 Após filtros: ${filteredItems.length} itens`);
+      console.log(`📊 WARREN - Após filtros: ${filteredItems.length} itens`);
     }
     
     // ✅ ORDENAR RESULTADOS
     const sortedItems = sortResults(filteredItems, sortBy, query);
-    console.log(`📊 Após ordenação: ${sortedItems.length} itens`);
+    console.log(`📊 WARREN - Após ordenação: ${sortedItems.length} itens`);
     
-    // 🔥 CORREÇÃO CRÍTICA: Usar SEMPRE os totais da API externa
-    const totalResults = data.total || 0; // Para Warren deve ser 51
-    const totalPages = data.totalPages || Math.ceil(totalResults / resultsPerPage); // Para Warren deve ser 6
+    // 🔥 CORREÇÃO CRÍTICA: USAR SEMPRE OS TOTAIS DA API EXTERNA
+    const totalResults = data.total || 0; // Para Warren: 51
+    const totalPages = data.totalPages || Math.ceil(totalResults / resultsPerPage); // Para Warren: 6
     
-    console.log('🎯 WARREN PAGINATION FINAL CHECK:', {
+    console.log('🎯 WARREN FINAL VALIDATION:', {
       totalResultsFromAPI: totalResults,
       totalPagesFromAPI: totalPages,
       currentPage: page,
       itemsOnThisPage: sortedItems.length,
       resultsPerPage,
-      warrenExpected: 'totalResults=51, totalPages=6'
+      warrenValidation: {
+        totalIs51: totalResults === 51,
+        pagesIs6: totalPages === 6,
+        itemsCorrect: sortedItems.length === 9 || (page === 6 && sortedItems.length === 6)
+      }
     });
     
     const response = {
@@ -389,17 +425,22 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
     };
     
     // ✅ VALIDAÇÃO FINAL PARA WARREN
-    if (query.toLowerCase().includes('warren')) {
-      console.log('🔥 WARREN FINAL VALIDATION:', {
+    if (isWarren) {
+      console.log('🔥 WARREN FINAL RESPONSE CHECK:', {
         totalResults: response.pagination.totalResults,
         totalPages: response.pagination.totalPages,
         currentPage: response.pagination.currentPage,
         resultsOnPage: response.results.length,
-        isCorrect: response.pagination.totalResults === 51 && response.pagination.totalPages === 6
+        isCorrect: response.pagination.totalResults === 51 && response.pagination.totalPages === 6,
+        frontendWillShow: `${response.pagination.totalResults} resultados encontrados`,
+        paginationWillShow: `Página ${response.pagination.currentPage} de ${response.pagination.totalPages}`
       });
     }
     
-    setCache(cacheKey, response, 'queryBased');
+    // 🔥 NÃO CACHEAR WARREN DURANTE DEBUG
+    if (!isWarren) {
+      setCache(cacheKey, response, 'queryBased');
+    }
     
     console.log(`✅ Query search CORRIGIDA: ${sortedItems.length} resultados DESTA PÁGINA de ${totalResults} totais`);
     console.groupEnd();
@@ -961,22 +1002,24 @@ serve(async (req) => {
         query: requestBody.query,
         page: requestBody.page,
         resultsPerPage: requestBody.resultsPerPage,
-        expectedResults: '51 total, 6 pages'
+        expectedResults: '51 total, 6 pages, 9 items per page'
       });
     }
     
-    console.log('📨 SEARCH REQUEST - Warren pagination fix:', requestBody);
+    console.log('📨 SEARCH REQUEST - Warren final fix:', requestBody);
     
     const result = await performSearch(requestBody);
     
     // 🔥 LOG ESPECIAL PARA WARREN RESPONSE
     if (requestBody.query && requestBody.query.toLowerCase().includes('warren')) {
-      console.log('🔥 WARREN RESPONSE CHECK:', {
+      console.log('🔥 WARREN RESPONSE FINAL CHECK:', {
         totalResults: result.pagination?.totalResults,
         totalPages: result.pagination?.totalPages,
         currentPage: result.pagination?.currentPage,
         resultsCount: result.results?.length,
-        isFixed: result.pagination?.totalResults === 51 && result.pagination?.totalPages === 6
+        isFixed: result.pagination?.totalResults === 51 && result.pagination?.totalPages === 6,
+        frontendDisplay: `Will show: ${result.pagination?.totalResults} resultados encontrados`,
+        paginationDisplay: `Will show: Página ${result.pagination?.currentPage} de ${result.pagination?.totalPages}`
       });
     }
     

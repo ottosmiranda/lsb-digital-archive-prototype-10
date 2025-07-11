@@ -97,4 +97,67 @@ export class SearchService {
       throw new Error(errorMessage);
     }
   }
+
+  // ✅ NOVA FUNÇÃO: Busca por query usando o novo endpoint
+  async searchByQuery(
+    query: string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<any> {
+    const requestId = `query_search_${Date.now()}`;
+    console.group(`🔍 ${requestId} - Query-Based Search`);
+    console.log('📋 Query Parameters:', { query, page, limit });
+    
+    try {
+      const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
+      const url = `${API_BASE_URL}/conteudo-lbs/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`;
+      
+      console.log('🌐 Query API URL:', url);
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Query search timeout after 15 seconds`)), 15000);
+      });
+      
+      const fetchPromise = fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'LSB-Query-Search/1.0'
+        }
+      });
+
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} para query search: ${query}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.conteudo || !Array.isArray(data.conteudo)) {
+        console.warn('⚠️ Query search returned no content:', data);
+        console.groupEnd();
+        return {
+          results: [],
+          total: 0,
+          totalPages: 0,
+          currentPage: page
+        };
+      }
+      
+      console.log(`✅ Query search success: ${data.conteudo.length} items found`);
+      console.groupEnd();
+      
+      return {
+        results: data.conteudo,
+        total: data.total || 0,
+        totalPages: data.totalPages || 0,
+        currentPage: data.page || page
+      };
+      
+    } catch (error) {
+      console.error(`❌ Query search failed for "${query}":`, error);
+      console.groupEnd();
+      throw error;
+    }
+  }
 }

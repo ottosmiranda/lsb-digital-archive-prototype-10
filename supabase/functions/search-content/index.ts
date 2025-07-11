@@ -56,17 +56,19 @@ const TIMEOUTS = {
   singleRequest: 8000,
   paginatedBatch: 12000,
   globalOperation: 25000,
-  healthCheck: 3000
+  healthCheck: 3000,
+  querySearch: 15000 // ✅ NOVO: Timeout para busca por query
 };
 
 // ESTRATÉGIAS DE CACHE INTELIGENTE
 const CACHE_STRATEGIES = {
   paginated: { ttl: 10 * 60 * 1000, prefix: 'paginated' }, // 10 min para páginas específicas
   global: { ttl: 15 * 60 * 1000, prefix: 'global' },       // 15 min para busca "Todos"
-  filtered: { ttl: 2 * 60 * 1000, prefix: 'filtered' }     // 2 min para buscas filtradas
+  filtered: { ttl: 2 * 60 * 1000, prefix: 'filtered' },    // 2 min para buscas filtradas
+  queryBased: { ttl: 5 * 60 * 1000, prefix: 'query' }      // ✅ NOVO: 5 min para busca por query
 };
 
-type SearchType = 'paginated' | 'global' | 'filtered';
+type SearchType = 'paginated' | 'global' | 'filtered' | 'queryBased'; // ✅ NOVO: Tipo de busca por query
 
 // Cache global otimizado
 const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
@@ -115,7 +117,7 @@ const mapLanguageCode = (idioma: string): string => {
   return idioma.charAt(0).toUpperCase() + idioma.slice(1);
 };
 
-// ✅ CORRIGIDO: DETECTOR DE TIPO DE BUSCA - DOCUMENTTYPE NÃO É MAIS "FILTERED"
+// ✅ ATUALIZADO: DETECTOR DE TIPO DE BUSCA - AGORA INCLUI QUERY-BASED
 const detectSearchType = (query: string, filters: SearchFilters): SearchType => {
   const hasQuery = query && query.trim() !== '';
   const hasResourceTypeFilters = filters.resourceType.length > 0 && !filters.resourceType.includes('all');
@@ -126,21 +128,26 @@ const detectSearchType = (query: string, filters: SearchFilters): SearchType => 
                           filters.program.length > 0 || 
                           filters.channel.length > 0;
 
-  console.log('🔍 DETECTOR CORRIGIDO:', { 
+  console.log('🔍 DETECTOR ATUALIZADO:', { 
     hasQuery, 
     hasResourceTypeFilters, 
     hasOtherFilters, 
     documentType: filters.documentType,
-    resultado: hasQuery || hasOtherFilters ? 'filtered' : hasResourceTypeFilters ? 'paginated' : 'global'
+    resultado: hasQuery ? 'queryBased' : hasOtherFilters ? 'filtered' : hasResourceTypeFilters ? 'paginated' : 'global'
   });
 
+  // ✅ NOVA PRIORIDADE: Busca por query tem precedência máxima
+  if (hasQuery) {
+    return 'queryBased';
+  }
+
   // Busca global: filtro "Todos" ou sem filtros específicos
-  if (filters.resourceType.includes('all') || (!hasResourceTypeFilters && !hasQuery && !hasOtherFilters)) {
+  if (filters.resourceType.includes('all') || (!hasResourceTypeFilters && !hasOtherFilters)) {
     return 'global';
   }
   
-  // Busca filtrada: tem query ou outros filtros além do tipo de recurso
-  if (hasQuery || hasOtherFilters) {
+  // Busca filtrada: outros filtros além do tipo de recurso
+  if (hasOtherFilters) {
     return 'filtered';
   }
   
@@ -174,7 +181,7 @@ const setCache = (cacheKey: string, data: any, strategy: SearchType): void => {
   const config = CACHE_STRATEGIES[strategy];
   
   // Cache apenas resultados válidos
-  if (Array.isArray(data) && data.length === 0 && strategy !== 'filtered') {
+  if (Array.isArray(data) && data.length === 0 && strategy !== 'filtered' && strategy !== 'queryBased') {
     console.warn(`⚠️ Não cacheando resultado vazio: ${cacheKey}`);
     return;
   }
@@ -193,645 +200,162 @@ const getCache = (cacheKey: string): any => {
   return cached?.data || null;
 };
 
-// SERVIÇO DE PAGINAÇÃO REAL DA API (SRP)
-const fetchPaginatedContent = async (
-  contentType: string,
-  page: number,
-  limit: number
-): Promise<{ items: SearchResult[]; total: number }> => {
-  const url = `${API_BASE_URL}/conteudo-lbs?tipo=${contentType}&page=${page}&limit=${limit}`;
+// ✅ NOVA FUNÇÃO: BUSCA POR QUERY USANDO O NOVO ENDPOINT
+const performQueryBasedSearch = async (
+  searchParams: SearchRequest
+): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
-  console.log(`🔍 API Paginada: ${contentType} página ${page}, limite ${limit}`);
+  console.log(`🔍 Busca Query-Based: "${query}", página ${page}`);
+  
+  const cacheKey = getCacheKey('queryBased', `${query}_page${page}_limit${resultsPerPage}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Query: ${cached.results.length} itens`);
+    return cached;
+  }
   
   try {
+    const url = `${API_BASE_URL}/conteudo-lbs/search?q=${encodeURIComponent(query)}&page=${page}&limit=${resultsPerPage}`;
+    
+    console.log(`🌐 Query API URL: ${url}`);
+    
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Timeout ${contentType} página ${page}`)), TIMEOUTS.singleRequest);
+      setTimeout(() => reject(new Error(`Query search timeout for "${query}"`)), TIMEOUTS.querySearch);
     });
     
     const fetchPromise = fetch(url, {
       headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'LSB-Paginated-Search/1.0'
+        'User-Agent': 'LSB-Query-Search/1.0'
       }
     });
 
     const response = await Promise.race([fetchPromise, timeoutPromise]);
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status} para ${contentType} página ${page}`);
+      throw new Error(`HTTP ${response.status} para query search: ${query}`);
     }
 
     const data = await response.json();
-    const items = data.conteudo || [];
-    const total = data.total || 0;
     
-    const transformedItems = items.map((item: any) => transformToSearchResult(item, contentType));
-    
-    console.log(`✅ API Paginada ${contentType}: ${transformedItems.length} itens, total ${total}`);
-    
-    return { items: transformedItems, total };
-    
-  } catch (error) {
-    console.error(`❌ Erro API paginada ${contentType} página ${page}:`, error);
-    throw error;
-  }
-};
-
-// ✅ CORRIGIDO: BUSCA PAGINADA AGORA TRATA DOCUMENTTYPE CORRETAMENTE
-const performPaginatedSearch = async (
-  searchParams: SearchRequest
-): Promise<any> => {
-  const { filters, sortBy, page, resultsPerPage } = searchParams;
-  const activeTypes = filters.resourceType.filter(type => type !== 'all');
-  
-  console.log(`🎯 Busca Paginada CORRIGIDA: tipos ${activeTypes.join(', ')}, página ${page}, documentType: ${filters.documentType.join(',')}`);
-  
-  if (activeTypes.length === 0) {
-    throw new Error('Nenhum tipo de conteúdo especificado para busca paginada');
-  }
-  
-  const contentType = activeTypes[0];
-  
-  // ✅ CRÍTICO: Para 'titulo', tratar documentType como filtro especial
-  if (contentType === 'titulo') {
-    console.log(`📚 DOCUMENTTYPE FILTER DETECTION: ${filters.documentType.join(',')}`);
-    
-    // Se tem filtro de documentType, fazer busca completa e filtrar
-    if (filters.documentType.length > 0) {
-      const cacheKey = getCacheKey('paginated', `titulo_documentType_${filters.documentType.join('_')}_page${page}_limit${resultsPerPage}`);
+    if (!data.conteudo || !Array.isArray(data.conteudo)) {
+      console.warn(`⚠️ Query search sem resultados: "${query}"`);
       
-      if (isValidCache(cacheKey)) {
-        const cached = getCache(cacheKey);
-        console.log(`📦 Cache HIT DocumentType: ${cached.results.length} itens`);
-        return cached;
-      }
-      
-      try {
-        console.log(`🔍 BUSCANDO TODOS OS LIVROS+ARTIGOS para filtrar documentType...`);
-        
-        // Buscar TODOS os livros e artigos (páginas grandes para pegar tudo)
-        const [livrosResult, artigosResult] = await Promise.allSettled([
-          fetchPaginatedContent('livro', 1, 100), // Buscar até 100 livros
-          fetchPaginatedContent('artigos', 1, 100) // Buscar até 100 artigos
-        ]);
-        
-        const allItems: SearchResult[] = [];
-        
-        if (livrosResult.status === 'fulfilled') {
-          allItems.push(...livrosResult.value.items);
-          console.log(`✅ Livros carregados: ${livrosResult.value.items.length} itens`);
-        }
-        
-        if (artigosResult.status === 'fulfilled') {
-          allItems.push(...artigosResult.value.items);
-          console.log(`✅ Artigos carregados: ${artigosResult.value.items.length} itens`);
-        }
-        
-        console.log(`📊 TOTAL ITEMS ANTES DO FILTRO: ${allItems.length}`);
-        
-        // ✅ APLICAR FILTRO DE DOCUMENTTYPE
-        const filteredItems = allItems.filter(item => {
-          const matches = filters.documentType.some(filterType => {
-            const itemType = item.documentType?.toLowerCase() || '';
-            const filterTypeLower = filterType.toLowerCase();
-            
-            console.log(`🔍 Comparando: "${itemType}" contém "${filterTypeLower}"?`);
-            
-            return itemType.includes(filterTypeLower);
-          });
-          
-          if (matches) {
-            console.log(`✅ ITEM ACEITO: ${item.title.substring(0, 50)}... (${item.documentType})`);
-          }
-          
-          return matches;
-        });
-        
-        console.log(`📊 TOTAL ITEMS APÓS FILTRO DOCUMENTTYPE: ${filteredItems.length}`);
-        
-        // ✅ APLICAR PAGINAÇÃO NO RESULTADO FILTRADO
-        const startIndex = (page - 1) * resultsPerPage;
-        const paginatedItems = filteredItems.slice(startIndex, startIndex + resultsPerPage);
-        const totalPages = Math.ceil(filteredItems.length / resultsPerPage);
-        
-        console.log(`📄 PAGINAÇÃO: página ${page}, início ${startIndex}, itens ${paginatedItems.length}`);
-        
-        const response = {
-          success: true,
-          results: paginatedItems,
-          pagination: {
-            currentPage: page,
-            totalPages,
-            totalResults: filteredItems.length, // ✅ CONTAGEM CORRETA!
-            hasNextPage: page < totalPages,
-            hasPreviousPage: page > 1
-          },
-          searchInfo: {
-            query: '',
-            appliedFilters: filters,
-            sortBy
-          }
-        };
-        
-        setCache(cacheKey, response, 'paginated');
-        
-        console.log(`✅ DOCUMENTTYPE FILTER COMPLETO: ${paginatedItems.length} itens na página, ${filteredItems.length} total`);
-        return response;
-        
-      } catch (error) {
-        console.error('❌ Erro na busca paginada com documentType:', error);
-        throw error;
-      }
-    } else {
-      // Sem filtro de documentType, usar lógica original (livros + artigos)
-      console.log(`📚 TÍTULO sem filtro documentType - usando lógica original`);
-      
-      const cacheKey = getCacheKey('paginated', `titulo_combined_page${page}_limit${resultsPerPage}`);
-      
-      if (isValidCache(cacheKey)) {
-        const cached = getCache(cacheKey);
-        console.log(`📦 Cache HIT Paginado (Livros+Artigos): ${cached.results.length} itens`);
-        return cached;
-      }
-      
-      try {
-        // Buscar livros e artigos em paralelo
-        const [livrosResult, artigosResult] = await Promise.allSettled([
-          fetchPaginatedContent('livro', page, Math.ceil(resultsPerPage / 2)),
-          fetchPaginatedContent('artigos', page, Math.floor(resultsPerPage / 2))
-        ]);
-        
-        const allItems: SearchResult[] = [];
-        let totalResults = 0;
-        
-        if (livrosResult.status === 'fulfilled') {
-          allItems.push(...livrosResult.value.items);
-          totalResults += livrosResult.value.total;
-          console.log(`✅ Livros: ${livrosResult.value.items.length} itens`);
-        } else {
-          console.error('❌ Erro ao buscar livros:', livrosResult.reason);
-        }
-        
-        if (artigosResult.status === 'fulfilled') {
-          allItems.push(...artigosResult.value.items);
-          totalResults += artigosResult.value.total;
-          console.log(`✅ Artigos: ${artigosResult.value.items.length} itens`);
-        } else {
-          console.error('❌ Erro ao buscar artigos:', artigosResult.reason);
-        }
-        
-        // Ordenar e limitar
-        const sortedItems = sortResults(allItems, sortBy);
-        const finalItems = sortedItems.slice(0, resultsPerPage);
-        
-        const totalPages = Math.ceil(totalResults / resultsPerPage);
-        
-        const response = {
-          success: true,
-          results: finalItems,
-          pagination: {
-            currentPage: page,
-            totalPages,
-            totalResults,
-            hasNextPage: page < totalPages,
-            hasPreviousPage: page > 1
-          },
-          searchInfo: {
-            query: '',
-            appliedFilters: filters,
-            sortBy
-          }
-        };
-        
-        setCache(cacheKey, response, 'paginated');
-        
-        console.log(`✅ Busca Paginada TÍTULO (Livros+Artigos) concluída: ${finalItems.length} itens, ${totalResults} total`);
-        return response;
-        
-      } catch (error) {
-        console.error('❌ Erro na busca paginada título:', error);
-        throw error;
-      }
-    }
-  } else {
-    // Para outros tipos (video, podcast), usar lógica original
-    const apiType = contentType === 'video' ? 'aula' : contentType;
-    
-    const cacheKey = getCacheKey('paginated', `${apiType}_page${page}_limit${resultsPerPage}`);
-    
-    if (isValidCache(cacheKey)) {
-      const cached = getCache(cacheKey);
-      console.log(`📦 Cache HIT Paginado: ${cached.results.length} itens`);
-      return cached;
-    }
-    
-    try {
-      const { items, total } = await fetchPaginatedContent(apiType, page, resultsPerPage);
-      
-      const totalPages = Math.ceil(total / resultsPerPage);
-      
-      const response = {
+      const emptyResponse = {
         success: true,
-        results: items,
+        results: [],
         pagination: {
           currentPage: page,
-          totalPages,
-          totalResults: total,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1
+          totalPages: 0,
+          totalResults: 0,
+          hasNextPage: false,
+          hasPreviousPage: false
         },
         searchInfo: {
-          query: '',
+          query,
           appliedFilters: filters,
           sortBy
         }
       };
       
-      setCache(cacheKey, response, 'paginated');
-      
-      console.log(`✅ Busca Paginada concluída: ${items.length} itens, ${total} total`);
-      return response;
-      
-    } catch (error) {
-      console.error('❌ Erro na busca paginada:', error);
-      throw error;
+      setCache(cacheKey, emptyResponse, 'queryBased');
+      return emptyResponse;
     }
-  }
-};
-
-// NOVA IMPLEMENTAÇÃO: Busca Global com Paginação Real Unificada
-const performGlobalSearch = async (
-  searchParams: SearchRequest
-): Promise<any> => {
-  const { sortBy, page, resultsPerPage } = searchParams;
-  
-  console.log(`🎯 Busca Global UNIFICADA: página ${page} (paginação REAL)`);
-  
-  const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
-  
-  if (isValidCache(cacheKey)) {
-    const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT Global Página: ${cached.results.length} itens`);
-    return cached;
-  }
-  
-  try {
-    // NOVA ABORDAGEM: Distribuição inteligente por página
-    const response = await performUnifiedPageFetch(page, resultsPerPage, sortBy);
     
-    setCache(cacheKey, response, 'global');
+    // Transformar dados do novo endpoint para o formato atual
+    const transformedItems = data.conteudo.map((item: any) => transformFromQueryEndpoint(item));
     
-    console.log(`✅ Busca Global Unificada concluída: página ${page}/${response.pagination.totalPages}`);
+    // Aplicar filtros adicionais se necessário
+    let filteredItems = transformedItems;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(transformedItems, filters);
+    }
+    
+    // Aplicar ordenação
+    const sortedItems = sortResults(filteredItems, sortBy, query);
+    
+    const totalResults = data.total || sortedItems.length;
+    const totalPages = data.totalPages || Math.ceil(totalResults / resultsPerPage);
+    
+    const response = {
+      success: true,
+      results: sortedItems,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalResults,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      }
+    };
+    
+    setCache(cacheKey, response, 'queryBased');
+    
+    console.log(`✅ Query search concluída: ${sortedItems.length} resultados para "${query}"`);
     return response;
     
   } catch (error) {
-    console.error('❌ Erro na busca global unificada:', error);
-    throw error;
+    console.error(`❌ Query search falhou para "${query}":`, error);
+    
+    // Fallback para busca filtrada se query falhar
+    console.log(`🔄 Fallback para busca filtrada...`);
+    return await performFilteredSearch(searchParams);
   }
 };
 
-// Nova função para busca unificada por página
-const performUnifiedPageFetch = async (
-  page: number,
-  limit: number,
-  sortBy: string
-): Promise<any> => {
-  const CONTENT_TOTALS = {
-    podcasts: 2512,
-    videos: 300,
-    books: 30,
-    articles: 35
-  };
-  
-  const TOTAL_ITEMS = CONTENT_TOTALS.podcasts + CONTENT_TOTALS.videos + CONTENT_TOTALS.books + CONTENT_TOTALS.articles; // 2877
-  
-  // Calcular distribuição proporcional para esta página
-  const startIndex = (page - 1) * limit;
-  
-  const podcastRatio = CONTENT_TOTALS.podcasts / TOTAL_ITEMS; // ~0.87
-  const videoRatio = CONTENT_TOTALS.videos / TOTAL_ITEMS; // ~0.10
-  const bookRatio = CONTENT_TOTALS.books / TOTAL_ITEMS; // ~0.01
-  const articleRatio = CONTENT_TOTALS.articles / TOTAL_ITEMS; // ~0.01
-  
-  const podcastsNeeded = Math.round(limit * podcastRatio);
-  const videosNeeded = Math.round(limit * videoRatio);
-  const booksNeeded = Math.round(limit * bookRatio);
-  const articlesNeeded = limit - podcastsNeeded - videosNeeded - booksNeeded;
-  
-  // Calcular páginas correspondentes
-  const podcastPage = Math.ceil((startIndex * podcastRatio + 1) / podcastsNeeded) || 1;
-  const videoPage = Math.ceil((startIndex * videoRatio + 1) / videosNeeded) || 1;
-  const bookPage = Math.ceil((startIndex * bookRatio + 1) / booksNeeded) || 1;
-  const articlePage = Math.ceil((startIndex * articleRatio + 1) / articlesNeeded) || 1;
-  
-  console.log(`📊 Distribuição página ${page}:`, {
-    podcasts: { page: podcastPage, limit: podcastsNeeded },
-    videos: { page: videoPage, limit: videosNeeded },
-    books: { page: bookPage, limit: booksNeeded },
-    articles: { page: articlePage, limit: articlesNeeded }
-  });
-  
-  // Requisições paralelas otimizadas - apenas os itens necessários
-  const [podcastsResult, videosResult, booksResult, articlesResult] = await Promise.allSettled([
-    fetchPaginatedContent('podcast', Math.max(1, podcastPage), Math.max(1, podcastsNeeded)),
-    fetchPaginatedContent('aula', Math.max(1, videoPage), Math.max(1, videosNeeded)),
-    fetchPaginatedContent('livro', Math.max(1, bookPage), Math.max(1, booksNeeded)),
-    fetchPaginatedContent('artigos', Math.max(1, articlePage), Math.max(1, articlesNeeded))
-  ]);
-  
-  const allItems: SearchResult[] = [];
-  
-  // Agregar apenas os resultados necessários
-  if (podcastsResult.status === 'fulfilled') {
-    allItems.push(...podcastsResult.value.items);
-    console.log(`✅ Podcasts: ${podcastsResult.value.items.length} itens`);
-  }
-  
-  if (videosResult.status === 'fulfilled') {
-    allItems.push(...videosResult.value.items);
-    console.log(`✅ Vídeos: ${videosResult.value.items.length} itens`);
-  }
-  
-  if (booksResult.status === 'fulfilled') {
-    allItems.push(...booksResult.value.items);
-    console.log(`✅ Livros: ${booksResult.value.items.length} itens`);
-  }
-  
-  if (articlesResult.status === 'fulfilled') {
-    allItems.push(...articlesResult.value.items);
-    console.log(`✅ Artigos: ${articlesResult.value.items.length} itens`);
-    
-    // LOG CRÍTICO para debug
-    const artigos = articlesResult.value.items.filter(item => item.documentType === 'Artigo');
-    console.log(`📄 VERIFICAÇÃO ARTIGOS na busca global: ${artigos.length} artigos encontrados`);
-  }
-  
-  // Ordenar e limitar
-  const sortedItems = sortResults(allItems, sortBy);
-  const finalItems = sortedItems.slice(0, limit);
-  
-  const totalPages = Math.ceil(TOTAL_ITEMS / limit);
-  
-  console.log(`🎯 Página ${page}: ${finalItems.length} itens finais de ${TOTAL_ITEMS} totais`);
-  
-  return {
-    success: true,
-    results: finalItems,
-    pagination: {
-      currentPage: page,
-      totalPages,
-      totalResults: TOTAL_ITEMS,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1
-    },
-    searchInfo: {
-      query: '',
-      appliedFilters: { resourceType: ['all'] },
-      sortBy
-    }
-  };
-};
-
-// FUNÇÃO AUXILIAR: Carregar TODOS os itens de um tipo específico
-const loadAllContentOfType = async (contentType: string): Promise<SearchResult[]> => {
-  const allItems: SearchResult[] = [];
-  let currentPage = 1;
-  let hasMore = true;
-  
-  // Limites aumentados para carregamento completo
-  const batchSize = 100; // Itens por batch
-  const maxPages = 100; // Limite de segurança
-  
-  console.log(`🔍 Carregando TODOS os ${contentType}s disponíveis...`);
-  
-  while (hasMore && currentPage <= maxPages) {
-    try {
-      const { items, total } = await fetchPaginatedContent(contentType, currentPage, batchSize);
-      
-      if (items.length === 0) {
-        console.log(`📄 ${contentType} página ${currentPage}: Sem mais itens`);
-        hasMore = false;
-        break;
-      }
-      
-      allItems.push(...items);
-      console.log(`📄 ${contentType} página ${currentPage}: +${items.length} itens (total: ${allItems.length})`);
-      
-      // Continuar se há mais itens e não atingimos o total
-      hasMore = items.length === batchSize && allItems.length < total;
-      currentPage++;
-      
-    } catch (error) {
-      console.error(`❌ Erro carregando ${contentType} página ${currentPage}:`, error);
-      hasMore = false;
-    }
-  }
-  
-  console.log(`✅ ${contentType} completo: ${allItems.length} itens carregados`);
-  return allItems;
-};
-
-// BUSCA FILTRADA COM CACHE TEMPORÁRIO
-const performFilteredSearch = async (
-  searchParams: SearchRequest
-): Promise<any> => {
-  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
-  
-  console.log(`🔍 Busca Filtrada: "${query}", página ${page}`);
-  
-  // Para busca filtrada, usar dataset global e aplicar filtros
-  const globalCacheKey = getCacheKey('global', 'all_content');
-  let allContent: SearchResult[] = [];
-  
-  if (isValidCache(globalCacheKey)) {
-    allContent = getCache(globalCacheKey);
-    console.log(`📦 Usando dataset global para busca filtrada: ${allContent.length} itens`);
-  } else {
-    // Fallback: carregar dataset básico
-    console.log(`🔄 Carregando dataset para busca filtrada...`);
-    try {
-      const [podcastsResult, videosResult, booksResult, articlesResult] = await Promise.allSettled([
-        fetchPaginatedContent('podcast', 1, 25),
-        fetchPaginatedContent('aula', 1, 25),
-        fetchPaginatedContent('livro', 1, 15),
-        fetchPaginatedContent('artigos', 1, 15)
-      ]);
-
-      if (podcastsResult.status === 'fulfilled') allContent.push(...podcastsResult.value.items);
-      if (videosResult.status === 'fulfilled') allContent.push(...videosResult.value.items);
-      if (booksResult.status === 'fulfilled') allContent.push(...booksResult.value.items);
-      if (articlesResult.status === 'fulfilled') allContent.push(...articlesResult.value.items);
-    } catch (error) {
-      console.error('❌ Erro carregando dataset para busca filtrada:', error);
-    }
-  }
-  
-  // Aplicar filtros
-  let filteredData = allContent;
-  
-  if (query && query.trim()) {
-    const queryLower = query.toLowerCase();
-    filteredData = filteredData.filter(item => {
-      const searchText = `${item.title} ${item.author} ${item.description}`.toLowerCase();
-      return searchText.includes(queryLower);
-    });
-  }
-  
-  filteredData = applyFilters(filteredData, filters);
-  filteredData = sortResults(filteredData, sortBy, query);
-  
-  // Paginação
-  const totalResults = filteredData.length;
-  const totalPages = Math.ceil(totalResults / resultsPerPage);
-  const startIndex = (page - 1) * resultsPerPage;
-  const paginatedResults = filteredData.slice(startIndex, startIndex + resultsPerPage);
-  
-  console.log(`✅ Busca Filtrada: ${paginatedResults.length} resultados na página ${page}/${totalPages}`);
-  
-  return {
-    success: true,
-    results: paginatedResults,
-    pagination: {
-      currentPage: page,
-      totalPages,
-      totalResults,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1
-    },
-    searchInfo: {
-      query,
-      appliedFilters: filters,
-      sortBy
-    }
-  };
-};
-
-// FUNÇÃO PRINCIPAL DE BUSCA COM NOVA ARQUITETURA
-const performSearch = async (searchParams: SearchRequest): Promise<any> => {
-  const { query, filters } = searchParams;
-  const requestId = `search_${Date.now()}`;
-  
-  // DETECTOR DE TIPO DE BUSCA
-  const searchType = detectSearchType(query, filters);
-  
-  console.group(`🔍 ${requestId} - ${searchType.toUpperCase()} SEARCH`);
-  console.log('📋 Parâmetros:', { 
-    query: query || '(vazio)', 
-    resourceTypes: filters.resourceType,
-    documentType: filters.documentType,
-    page: searchParams.page,
-    type: searchType
-  });
-
-  try {
-    let result;
-    
-    // ROTEAMENTO POR TIPO DE BUSCA
-    switch (searchType) {
-      case 'paginated':
-        result = await performPaginatedSearch(searchParams);
-        break;
-      case 'global':
-        result = await performGlobalSearch(searchParams);
-        break;
-      case 'filtered':
-        result = await performFilteredSearch(searchParams);
-        break;
-      default:
-        throw new Error(`Tipo de busca não suportado: ${searchType}`);
-    }
-    
-    console.log(`✅ ${searchType.toUpperCase()} concluída:`, {
-      resultados: result.results.length,
-      total: result.pagination.totalResults,
-      pagina: `${result.pagination.currentPage}/${result.pagination.totalPages}`
-    });
-    
-    console.groupEnd();
-    return result;
-
-  } catch (error) {
-    console.error(`❌ ${searchType.toUpperCase()} falhou:`, error);
-    console.groupEnd();
-    
-    return {
-      success: false,
-      error: error.message,
-      results: [],
-      pagination: {
-        currentPage: searchParams.page,
-        totalPages: 0,
-        totalResults: 0,
-        hasNextPage: false,
-        hasPreviousPage: false
-      },
-      searchInfo: { 
-        query: searchParams.query, 
-        appliedFilters: searchParams.filters, 
-        sortBy: searchParams.sortBy 
-      }
-    };
-  }
-};
-
-const transformToSearchResult = (item: any, tipo: string): SearchResult => {
-  console.log(`🔄 ARTIGOS INTEGRATION: Transformando ${tipo}:`, {
-    originalId: item.id,
-    titulo: item.titulo || item.podcast_titulo || item.episodio_titulo,
-    idioma: item.idioma,
-    categorias: item.categorias,
-    categoria: item.categoria,
-    data_publicacao: item.data_publicacao,
-    url: item.url,
-    tipo_documento: item.tipo_documento
+// ✅ NOVA FUNÇÃO: Transformar dados do endpoint de query para formato padrão
+const transformFromQueryEndpoint = (item: any): SearchResult => {
+  console.log(`🔄 Query Transform: ${item.tipo}`, {
+    titulo: item.titulo || item.episodio_titulo,
+    tipo: item.tipo
   });
   
   const realId = String(item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000);
   
   let subjectForBadge: string;
   
-  if (tipo === 'podcast') {
+  if (item.tipo === 'podcast') {
     subjectForBadge = getSubjectFromCategories(item.categorias) || 'Podcast';
-    console.log(`🏷️ PODCAST BADGE: "${subjectForBadge}" (de categorias) em vez de "${item.podcast_titulo}"`);
   } else {
     subjectForBadge = getSubjectFromCategories(item.categorias) || 
                      (item.categoria ? item.categoria : '') || 
-                     getSubject(tipo);
+                     getSubject(item.tipo);
   }
   
-  // ✅ NOVO: Extrair ano de data_publicacao para artigos
-  const extractedYear = extractYearFromDate(item.data_publicacao || item.ano || item.data_lancamento);
+  // Extrair ano
+  const extractedYear = extractYearFromDate(item.data_publicacao || item.data_lancamento || item.ano);
   
   const baseResult: SearchResult = {
     id: realId,
     originalId: String(item.id || item.episodio_id || item.podcast_id),
-    title: item.titulo || item.podcast_titulo || item.episodio_titulo || item.title || 'Título não disponível',
+    title: item.titulo || item.episodio_titulo || item.title || 'Título não disponível',
     author: item.autor || item.canal || item.publicador || 'Link Business School',
     year: extractedYear,
     description: item.descricao || 'Descrição não disponível',
     subject: subjectForBadge,
-    type: tipo === 'livro' || tipo === 'artigos' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
-    thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
-    categories: Array.isArray(item.categorias) ? item.categorias : (item.categoria ? [item.categoria] : [])
+    type: item.tipo === 'livro' || item.tipo === 'artigos' ? 'titulo' : item.tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
+    thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
   };
 
-  console.log(`✅ RESULTADO FINAL: ${baseResult.type} com subject="${baseResult.subject}" para badge`);
-
-  if (tipo === 'livro' || tipo === 'artigos') {
+  // Propriedades específicas por tipo
+  if (item.tipo === 'livro' || item.tipo === 'artigos') {
     baseResult.pdfUrl = item.arquivo || item.url;
     baseResult.pages = item.paginas;
     baseResult.language = item.language ? mapLanguageCode(item.language) : mapLanguageCode(item.idioma);
-    baseResult.documentType = tipo === 'artigos' ? 'Artigo' : (item.tipo_documento || 'Livro');
-    console.log(`📚 ${tipo.toUpperCase()}: documentType="${baseResult.documentType}", language="${baseResult.language}", pdfUrl="${baseResult.pdfUrl?.substring(0, 50)}..."`);
-  } else if (tipo === 'aula') {
+    baseResult.documentType = item.tipo === 'artigos' ? 'Artigo' : (item.tipo_documento || 'Livro');
+  } else if (item.tipo === 'aula') {
     baseResult.embedUrl = item.embed_url;
-    baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : undefined;
+    baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : (item.duracao ? formatDurationFromSeconds(item.duracao) : undefined);
     baseResult.channel = item.canal || 'Canal desconhecido';
-    // ✅ CORRIGIDO: Adicionar language para vídeos
     baseResult.language = item.idioma ? mapLanguageCode(item.idioma) : undefined;
-    console.log(`🌐 VIDEO LANGUAGE: ${item.idioma} -> ${baseResult.language}`);
-  } else if (tipo === 'podcast') {
+  } else if (item.tipo === 'podcast') {
     baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : undefined;
     baseResult.embedUrl = item.embed_url;
     baseResult.program = item.podcast_titulo || 'Programa desconhecido';
@@ -840,22 +364,28 @@ const transformToSearchResult = (item: any, tipo: string): SearchResult => {
   return baseResult;
 };
 
-const getSubjectFromCategories = (categorias: string[]): string => {
-  if (!categorias || !Array.isArray(categorias) || categorias.length === 0) {
-    return '';
-  }
-  // ✅ CORREÇÃO: Capitalizar primeira letra da primeira categoria para badges
-  const firstCategory = categorias[0];
-  return firstCategory.charAt(0).toUpperCase() + firstCategory.slice(1);
+// ✅ NOVA FUNÇÃO: Helper para verificar se há filtros ativos
+const hasActiveFilters = (filters: SearchFilters): boolean => {
+  return filters.resourceType.length > 0 && !filters.resourceType.includes('all') ||
+         filters.subject.length > 0 ||
+         filters.author.length > 0 ||
+         filters.year.trim() !== '' ||
+         filters.duration.trim() !== '' ||
+         filters.language.length > 0 ||
+         filters.documentType.length > 0 ||
+         filters.program.length > 0 ||
+         filters.channel.length > 0;
 };
 
-const getSubject = (tipo: string): string => {
-  switch (tipo) {
-    case 'livro': return 'Administração';
-    case 'aula': return 'Empreendedorismo';
-    case 'podcast': return 'Negócios';
-    default: return 'Geral';
+// ✅ NOVA FUNÇÃO: Formatar duração de segundos
+const formatDurationFromSeconds = (durationSeconds: number): string => {
+  const minutes = Math.floor(durationSeconds / 60);
+  const hours = Math.floor(minutes / 60);
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
   }
+  return `${minutes}m`;
 };
 
 const formatDuration = (durationMs: number): string => {
@@ -1046,26 +576,21 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📨 DOCUMENTTYPE FILTER - Nova busca:', requestBody);
+    console.log('📨 QUERY-BASED INTEGRATION - Nova busca:', requestBody);
     
     const result = await performSearch(requestBody);
     
-    // LOG CRÍTICO: Verificar artigos nos resultados
-    if (result.results && result.results.length > 0) {
-      const articleResults = result.results.filter((r: any) => r.documentType === 'Artigo');
-      const bookResults = result.results.filter((r: any) => r.documentType === 'Livro');
-      if (articleResults.length > 0 || bookResults.length > 0) {
-        console.log('📄 VERIFICAÇÃO DOCUMENTTYPE:', {
-          totalArtigos: articleResults.length,
-          totalLivros: bookResults.length,
-          primeiroItem: result.results[0] ? {
-            title: result.results[0].title.substring(0, 50),
-            documentType: result.results[0].documentType,
-            author: result.results[0].author,
-            year: result.results[0].year
-          } : null
-        });
-      }
+    // LOG para busca por query
+    if (result.results && result.results.length > 0 && requestBody.query) {
+      console.log('🔍 QUERY SEARCH RESULTS:', {
+        query: requestBody.query,
+        totalResults: result.pagination.totalResults,
+        firstResult: result.results[0] ? {
+          title: result.results[0].title.substring(0, 50),
+          type: result.results[0].type,
+          author: result.results[0].author
+        } : null
+      });
     }
     
     return new Response(JSON.stringify(result), {
@@ -1074,7 +599,7 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error('❌ Erro na busca com documentType filter:', error);
+    console.error('❌ Erro na busca com query integration:', error);
     
     return new Response(JSON.stringify({
       success: false,

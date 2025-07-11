@@ -1,3 +1,4 @@
+
 import { Search, Filter, Command, Book, Play, Headphones, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,15 +40,6 @@ const Hero = () => {
 
   return (
     <section className="relative h-screen bg-[#10284E] overflow-hidden">
-      {/* Simplified Background */}
-      <div className="absolute inset-0">
-        {/* Primary gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-transparent to-purple-600/20"></div>
-        
-        {/* Radial gradient overlay */}
-        <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-black/20"></div>
-      </div>
-
       <div className="lsb-container relative z-10 h-full">
         <div className="lsb-content h-full">
           <div className="relative h-full flex items-center justify-center">

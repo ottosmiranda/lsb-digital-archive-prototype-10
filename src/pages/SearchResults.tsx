@@ -3,8 +3,9 @@ import { useEffect } from "react";
 import { useSearchResults } from '@/hooks/useSearchResults';
 import { useSearchParams } from 'react-router-dom';
 import SearchLayout from '@/components/SearchLayout';
+import { HomepageContentProvider } from '@/contexts/HomepageContentContext';
 
-const SearchResults = () => {
+const SearchResultsContent = () => {
   const [, setSearchParams] = useSearchParams();
   const {
     query,
@@ -76,6 +77,14 @@ const SearchResults = () => {
       onRefreshData={forceRefresh}
       onClearQuery={handleClearQuery}
     />
+  );
+};
+
+const SearchResults = () => {
+  return (
+    <HomepageContentProvider>
+      <SearchResultsContent />
+    </HomepageContentProvider>
   );
 };
 

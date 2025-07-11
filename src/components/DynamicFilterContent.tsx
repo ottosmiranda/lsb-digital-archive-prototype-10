@@ -92,10 +92,7 @@ const DynamicFilterContent = React.memo(({
   const availableYears = useMemo(() => {
     const yearSet = new Set<number>();
     currentResults.forEach(result => {
-      // ✅ CORREÇÃO: Verificação de segurança para propriedades undefined
-      const safeTitle = result.title || 'Título não disponível';
-      const titlePreview = safeTitle.length > 30 ? safeTitle.substring(0, 30) + '...' : safeTitle;
-      console.log(`📅 Checking year for ${result.type}: ${titlePreview} - Year: ${result.year}`);
+      console.log(`📅 Checking year for ${result.type}: ${result.title.substring(0, 30)}... - Year: ${result.year}`);
       if (result.year && result.year > 1900 && result.year <= currentYear) {
         yearSet.add(result.year);
       }

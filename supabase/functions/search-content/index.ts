@@ -478,17 +478,15 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
   }
   
   try {
-    // ✅ CORREÇÃO: Buscar MUITO MAIS dados para ter variedade suficiente (removendo limitação de 50)
-    const itemsPerType = Math.max(500, resultsPerPage * 5); // ✅ AUMENTADO: até 500 por tipo
+    // CORREÇÃO: Buscar mais dados de cada tipo para ter variedade suficiente
+    const itemsPerType = Math.max(50, resultsPerPage * 2); // Buscar pelo menos 50 de cada tipo
     
-    console.log(`📊 Buscando ${itemsPerType} itens de cada tipo para mix global COMPLETO`);
+    console.log(`📊 Buscando ${itemsPerType} itens de cada tipo para mix global`);
     
-    // ✅ CORREÇÃO: Incluir ARTIGOS na busca global
-    const [livrosData, aulasData, podcastsData, artigosData] = await Promise.allSettled([
-      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${Math.min(itemsPerType, 47)}`, TIMEOUTS.globalOperation), // Max 47 livros
-      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${Math.min(itemsPerType, 300)}`, TIMEOUTS.globalOperation), // Max 300 vídeos
-      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation), // Até 500 podcasts
-      fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${Math.min(itemsPerType, 35)}`, TIMEOUTS.globalOperation) // ✅ NOVO: Max 35 artigos
+    const [livrosData, aulasData, podcastsData] = await Promise.allSettled([
+      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation)
     ]);
     
     const allItems: SearchResult[] = [];
@@ -514,14 +512,7 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
       console.log(`✅ Podcasts carregados: ${podcasts.length}`);
     }
     
-    // ✅ NOVO: Processar artigos
-    if (artigosData.status === 'fulfilled' && artigosData.value.conteudo) {
-      const artigos = artigosData.value.conteudo.map((item: any) => transformApiItem(item));
-      allItems.push(...artigos);
-      console.log(`✅ Artigos carregados: ${artigos.length}`);
-    }
-    
-    console.log(`📊 Total de itens combinados CORRIGIDO: ${allItems.length} (era ~147, agora ~2800+)`);
+    console.log(`📊 Total de itens combinados: ${allItems.length}`);
     
     // Aplicar filtros se necessário
     let filteredItems = allItems;
@@ -534,15 +525,14 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
     const sortedItems = sortResults(filteredItems, sortBy, query);
     console.log(`📊 Após ordenação: ${sortedItems.length} itens`);
     
-    // ✅ CORREÇÃO: Paginação correta dos resultados combinados REAIS
-    const totalResults = sortedItems.length; // Agora deve ser ~2800+ em vez de 147
+    // CORREÇÃO: Paginação correta dos resultados combinados
+    const totalResults = sortedItems.length;
     const totalPages = Math.ceil(totalResults / resultsPerPage);
     const startIndex = (page - 1) * resultsPerPage;
     const endIndex = startIndex + resultsPerPage;
     const paginatedItems = sortedItems.slice(startIndex, endIndex);
     
-    console.log(`📄 Paginação CORRIGIDA: ${startIndex}-${endIndex} de ${totalResults} (página ${page}/${totalPages})`);
-    console.log(`🎯 RESULTADO FINAL: ${paginatedItems.length} itens mostrados de ${totalResults} TOTAIS`);
+    console.log(`📄 Paginação: ${startIndex}-${endIndex} de ${totalResults} (página ${page}/${totalPages})`);
     
     const response = {
       success: true,
@@ -550,7 +540,7 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
       pagination: {
         currentPage: page,
         totalPages,
-        totalResults, // ✅ CORRIGIDO: Agora ~2800+ em vez de 147
+        totalResults,
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1
       },
@@ -563,7 +553,7 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
     
     setCache(cacheKey, response, 'global');
     
-    console.log(`✅ Global search CORRIGIDO: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
+    console.log(`✅ Global search: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
     console.groupEnd();
     return response;
     

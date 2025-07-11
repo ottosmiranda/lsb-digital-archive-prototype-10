@@ -50,18 +50,16 @@ export class SupabaseFallback {
         this.fetchFromSupabase('artigos')
       ]);
 
-      // ✅ CORREÇÃO: Remover .slice(0, 12) - usar TODOS os itens disponíveis
-      const books = booksResult.status === 'fulfilled' ? booksResult.value : []; // Todos os 47 livros
-      const videos = videosResult.status === 'fulfilled' ? videosResult.value : []; // Todos os 300 vídeos
-      const podcasts = podcastsResult.status === 'fulfilled' ? podcastsResult.value : []; // Todos os 2512 podcasts
-      const articles = articlesResult.status === 'fulfilled' ? articlesResult.value : []; // Todos os 35 artigos
+      const books = booksResult.status === 'fulfilled' ? booksResult.value.slice(0, 12) : [];
+      const videos = videosResult.status === 'fulfilled' ? videosResult.value.slice(0, 12) : [];
+      const podcasts = podcastsResult.status === 'fulfilled' ? podcastsResult.value.slice(0, 12) : [];
+      const articles = articlesResult.status === 'fulfilled' ? articlesResult.value.slice(0, 12) : [];
 
-      console.log('✅ Emergência Supabase COMPLETA (sem limitações):', {
+      console.log('✅ Emergência Supabase completa:', {
         books: books.length,
         videos: videos.length,
         podcasts: podcasts.length,
-        articles: articles.length,
-        total: books.length + videos.length + podcasts.length + articles.length
+        articles: articles.length
       });
 
       return { videos, books, podcasts, articles };

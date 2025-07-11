@@ -97,7 +97,7 @@ const RecentAdditions = () => {
   }
 
   return (
-    <section className="py-16 md:py-24 bg-white">
+    <section className="py-16 md:py-24 bg-lsb-section-gray">
       <div className="lsb-container">
         <div className="lsb-content">
           <div className="text-center mb-12 animate-fade-in">

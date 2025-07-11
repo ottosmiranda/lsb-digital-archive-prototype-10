@@ -1,4 +1,3 @@
-
 import { Book, Video, Headphones, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
@@ -85,7 +84,7 @@ const QuickAccess = () => {
   }
 
   return (
-    <section className="py-16 md:py-24 bg-lsb-section">
+    <section className="py-16 md:py-24 bg-white">
       <div className="lsb-container">
         <div className="lsb-content">
           {/* Section Header */}

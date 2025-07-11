@@ -1,4 +1,3 @@
-
 import { Play, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -107,7 +106,7 @@ const FeaturedMedia = () => {
   }
 
   return (
-    <section className="py-16 md:py-24 bg-lsb-section">
+    <section className="py-16 md:py-24 bg-white">
       <div className="lsb-container">
         <div className="lsb-content">
           <div className="text-center mb-12 animate-fade-in">

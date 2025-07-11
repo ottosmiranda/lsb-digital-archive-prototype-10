@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Database, BookOpen, Users, Globe, FileText, Microscope, TrendingUp, GraduationCap, Leaf, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -198,7 +197,7 @@ const ExternalResources = () => {
 
   if (error) {
     return (
-      <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
+      <section className="py-16 md:py-20 bg-lsb-section-gray">
         <div className="lsb-container">
           <div className="lsb-content">
             <div className="text-center">
@@ -211,7 +210,7 @@ const ExternalResources = () => {
   }
 
   return (
-    <section className="py-16 md:py-20 bg-gradient-to-br from-lsb-section to-white">
+    <section className="py-16 md:py-20 bg-lsb-section-gray">
       <div className="lsb-container">
         <div className="lsb-content">
           <div className="text-center mb-12 animate-fade-in">

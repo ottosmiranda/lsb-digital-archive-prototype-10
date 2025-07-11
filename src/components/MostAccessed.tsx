@@ -73,7 +73,7 @@ const MostAccessed = () => {
 
   if (topItems.length === 0) {
     return (
-      <section className="py-16 md:py-24 bg-lsb-section">
+      <section className="py-16 md:py-24 bg-lsb-section-gray">
         <div className="lsb-container">
           <div className="lsb-content">
             <div className="text-center mb-12">
@@ -94,7 +94,7 @@ const MostAccessed = () => {
   }
 
   return (
-    <section className="py-16 md:py-24 bg-lsb-section">
+    <section className="py-16 md:py-24 bg-lsb-section-gray">
       <div className="lsb-container">
         <div className="lsb-content">
           {/* Section Header */}

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -48,32 +49,29 @@ interface SearchResult {
   channel?: string;
 }
 
-// NOVA ARQUITETURA: APIs e Configurações
+// CONFIGURAÇÕES DA API
 const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
 
-// TIMEOUTS OTIMIZADOS PARA PAGINAÇÃO REAL
 const TIMEOUTS = {
   singleRequest: 8000,
   paginatedBatch: 12000,
   globalOperation: 25000,
   healthCheck: 3000,
-  querySearch: 15000 // ✅ NOVO: Timeout para busca por query
+  querySearch: 15000
 };
 
-// ESTRATÉGIAS DE CACHE INTELIGENTE
 const CACHE_STRATEGIES = {
-  paginated: { ttl: 10 * 60 * 1000, prefix: 'paginated' }, // 10 min para páginas específicas
-  global: { ttl: 15 * 60 * 1000, prefix: 'global' },       // 15 min para busca "Todos"
-  filtered: { ttl: 2 * 60 * 1000, prefix: 'filtered' },    // 2 min para buscas filtradas
-  queryBased: { ttl: 5 * 60 * 1000, prefix: 'query' }      // ✅ NOVO: 5 min para busca por query
+  paginated: { ttl: 10 * 60 * 1000, prefix: 'paginated' },
+  global: { ttl: 15 * 60 * 1000, prefix: 'global' },
+  filtered: { ttl: 2 * 60 * 1000, prefix: 'filtered' },
+  queryBased: { ttl: 5 * 60 * 1000, prefix: 'query' }
 };
 
-type SearchType = 'paginated' | 'global' | 'filtered' | 'queryBased'; // ✅ NOVO: Tipo de busca por query
+type SearchType = 'paginated' | 'global' | 'filtered' | 'queryBased';
 
-// Cache global otimizado
 const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 
-// ✅ ATUALIZADO: Mapeamento de códigos de idioma (mesmo do fetch-videos)
+// MAPEAMENTO DE IDIOMAS
 const languageMapping: Record<string, string> = {
   'en': 'Inglês',
   'en-US': 'Inglês',
@@ -117,18 +115,17 @@ const mapLanguageCode = (idioma: string): string => {
   return idioma.charAt(0).toUpperCase() + idioma.slice(1);
 };
 
-// ✅ ATUALIZADO: DETECTOR DE TIPO DE BUSCA - AGORA INCLUI QUERY-BASED
+// DETECTOR DE TIPO DE BUSCA
 const detectSearchType = (query: string, filters: SearchFilters): SearchType => {
   const hasQuery = query && query.trim() !== '';
   const hasResourceTypeFilters = filters.resourceType.length > 0 && !filters.resourceType.includes('all');
   
-  // ✅ CRÍTICO: documentType removido de hasOtherFilters - será tratado como paginação
   const hasOtherFilters = filters.subject.length > 0 || filters.author.length > 0 || 
                           filters.year || filters.duration || filters.language.length > 0 ||
                           filters.program.length > 0 || 
                           filters.channel.length > 0;
 
-  console.log('🔍 DETECTOR ATUALIZADO:', { 
+  console.log('🔍 DETECTOR:', { 
     hasQuery, 
     hasResourceTypeFilters, 
     hasOtherFilters, 
@@ -136,26 +133,22 @@ const detectSearchType = (query: string, filters: SearchFilters): SearchType => 
     resultado: hasQuery ? 'queryBased' : hasOtherFilters ? 'filtered' : hasResourceTypeFilters ? 'paginated' : 'global'
   });
 
-  // ✅ NOVA PRIORIDADE: Busca por query tem precedência máxima
   if (hasQuery) {
     return 'queryBased';
   }
 
-  // Busca global: filtro "Todos" ou sem filtros específicos
   if (filters.resourceType.includes('all') || (!hasResourceTypeFilters && !hasOtherFilters)) {
     return 'global';
   }
   
-  // Busca filtrada: outros filtros além do tipo de recurso
   if (hasOtherFilters) {
     return 'filtered';
   }
   
-  // Busca paginada: tipos específicos sem query
   return 'paginated';
 };
 
-// FUNÇÕES DE CACHE INTELIGENTE
+// FUNÇÕES DE CACHE
 const getCacheKey = (strategy: SearchType, identifier: string): string => {
   const config = CACHE_STRATEGIES[strategy];
   return `${config.prefix}_${identifier}`;
@@ -167,7 +160,6 @@ const isValidCache = (cacheKey: string): boolean => {
   
   const isValid = (Date.now() - cached.timestamp) < cached.ttl;
   
-  // VALIDAÇÃO: Não usar cache corrompido
   if (isValid && Array.isArray(cached.data) && cached.data.length === 0) {
     console.warn(`🚨 Cache corrompido detectado: ${cacheKey}`);
     globalCache.delete(cacheKey);
@@ -180,7 +172,6 @@ const isValidCache = (cacheKey: string): boolean => {
 const setCache = (cacheKey: string, data: any, strategy: SearchType): void => {
   const config = CACHE_STRATEGIES[strategy];
   
-  // Cache apenas resultados válidos
   if (Array.isArray(data) && data.length === 0 && strategy !== 'filtered' && strategy !== 'queryBased') {
     console.warn(`⚠️ Não cacheando resultado vazio: ${cacheKey}`);
     return;
@@ -200,123 +191,33 @@ const getCache = (cacheKey: string): any => {
   return cached?.data || null;
 };
 
-// ✅ NOVA FUNÇÃO: BUSCA POR QUERY USANDO O NOVO ENDPOINT
-const performQueryBasedSearch = async (
-  searchParams: SearchRequest
-): Promise<any> => {
-  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+// FUNÇÃO PARA BUSCAR DADOS DA API
+const fetchFromAPI = async (endpoint: string, timeout: number = TIMEOUTS.singleRequest): Promise<any> => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  console.log(`🌐 Fetching: ${url}`);
   
-  console.log(`🔍 Busca Query-Based: "${query}", página ${page}`);
-  
-  const cacheKey = getCacheKey('queryBased', `${query}_page${page}_limit${resultsPerPage}`);
-  
-  if (isValidCache(cacheKey)) {
-    const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT Query: ${cached.results.length} itens`);
-    return cached;
-  }
-  
-  try {
-    const url = `${API_BASE_URL}/conteudo-lbs/search?q=${encodeURIComponent(query)}&page=${page}&limit=${resultsPerPage}`;
-    
-    console.log(`🌐 Query API URL: ${url}`);
-    
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Query search timeout for "${query}"`)), TIMEOUTS.querySearch);
-    });
-    
-    const fetchPromise = fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'LSB-Query-Search/1.0'
-      }
-    });
-
-    const response = await Promise.race([fetchPromise, timeoutPromise]);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} para query search: ${query}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.conteudo || !Array.isArray(data.conteudo)) {
-      console.warn(`⚠️ Query search sem resultados: "${query}"`);
-      
-      const emptyResponse = {
-        success: true,
-        results: [],
-        pagination: {
-          currentPage: page,
-          totalPages: 0,
-          totalResults: 0,
-          hasNextPage: false,
-          hasPreviousPage: false
-        },
-        searchInfo: {
-          query,
-          appliedFilters: filters,
-          sortBy
-        }
-      };
-      
-      setCache(cacheKey, emptyResponse, 'queryBased');
-      return emptyResponse;
-    }
-    
-    // Transformar dados do novo endpoint para o formato atual
-    const transformedItems = data.conteudo.map((item: any) => transformFromQueryEndpoint(item));
-    
-    // Aplicar filtros adicionais se necessário
-    let filteredItems = transformedItems;
-    if (hasActiveFilters(filters)) {
-      filteredItems = applyFilters(transformedItems, filters);
-    }
-    
-    // Aplicar ordenação
-    const sortedItems = sortResults(filteredItems, sortBy, query);
-    
-    const totalResults = data.total || sortedItems.length;
-    const totalPages = data.totalPages || Math.ceil(totalResults / resultsPerPage);
-    
-    const response = {
-      success: true,
-      results: sortedItems,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalResults,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1
-      },
-      searchInfo: {
-        query,
-        appliedFilters: filters,
-        sortBy
-      }
-    };
-    
-    setCache(cacheKey, response, 'queryBased');
-    
-    console.log(`✅ Query search concluída: ${sortedItems.length} resultados para "${query}"`);
-    return response;
-    
-  } catch (error) {
-    console.error(`❌ Query search falhou para "${query}":`, error);
-    
-    // Fallback para busca filtrada se query falhar
-    console.log(`🔄 Fallback para busca filtrada...`);
-    return await performFilteredSearch(searchParams);
-  }
-};
-
-// ✅ NOVA FUNÇÃO: Transformar dados do endpoint de query para formato padrão
-const transformFromQueryEndpoint = (item: any): SearchResult => {
-  console.log(`🔄 Query Transform: ${item.tipo}`, {
-    titulo: item.titulo || item.episodio_titulo,
-    tipo: item.tipo
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`Timeout after ${timeout}ms`)), timeout);
   });
   
+  const fetchPromise = fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'LSB-Search/1.0'
+    }
+  });
+
+  const response = await Promise.race([fetchPromise, timeoutPromise]);
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} for ${url}`);
+  }
+
+  return await response.json();
+};
+
+// TRANSFORMAR DADOS DA API
+const transformApiItem = (item: any): SearchResult => {
   const realId = String(item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000);
   
   let subjectForBadge: string;
@@ -329,7 +230,6 @@ const transformFromQueryEndpoint = (item: any): SearchResult => {
                      getSubject(item.tipo);
   }
   
-  // Extrair ano
   const extractedYear = extractYearFromDate(item.data_publicacao || item.data_lancamento || item.ano);
   
   const baseResult: SearchResult = {
@@ -364,7 +264,343 @@ const transformFromQueryEndpoint = (item: any): SearchResult => {
   return baseResult;
 };
 
-// ✅ FUNÇÃO PRINCIPAL: Coordenador de busca
+// BUSCA POR QUERY
+const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  console.log(`🔍 Busca Query-Based: "${query}", página ${page}`);
+  
+  const cacheKey = getCacheKey('queryBased', `${query}_page${page}_limit${resultsPerPage}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Query: ${cached.results.length} itens`);
+    return cached;
+  }
+  
+  try {
+    const url = `/conteudo-lbs/search?q=${encodeURIComponent(query)}&page=${page}&limit=${resultsPerPage}`;
+    const data = await fetchFromAPI(url, TIMEOUTS.querySearch);
+    
+    if (!data.conteudo || !Array.isArray(data.conteudo)) {
+      console.warn(`⚠️ Query search sem resultados: "${query}"`);
+      
+      const emptyResponse = {
+        success: true,
+        results: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalResults: 0,
+          hasNextPage: false,
+          hasPreviousPage: false
+        },
+        searchInfo: {
+          query,
+          appliedFilters: filters,
+          sortBy
+        }
+      };
+      
+      setCache(cacheKey, emptyResponse, 'queryBased');
+      return emptyResponse;
+    }
+    
+    const transformedItems = data.conteudo.map((item: any) => transformApiItem(item));
+    
+    let filteredItems = transformedItems;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(transformedItems, filters);
+    }
+    
+    const sortedItems = sortResults(filteredItems, sortBy, query);
+    
+    const totalResults = data.total || sortedItems.length;
+    const totalPages = data.totalPages || Math.ceil(totalResults / resultsPerPage);
+    
+    const response = {
+      success: true,
+      results: sortedItems,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalResults,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      }
+    };
+    
+    setCache(cacheKey, response, 'queryBased');
+    
+    console.log(`✅ Query search concluída: ${sortedItems.length} resultados para "${query}"`);
+    return response;
+    
+  } catch (error) {
+    console.error(`❌ Query search falhou para "${query}":`, error);
+    return await performGlobalSearch(searchParams);
+  }
+};
+
+// BUSCA GLOBAL - IMPLEMENTAÇÃO REAL
+const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  console.log(`🌍 Global search - página ${page}, limit ${resultsPerPage}`);
+  
+  const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Global: ${cached.results.length} itens`);
+    return cached;
+  }
+  
+  try {
+    // Buscar dados de todos os tipos
+    const [livrosData, aulasData, podcastsData] = await Promise.allSettled([
+      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=${page}&limit=${Math.ceil(resultsPerPage/3)}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=${page}&limit=${Math.ceil(resultsPerPage/3)}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=${page}&limit=${Math.ceil(resultsPerPage/3)}`, TIMEOUTS.globalOperation)
+    ]);
+    
+    const allItems: SearchResult[] = [];
+    
+    // Processar livros
+    if (livrosData.status === 'fulfilled' && livrosData.value.conteudo) {
+      const livros = livrosData.value.conteudo.map((item: any) => transformApiItem(item));
+      allItems.push(...livros);
+    }
+    
+    // Processar aulas/vídeos
+    if (aulasData.status === 'fulfilled' && aulasData.value.conteudo) {
+      const aulas = aulasData.value.conteudo.map((item: any) => transformApiItem(item));
+      allItems.push(...aulas);
+    }
+    
+    // Processar podcasts
+    if (podcastsData.status === 'fulfilled' && podcastsData.value.conteudo) {
+      const podcasts = podcastsData.value.conteudo.map((item: any) => transformApiItem(item));
+      allItems.push(...podcasts);
+    }
+    
+    // Aplicar filtros se necessário
+    let filteredItems = allItems;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(allItems, filters);
+    }
+    
+    // Ordenar resultados
+    const sortedItems = sortResults(filteredItems, sortBy, query);
+    
+    // Paginação dos resultados combinados
+    const startIndex = (page - 1) * resultsPerPage;
+    const endIndex = startIndex + resultsPerPage;
+    const paginatedItems = sortedItems.slice(startIndex, endIndex);
+    
+    const totalResults = sortedItems.length;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    
+    const response = {
+      success: true,
+      results: paginatedItems,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalResults,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      }
+    };
+    
+    setCache(cacheKey, response, 'global');
+    
+    console.log(`✅ Global search concluída: ${paginatedItems.length} resultados`);
+    return response;
+    
+  } catch (error) {
+    console.error(`❌ Global search falhou:`, error);
+    
+    return {
+      success: false,
+      results: [],
+      pagination: {
+        currentPage: page,
+        totalPages: 0,
+        totalResults: 0,
+        hasNextPage: false,
+        hasPreviousPage: false
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      },
+      error: error.message
+    };
+  }
+};
+
+// BUSCA PAGINADA - IMPLEMENTAÇÃO REAL
+const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  console.log(`📄 Paginated search - tipos: ${filters.resourceType.join(', ')}, página ${page}`);
+  
+  const cacheKey = getCacheKey('paginated', `${filters.resourceType.join('_')}_page${page}_limit${resultsPerPage}_sort${sortBy}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Paginated: ${cached.results.length} itens`);
+    return cached;
+  }
+  
+  try {
+    const allItems: SearchResult[] = [];
+    
+    // Buscar dados baseado nos tipos de recurso
+    for (const resourceType of filters.resourceType) {
+      let apiType = '';
+      
+      if (resourceType === 'titulo') {
+        apiType = 'livro';
+      } else if (resourceType === 'video') {
+        apiType = 'aula';
+      } else if (resourceType === 'podcast') {
+        apiType = 'podcast';
+      }
+      
+      if (apiType) {
+        try {
+          const data = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=${page}&limit=${resultsPerPage}`, TIMEOUTS.paginatedBatch);
+          
+          if (data.conteudo && Array.isArray(data.conteudo)) {
+            const items = data.conteudo.map((item: any) => transformApiItem(item));
+            allItems.push(...items);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Falha ao buscar ${apiType}:`, error);
+        }
+      }
+    }
+    
+    // Aplicar filtros se necessário
+    let filteredItems = allItems;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(allItems, filters);
+    }
+    
+    // Ordenar resultados
+    const sortedItems = sortResults(filteredItems, sortBy, query);
+    
+    const totalResults = sortedItems.length;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    
+    const response = {
+      success: true,
+      results: sortedItems,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalResults,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      }
+    };
+    
+    setCache(cacheKey, response, 'paginated');
+    
+    console.log(`✅ Paginated search concluída: ${sortedItems.length} resultados`);
+    return response;
+    
+  } catch (error) {
+    console.error(`❌ Paginated search falhou:`, error);
+    return await performGlobalSearch(searchParams);
+  }
+};
+
+// BUSCA FILTRADA - IMPLEMENTAÇÃO REAL
+const performFilteredSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  console.log(`🔍 Filtered search - filtros ativos detectados`);
+  
+  const cacheKey = getCacheKey('filtered', `${JSON.stringify(filters)}_page${page}_sort${sortBy}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Filtered: ${cached.results.length} itens`);
+    return cached;
+  }
+  
+  try {
+    // Para busca filtrada, buscar dados globais e aplicar filtros
+    const globalParams = { ...searchParams, filters: { ...filters, resourceType: ['all'] } };
+    const globalData = await performGlobalSearch(globalParams);
+    
+    if (!globalData.success) {
+      return globalData;
+    }
+    
+    // Aplicar filtros específicos
+    let filteredItems = globalData.results;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(globalData.results, filters);
+    }
+    
+    const sortedItems = sortResults(filteredItems, sortBy, query);
+    
+    // Paginação dos resultados filtrados
+    const startIndex = (page - 1) * resultsPerPage;
+    const endIndex = startIndex + resultsPerPage;
+    const paginatedItems = sortedItems.slice(startIndex, endIndex);
+    
+    const totalResults = sortedItems.length;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    
+    const response = {
+      success: true,
+      results: paginatedItems,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalResults,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      }
+    };
+    
+    setCache(cacheKey, response, 'filtered');
+    
+    console.log(`✅ Filtered search concluída: ${paginatedItems.length} resultados`);
+    return response;
+    
+  } catch (error) {
+    console.error(`❌ Filtered search falhou:`, error);
+    return await performGlobalSearch(searchParams);
+  }
+};
+
+// COORDENADOR PRINCIPAL
 const performSearch = async (searchParams: SearchRequest): Promise<any> => {
   const searchType = detectSearchType(searchParams.query, searchParams.filters);
   
@@ -391,43 +627,7 @@ const performSearch = async (searchParams: SearchRequest): Promise<any> => {
   }
 };
 
-// ✅ FUNÇÃO: Busca filtrada - fallback para busca global
-const performFilteredSearch = async (searchParams: SearchRequest): Promise<any> => {
-  console.log('🔍 Filtered search - usando fallback para global...');
-  return await performGlobalSearch(searchParams);
-};
-
-// ✅ FUNÇÃO: Busca paginada - fallback para busca global  
-const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any> => {
-  console.log('📄 Paginated search - usando fallback para global...');
-  return await performGlobalSearch(searchParams);
-};
-
-// ✅ FUNÇÃO: Busca global - retorna resposta vazia estruturada
-const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
-  console.log('🌍 Global search - retornando resposta vazia estruturada...');
-  
-  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
-  
-  return {
-    success: true,
-    results: [],
-    pagination: {
-      currentPage: page,
-      totalPages: 0,
-      totalResults: 0,
-      hasNextPage: false,
-      hasPreviousPage: false
-    },
-    searchInfo: {
-      query,
-      appliedFilters: filters,
-      sortBy
-    }
-  };
-};
-
-// ✅ FUNÇÃO: Mapear categorias para subjects
+// FUNÇÕES AUXILIARES
 const getSubjectFromCategories = (categorias: string[]): string => {
   if (!categorias || categorias.length === 0) return '';
   
@@ -450,7 +650,6 @@ const getSubjectFromCategories = (categorias: string[]): string => {
   return categorias[0].charAt(0).toUpperCase() + categorias[0].slice(1);
 };
 
-// ✅ FUNÇÃO: Determinar subject baseado no tipo
 const getSubject = (tipo: string): string => {
   const typeMap: Record<string, string> = {
     'podcast': 'Podcast',
@@ -464,7 +663,6 @@ const getSubject = (tipo: string): string => {
   return typeMap[tipo] || 'Conteúdo';
 };
 
-// ✅ NOVA FUNÇÃO: Helper para verificar se há filtros ativos
 const hasActiveFilters = (filters: SearchFilters): boolean => {
   return filters.resourceType.length > 0 && !filters.resourceType.includes('all') ||
          filters.subject.length > 0 ||
@@ -477,7 +675,6 @@ const hasActiveFilters = (filters: SearchFilters): boolean => {
          filters.channel.length > 0;
 };
 
-// ✅ NOVA FUNÇÃO: Formatar duração de segundos
 const formatDurationFromSeconds = (durationSeconds: number): string => {
   const minutes = Math.floor(durationSeconds / 60);
   const hours = Math.floor(minutes / 60);
@@ -500,10 +697,8 @@ const formatDuration = (durationMs: number): string => {
 
 const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResult[] => {
   return data.filter(item => {
-    // ✅ CRÍTICO: Validar resourceType primeiro para garantir tipos corretos
     if (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) {
       if (!filters.resourceType.includes(item.type)) {
-        console.log(`🚫 Item rejeitado por tipo: ${item.type} não está em ${filters.resourceType.join(', ')}`);
         return false;
       }
     }
@@ -650,15 +845,12 @@ const sortResults = (results: SearchResult[], sortBy: string, query?: string): S
 const extractYearFromDate = (dateValue: any): number => {
   if (!dateValue) return new Date().getFullYear();
   
-  // Se já é um número, retornar diretamente
   if (typeof dateValue === 'number') return dateValue;
   
-  // Se é string "desconhecida", retornar ano atual
   if (typeof dateValue === 'string' && dateValue.toLowerCase().includes('desconhecida')) {
     return new Date().getFullYear();
   }
   
-  // Tentar extrair ano de string de data
   if (typeof dateValue === 'string') {
     const dateObj = new Date(dateValue);
     if (!isNaN(dateObj.getTime())) {
@@ -676,13 +868,12 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📨 QUERY-BASED INTEGRATION - Nova busca:', requestBody);
+    console.log('📨 SEARCH REQUEST - Nova implementação completa:', requestBody);
     
     const result = await performSearch(requestBody);
     
-    // LOG para busca por query
     if (result.results && result.results.length > 0 && requestBody.query) {
-      console.log('🔍 QUERY SEARCH RESULTS:', {
+      console.log('🔍 SEARCH RESULTS:', {
         query: requestBody.query,
         totalResults: result.pagination.totalResults,
         firstResult: result.results[0] ? {
@@ -699,7 +890,7 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error('❌ Erro na busca com query integration:', error);
+    console.error('❌ Erro na busca:', error);
     
     return new Response(JSON.stringify({
       success: false,

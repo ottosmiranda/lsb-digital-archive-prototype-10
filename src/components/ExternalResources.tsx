@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Database, BookOpen, Users, Globe, FileText, Microscope, TrendingUp, GraduationCap, Leaf, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -215,7 +216,7 @@ const ExternalResources = () => {
         <div className="lsb-content">
           <div className="text-center mb-12 animate-fade-in">
             <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
-              Recursos Externos Recomendados
+              Outros repositórios acadêmicos
             </h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
               Explore bibliotecas digitais e bases de dados brasileiras cuidadosamente selecionadas 

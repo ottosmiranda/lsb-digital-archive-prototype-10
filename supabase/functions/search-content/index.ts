@@ -460,12 +460,12 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
   }
 };
 
-// BUSCA GLOBAL CORRIGIDA - Para filtro "Todos"
+// BUSCA GLOBAL CORRIGIDA - Para filtro "Todos" - AUMENTAR LIMITE E INCLUIR ARTIGOS
 const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
   const requestId = `global_search_${Date.now()}`;
-  console.group(`🌍 ${requestId} - GLOBAL SEARCH (Filtro Todos)`);
+  console.group(`🌍 ${requestId} - GLOBAL SEARCH (Filtro Todos) - CORRIGIDO`);
   console.log(`📋 Global search - página ${page}, limit ${resultsPerPage}`);
   
   const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
@@ -478,15 +478,17 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
   }
   
   try {
-    // CORREÇÃO: Buscar mais dados de cada tipo para ter variedade suficiente
-    const itemsPerType = Math.max(50, resultsPerPage * 2); // Buscar pelo menos 50 de cada tipo
+    // ✅ CORREÇÃO: Aumentar limite significativamente para buscar mais dados
+    const itemsPerType = Math.max(500, resultsPerPage * 5); // CORRIGIDO: Era 50, agora 500
     
-    console.log(`📊 Buscando ${itemsPerType} itens de cada tipo para mix global`);
+    console.log(`📊 CORRIGIDO: Buscando ${itemsPerType} itens de cada tipo para mix global`);
     
-    const [livrosData, aulasData, podcastsData] = await Promise.allSettled([
+    // ✅ CORREÇÃO: Incluir busca de ARTIGOS explicitamente
+    const [livrosData, aulasData, podcastsData, artigosData] = await Promise.allSettled([
       fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
       fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
-      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation)
+      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation) // ✅ NOVO: Buscar artigos
     ]);
     
     const allItems: SearchResult[] = [];
@@ -512,7 +514,14 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
       console.log(`✅ Podcasts carregados: ${podcasts.length}`);
     }
     
-    console.log(`📊 Total de itens combinados: ${allItems.length}`);
+    // ✅ NOVO: Processar artigos
+    if (artigosData.status === 'fulfilled' && artigosData.value.conteudo) {
+      const artigos = artigosData.value.conteudo.map((item: any) => transformApiItem(item));
+      allItems.push(...artigos);
+      console.log(`✅ Artigos carregados: ${artigos.length}`);
+    }
+    
+    console.log(`📊 Total de itens combinados CORRIGIDO: ${allItems.length}`);
     
     // Aplicar filtros se necessário
     let filteredItems = allItems;
@@ -553,7 +562,7 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
     
     setCache(cacheKey, response, 'global');
     
-    console.log(`✅ Global search: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
+    console.log(`✅ Global search CORRIGIDO: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
     console.groupEnd();
     return response;
     

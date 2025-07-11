@@ -639,14 +639,24 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
       }
     }
     
-    console.log(`📊 Items carregados: ${allItems.length}`);
+    console.log(`📊 Items carregados ANTES dos filtros: ${allItems.length}`);
     console.log(`📊 Totais da API: ${totalResultsFromAPI} resultados, ${totalPagesFromAPI} páginas`);
     
-    // Aplicar filtros se necessário
+    // CORREÇÃO CRÍTICA: Aplicar filtros APENAS para filtros de refinamento (não resourceType)
     let filteredItems = allItems;
-    if (hasActiveFilters(filters)) {
-      filteredItems = applyFilters(allItems, filters);
-      console.log(`🔍 Após filtros: ${filteredItems.length} itens`);
+    const hasRefinementFilters = hasActiveFilters(filters);
+    
+    if (hasRefinementFilters) {
+      console.log(`🔍 Aplicando filtros de refinamento...`);
+      // Criar filtros temporários SEM resourceType para evitar filtragem dupla
+      const refinementFilters = {
+        ...filters,
+        resourceType: [] // CRÍTICO: Eliminar resourceType pois já foi usado na busca paginada
+      };
+      filteredItems = applyFilters(allItems, refinementFilters);
+      console.log(`🔍 Após filtros de refinamento: ${filteredItems.length} itens`);
+    } else {
+      console.log(`🔍 SKIP - Nenhum filtro de refinamento ativo, mantendo ${allItems.length} itens`);
     }
     
     // Ordenar resultados
@@ -675,7 +685,7 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
     
     setCache(cacheKey, response, 'paginated');
     
-    console.log(`✅ Paginated search: ${sortedItems.length} itens na página ${page} de ${finalTotalResults} totais (${finalTotalPages} páginas)`);
+    console.log(`✅ Paginated search FINAL: ${sortedItems.length} itens na página ${page} de ${finalTotalResults} totais (${finalTotalPages} páginas)`);
     console.groupEnd();
     return response;
     
@@ -824,8 +834,7 @@ const getSubject = (tipo: string): string => {
 };
 
 const hasActiveFilters = (filters: SearchFilters): boolean => {
-  return filters.resourceType.length > 0 && !filters.resourceType.includes('all') ||
-         filters.subject.length > 0 ||
+  return filters.subject.length > 0 ||
          filters.author.length > 0 ||
          filters.year.trim() !== '' ||
          filters.duration.trim() !== '' ||
@@ -856,9 +865,25 @@ const formatDuration = (durationMs: number): string => {
 };
 
 const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResult[] => {
-  return data.filter(item => {
+  console.log(`🔍 APPLY FILTERS - Input: ${data.length} items`);
+  console.log(`🔍 FILTERS:`, {
+    resourceType: filters.resourceType,
+    subject: filters.subject,
+    author: filters.author,
+    year: filters.year,
+    duration: filters.duration,
+    language: filters.language,
+    documentType: filters.documentType,
+    program: filters.program,
+    channel: filters.channel
+  });
+
+  const filtered = data.filter(item => {
+    // Resource type filter - CORRIGIDO: Não aplicar se foi usado para busca paginada
     if (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) {
-      if (!filters.resourceType.includes(item.type)) {
+      const hasResourceMatch = filters.resourceType.includes(item.type);
+      if (!hasResourceMatch) {
+        console.log(`❌ Item "${item.title}" eliminado por resourceType: ${item.type} não está em ${filters.resourceType.join(', ')}`);
         return false;
       }
     }
@@ -916,6 +941,9 @@ const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResul
 
     return true;
   });
+
+  console.log(`🔍 APPLY FILTERS - Output: ${filtered.length} items (${data.length - filtered.length} eliminados)`);
+  return filtered;
 };
 
 const matchesDurationFilter = (itemDuration: string | undefined, filterDuration: string): boolean => {

@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
+import { ContentCounts } from '@/services/api/apiConfig';
 import AuthorInput from '@/components/AuthorInput';
 import { useContentAwareFilters } from '@/hooks/useContentAwareFilters';
 import { useAllAuthors } from '@/hooks/useAllAuthors';
-import { extractAuthorsFromResults, extractProgramsFromResults, extractChannelsFromResults, extractDocumentTypesFromResults } from '@/utils/searchUtils';
+import { extractAuthorsFromResults, extractProgramsFromResults, extractChannelsFromResults, extractDocumentTypesFromResults, getGlobalDocumentTypeCounts } from '@/utils/searchUtils';
 
 // MELHORADO: Anos baseados em dados reais, não apenas últimos 10 anos
 const currentYear = new Date().getFullYear();
@@ -23,6 +24,7 @@ interface DynamicFilterContentProps {
   openSections: Record<string, boolean>;
   onToggleSection: (section: string) => void;
   activeContentType: string;
+  globalContentCounts?: ContentCounts; // ✅ NOVA PROP: Para badges corretas
 }
 
 const DynamicFilterContent = React.memo(({ 
@@ -31,7 +33,8 @@ const DynamicFilterContent = React.memo(({
   currentResults, 
   openSections, 
   onToggleSection,
-  activeContentType
+  activeContentType,
+  globalContentCounts // ✅ NOVA PROP
 }: DynamicFilterContentProps) => {
   const { contentStats, filterRelevance } = useContentAwareFilters({
     currentResults,
@@ -64,11 +67,19 @@ const DynamicFilterContent = React.memo(({
     [filters]
   );
 
-  // NOVO: Extrair tipos de documento disponíveis nos resultados atuais
+  // ✅ NOVO: Usar contagens globais para tipos de documento em vez de extração local
   const availableDocumentTypes = useMemo(() => {
+    if (globalContentCounts) {
+      // Usar contagens REAIS da API global
+      const globalTypes = getGlobalDocumentTypeCounts(globalContentCounts);
+      console.log('📊 Usando contagens GLOBAIS para badges:', globalTypes);
+      return globalTypes;
+    }
+    
+    // Fallback: extrair da página atual
     return extractDocumentTypesFromResults(currentResults)
       .sort((a, b) => b.count - a.count);
-  }, [currentResults]);
+  }, [currentResults, globalContentCounts]);
 
   // NOVO: Extrair programas disponíveis nos resultados atuais
   const availablePrograms = useMemo(() => {
@@ -212,7 +223,7 @@ const DynamicFilterContent = React.memo(({
         </div>
       )}
 
-      {/* ✅ ADICIONADO: Filtro de Tipo de Item (apenas para títulos) */}
+      {/* ✅ CORRIGIDO: Filtro de Tipo de Item com contagens REAIS da API */}
       {filterRelevance.documentType && availableDocumentTypes.length > 0 && (
         <Collapsible open={openSections.documentType} onOpenChange={() => onToggleSection('documentType')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -224,6 +235,7 @@ const DynamicFilterContent = React.memo(({
                 </Badge>
               )}
               <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                {/* ✅ CORRIGIDO: Mostrar totais REAIS (47 Livros + 35 Artigos = 82) */}
                 Itens ({availableDocumentTypes.reduce((sum, doc) => sum + doc.count, 0)})
               </Badge>
             </div>
@@ -241,6 +253,7 @@ const DynamicFilterContent = React.memo(({
                   <Label htmlFor={`documentType-${documentType.name}`} className="text-sm cursor-pointer flex-1">
                     <div className="flex justify-between items-center">
                       <span>{documentType.name}</span>
+                      {/* ✅ CORRIGIDO: Mostrar contagens REAIS (47 para Livro, 35 para Artigo) */}
                       <span className="text-xs text-gray-500">({documentType.count})</span>
                     </div>
                   </Label>

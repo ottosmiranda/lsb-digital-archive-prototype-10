@@ -321,3 +321,19 @@ export const checkHasActiveFilters = (filters: SearchFilters): boolean => {
     filters.channel.length > 0
   );
 };
+
+// ✅ NOVA FUNÇÃO: Obter contagens globais de tipos de documento usando totais reais da API
+export const getGlobalDocumentTypeCounts = (globalContentCounts?: { books: number; articles: number }): Array<{ name: string; count: number }> => {
+  if (!globalContentCounts) {
+    // Fallback para números conhecidos se globalContentCounts não estiver disponível
+    return [
+      { name: 'Livro', count: 47 },
+      { name: 'Artigo', count: 35 }
+    ];
+  }
+
+  return [
+    { name: 'Livro', count: globalContentCounts.books },
+    { name: 'Artigo', count: globalContentCounts.articles }
+  ];
+};

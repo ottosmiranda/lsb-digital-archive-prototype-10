@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -13,6 +12,7 @@ import DataRefreshButton from '@/components/DataRefreshButton';
 import SearchDebugInfo from '@/components/SearchDebugInfo';
 import Footer from '@/components/Footer';
 import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
+import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 
 interface SearchLayoutProps {
   query: string;
@@ -55,6 +55,9 @@ const SearchLayout = ({
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [activeContentType, setActiveContentType] = useState('all');
+  
+  // ✅ NOVO: Obter contentCounts do contexto para badges corretas
+  const { contentCounts } = useHomepageContentContext();
 
   // Sync activeContentType with filters.resourceType
   useEffect(() => {
@@ -192,6 +195,7 @@ const SearchLayout = ({
                   onFiltersChange={onFiltersChange}
                   currentResults={currentResults}
                   activeContentType={activeContentType}
+                  globalContentCounts={contentCounts}
                 />
               )}
               

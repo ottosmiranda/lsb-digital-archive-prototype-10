@@ -12,7 +12,7 @@ export class SupabaseFallback {
         case 'livro': functionName = 'fetch-books'; break;
         case 'aula': functionName = 'fetch-videos'; break;
         case 'podcast': functionName = 'fetch-podcasts'; break;
-        case 'artigos': functionName = 'fetch-books'; break; // Articles use same function as books
+        case 'artigos': functionName = 'fetch-articles'; break; // ✅ NOVO: Função específica para artigos
         default: throw new Error(`Tipo não suportado: ${tipo}`);
       }
       
@@ -24,7 +24,7 @@ export class SupabaseFallback {
         return [];
       }
       
-      const items = tipo === 'livro' || tipo === 'artigos' ? data.books : tipo === 'aula' ? data.videos : data.podcasts;
+      const items = tipo === 'livro' ? data.books : tipo === 'aula' ? data.videos : tipo === 'podcast' ? data.podcasts : data.articles;
       console.log(`✅ Supabase sucesso: ${items.length} ${tipo}s`);
       return items;
       
@@ -88,18 +88,18 @@ export class SupabaseFallback {
       };
 
       console.log('📡 Iniciando busca paralela de contagens reais...');
-      const [booksResult, videosResult, podcastsResult] = await Promise.allSettled([
+      const [booksResult, videosResult, podcastsResult, articlesResult] = await Promise.allSettled([
         withTimeout(supabase.functions.invoke('fetch-books'), timeoutMs),
         withTimeout(supabase.functions.invoke('fetch-videos'), timeoutMs),
-        withTimeout(supabase.functions.invoke('fetch-podcasts'), timeoutMs)
+        withTimeout(supabase.functions.invoke('fetch-podcasts'), timeoutMs),
+        withTimeout(supabase.functions.invoke('fetch-articles'), timeoutMs) // ✅ NOVO: Usar função específica
       ]);
 
       // Processar resultados com logs detalhados
       const books = this.extractRealCount(booksResult, 'books', 'Livros');
       const videos = this.extractRealCount(videosResult, 'videos', 'Vídeos');  
       const podcasts = this.extractRealCount(podcastsResult, 'podcasts', 'Podcasts');
-      // ✅ CORREÇÃO: Usar valor real de artigos (35) em vez de estimativa
-      const articles = 35; // Valor real da API em vez de Math.floor(books * 0.3)
+      const articles = this.extractRealCount(articlesResult, 'articles', 'Artigos'); // ✅ REAL: Usar total real da API
 
       const counts = { videos, books, podcasts, articles };
       
@@ -150,7 +150,7 @@ export class SupabaseFallback {
         withTimeout(supabase.functions.invoke('fetch-books'), timeoutMs),
         withTimeout(supabase.functions.invoke('fetch-videos'), timeoutMs),
         withTimeout(supabase.functions.invoke('fetch-podcasts'), timeoutMs),
-        withTimeout(supabase.functions.invoke('fetch-books'), timeoutMs) // Articles use same function
+        withTimeout(supabase.functions.invoke('fetch-articles'), timeoutMs) // ✅ NOVO: Função específica
       ]);
 
       // ✅ CORREÇÃO: Usar números REAIS da API externa com verificação de status
@@ -160,7 +160,8 @@ export class SupabaseFallback {
         ? (videosResult.value.data.total || videosResult.value.data.videos?.length || 300) : 300;
       const podcasts = podcastsResult.status === 'fulfilled' && podcastsResult.value.data?.success 
         ? (podcastsResult.value.data.total || podcastsResult.value.data.podcasts?.length || 2512) : 2512;
-      const articles = 35; // ✅ REAL: 35 artigos (valor exato da API externa)
+      const articles = articlesResult.status === 'fulfilled' && articlesResult.value.data?.success 
+        ? (articlesResult.value.data.total || articlesResult.value.data.articles?.length || 35) : 35; // ✅ REAL: Usar total real da API
 
       const counts = { videos, books, podcasts, articles };
       

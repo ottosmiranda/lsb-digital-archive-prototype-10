@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
+import { ContentCounts } from '@/services/api/apiConfig';
 import DynamicFilterContent from '@/components/DynamicFilterContent';
 import { useContentAwareFilters } from '@/hooks/useContentAwareFilters';
 
@@ -13,13 +14,15 @@ interface StreamlinedSearchFiltersProps {
   onFiltersChange: (filters: SearchFilters, options?: { authorTyping?: boolean }) => void;
   currentResults?: SearchResult[];
   activeContentType?: string;
+  globalContentCounts?: ContentCounts; // ✅ NOVA PROP: Para badges corretas
 }
 
 const StreamlinedSearchFilters = React.memo(({ 
   filters, 
   onFiltersChange, 
   currentResults = [],
-  activeContentType = 'all'
+  activeContentType = 'all',
+  globalContentCounts // ✅ NOVA PROP
 }: StreamlinedSearchFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
   
@@ -69,6 +72,7 @@ const StreamlinedSearchFilters = React.memo(({
             openSections={openSections}
             onToggleSection={toggleSection}
             activeContentType={activeContentType}
+            globalContentCounts={globalContentCounts} // ✅ NOVA PROP
           />
         </div>
       </div>
@@ -102,6 +106,7 @@ const StreamlinedSearchFilters = React.memo(({
                 openSections={openSections}
                 onToggleSection={toggleSection}
                 activeContentType={activeContentType}
+                globalContentCounts={globalContentCounts} // ✅ NOVA PROP
               />
             </div>
           </SheetContent>

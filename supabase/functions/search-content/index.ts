@@ -551,43 +551,90 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
     
     // CORREÇÃO: Buscar dados baseado nos tipos de recurso com paginação correta
     for (const resourceType of filters.resourceType) {
-      let apiType = '';
-      
       if (resourceType === 'titulo') {
-        apiType = 'livro';
-      } else if (resourceType === 'video') {
-        apiType = 'aula';
-      } else if (resourceType === 'podcast') {
-        apiType = 'podcast';
-      }
-      
-      if (apiType) {
+        // CORREÇÃO ESPECIAL: Para 'titulo', buscar TANTO livros quanto artigos
         try {
-          console.log(`🔍 Buscando ${apiType} - página ${page}, limit ${resultsPerPage}`);
+          console.log(`📚 Buscando 'titulo' - fazendo chamadas paralelas para livros E artigos - página ${page}`);
           
-          const data = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=${page}&limit=${resultsPerPage}`, TIMEOUTS.paginatedBatch);
+          // Distribuir limite proporcionalmente (47 livros : 35 artigos = ~57% : 43%)
+          const limitLivros = Math.ceil(resultsPerPage * 0.57);
+          const limitArtigos = resultsPerPage - limitLivros;
           
-          console.log(`📊 API Response para ${apiType}:`, {
-            total: data.total,
-            totalPages: data.totalPages,
-            currentPage: data.page || page,
-            itemsReceived: data.conteudo?.length || 0
-          });
+          console.log(`📊 Distribuição: ${limitLivros} livros + ${limitArtigos} artigos = ${resultsPerPage} total`);
           
-          if (data.conteudo && Array.isArray(data.conteudo)) {
-            const items = data.conteudo.map((item: any) => transformApiItem(item));
-            allItems.push(...items);
-            
-            // CORREÇÃO: Usar os totais da API quando disponível
-            if (data.total) {
-              totalResultsFromAPI = Math.max(totalResultsFromAPI, data.total);
-            }
-            if (data.totalPages) {
-              totalPagesFromAPI = Math.max(totalPagesFromAPI, data.totalPages);
-            }
+          const [livrosResponse, artigosResponse] = await Promise.allSettled([
+            fetchFromAPI(`/conteudo-lbs?tipo=livro&page=${page}&limit=${limitLivros}`, TIMEOUTS.paginatedBatch),
+            fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=${page}&limit=${limitArtigos}`, TIMEOUTS.paginatedBatch)
+          ]);
+          
+          let totalLivros = 0;
+          let totalArtigos = 0;
+          
+          // Processar livros
+          if (livrosResponse.status === 'fulfilled' && livrosResponse.value.conteudo) {
+            const livros = livrosResponse.value.conteudo.map((item: any) => transformApiItem(item));
+            allItems.push(...livros);
+            totalLivros = livrosResponse.value.total || 0;
+            console.log(`✅ Livros: ${livros.length} carregados de ${totalLivros} totais`);
           }
+          
+          // Processar artigos
+          if (artigosResponse.status === 'fulfilled' && artigosResponse.value.conteudo) {
+            const artigos = artigosResponse.value.conteudo.map((item: any) => transformApiItem(item));
+            allItems.push(...artigos);
+            totalArtigos = artigosResponse.value.total || 0;
+            console.log(`✅ Artigos: ${artigos.length} carregados de ${totalArtigos} totais`);
+          }
+          
+          // TOTAIS COMBINADOS para Livros & Artigos
+          const totalCombinado = totalLivros + totalArtigos;
+          totalResultsFromAPI = Math.max(totalResultsFromAPI, totalCombinado);
+          totalPagesFromAPI = Math.max(totalPagesFromAPI, Math.ceil(totalCombinado / resultsPerPage));
+          
+          console.log(`📊 TITULO COMBINADO: ${totalCombinado} total (${totalLivros} livros + ${totalArtigos} artigos)`);
+          
         } catch (error) {
-          console.warn(`⚠️ Falha ao buscar ${apiType}:`, error);
+          console.warn(`⚠️ Falha ao buscar titulo (livros + artigos):`, error);
+        }
+        
+      } else {
+        // Tipos simples: video ou podcast
+        let apiType = '';
+        
+        if (resourceType === 'video') {
+          apiType = 'aula';
+        } else if (resourceType === 'podcast') {
+          apiType = 'podcast';
+        }
+        
+        if (apiType) {
+          try {
+            console.log(`🔍 Buscando ${apiType} - página ${page}, limit ${resultsPerPage}`);
+            
+            const data = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=${page}&limit=${resultsPerPage}`, TIMEOUTS.paginatedBatch);
+            
+            console.log(`📊 API Response para ${apiType}:`, {
+              total: data.total,
+              totalPages: data.totalPages,
+              currentPage: data.page || page,
+              itemsReceived: data.conteudo?.length || 0
+            });
+            
+            if (data.conteudo && Array.isArray(data.conteudo)) {
+              const items = data.conteudo.map((item: any) => transformApiItem(item));
+              allItems.push(...items);
+              
+              // CORREÇÃO: Usar os totais da API quando disponível
+              if (data.total) {
+                totalResultsFromAPI = Math.max(totalResultsFromAPI, data.total);
+              }
+              if (data.totalPages) {
+                totalPagesFromAPI = Math.max(totalPagesFromAPI, data.totalPages);
+              }
+            }
+          } catch (error) {
+            console.warn(`⚠️ Falha ao buscar ${apiType}:`, error);
+          }
         }
       }
     }

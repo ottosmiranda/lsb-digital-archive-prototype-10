@@ -1,4 +1,3 @@
-
 import { Search, Filter, Command, Book, Play, Headphones, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +38,7 @@ const Hero = () => {
   ];
 
   return (
-    <section className="relative h-screen bg-gradient-to-br from-[#10284E] to-[#102840] overflow-hidden">
+    <section className="relative h-screen bg-[#10284E] overflow-hidden">
       {/* Simplified Background */}
       <div className="absolute inset-0">
         {/* Primary gradient overlay */}
@@ -62,7 +61,7 @@ const Hero = () => {
                   </span>
                 </h1>
                 
-                <p className="text-2xl font-normal tracking-[-0.02em] leading-[1.4] mb-6 text-blue-100 max-w-4xl mx-auto">
+                <p className="text-2xl font-normal tracking-[-0.02em] leading-[1.4] mb-6 text-[#FFFFFF] max-w-4xl mx-auto">
                   Explore livros, artigos, vídeos e podcasts em um único lugar
                 </p>
               </div>

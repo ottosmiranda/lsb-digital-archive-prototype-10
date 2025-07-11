@@ -364,6 +364,109 @@ const transformFromQueryEndpoint = (item: any): SearchResult => {
   return baseResult;
 };
 
+// ✅ FUNÇÃO PRINCIPAL: Coordenador de busca
+const performSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const searchType = detectSearchType(searchParams.query, searchParams.filters);
+  
+  console.log(`🎯 SEARCH COORDINATOR: Tipo detectado = ${searchType}`);
+  console.log(`📋 Parâmetros:`, {
+    query: searchParams.query,
+    page: searchParams.page,
+    filters: searchParams.filters
+  });
+
+  switch (searchType) {
+    case 'queryBased':
+      return await performQueryBasedSearch(searchParams);
+    
+    case 'filtered':
+      return await performFilteredSearch(searchParams);
+    
+    case 'paginated':
+      return await performPaginatedSearch(searchParams);
+    
+    case 'global':
+    default:
+      return await performGlobalSearch(searchParams);
+  }
+};
+
+// ✅ FUNÇÃO: Busca filtrada (placeholder)
+const performFilteredSearch = async (searchParams: SearchRequest): Promise<any> => {
+  console.log('🔍 Performing filtered search...');
+  // Por enquanto, usar busca global como fallback
+  return await performGlobalSearch(searchParams);
+};
+
+// ✅ FUNÇÃO: Busca paginada (placeholder)
+const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any> => {
+  console.log('📄 Performing paginated search...');
+  // Por enquanto, usar busca global como fallback
+  return await performGlobalSearch(searchParams);
+};
+
+// ✅ FUNÇÃO: Busca global (placeholder)
+const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
+  console.log('🌍 Performing global search...');
+  
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  // Retornar resposta vazia estruturada
+  return {
+    success: true,
+    results: [],
+    pagination: {
+      currentPage: page,
+      totalPages: 0,
+      totalResults: 0,
+      hasNextPage: false,
+      hasPreviousPage: false
+    },
+    searchInfo: {
+      query,
+      appliedFilters: filters,
+      sortBy
+    }
+  };
+};
+
+// ✅ FUNÇÃO: Mapear categorias para subjects
+const getSubjectFromCategories = (categorias: string[]): string => {
+  if (!categorias || categorias.length === 0) return '';
+  
+  const categoryMap: Record<string, string> = {
+    'negócios': 'Negócios',
+    'empresários': 'Empreendedorismo',
+    'business': 'Negócios',
+    'podcast': 'Podcast',
+    'tecnologia': 'Tecnologia',
+    'educação': 'Educação',
+    'economia': 'Economia',
+    'finanças': 'Finanças'
+  };
+  
+  for (const categoria of categorias) {
+    const mapped = categoryMap[categoria.toLowerCase()];
+    if (mapped) return mapped;
+  }
+  
+  return categorias[0].charAt(0).toUpperCase() + categorias[0].slice(1);
+};
+
+// ✅ FUNÇÃO: Determinar subject baseado no tipo
+const getSubject = (tipo: string): string => {
+  const typeMap: Record<string, string> = {
+    'podcast': 'Podcast',
+    'video': 'Vídeo',
+    'aula': 'Educação',
+    'livro': 'Literatura',
+    'artigos': 'Artigo',
+    'titulo': 'Publicação'
+  };
+  
+  return typeMap[tipo] || 'Conteúdo';
+};
+
 // ✅ NOVA FUNÇÃO: Helper para verificar se há filtros ativos
 const hasActiveFilters = (filters: SearchFilters): boolean => {
   return filters.resourceType.length > 0 && !filters.resourceType.includes('all') ||

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -115,50 +114,55 @@ const mapLanguageCode = (idioma: string): string => {
   return idioma.charAt(0).toUpperCase() + idioma.slice(1);
 };
 
-// 🔥 DETECTOR DE TIPO DE BUSCA CORRIGIDO
+// DETECTOR DE TIPO DE BUSCA CORRIGIDO
 const detectSearchType = (query: string, filters: SearchFilters): SearchType => {
   const cleanQuery = query?.trim() || '';
   const hasQuery = cleanQuery !== '';
   
-  console.log('🔍 DETECTOR CRITICAL FIX:', { 
+  console.log('🔍 Search Type Detection:', { 
     query: `"${query}"`,
     cleanQuery: `"${cleanQuery}"`,
     hasQuery,
     resourceType: filters.resourceType,
-    resultado: hasQuery ? 'queryBased' : 'global'
+    isAll: filters.resourceType.includes('all'),
+    hasResourceTypeFilters: filters.resourceType.length > 0 && !filters.resourceType.includes('all')
   });
 
-  // ✅ CORREÇÃO CRÍTICA: Query sempre tem precedência ABSOLUTA
+  // PRIORIDADE 1: Query sempre tem precedência ABSOLUTA
   if (hasQuery) {
     console.log(`🎯 QUERY DETECTADA: "${cleanQuery}" → QUERY-BASED SEARCH`);
     return 'queryBased';
   }
 
-  // Outros tipos apenas se não há query
+  // PRIORIDADE 2: Filtros de tipo específico
   const hasResourceTypeFilters = filters.resourceType.length > 0 && !filters.resourceType.includes('all');
   const hasOtherFilters = filters.subject.length > 0 || filters.author.length > 0 || 
                           filters.year || filters.duration || filters.language.length > 0 ||
                           filters.program.length > 0 || filters.channel.length > 0;
 
-  if (filters.resourceType.includes('all') || (!hasResourceTypeFilters && !hasOtherFilters)) {
-    return 'global';
+  if (hasResourceTypeFilters) {
+    console.log(`📋 FILTRO ESPECÍFICO: ${filters.resourceType.join(', ')} → PAGINATED SEARCH`);
+    return 'paginated';
   }
-  
+
   if (hasOtherFilters) {
+    console.log('🔍 OUTROS FILTROS ATIVOS → FILTERED SEARCH');
     return 'filtered';
   }
   
-  return 'paginated';
+  // PRIORIDADE 3: Busca global (filtro "Todos" ou sem filtros)
+  console.log('🌍 SEM FILTROS ESPECÍFICOS → GLOBAL SEARCH');
+  return 'global';
 };
 
-// FUNÇÕES DE CACHE - 🔥 CORREÇÃO CRÍTICA: DESABILITAR CACHE PARA WARREN
+// FUNÇÕES DE CACHE
 const getCacheKey = (strategy: SearchType, identifier: string): string => {
   const config = CACHE_STRATEGIES[strategy];
   return `${config.prefix}_${identifier}`;
 };
 
 const isValidCache = (cacheKey: string): boolean => {
-  // 🔥 CACHE BUSTER TOTAL PARA WARREN - SEMPRE FORÇAR REFRESH
+  // Cache buster para Warren
   if (cacheKey.toLowerCase().includes('warren')) {
     console.log('🔥 WARREN CACHE BUSTER ATIVO - FORÇANDO REFRESH TOTAL');
     return false;
@@ -179,7 +183,7 @@ const isValidCache = (cacheKey: string): boolean => {
 };
 
 const setCache = (cacheKey: string, data: any, strategy: SearchType): void => {
-  // 🔥 NÃO CACHEAR WARREN DURANTE O DEBUG
+  // Não cachear Warren durante debug
   if (cacheKey.toLowerCase().includes('warren')) {
     console.log('🔥 WARREN - NÃO CACHEANDO DURANTE DEBUG');
     return;
@@ -279,21 +283,18 @@ const transformApiItem = (item: any): SearchResult => {
   return baseResult;
 };
 
-// 🔥 BUSCA POR QUERY - CORREÇÃO CRÍTICA COMPLETA
+// BUSCA POR QUERY - Mantida sem alterações para Warren
 const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
-  const requestId = `warren_final_fix_${Date.now()}`;
-  console.group(`🔥 ${requestId} - WARREN PAGINATION FINAL FIX`);
-  console.log('📋 WARREN CRITICAL PARAMETERS:', { 
+  const requestId = `query_search_${Date.now()}`;
+  console.group(`🔥 ${requestId} - QUERY-BASED SEARCH`);
+  console.log('📋 QUERY PARAMETERS:', { 
     query: `"${query}"`, 
     page, 
-    resultsPerPage,
-    isWarren: query.toLowerCase().includes('warren'),
-    expectedResult: 'total=51, totalPages=6, itemsPerPage=9'
+    resultsPerPage
   });
   
-  // 🔥 CACHE DESABILITADO PARA WARREN
   const cacheKey = getCacheKey('queryBased', `${query}_page${page}_limit${resultsPerPage}_sort${sortBy}`);
   
   // Para Warren, NUNCA usar cache
@@ -305,39 +306,19 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
     return cached;
   }
   
-  if (isWarren) {
-    console.log('🔥 WARREN DETECTED - CACHE DESABILITADO - DIRETO PARA API');
-  }
-  
   try {
-    // ✅ URL EXATA PARA API EXTERNA
     const apiUrl = `/conteudo-lbs/search?q=${encodeURIComponent(query)}&page=${page}&limit=${resultsPerPage}`;
-    const fullUrl = `${API_BASE_URL}${apiUrl}`;
     
-    console.log('🌐 WARREN API CALL DETAILS:', {
-      fullUrl,
-      query,
-      page,
-      limit: resultsPerPage,
-      expectedForWarren: 'Should return 9 items on page 1, total=51, totalPages=6'
-    });
+    console.log('🌐 QUERY API CALL:', `${API_BASE_URL}${apiUrl}`);
     
     const data = await fetchFromAPI(apiUrl, TIMEOUTS.querySearch);
     
-    // 🔥 LOG CRÍTICO TOTAL DA RESPOSTA DA API
-    console.log('📊 WARREN API RESPONSE COMPLETE:', {
-      rawResponse: data,
+    console.log('📊 QUERY API RESPONSE:', {
       query: data.query,
       total: data.total,
       totalPages: data.totalPages,
       currentPage: data.page,
-      itemsReceived: data.conteudo?.length || 0,
-      firstItem: data.conteudo?.[0]?.titulo,
-      validation: {
-        totalShouldBe51: data.total === 51,
-        totalPagesShouldBe6: data.totalPages === 6,
-        itemsShouldBe9: data.conteudo?.length === 9 || (page === 6 && data.conteudo?.length === 6)
-      }
+      itemsReceived: data.conteudo?.length || 0
     });
     
     if (!data.conteudo || !Array.isArray(data.conteudo)) {
@@ -362,58 +343,27 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
       return emptyResponse;
     }
     
-    // ✅ TRANSFORMAÇÃO DOS ITENS COM LOG DETALHADO
-    console.log(`🔄 WARREN - Transformando ${data.conteudo.length} itens recebidos da API...`);
-    const transformedItems = data.conteudo.map((item: any, index: number) => {
-      const transformed = transformApiItem(item);
-      if (isWarren && index === 0) {
-        console.log('📋 WARREN - Primeiro item transformado:', {
-          original: item.titulo,
-          transformed: transformed.title,
-          type: transformed.type,
-          author: transformed.author
-        });
-      }
-      return transformed;
-    });
-    console.log(`✅ WARREN - ${transformedItems.length} itens transformados com sucesso`);
+    const transformedItems = data.conteudo.map((item: any) => transformApiItem(item));
     
-    // ✅ APLICAR FILTROS APENAS SE NECESSÁRIO
+    // Aplicar filtros apenas se necessário
     let filteredItems = transformedItems;
     if (hasActiveFilters(filters)) {
-      console.log(`🔍 WARREN - Aplicando filtros adicionais...`);
       filteredItems = applyFilters(transformedItems, filters);
-      console.log(`📊 WARREN - Após filtros: ${filteredItems.length} itens`);
     }
     
-    // ✅ ORDENAR RESULTADOS
     const sortedItems = sortResults(filteredItems, sortBy, query);
-    console.log(`📊 WARREN - Após ordenação: ${sortedItems.length} itens`);
     
-    // 🔥 CORREÇÃO CRÍTICA: USAR SEMPRE OS TOTAIS DA API EXTERNA
-    const totalResults = data.total || 0; // Para Warren: 51
-    const totalPages = data.totalPages || Math.ceil(totalResults / resultsPerPage); // Para Warren: 6
-    
-    console.log('🎯 WARREN FINAL VALIDATION:', {
-      totalResultsFromAPI: totalResults,
-      totalPagesFromAPI: totalPages,
-      currentPage: page,
-      itemsOnThisPage: sortedItems.length,
-      resultsPerPage,
-      warrenValidation: {
-        totalIs51: totalResults === 51,
-        pagesIs6: totalPages === 6,
-        itemsCorrect: sortedItems.length === 9 || (page === 6 && sortedItems.length === 6)
-      }
-    });
+    // Usar sempre os totais da API externa
+    const totalResults = data.total || 0;
+    const totalPages = data.totalPages || Math.ceil(totalResults / resultsPerPage);
     
     const response = {
       success: true,
-      results: sortedItems, // Itens da página atual
+      results: sortedItems,
       pagination: {
         currentPage: page,
-        totalPages, // 🔥 DEVE SER 6 para Warren
-        totalResults, // 🔥 DEVE SER 51 para Warren
+        totalPages,
+        totalResults,
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1
       },
@@ -424,25 +374,11 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
       }
     };
     
-    // ✅ VALIDAÇÃO FINAL PARA WARREN
-    if (isWarren) {
-      console.log('🔥 WARREN FINAL RESPONSE CHECK:', {
-        totalResults: response.pagination.totalResults,
-        totalPages: response.pagination.totalPages,
-        currentPage: response.pagination.currentPage,
-        resultsOnPage: response.results.length,
-        isCorrect: response.pagination.totalResults === 51 && response.pagination.totalPages === 6,
-        frontendWillShow: `${response.pagination.totalResults} resultados encontrados`,
-        paginationWillShow: `Página ${response.pagination.currentPage} de ${response.pagination.totalPages}`
-      });
-    }
-    
-    // 🔥 NÃO CACHEAR WARREN DURANTE DEBUG
     if (!isWarren) {
       setCache(cacheKey, response, 'queryBased');
     }
     
-    console.log(`✅ Query search CORRIGIDA: ${sortedItems.length} resultados DESTA PÁGINA de ${totalResults} totais`);
+    console.log(`✅ Query search: ${sortedItems.length} resultados DESTA PÁGINA de ${totalResults} totais`);
     console.groupEnd();
     return response;
     
@@ -450,7 +386,6 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
     console.error(`❌ Query search falhou para "${query}":`, error);
     console.groupEnd();
     
-    // Fallback em caso de erro
     return {
       success: false,
       results: [],
@@ -471,26 +406,33 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
   }
 };
 
-// BUSCA GLOBAL - IMPLEMENTAÇÃO REAL
+// BUSCA GLOBAL CORRIGIDA - Para filtro "Todos"
 const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
-  console.log(`🌍 Global search - página ${page}, limit ${resultsPerPage}`);
+  const requestId = `global_search_${Date.now()}`;
+  console.group(`🌍 ${requestId} - GLOBAL SEARCH (Filtro Todos)`);
+  console.log(`📋 Global search - página ${page}, limit ${resultsPerPage}`);
   
   const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
   
   if (isValidCache(cacheKey)) {
     const cached = getCache(cacheKey);
     console.log(`📦 Cache HIT Global: ${cached.results.length} itens`);
+    console.groupEnd();
     return cached;
   }
   
   try {
-    // Buscar dados de todos os tipos
+    // CORREÇÃO: Buscar mais dados de cada tipo para ter variedade suficiente
+    const itemsPerType = Math.max(50, resultsPerPage * 2); // Buscar pelo menos 50 de cada tipo
+    
+    console.log(`📊 Buscando ${itemsPerType} itens de cada tipo para mix global`);
+    
     const [livrosData, aulasData, podcastsData] = await Promise.allSettled([
-      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=${page}&limit=${Math.ceil(resultsPerPage/3)}`, TIMEOUTS.globalOperation),
-      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=${page}&limit=${Math.ceil(resultsPerPage/3)}`, TIMEOUTS.globalOperation),
-      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=${page}&limit=${Math.ceil(resultsPerPage/3)}`, TIMEOUTS.globalOperation)
+      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation)
     ]);
     
     const allItems: SearchResult[] = [];
@@ -499,36 +441,44 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
     if (livrosData.status === 'fulfilled' && livrosData.value.conteudo) {
       const livros = livrosData.value.conteudo.map((item: any) => transformApiItem(item));
       allItems.push(...livros);
+      console.log(`✅ Livros carregados: ${livros.length}`);
     }
     
     // Processar aulas/vídeos
     if (aulasData.status === 'fulfilled' && aulasData.value.conteudo) {
       const aulas = aulasData.value.conteudo.map((item: any) => transformApiItem(item));
       allItems.push(...aulas);
+      console.log(`✅ Vídeos carregados: ${aulas.length}`);
     }
     
     // Processar podcasts
     if (podcastsData.status === 'fulfilled' && podcastsData.value.conteudo) {
       const podcasts = podcastsData.value.conteudo.map((item: any) => transformApiItem(item));
       allItems.push(...podcasts);
+      console.log(`✅ Podcasts carregados: ${podcasts.length}`);
     }
+    
+    console.log(`📊 Total de itens combinados: ${allItems.length}`);
     
     // Aplicar filtros se necessário
     let filteredItems = allItems;
     if (hasActiveFilters(filters)) {
       filteredItems = applyFilters(allItems, filters);
+      console.log(`🔍 Após filtros: ${filteredItems.length} itens`);
     }
     
     // Ordenar resultados
     const sortedItems = sortResults(filteredItems, sortBy, query);
+    console.log(`📊 Após ordenação: ${sortedItems.length} itens`);
     
-    // Paginação dos resultados combinados
+    // CORREÇÃO: Paginação correta dos resultados combinados
+    const totalResults = sortedItems.length;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
     const startIndex = (page - 1) * resultsPerPage;
     const endIndex = startIndex + resultsPerPage;
     const paginatedItems = sortedItems.slice(startIndex, endIndex);
     
-    const totalResults = sortedItems.length;
-    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    console.log(`📄 Paginação: ${startIndex}-${endIndex} de ${totalResults} (página ${page}/${totalPages})`);
     
     const response = {
       success: true,
@@ -549,11 +499,13 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
     
     setCache(cacheKey, response, 'global');
     
-    console.log(`✅ Global search concluída: ${paginatedItems.length} resultados`);
+    console.log(`✅ Global search: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
+    console.groupEnd();
     return response;
     
   } catch (error) {
     console.error(`❌ Global search falhou:`, error);
+    console.groupEnd();
     
     return {
       success: false,
@@ -575,24 +527,29 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
   }
 };
 
-// BUSCA PAGINADA - IMPLEMENTAÇÃO REAL
+// BUSCA PAGINADA CORRIGIDA - Para filtros específicos
 const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
-  console.log(`📄 Paginated search - tipos: ${filters.resourceType.join(', ')}, página ${page}`);
+  const requestId = `paginated_search_${Date.now()}`;
+  console.group(`📄 ${requestId} - PAGINATED SEARCH`);
+  console.log(`📋 Paginated search - tipos: ${filters.resourceType.join(', ')}, página ${page}`);
   
   const cacheKey = getCacheKey('paginated', `${filters.resourceType.join('_')}_page${page}_limit${resultsPerPage}_sort${sortBy}`);
   
   if (isValidCache(cacheKey)) {
     const cached = getCache(cacheKey);
     console.log(`📦 Cache HIT Paginated: ${cached.results.length} itens`);
+    console.groupEnd();
     return cached;
   }
   
   try {
     const allItems: SearchResult[] = [];
+    let totalResultsFromAPI = 0;
+    let totalPagesFromAPI = 0;
     
-    // Buscar dados baseado nos tipos de recurso
+    // CORREÇÃO: Buscar dados baseado nos tipos de recurso com paginação correta
     for (const resourceType of filters.resourceType) {
       let apiType = '';
       
@@ -606,11 +563,28 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
       
       if (apiType) {
         try {
+          console.log(`🔍 Buscando ${apiType} - página ${page}, limit ${resultsPerPage}`);
+          
           const data = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=${page}&limit=${resultsPerPage}`, TIMEOUTS.paginatedBatch);
+          
+          console.log(`📊 API Response para ${apiType}:`, {
+            total: data.total,
+            totalPages: data.totalPages,
+            currentPage: data.page || page,
+            itemsReceived: data.conteudo?.length || 0
+          });
           
           if (data.conteudo && Array.isArray(data.conteudo)) {
             const items = data.conteudo.map((item: any) => transformApiItem(item));
             allItems.push(...items);
+            
+            // CORREÇÃO: Usar os totais da API quando disponível
+            if (data.total) {
+              totalResultsFromAPI = Math.max(totalResultsFromAPI, data.total);
+            }
+            if (data.totalPages) {
+              totalPagesFromAPI = Math.max(totalPagesFromAPI, data.totalPages);
+            }
           }
         } catch (error) {
           console.warn(`⚠️ Falha ao buscar ${apiType}:`, error);
@@ -618,26 +592,31 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
       }
     }
     
+    console.log(`📊 Items carregados: ${allItems.length}`);
+    console.log(`📊 Totais da API: ${totalResultsFromAPI} resultados, ${totalPagesFromAPI} páginas`);
+    
     // Aplicar filtros se necessário
     let filteredItems = allItems;
     if (hasActiveFilters(filters)) {
       filteredItems = applyFilters(allItems, filters);
+      console.log(`🔍 Após filtros: ${filteredItems.length} itens`);
     }
     
     // Ordenar resultados
     const sortedItems = sortResults(filteredItems, sortBy, query);
     
-    const totalResults = sortedItems.length;
-    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    // CORREÇÃO: Usar totais da API se disponível, senão calcular
+    const finalTotalResults = totalResultsFromAPI > 0 ? totalResultsFromAPI : sortedItems.length;
+    const finalTotalPages = totalPagesFromAPI > 0 ? totalPagesFromAPI : Math.ceil(finalTotalResults / resultsPerPage);
     
     const response = {
       success: true,
       results: sortedItems,
       pagination: {
         currentPage: page,
-        totalPages,
-        totalResults,
-        hasNextPage: page < totalPages,
+        totalPages: finalTotalPages,
+        totalResults: finalTotalResults,
+        hasNextPage: page < finalTotalPages,
         hasPreviousPage: page > 1
       },
       searchInfo: {
@@ -649,16 +628,20 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
     
     setCache(cacheKey, response, 'paginated');
     
-    console.log(`✅ Paginated search concluída: ${sortedItems.length} resultados`);
+    console.log(`✅ Paginated search: ${sortedItems.length} itens na página ${page} de ${finalTotalResults} totais (${finalTotalPages} páginas)`);
+    console.groupEnd();
     return response;
     
   } catch (error) {
     console.error(`❌ Paginated search falhou:`, error);
+    console.groupEnd();
+    
+    // Fallback para busca global em caso de erro
     return await performGlobalSearch(searchParams);
   }
 };
 
-// BUSCA FILTRADA - IMPLEMENTAÇÃO REAL
+// BUSCA FILTRADA - Mantida sem grandes alterações
 const performFilteredSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
@@ -729,27 +712,30 @@ const performFilteredSearch = async (searchParams: SearchRequest): Promise<any> 
 const performSearch = async (searchParams: SearchRequest): Promise<any> => {
   const searchType = detectSearchType(searchParams.query, searchParams.filters);
   
-  console.log(`🎯 SEARCH COORDINATOR FIXED: Tipo detectado = ${searchType}`);
+  console.log(`🎯 SEARCH COORDINATOR: Tipo detectado = ${searchType}`);
   console.log(`📋 Parâmetros:`, {
     query: `"${searchParams.query}"`,
     page: searchParams.page,
-    filters: searchParams.filters,
-    warrenTest: searchParams.query.toLowerCase().includes('warren') ? 'WARREN DETECTED' : 'not warren'
+    resourceType: searchParams.filters.resourceType,
+    hasOtherFilters: hasActiveFilters(searchParams.filters)
   });
 
   switch (searchType) {
     case 'queryBased':
-      console.log('🎯 Executando QUERY-BASED search (Warren fix)');
+      console.log('🎯 Executando QUERY-BASED search');
       return await performQueryBasedSearch(searchParams);
     
-    case 'filtered':
-      return await performFilteredSearch(searchParams);
-    
     case 'paginated':
+      console.log('📄 Executando PAGINATED search');
       return await performPaginatedSearch(searchParams);
+    
+    case 'filtered':
+      console.log('🔍 Executando FILTERED search');
+      return await performFilteredSearch(searchParams);
     
     case 'global':
     default:
+      console.log('🌍 Executando GLOBAL search');
       return await performGlobalSearch(searchParams);
   }
 };
@@ -996,32 +982,41 @@ serve(async (req) => {
   try {
     const requestBody = await req.json();
     
-    // 🔥 LOG ESPECIAL PARA WARREN
+    // Log especial para Warren
     if (requestBody.query && requestBody.query.toLowerCase().includes('warren')) {
       console.log('🔥 WARREN REQUEST DETECTED:', {
         query: requestBody.query,
         page: requestBody.page,
-        resultsPerPage: requestBody.resultsPerPage,
-        expectedResults: '51 total, 6 pages, 9 items per page'
+        resultsPerPage: requestBody.resultsPerPage
       });
     }
     
-    console.log('📨 SEARCH REQUEST - Warren final fix:', requestBody);
+    console.log('📨 SEARCH REQUEST:', {
+      query: requestBody.query,
+      resourceType: requestBody.filters?.resourceType,
+      page: requestBody.page,
+      type: requestBody.query ? 'QUERY' : (requestBody.filters?.resourceType?.length > 0 && !requestBody.filters.resourceType.includes('all') ? 'FILTERED' : 'GLOBAL')
+    });
     
     const result = await performSearch(requestBody);
     
-    // 🔥 LOG ESPECIAL PARA WARREN RESPONSE
+    // Log especial para Warren response
     if (requestBody.query && requestBody.query.toLowerCase().includes('warren')) {
-      console.log('🔥 WARREN RESPONSE FINAL CHECK:', {
+      console.log('🔥 WARREN RESPONSE:', {
         totalResults: result.pagination?.totalResults,
         totalPages: result.pagination?.totalPages,
         currentPage: result.pagination?.currentPage,
-        resultsCount: result.results?.length,
-        isFixed: result.pagination?.totalResults === 51 && result.pagination?.totalPages === 6,
-        frontendDisplay: `Will show: ${result.pagination?.totalResults} resultados encontrados`,
-        paginationDisplay: `Will show: Página ${result.pagination?.currentPage} de ${result.pagination?.totalPages}`
+        resultsCount: result.results?.length
       });
     }
+    
+    console.log('📤 SEARCH RESPONSE:', {
+      success: result.success,
+      resultsCount: result.results?.length,
+      totalResults: result.pagination?.totalResults,
+      totalPages: result.pagination?.totalPages,
+      currentPage: result.pagination?.currentPage
+    });
     
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

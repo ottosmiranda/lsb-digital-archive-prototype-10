@@ -153,13 +153,13 @@ export class SupabaseFallback {
         withTimeout(supabase.functions.invoke('fetch-books'), timeoutMs) // Articles use same function
       ]);
 
-      // ✅ CORREÇÃO: Usar números REAIS da API externa
+      // ✅ CORREÇÃO: Usar números REAIS da API externa com verificação de status
       const books = booksResult.status === 'fulfilled' && booksResult.value.data?.success 
         ? (booksResult.value.data.total || booksResult.value.data.books?.length || 47) : 47; // ✅ REAL: 47 livros
       const videos = videosResult.status === 'fulfilled' && videosResult.value.data?.success 
         ? (videosResult.value.data.total || videosResult.value.data.videos?.length || 300) : 300;
       const podcasts = podcastsResult.status === 'fulfilled' && podcastsResult.value.data?.success 
-        ? (videosResult.value.data.total || videosResult.value.data.podcasts?.length || 2512) : 2512;
+        ? (podcastsResult.value.data.total || podcastsResult.value.data.podcasts?.length || 2512) : 2512;
       const articles = 35; // ✅ REAL: 35 artigos (valor exato da API externa)
 
       const counts = { videos, books, podcasts, articles };

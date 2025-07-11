@@ -237,11 +237,49 @@ const fetchFromAPI = async (endpoint: string, timeout: number = TIMEOUTS.singleR
 
 // TRANSFORMAR DADOS DA API
 const transformApiItem = (item: any): SearchResult => {
+  console.log(`🔄 TRANSFORM API ITEM - DEBUGGING:`, {
+    id: item.id,
+    tipo: item.tipo,
+    titulo: item.titulo?.substring(0, 50) + '...',
+    hasArquivo: !!item.arquivo,
+    hasPaginas: !!item.paginas,
+    hasEmbedUrl: !!item.embed_url
+  });
+  
   const realId = String(item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000);
+  
+  // ✅ CORREÇÃO CRÍTICA: Detecção inteligente de tipo baseada em múltiplos campos
+  let detectedType: 'titulo' | 'video' | 'podcast';
+  
+  if (item.tipo === 'livro' || item.tipo === 'artigos') {
+    detectedType = 'titulo';
+    console.log(`✅ TIPO DETECTADO: ${item.tipo} → titulo (livro/artigo)`);
+  } else if (item.tipo === 'aula' || item.tipo === 'video') {
+    detectedType = 'video';
+    console.log(`✅ TIPO DETECTADO: ${item.tipo} → video`);
+  } else if (item.tipo === 'podcast') {
+    detectedType = 'podcast';
+    console.log(`✅ TIPO DETECTADO: ${item.tipo} → podcast`);
+  } else {
+    // ✅ DETECÇÃO DEFENSIVA: Baseada em campos disponíveis
+    if (item.arquivo || item.paginas) {
+      detectedType = 'titulo';
+      console.log(`🛡️ DETECÇÃO DEFENSIVA: tem arquivo/páginas → titulo (original: ${item.tipo})`);
+    } else if (item.embed_url && item.duracao_ms) {
+      detectedType = 'podcast';
+      console.log(`🛡️ DETECÇÃO DEFENSIVA: tem embed_url + duração → podcast (original: ${item.tipo})`);
+    } else if (item.embed_url) {
+      detectedType = 'video';
+      console.log(`🛡️ DETECÇÃO DEFENSIVA: tem embed_url → video (original: ${item.tipo})`);
+    } else {
+      detectedType = 'titulo';
+      console.log(`⚠️ FALLBACK: tipo desconhecido "${item.tipo}" → titulo por padrão`);
+    }
+  }
   
   let subjectForBadge: string;
   
-  if (item.tipo === 'podcast') {
+  if (detectedType === 'podcast') {
     subjectForBadge = getSubjectFromCategories(item.categorias) || 'Podcast';
   } else {
     subjectForBadge = getSubjectFromCategories(item.categorias) || 
@@ -259,26 +297,42 @@ const transformApiItem = (item: any): SearchResult => {
     year: extractedYear,
     description: item.descricao || 'Descrição não disponível',
     subject: subjectForBadge,
-    type: item.tipo === 'livro' || item.tipo === 'artigos' ? 'titulo' : item.tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
+    type: detectedType, // ✅ CORRIGIDO: Usar tipo detectado corretamente
     thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
   };
 
   // Propriedades específicas por tipo
-  if (item.tipo === 'livro' || item.tipo === 'artigos') {
+  if (detectedType === 'titulo') {
     baseResult.pdfUrl = item.arquivo || item.url;
     baseResult.pages = item.paginas;
     baseResult.language = item.language ? mapLanguageCode(item.language) : mapLanguageCode(item.idioma);
-    baseResult.documentType = item.tipo === 'artigos' ? 'Artigo' : (item.tipo_documento || 'Livro');
-  } else if (item.tipo === 'aula') {
+    
+    // ✅ CORREÇÃO: Mapeamento correto de document type
+    if (item.tipo === 'artigos') {
+      baseResult.documentType = 'Artigo';
+      console.log(`📄 Document type: Artigo (baseado em item.tipo: ${item.tipo})`);
+    } else {
+      baseResult.documentType = item.tipo_documento || 'Livro';
+      console.log(`📚 Document type: ${baseResult.documentType} (padrão: Livro)`);
+    }
+  } else if (detectedType === 'video') {
     baseResult.embedUrl = item.embed_url;
     baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : (item.duracao ? formatDurationFromSeconds(item.duracao) : undefined);
     baseResult.channel = item.canal || 'Canal desconhecido';
     baseResult.language = item.idioma ? mapLanguageCode(item.idioma) : undefined;
-  } else if (item.tipo === 'podcast') {
+  } else if (detectedType === 'podcast') {
     baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : undefined;
     baseResult.embedUrl = item.embed_url;
     baseResult.program = item.podcast_titulo || 'Programa desconhecido';
   }
+
+  console.log(`✅ TRANSFORM RESULT:`, {
+    id: realId,
+    originalType: item.tipo,
+    detectedType: detectedType,
+    documentType: baseResult.documentType,
+    title: baseResult.title.substring(0, 40) + '...'
+  });
 
   return baseResult;
 };

@@ -12,7 +12,7 @@ export class SupabaseFallback {
         case 'livro': functionName = 'fetch-books'; break;
         case 'aula': functionName = 'fetch-videos'; break;
         case 'podcast': functionName = 'fetch-podcasts'; break;
-        case 'artigos': functionName = 'fetch-articles'; break; // ✅ NOVO: Função específica para artigos
+        case 'artigos': functionName = 'fetch-articles'; break;
         default: throw new Error(`Tipo não suportado: ${tipo}`);
       }
       
@@ -40,7 +40,7 @@ export class SupabaseFallback {
     podcasts: SearchResult[];
     articles: SearchResult[];
   }> {
-    console.log('🔄 Emergência: Todo conteúdo do Supabase');
+    console.log('🔄 Emergência: Todo conteúdo do Supabase - SEM LIMITAÇÕES');
     
     try {
       const [booksResult, videosResult, podcastsResult, articlesResult] = await Promise.allSettled([
@@ -50,13 +50,13 @@ export class SupabaseFallback {
         this.fetchFromSupabase('artigos')
       ]);
 
-      // ✅ CORREÇÃO: Remover .slice(0, 12) - usar TODOS os itens disponíveis
-      const books = booksResult.status === 'fulfilled' ? booksResult.value : []; // Todos os 47 livros
-      const videos = videosResult.status === 'fulfilled' ? videosResult.value : []; // Todos os 300 vídeos
-      const podcasts = podcastsResult.status === 'fulfilled' ? podcastsResult.value : []; // Todos os 2512 podcasts
-      const articles = articlesResult.status === 'fulfilled' ? articlesResult.value : []; // Todos os 35 artigos
+      // ✅ CORREÇÃO: Remover .slice(0, 12) - permitir TODOS os itens
+      const books = booksResult.status === 'fulfilled' ? booksResult.value : []; // REMOVIDO: .slice(0, 12)
+      const videos = videosResult.status === 'fulfilled' ? videosResult.value : []; // REMOVIDO: .slice(0, 12)
+      const podcasts = podcastsResult.status === 'fulfilled' ? podcastsResult.value : []; // REMOVIDO: .slice(0, 12)
+      const articles = articlesResult.status === 'fulfilled' ? articlesResult.value : []; // REMOVIDO: .slice(0, 12)
 
-      console.log('✅ Emergência Supabase COMPLETA (sem limitações):', {
+      console.log('✅ Emergência Supabase completa SEM LIMITAÇÕES:', {
         books: books.length,
         videos: videos.length,
         podcasts: podcasts.length,
@@ -94,14 +94,14 @@ export class SupabaseFallback {
         withTimeout(supabase.functions.invoke('fetch-books'), timeoutMs),
         withTimeout(supabase.functions.invoke('fetch-videos'), timeoutMs),
         withTimeout(supabase.functions.invoke('fetch-podcasts'), timeoutMs),
-        withTimeout(supabase.functions.invoke('fetch-articles'), timeoutMs) // ✅ NOVO: Usar função específica
+        withTimeout(supabase.functions.invoke('fetch-articles'), timeoutMs)
       ]);
 
       // Processar resultados com logs detalhados
       const books = this.extractRealCount(booksResult, 'books', 'Livros');
       const videos = this.extractRealCount(videosResult, 'videos', 'Vídeos');  
       const podcasts = this.extractRealCount(podcastsResult, 'podcasts', 'Podcasts');
-      const articles = this.extractRealCount(articlesResult, 'articles', 'Artigos'); // ✅ REAL: Usar total real da API
+      const articles = this.extractRealCount(articlesResult, 'articles', 'Artigos');
 
       const counts = { videos, books, podcasts, articles };
       
@@ -152,18 +152,18 @@ export class SupabaseFallback {
         withTimeout(supabase.functions.invoke('fetch-books'), timeoutMs),
         withTimeout(supabase.functions.invoke('fetch-videos'), timeoutMs),
         withTimeout(supabase.functions.invoke('fetch-podcasts'), timeoutMs),
-        withTimeout(supabase.functions.invoke('fetch-articles'), timeoutMs) // ✅ NOVO: Função específica
+        withTimeout(supabase.functions.invoke('fetch-articles'), timeoutMs)
       ]);
 
       // ✅ CORREÇÃO: Usar números REAIS da API externa com verificação de status
       const books = booksResult.status === 'fulfilled' && booksResult.value.data?.success 
-        ? (booksResult.value.data.total || booksResult.value.data.books?.length || 47) : 47; // ✅ REAL: 47 livros
+        ? (booksResult.value.data.total || booksResult.value.data.books?.length || 47) : 47;
       const videos = videosResult.status === 'fulfilled' && videosResult.value.data?.success 
         ? (videosResult.value.data.total || videosResult.value.data.videos?.length || 300) : 300;
       const podcasts = podcastsResult.status === 'fulfilled' && podcastsResult.value.data?.success 
         ? (podcastsResult.value.data.total || podcastsResult.value.data.podcasts?.length || 2512) : 2512;
       const articles = articlesResult.status === 'fulfilled' && articlesResult.value.data?.success 
-        ? (articlesResult.value.data.total || articlesResult.value.data.articles?.length || 35) : 35; // ✅ REAL: Usar total real da API
+        ? (articlesResult.value.data.total || articlesResult.value.data.articles?.length || 35) : 35;
 
       const counts = { videos, books, podcasts, articles };
       

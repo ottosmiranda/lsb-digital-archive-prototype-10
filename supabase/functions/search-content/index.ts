@@ -460,12 +460,12 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
   }
 };
 
-// BUSCA GLOBAL CORRIGIDA - Para filtro "Todos"
+// BUSCA GLOBAL CORRIGIDA - Para filtro "Todos" - AUMENTAR LIMITE E INCLUIR ARTIGOS
 const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
   const requestId = `global_search_${Date.now()}`;
-  console.group(`🌍 ${requestId} - GLOBAL SEARCH (Filtro Todos)`);
+  console.group(`🌍 ${requestId} - GLOBAL SEARCH (Filtro Todos) - CORRIGIDO`);
   console.log(`📋 Global search - página ${page}, limit ${resultsPerPage}`);
   
   const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
@@ -478,17 +478,17 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
   }
   
   try {
-    // ✅ CORREÇÃO: Buscar MUITO MAIS dados para ter variedade suficiente (removendo limitação de 50)
-    const itemsPerType = Math.max(500, resultsPerPage * 5); // ✅ AUMENTADO: até 500 por tipo
+    // ✅ CORREÇÃO: Aumentar limite significativamente para buscar mais dados
+    const itemsPerType = Math.max(500, resultsPerPage * 5); // CORRIGIDO: Era 50, agora 500
     
-    console.log(`📊 Buscando ${itemsPerType} itens de cada tipo para mix global COMPLETO`);
+    console.log(`📊 CORRIGIDO: Buscando ${itemsPerType} itens de cada tipo para mix global`);
     
-    // ✅ CORREÇÃO: Incluir ARTIGOS na busca global
+    // ✅ CORREÇÃO: Incluir busca de ARTIGOS explicitamente
     const [livrosData, aulasData, podcastsData, artigosData] = await Promise.allSettled([
-      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${Math.min(itemsPerType, 47)}`, TIMEOUTS.globalOperation), // Max 47 livros
-      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${Math.min(itemsPerType, 300)}`, TIMEOUTS.globalOperation), // Max 300 vídeos
-      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation), // Até 500 podcasts
-      fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${Math.min(itemsPerType, 35)}`, TIMEOUTS.globalOperation) // ✅ NOVO: Max 35 artigos
+      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation) // ✅ NOVO: Buscar artigos
     ]);
     
     const allItems: SearchResult[] = [];
@@ -521,7 +521,7 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
       console.log(`✅ Artigos carregados: ${artigos.length}`);
     }
     
-    console.log(`📊 Total de itens combinados CORRIGIDO: ${allItems.length} (era ~147, agora ~2800+)`);
+    console.log(`📊 Total de itens combinados CORRIGIDO: ${allItems.length}`);
     
     // Aplicar filtros se necessário
     let filteredItems = allItems;
@@ -534,15 +534,14 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
     const sortedItems = sortResults(filteredItems, sortBy, query);
     console.log(`📊 Após ordenação: ${sortedItems.length} itens`);
     
-    // ✅ CORREÇÃO: Paginação correta dos resultados combinados REAIS
-    const totalResults = sortedItems.length; // Agora deve ser ~2800+ em vez de 147
+    // CORREÇÃO: Paginação correta dos resultados combinados
+    const totalResults = sortedItems.length;
     const totalPages = Math.ceil(totalResults / resultsPerPage);
     const startIndex = (page - 1) * resultsPerPage;
     const endIndex = startIndex + resultsPerPage;
     const paginatedItems = sortedItems.slice(startIndex, endIndex);
     
-    console.log(`📄 Paginação CORRIGIDA: ${startIndex}-${endIndex} de ${totalResults} (página ${page}/${totalPages})`);
-    console.log(`🎯 RESULTADO FINAL: ${paginatedItems.length} itens mostrados de ${totalResults} TOTAIS`);
+    console.log(`📄 Paginação: ${startIndex}-${endIndex} de ${totalResults} (página ${page}/${totalPages})`);
     
     const response = {
       success: true,
@@ -550,7 +549,7 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
       pagination: {
         currentPage: page,
         totalPages,
-        totalResults, // ✅ CORRIGIDO: Agora ~2800+ em vez de 147
+        totalResults,
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1
       },

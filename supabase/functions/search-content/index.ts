@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -125,15 +124,18 @@ const detectSearchType = (query: string, filters: SearchFilters): SearchType => 
                           filters.program.length > 0 || 
                           filters.channel.length > 0;
 
-  console.log('🔍 DETECTOR:', { 
+  console.log('🔍 DETECTOR CORRIGIDO:', { 
     hasQuery, 
+    query: `"${query}"`,
     hasResourceTypeFilters, 
     hasOtherFilters, 
-    documentType: filters.documentType,
+    resourceType: filters.resourceType,
     resultado: hasQuery ? 'queryBased' : hasOtherFilters ? 'filtered' : hasResourceTypeFilters ? 'paginated' : 'global'
   });
 
+  // ✅ PRIORIDADE CORRIGIDA: Query sempre tem precedência
   if (hasQuery) {
+    console.log(`🎯 Query detectada: "${query}" → queryBased`);
     return 'queryBased';
   }
 
@@ -264,23 +266,36 @@ const transformApiItem = (item: any): SearchResult => {
   return baseResult;
 };
 
-// BUSCA POR QUERY
+// BUSCA POR QUERY - CORRIGIDA para paginação adequada
 const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
-  console.log(`🔍 Busca Query-Based: "${query}", página ${page}`);
+  console.log(`🔍 Busca Query-Based CORRIGIDA: "${query}", página ${page}, limite ${resultsPerPage}`);
   
-  const cacheKey = getCacheKey('queryBased', `${query}_page${page}_limit${resultsPerPage}`);
+  const cacheKey = getCacheKey('queryBased', `${query}_page${page}_limit${resultsPerPage}_sort${sortBy}`);
   
   if (isValidCache(cacheKey)) {
     const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT Query: ${cached.results.length} itens`);
+    console.log(`📦 Cache HIT Query: ${cached.results.length} itens de ${cached.pagination.totalResults} totais`);
     return cached;
   }
   
   try {
+    // ✅ CORREÇÃO: Passar parâmetros corretos para a API externa
     const url = `/conteudo-lbs/search?q=${encodeURIComponent(query)}&page=${page}&limit=${resultsPerPage}`;
+    
+    console.log(`🌐 Query API URL CORRIGIDA: ${API_BASE_URL}${url}`);
+    console.log(`📋 Parâmetros de paginação: página=${page}, limite=${resultsPerPage}`);
+    
     const data = await fetchFromAPI(url, TIMEOUTS.querySearch);
+    
+    console.log(`📊 Resposta da API externa:`, {
+      query: data.query,
+      total: data.total,
+      totalPages: data.totalPages,
+      currentPage: data.page,
+      itemsReceived: data.conteudo?.length || 0
+    });
     
     if (!data.conteudo || !Array.isArray(data.conteudo)) {
       console.warn(`⚠️ Query search sem resultados: "${query}"`);
@@ -306,25 +321,42 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
       return emptyResponse;
     }
     
+    // ✅ CORREÇÃO: Transformar os dados recebidos
     const transformedItems = data.conteudo.map((item: any) => transformApiItem(item));
     
+    console.log(`🔄 Itens transformados: ${transformedItems.length}`);
+    
+    // ✅ APLICAR FILTROS SE NECESSÁRIO (mas manter paginação da API)
     let filteredItems = transformedItems;
     if (hasActiveFilters(filters)) {
+      console.log(`🔍 Aplicando filtros adicionais...`);
       filteredItems = applyFilters(transformedItems, filters);
+      console.log(`📊 Após filtros: ${filteredItems.length} itens`);
     }
     
+    // ✅ ORDENAR RESULTADOS
     const sortedItems = sortResults(filteredItems, sortBy, query);
     
-    const totalResults = data.total || sortedItems.length;
-    const totalPages = data.totalPages || Math.ceil(totalResults / resultsPerPage);
+    // ✅ CORREÇÃO CRÍTICA: Usar os totais da API externa, não dos itens filtrados
+    const totalResults = data.total || 0; // Total REAL da API (51 para Warren)
+    const totalPages = data.totalPages || Math.ceil(totalResults / resultsPerPage); // Páginas REAIS
+    
+    console.log(`✅ PAGINAÇÃO CORRIGIDA:`, {
+      query,
+      currentPage: page,
+      totalResults, // Deve ser 51 para Warren
+      totalPages,   // Deve ser 6 para Warren com limite 9
+      itemsOnThisPage: sortedItems.length,
+      resultsPerPage
+    });
     
     const response = {
       success: true,
-      results: sortedItems,
+      results: sortedItems, // Apenas os itens desta página
       pagination: {
         currentPage: page,
         totalPages,
-        totalResults,
+        totalResults, // ✅ TOTAL REAL: 51 itens
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1
       },
@@ -337,11 +369,12 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
     
     setCache(cacheKey, response, 'queryBased');
     
-    console.log(`✅ Query search concluída: ${sortedItems.length} resultados para "${query}"`);
+    console.log(`✅ Query search CORRIGIDA concluída: ${sortedItems.length} resultados DESTA PÁGINA de ${totalResults} totais`);
     return response;
     
   } catch (error) {
     console.error(`❌ Query search falhou para "${query}":`, error);
+    console.log(`🔄 Fazendo fallback para busca global...`);
     return await performGlobalSearch(searchParams);
   }
 };

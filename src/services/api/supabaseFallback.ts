@@ -12,7 +12,7 @@ export class SupabaseFallback {
         case 'livro': functionName = 'fetch-books'; break;
         case 'aula': functionName = 'fetch-videos'; break;
         case 'podcast': functionName = 'fetch-podcasts'; break;
-        case 'artigos': functionName = 'fetch-articles'; break;
+        case 'artigo': functionName = 'fetch-articles'; break;
         default: throw new Error(`Tipo não suportado: ${tipo}`);
       }
       
@@ -47,7 +47,7 @@ export class SupabaseFallback {
         this.fetchFromSupabase('livro'),
         this.fetchFromSupabase('aula'),
         this.fetchFromSupabase('podcast'),
-        this.fetchFromSupabase('artigos')
+        this.fetchFromSupabase('artigo')
       ]);
 
       // ✅ CORREÇÃO: Remover .slice(0, 12) - permitir TODOS os itens

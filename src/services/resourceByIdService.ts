@@ -140,7 +140,7 @@ export class ResourceByIdService {
     console.log(`🎯 BUSCA ARTIGO: ID ${id}`);
     
     try {
-      const endpoint = `${API_BASE_URL}/conteudo-lbs/artigos/${id}`;
+      const endpoint = `${API_BASE_URL}/conteudo-lbs/artigo/${id}`;
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT_MS);
@@ -161,7 +161,7 @@ export class ResourceByIdService {
       const data = await response.json();
       console.log(`✅ SUCESSO ARTIGO: ID ${id}`, data);
       
-      return this.transformToResource(data, 'artigos', id);
+      return this.transformToResource(data, 'artigo', id);
       
     } catch (error) {
       if (error.name === 'AbortError') {
@@ -209,9 +209,9 @@ export class ResourceByIdService {
       }
 
       // ✅ CORREÇÃO CRÍTICA: Para livros e artigos - Fallbacks mais robustos
-      if (resourceType === 'titulo' || resourceType === 'livro' || resourceType === 'artigos') {
+      if (resourceType === 'titulo' || resourceType === 'livro' || resourceType === 'artigo') {
         const year = this.extractYearFromDate(data.data_publicacao || data.ano);
-        const documentType = resourceType === 'artigos' ? 'Artigo' : (data.tipo_documento || 'Livro');
+        const documentType = resourceType === 'artigo' ? 'Artigo' : (data.tipo_documento || 'Livro');
         
         // ✅ FALLBACKS MAIS ROBUSTOS para campos essenciais
         const resourceId = data.id || requestedId;

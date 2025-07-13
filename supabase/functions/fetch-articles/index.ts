@@ -21,7 +21,7 @@ serve(async (req) => {
 
     try {
       const response = await fetch(
-        'https://lbs-src1.onrender.com/api/v1/conteudo-lbs?tipo=artigos&page=1&limit=12',
+        'https://lbs-src1.onrender.com/api/v1/conteudo-lbs?tipo=artigo&page=1&limit=12',
         {
           method: 'GET',
           headers: {

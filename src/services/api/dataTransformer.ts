@@ -29,17 +29,17 @@ export class DataTransformer {
       year: this.extractYearFromDate(item.data_publicacao || item.ano || item.data_lancamento),
       description: item.descricao || 'Descrição não disponível',
       subject: this.getSubjectFromCategories(item.categorias) || this.getSubject(tipo),
-      type: tipo === 'livro' || tipo === 'artigos' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
+      type: tipo === 'livro' || tipo === 'artigo' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
       thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
     };
 
     console.log(`✅ DATA TRANSFORMER - PROCESSAMENTO CONCLUÍDO: ${realId} para ${baseResult.type}`);
 
-    if (tipo === 'livro' || tipo === 'artigos') {
+    if (tipo === 'livro' || tipo === 'artigo') {
       baseResult.pdfUrl = item.arquivo || item.url;
       baseResult.pages = item.paginas;
       baseResult.language = this.mapLanguageCode(item.language || item.idioma);
-      baseResult.documentType = tipo === 'artigos' ? 'Artigo' : (item.tipo_documento || 'Livro');
+      baseResult.documentType = tipo === 'artigo' ? 'Artigo' : (item.tipo_documento || 'Livro');
     } else if (tipo === 'aula') {
       baseResult.embedUrl = item.embed_url;
       baseResult.duration = item.duracao_ms ? this.formatDuration(item.duracao_ms) : undefined;
@@ -100,7 +100,7 @@ export class DataTransformer {
   private getSubject(tipo: string): string {
     switch (tipo) {
       case 'livro': return 'Administração';
-      case 'artigos': return 'Administração';
+      case 'artigo': return 'Administração';
       case 'aula': return 'Empreendedorismo';
       case 'podcast': return 'Negócios';
       default: return 'Geral';

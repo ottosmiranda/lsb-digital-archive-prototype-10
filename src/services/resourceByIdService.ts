@@ -240,7 +240,7 @@ export class ResourceByIdService {
           type: 'titulo',
           thumbnail: data.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
           pages: data.paginas,
-          pdfUrl: data.arquivo || data.url,
+          pdfUrl: data.pdfUrl || data.arquivo || data.url,
           language: this.mapLanguageCode(data.language || data.idioma),
           documentType: documentType,
           categories: Array.isArray(data.categorias) ? data.categorias : (data.categoria ? [data.categoria] : [])

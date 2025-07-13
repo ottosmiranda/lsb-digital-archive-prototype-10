@@ -66,7 +66,7 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				lsb: {
-					primary: 'hsl(210 80% 20%)',
+					primary: 'hsl(208 65% 19%)',
 					accent: 'hsl(45 99% 63%)',
 					neutral: 'hsl(0 0% 100%)',
 					section: 'hsl(210 20% 97%)',

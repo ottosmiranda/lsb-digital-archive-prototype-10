@@ -10,6 +10,8 @@ import SearchResults from "./pages/SearchResults";
 import ResourceDetail from "./pages/ResourceDetail";
 import Midia from "./pages/Midia";
 import Sobre from "./pages/Sobre";
+import Regulamento from "./pages/Regulamento";
+import Equipe from "./pages/Equipe";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -26,6 +28,8 @@ const App = () => (
           <Route path="/recurso/:id" element={<ResourceDetail />} />
           <Route path="/midia" element={<Midia />} />
           <Route path="/sobre" element={<Sobre />} />
+          <Route path="/regulamento" element={<Regulamento />} />
+          <Route path="/equipe" element={<Equipe />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/auth" element={<Auth />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

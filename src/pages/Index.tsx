@@ -1,11 +1,9 @@
-
 import Navigation from '@/components/Navigation';
 import Hero from '@/components/Hero';
 import FeaturedHighlights from '@/components/FeaturedHighlights';
 import MostAccessed from '@/components/MostAccessed';
 import FeaturedMedia from '@/components/FeaturedMedia';
 import RecentAdditions from '@/components/RecentAdditions';
-import QuickAccess from '@/components/QuickAccess';
 import ExternalResources from '@/components/ExternalResources';
 import Footer from '@/components/Footer';
 import HomepageErrorState from '@/components/HomepageErrorState';
@@ -26,12 +24,11 @@ const IndexContent = () => {
         isUsingFallback={isUsingFallback} 
       />
       
-      {/* Nova ordem das seções conforme solicitado */}
+      {/* Seções da homepage sem o QuickAccess */}
       <FeaturedHighlights />
       <MostAccessed />
       <FeaturedMedia />
       <RecentAdditions />
-      <QuickAccess />
       <ExternalResources />
       <Footer />
     </div>

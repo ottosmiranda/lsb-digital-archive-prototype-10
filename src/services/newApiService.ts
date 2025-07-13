@@ -118,7 +118,7 @@ export class NewApiService {
         this.fetchContentScalable('livro', undefined, false),   // Homepage: ~12 livros
         this.fetchContentScalable('aula', undefined, false),    // Homepage: ~12 vídeos
         this.fetchContentScalable('podcast', undefined, false), // Homepage: ~12 podcasts
-        this.fetchContentScalable('artigo', undefined, false)   // Homepage: ~12 artigos
+        this.fetchContentScalable('artigos', undefined, false)  // Homepage: ~12 artigos
       ]);
 
       const books = results[0].status === 'fulfilled' ? results[0].value : [];
@@ -230,7 +230,7 @@ export class NewApiService {
           this.contentDiscovery.discoverTotalContent('livro'),
           this.contentDiscovery.discoverTotalContent('aula'), 
           this.contentDiscovery.discoverTotalContent('podcast'),
-          this.contentDiscovery.discoverTotalContent('artigo')
+          this.contentDiscovery.discoverTotalContent('artigos')
         ]);
 
         const books = results[0].status === 'fulfilled' ? results[0].value : 30;

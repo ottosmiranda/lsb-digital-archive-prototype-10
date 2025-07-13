@@ -251,7 +251,7 @@ const transformApiItem = (item: any): SearchResult => {
   // ✅ CORREÇÃO CRÍTICA: Detecção inteligente de tipo baseada em múltiplos campos
   let detectedType: 'titulo' | 'video' | 'podcast';
   
-  if (item.tipo === 'livro' || item.tipo === 'artigo') {
+  if (item.tipo === 'livro' || item.tipo === 'artigos') {
     detectedType = 'titulo';
     console.log(`✅ TIPO DETECTADO: ${item.tipo} → titulo (livro/artigo)`);
   } else if (item.tipo === 'aula' || item.tipo === 'video') {
@@ -308,7 +308,7 @@ const transformApiItem = (item: any): SearchResult => {
     baseResult.language = item.language ? mapLanguageCode(item.language) : mapLanguageCode(item.idioma);
     
     // ✅ CORREÇÃO: Mapeamento correto de document type
-    if (item.tipo === 'artigo') {
+    if (item.tipo === 'artigos') {
       baseResult.documentType = 'Artigo';
       console.log(`📄 Document type: Artigo (baseado em item.tipo: ${item.tipo})`);
     } else {
@@ -488,7 +488,7 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
       fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
       fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
       fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
-      fetchFromAPI(`/conteudo-lbs?tipo=artigo&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation) // ✅ CORRIGIDO: artigos → artigo
+      fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation) // ✅ NOVO: Buscar artigos
     ]);
     
     const allItems: SearchResult[] = [];
@@ -628,7 +628,7 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
           
           const [livrosResponse, artigosResponse] = await Promise.allSettled([
             fetchFromAPI(`/conteudo-lbs?tipo=livro&page=${page}&limit=${limitLivros}`, TIMEOUTS.paginatedBatch),
-            fetchFromAPI(`/conteudo-lbs?tipo=artigo&page=${page}&limit=${limitArtigos}`, TIMEOUTS.paginatedBatch) // ✅ CORRIGIDO: artigos → artigo
+            fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=${page}&limit=${limitArtigos}`, TIMEOUTS.paginatedBatch)
           ]);
           
           let totalLivros = 0;
@@ -893,7 +893,7 @@ const getSubject = (tipo: string): string => {
     'video': 'Vídeo', 
     'aula': 'Educação',
     'livro': 'Literatura',
-    'artigo': 'Artigo',
+    'artigos': 'Artigo',
     'titulo': 'Publicação'
   };
   

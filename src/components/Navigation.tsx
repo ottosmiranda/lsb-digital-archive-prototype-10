@@ -53,10 +53,10 @@ const Navigation = () => {
               </Link>
             </div>
 
-            {/* Desktop Navigation - Links + Conditional Search */}
-            <div className="hidden md:flex items-center space-x-6">
-              {/* Navigation Links */}
-              <div className="flex space-x-6">
+            {/* Desktop Navigation - Reorganized Layout */}
+            <div className="hidden lg:flex items-center justify-end flex-1 min-w-0">
+              {/* Navigation Links Container */}
+              <div className="flex items-center space-x-3 flex-shrink-0">
                 {navItems.map((item) => (
                   item.external ? (
                     <a
@@ -64,16 +64,16 @@ const Navigation = () => {
                       href={item.path}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
+                      className="inline-flex items-center px-2 py-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors whitespace-nowrap"
                     >
                       {item.label}
-                      <ExternalLink className="ml-1 h-3 w-3" />
+                      <ExternalLink className="ml-1 h-3 w-3 flex-shrink-0" />
                     </a>
                   ) : (
                     <Link
                       key={item.path}
                       to={item.path}
-                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors ${
+                      className={`inline-flex items-center px-2 py-1 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${
                         isActive(item.path)
                           ? "border-lsb-primary text-lsb-primary"
                           : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
@@ -85,12 +85,16 @@ const Navigation = () => {
                 ))}
               </div>
 
-              {/* Compact Search Bar - Only show on internal pages */}
-              {!isHomePage && <CompactSearchBar />}
+              {/* Compact Search Bar - Optimized size */}
+              {!isHomePage && (
+                <div className="ml-4 flex-shrink-0">
+                  <CompactSearchBar />
+                </div>
+              )}
             </div>
 
             {/* Mobile menu button */}
-            <div className="md:hidden flex items-center">
+            <div className="lg:hidden flex items-center">
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
@@ -104,7 +108,7 @@ const Navigation = () => {
 
       {/* Mobile menu */}
       {isOpen && (
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <div className="pt-2 pb-3 space-y-1">
             {navItems.map((item) => (
               item.external ? (

@@ -21,6 +21,18 @@ export class DataTransformer {
     
     const realId = item.id; // Usar apenas o ID real da API
     
+    // ✅ NOVA LÓGICA: Definir tipo baseado no conteúdo específico
+    let resourceType: 'titulo' | 'video' | 'podcast';
+    if (tipo === 'livro') {
+      resourceType = 'titulo';
+    } else if (tipo === 'artigos') {
+      resourceType = 'titulo'; // Manter como 'titulo' mas com documentType = 'Artigo'
+    } else if (tipo === 'aula') {
+      resourceType = 'video';
+    } else {
+      resourceType = 'podcast';
+    }
+
     const baseResult: SearchResult = {
       id: realId, // ✅ CORRIGIDO: Apenas ID real da API
       originalId: String(item.id),
@@ -29,8 +41,8 @@ export class DataTransformer {
       year: this.extractYearFromDate(item.data_publicacao || item.ano || item.data_lancamento),
       description: item.descricao || 'Descrição não disponível',
       subject: this.getSubjectFromCategories(item.categorias) || this.getSubject(tipo),
-      type: tipo === 'livro' || tipo === 'artigos' ? 'titulo' : tipo === 'aula' ? 'video' : 'podcast' as 'titulo' | 'video' | 'podcast',
-      thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
+      type: resourceType,
+      thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
     };
 
     console.log(`✅ DATA TRANSFORMER - PROCESSAMENTO CONCLUÍDO: ${realId} para ${baseResult.type}`);

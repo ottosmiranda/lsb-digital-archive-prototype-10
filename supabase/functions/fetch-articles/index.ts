@@ -13,6 +13,73 @@ serve(async (req) => {
   }
 
   try {
+    const url = new URL(req.url);
+    const articleId = url.searchParams.get('id');
+    
+    if (articleId) {
+      // Buscar artigo específico por ID
+      console.log(`🔍 Buscando artigo por ID: ${articleId}`);
+      
+      const timeoutMs = 15000;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const response = await fetch(
+          `https://lbs-src1.onrender.com/api/v1/conteudo-lbs/artigos/${articleId}`,
+          {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            signal: controller.signal
+          }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`API retornou status ${response.status}`);
+        }
+
+        const article = await response.json();
+        console.log(`✅ Artigo encontrado: ${article.titulo || 'Sem título'}`);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            article: article,
+            id: articleId
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+
+      } catch (error) {
+        clearTimeout(timeoutId);
+        
+        if (error.name === 'AbortError') {
+          console.error(`❌ Timeout na busca do artigo ${articleId}`);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Timeout na busca do artigo',
+              article: null
+            }),
+            { 
+              status: 408,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+
+        throw error;
+      }
+    }
+    
+    // Buscar lista paginada de artigos (comportamento original)
     console.log('🔍 Iniciando busca de artigos...');
     
     const timeoutMs = 15000;

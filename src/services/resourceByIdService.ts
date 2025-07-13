@@ -67,8 +67,13 @@ export class ResourceByIdService {
       const data = await response.json();
       console.log(`✅ API SUCCESS: ${resourceType} ID ${id}`, data);
       
+      // Para artigos via edge function, extrair o artigo do wrapper
+      const actualData = (resourceType === 'artigo' || resourceType === 'artigos') && data.article 
+        ? data.article 
+        : data;
+      
       // ✅ CORREÇÃO: Transformar sempre, com fallbacks robustos
-      const transformedResource = this.transformToResource(data, resourceType, id);
+      const transformedResource = this.transformToResource(actualData, resourceType, id);
       
       // ✅ NOVO: Validação final mais permissiva
       if (transformedResource && this.isValidResource(transformedResource)) {
@@ -125,9 +130,12 @@ export class ResourceByIdService {
       case 'video':
         return `${baseUrl}/aula/${id}`;
       case 'titulo':
-        // Para títulos, precisamos determinar se é livro ou artigo
-        // Por enquanto, tentaremos livro primeiro, depois artigo
+        // Para títulos, tentaremos livro primeiro
         return `${baseUrl}/livro/${id}`;
+      case 'artigo':
+      case 'artigos':
+        // Usar a edge function para artigos
+        return `https://acnympbxfptajtxvmkqn.supabase.co/functions/v1/fetch-articles?id=${id}`;
       case 'podcast':
         return `${baseUrl}/podcast/${id}`;
       default:

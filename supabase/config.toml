@@ -16,5 +16,8 @@ verify_jwt = true
 [functions.fetch-biblioteca]
 verify_jwt = true
 
+[functions.fetch-articles]
+verify_jwt = true
+
 [functions.recent-additions-rotation]
 verify_jwt = false

@@ -130,10 +130,16 @@ export const useResourceById = (id: string | undefined, type?: string): UseResou
             console.log(`🔍 Tentando buscar ${resourceType} com ID: ${id} (${i + 1}/${searchTypes.length})`);
             
             const actualType = resourceType === 'titulo' ? 'livro' : resourceType;
-            const apiResource = await ResourceByIdService.fetchResourceById(id, actualType);
+            let apiResource = await ResourceByIdService.fetchResourceById(id, actualType);
+            
+            // ✅ NOVA LÓGICA: Se é titulo e não encontrou como livro, tentar como artigo
+            if (!apiResource && resourceType === 'titulo') {
+              console.log(`📰 Tentando buscar como artigo...`);
+              apiResource = await ResourceByIdService.fetchResourceById(id, 'artigos');
+            }
             
             if (apiResource && isValidTransformedResource(apiResource)) {
-              console.log(`✅ FASE 4 SUCCESS: Encontrado na API como ${actualType}`);
+              console.log(`✅ FASE 4 SUCCESS: Encontrado na API como ${actualType === 'livro' && !apiResource ? 'artigo' : actualType}`);
               setResource(apiResource);
               setLoading(false);
               setError(null);

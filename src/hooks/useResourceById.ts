@@ -33,6 +33,10 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
       console.group('🔍 BUSCA OTIMIZADA DE RECURSO - FOCO EM LIVROS');
       console.log('🎯 Target ID:', id);
 
+      // ✅ CORREÇÃO: Garantir loading true no início
+      setLoading(true);
+      setError(null);
+
       // FASE 1: Busca no cache de lookup primeiro (muito rápida)
       const resourceInfo = resourceLookupService.getResourceInfo(id);
       if (resourceInfo) {
@@ -101,16 +105,21 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
       if (!apiAttempted) {
         console.log('📡 FASE 4: Busca na API - PRIORITIZANDO LIVROS');
         setApiAttempted(true);
-        // ✅ CORREÇÃO: Manter loading true durante busca na API
+        // ✅ CORREÇÃO CRÍTICA: Manter loading true durante TODA a busca sequencial
         setLoading(true);
-        setError(null); // ✅ CORREÇÃO: Limpar erro durante tentativas
+        setError(null);
         
         // ✅ CORREÇÃO: Para títulos, tentar apenas livro (não artigo)
         const searchTypes = resourceInfo?.type ? [resourceInfo.type] : ['titulo', 'video', 'podcast'];
         
-        for (const resourceType of searchTypes) {
+        // ✅ NOVA LÓGICA: Loop sequencial mantendo loading true
+        let foundValidResource = false;
+        
+        for (let i = 0; i < searchTypes.length; i++) {
+          const resourceType = searchTypes[i];
+          
           try {
-            console.log(`🔍 Tentando buscar ${resourceType} com ID: ${id}`);
+            console.log(`🔍 Tentando buscar ${resourceType} com ID: ${id} (${i + 1}/${searchTypes.length})`);
             
             // ✅ CORREÇÃO ESPECÍFICA: Para 'titulo', usar endpoint de livro
             const actualType = resourceType === 'titulo' ? 'livro' : resourceType;
@@ -120,9 +129,10 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
             if (apiResource && isValidTransformedResource(apiResource)) {
               console.log(`✅ FASE 4 SUCCESS: Encontrado na API como ${actualType}`);
               setResource(apiResource);
-              setLoading(false);
+              setLoading(false); // ✅ Só agora definir como false
               setError(null);
               setRetrying(false);
+              foundValidResource = true;
               console.groupEnd();
               return;
             } else if (apiResource) {
@@ -131,16 +141,28 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
           } catch (apiError) {
             console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, apiError);
           }
+          
+          // ✅ CRUCIAL: Manter loading true entre tentativas
+          // Não definir loading false aqui!
         }
+        
+        // ✅ Só definir estados finais após TODAS as tentativas
+        if (!foundValidResource) {
+          console.log('💀 FALHA TOTAL: Recurso não encontrado após todas as tentativas');
+          setResource(null);
+          setLoading(false); // ✅ Agora sim, loading false após todas tentativas
+          setError('Recurso não encontrado ou dados inválidos');
+          setRetrying(false);
+        }
+      } else {
+        // Se já tentou API mas não encontrou nada
+        console.log('💀 FALHA TOTAL: Recurso não encontrado ou inválido');
+        setResource(null);
+        setLoading(false);
+        setError('Recurso não encontrado ou dados inválidos');
+        setRetrying(false);
       }
         
-      // Se chegou aqui, recurso não foi encontrado
-      console.log('💀 FALHA TOTAL: Recurso não encontrado ou inválido');
-      setResource(null);
-      setLoading(false);
-      setError('Recurso não encontrado ou dados inválidos');
-      setRetrying(false);
-      
       console.groupEnd();
     };
 
@@ -167,10 +189,10 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
     setLoading(true);
   }, [id]);
 
-  // ✅ CORREÇÃO PRINCIPAL: Garantir que loading seja true até recurso ser definido OU erro confirmado
+  // ✅ RETORNO SIMPLIFICADO: Confiar na lógica interna do hook
   return { 
     resource, 
-    loading: dataLoading || loading || (!resource && !error), 
+    loading, 
     error, 
     retrying 
   };

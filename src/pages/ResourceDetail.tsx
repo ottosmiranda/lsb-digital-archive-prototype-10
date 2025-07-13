@@ -23,7 +23,7 @@ const ResourceDetail = () => {
     window.scrollTo(0, 0);
   }, [id, resource]);
 
-  console.group('🎯 RESOURCE DETAIL DEBUG (OPTIMIZED)');
+  console.group('🎯 RESOURCE DETAIL DEBUG (OTIMIZADO)');
   console.log('📋 URL ID:', id);
   console.log('📋 Resource found:', resource ? { id: resource.id, type: resource.type, title: resource.title.substring(0, 50) + '...' } : 'null');
   console.log('📋 Loading:', loading);
@@ -31,7 +31,7 @@ const ResourceDetail = () => {
   console.log('📋 Error:', error);
   console.groupEnd();
 
-  // Enhanced loading with retry states
+  // ✅ CORREÇÃO: Seguir ordem exata solicitada pelo usuário
   if (loading) {
     const loadingMessage = retrying 
       ? 'Aguardando dados serem carregados...' 
@@ -43,55 +43,51 @@ const ResourceDetail = () => {
         <EnhancedLoadingSkeleton retrying={retrying} message={loadingMessage} />
       </>
     );
-  }
-  
-  // ✅ CORREÇÃO: Só mostrar "não encontrado" quando realmente não está carregando
-  if ((!resource || error) && !loading) {
+  } else if (!resource && error) {
+    // ✅ Só mostrar erro quando loading terminou e resource não foi encontrado
     return (
       <>
         <Navigation />
         <ResourceNotFound />
       </>
     );
-  }
+  } else if (resource) {
+    // If podcast detected
+    if (resource.type === 'podcast') {
+      return <PodcastDetailView podcast={resource} />;
+    }
 
-  // If podcast detected
-  if (resource && resource.type === 'podcast') {
-    return <PodcastDetailView podcast={resource} />;
-  }
+    return (
+      <div className="min-h-screen bg-white">
+        <Navigation />
+        <div className="lsb-container">
+          <div className="lsb-content">
+            <div className="py-8 pb-[100px]">
+              <ResourceBreadcrumb title={resource.title} />
+              <BackButton />
 
-  // ✅ SEGURANÇA ADICIONAL: Se não tem resource mas não está loading, não renderizar nada
-  if (!resource) {
-    return null;
-  }
-
-  return (
-    <div className="min-h-screen bg-white">
-      <Navigation />
-      <div className="lsb-container">
-        <div className="lsb-content">
-          <div className="py-8 pb-[100px]">
-            <ResourceBreadcrumb title={resource.title} />
-            <BackButton />
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Main Content */}
-              <div className="lg:col-span-2">
-                <ResourceContent resource={resource} />
-                <MediaSection resource={resource} />
-              </div>
-              {/* Sidebar */}
-              <div className="space-y-6">
-                <ResourceInfo resource={resource} />
-                <ActionButtons resource={resource} />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Main Content */}
+                <div className="lg:col-span-2">
+                  <ResourceContent resource={resource} />
+                  <MediaSection resource={resource} />
+                </div>
+                {/* Sidebar */}
+                <div className="space-y-6">
+                  <ResourceInfo resource={resource} />
+                  <ActionButtons resource={resource} />
+                </div>
               </div>
             </div>
           </div>
         </div>
+        <Footer />
       </div>
-      <Footer />
-    </div>
-  );
+    );
+  }
+
+  // ✅ Fallback final (não deveria chegar aqui)
+  return null;
 };
 
 export default ResourceDetail;

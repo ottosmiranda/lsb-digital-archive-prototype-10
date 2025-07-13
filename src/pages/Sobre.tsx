@@ -1,3 +1,4 @@
+
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -164,7 +165,7 @@ const Sobre = () => {
             <div className="lsb-content">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                 <div className="animate-slide-up">
-                  <h2 className="text-3xl font-bold text-gray-900 mb-6">Missão</h2>
+                  <h2 className="h2-title text-gray-900">Missão</h2>
                   <div className="prose prose-lg text-gray-600">
                     <p className="leading-relaxed">
                       A Biblioteca Digital Link tem como objetivo proporcionar acesso a uma ampla gama de recursos informacionais, promovendo o aprendizado e a pesquisa no campo da administração de empresas com ênfase em empreendedorismo e outras áreas do conhecimento.
@@ -191,7 +192,7 @@ const Sobre = () => {
           <div className="lsb-container">
             <div className="lsb-content">
               <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">Função da Biblioteca Digital Link</h2>
+                <h2 className="h2-title text-gray-900">Função da Biblioteca Digital Link</h2>
                 <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                   Compete à Biblioteca Digital Link realizar as seguintes funções
                 </p>
@@ -201,13 +202,13 @@ const Sobre = () => {
                 {libraryFunctions.map((func, index) => {
                   const IconComponent = func.icon;
                   return (
-                    <Card key={index} className="relative overflow-hidden hover:shadow-xl transition-all duration-300 group border-lsb-card-border">
-                      <div className="absolute top-0 left-0 w-2 h-full bg-lsb-card-accent"></div>
+                    <Card key={index} className="relative overflow-hidden hover:shadow-xl transition-all duration-300 group" style={{ borderColor: '#A7B1C6' }}>
+                      <div className="absolute top-0 left-0 w-2 h-full" style={{ backgroundColor: '#7D8BA5' }}></div>
                       
                       <CardHeader className="pb-4">
                         <div className="flex items-center gap-4 mb-3">
-                          <div className="p-3 rounded-lg bg-lsb-card-accent-bg">
-                            <IconComponent className="h-6 w-6 text-lsb-card-accent" />
+                          <div className="p-3 rounded-lg" style={{ backgroundColor: '#F1F3F7' }}>
+                            <IconComponent className="h-6 w-6" style={{ color: '#7D8BA5' }} />
                           </div>
                         </div>
                         <CardTitle className="text-xl text-gray-900">{func.title}</CardTitle>
@@ -231,7 +232,7 @@ const Sobre = () => {
           <div className="lsb-container">
             <div className="lsb-content">
               <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">Função do Bibliotecário</h2>
+                <h2 className="h2-title text-gray-900">Função do Bibliotecário</h2>
                 <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                   O bibliotecário da Link tem um papel fundamental na gestão da Biblioteca Digital Link
                 </p>
@@ -241,11 +242,11 @@ const Sobre = () => {
                 {librarianFunctions.map((func, index) => {
                   const IconComponent = func.icon;
                   return (
-                    <Card key={index} className="relative overflow-hidden hover:shadow-lg transition-all duration-300 group h-full border-lsb-card-border">
+                    <Card key={index} className="relative overflow-hidden hover:shadow-lg transition-all duration-300 group h-full" style={{ borderColor: '#A7B1C6' }}>
                       <CardHeader className="pb-3">
                         <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 rounded-lg bg-lsb-card-accent-bg">
-                            <IconComponent className="h-5 w-5 text-lsb-card-accent" />
+                          <div className="p-2 rounded-lg" style={{ backgroundColor: '#F1F3F7' }}>
+                            <IconComponent className="h-5 w-5" style={{ color: '#7D8BA5' }} />
                           </div>
                         </div>
                         <CardTitle className="text-lg text-gray-900 leading-tight">{func.title}</CardTitle>

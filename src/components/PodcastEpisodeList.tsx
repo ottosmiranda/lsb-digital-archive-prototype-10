@@ -1,5 +1,5 @@
 
-import React, { useImperativeHandle, useState, forwardRef, useCallback } from "react";
+import React, { useImperativeHandle, useState, forwardRef } from "react";
 import { usePodcastProgramEpisodes } from "@/hooks/usePodcastProgramEpisodes";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,9 @@ export interface PodcastEpisodeListHandles {
 }
 
 interface PodcastEpisodeListProps {
-  podcastTitle: string; // Nome do programa do podcast
-  currentEpisodeId?: string; // ID do episódio atual para destacar
-  embedUrl?: string; // URL do player principal
+  podcastTitle: string;
+  currentEpisodeId?: string;
+  embedUrl?: string;
 }
 
 interface SelectedEpisode {
@@ -39,11 +39,9 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
       loadMoreEpisodes
     } = usePodcastProgramEpisodes(podcastTitle, 10);
 
-    // Selected episode state
     const [selectedEpisode, setSelectedEpisode] = useState<SelectedEpisode | null>(null);
     const [playingFirst, setPlayingFirst] = useState(false);
 
-    // Infinite scroll hook
     const { loadingRef } = useInfiniteScroll({
       hasMore,
       loading: loadingMore,
@@ -51,13 +49,12 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
       threshold: 200
     });
 
-    // Handle episode selection
     const handleEpisodeSelect = (episode: any) => {
       const selectedEpisodeData: SelectedEpisode = {
         id: episode.episodio_id || episode.id.toString(),
         title: episode.title,
         description: episode.description,
-        date: new Date().toLocaleDateString('pt-BR'), // Fallback date
+        date: new Date().toLocaleDateString('pt-BR'),
         duration: episode.duration || "45:00",
         embedUrl: episode.embedUrl
       };
@@ -65,18 +62,16 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
       setSelectedEpisode(selectedEpisodeData);
       setPlayingFirst(true);
 
-      // Scroll to main player
       const section = document.getElementById("all-episodes-list");
       if (section) {
         section.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     };
 
-    // Expose "playLatest" method to parent
     useImperativeHandle(ref, () => ({
       playLatest: () => {
         setPlayingFirst(true);
-        setSelectedEpisode(null); // Reset to show original player
+        setSelectedEpisode(null);
       },
     }));
 
@@ -111,9 +106,7 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
     return (
       <section className="mt-10" id="all-episodes-list">
         <EpisodesHeader
-          hasRealData={true}
           episodeCount={totalEpisodes}
-          total={totalEpisodes}
           episodesLoading={false}
         />
         
@@ -144,7 +137,6 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
               <EpisodeItem
                 key={episode.id}
                 episode={episode}
-                isSpotifyEpisode={false}
                 isSelected={
                   selectedEpisode?.id === (episode.episodio_id || episode.id.toString()) ||
                   currentEpisodeId === (episode.episodio_id || episode.id.toString())
@@ -179,7 +171,6 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
             </div>
           )}
 
-          {/* End of list message */}
           {!hasMore && episodes.length > 0 && (
             <div className="text-center py-6 text-gray-500">
               <p>Você visualizou todos os {episodes.length} episódios disponíveis</p>

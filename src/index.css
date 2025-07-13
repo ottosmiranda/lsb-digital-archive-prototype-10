@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -191,7 +192,18 @@
     }
   }
 
-  /* P2 Paragraph Style */
+  /* P1 Paragraph Style - Updated color to #292929 */
+  .p1-text {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-weight: 400;
+    color: #292929;
+    font-size: 24px;
+    letter-spacing: 0.02em;
+    line-height: 140%;
+    margin-bottom: 23px;
+  }
+
+  /* P2 Paragraph Style - Updated color to #292929 */
   .p2-text {
     font-family: 'Aeonik', 'Montserrat', sans-serif;
     font-weight: 400;
@@ -199,13 +211,55 @@
     letter-spacing: 0em;
     line-height: 140%;
     margin-bottom: 20px;
-    color: #626F88;
+    color: #292929;
   }
 
   @media (min-width: 1024px) {
     .p2-text {
       font-size: 20px;
     }
+  }
+
+  /* P3 Paragraph Style - For card body text */
+  .p3-text {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+    letter-spacing: 0em;
+    line-height: 140%;
+    margin-bottom: 20px;
+    color: #292929;
+  }
+
+  /* P4, P5, P6 Paragraph Styles - Prepared for future use */
+  .p4-text {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    letter-spacing: 0em;
+    line-height: 140%;
+    margin-bottom: 16px;
+    color: #292929;
+  }
+
+  .p5-text {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 12px;
+    letter-spacing: 0em;
+    line-height: 140%;
+    margin-bottom: 12px;
+    color: #292929;
+  }
+
+  .p6-text {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 10px;
+    letter-spacing: 0em;
+    line-height: 140%;
+    margin-bottom: 10px;
+    color: #292929;
   }
 
   /* H2 Global Title Style - Aeonik Bold, Uppercase, Responsive */
@@ -256,17 +310,6 @@
     margin: 0;
     padding: 0;
     color: #1D3253 !important;
-  }
-
-  /* P1 Paragraph Style */
-  .p1-text {
-    font-family: 'Aeonik', 'Montserrat', sans-serif;
-    font-weight: 400;
-    color: #FFFFFF;
-    font-size: 24px;
-    letter-spacing: 0.02em;
-    line-height: 140%;
-    margin-bottom: 23px;
   }
 
   /* Existing LSB Classes */

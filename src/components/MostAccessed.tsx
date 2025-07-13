@@ -1,4 +1,5 @@
 
+
 import { Flame } from 'lucide-react';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useMemo, useRef } from 'react';
@@ -152,7 +153,7 @@ const MostAccessed = () => {
                           <h3 className="font-semibold text-sm mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight flex-1">
                             {item.title}
                           </h3>
-                          <p className="text-xs text-gray-600 mb-3">{item.author}</p>
+                          <p className="p3-text text-xs mb-3">{item.author}</p>
                           <Button 
                             variant="ghost" 
                             size="sm" 

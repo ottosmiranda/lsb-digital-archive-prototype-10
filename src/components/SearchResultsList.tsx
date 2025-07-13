@@ -1,3 +1,4 @@
+
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -161,7 +162,7 @@ const SearchResultsList = ({
                       </Badge>
                     </div>
 
-                    <p className="text-sm text-gray-600 line-clamp-2">
+                    <p className="p3-text text-sm line-clamp-2">
                       {result.description}
                     </p>
                   </div>

@@ -1,3 +1,4 @@
+
 import { Play, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -110,10 +111,10 @@ const FeaturedMedia = () => {
       <div className="lsb-container">
         <div className="lsb-content">
           <div className="text-center mb-12 animate-fade-in">
-            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
               Mídia em Destaque
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="subtitle max-w-2xl mx-auto">
               Descubra nossos conteúdos audiovisuais mais populares
             </p>
           </div>

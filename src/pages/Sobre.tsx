@@ -1,3 +1,4 @@
+
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -164,7 +165,7 @@ const Sobre = () => {
             <div className="lsb-content">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                 <div className="animate-slide-up">
-                  <h2 className="h2-title text-gray-900">Missão</h2>
+                  <h2 className="h2-title">Missão</h2>
                   <div className="prose prose-lg text-gray-600">
                     <p className="leading-relaxed">
                       A Biblioteca Digital Link tem como objetivo proporcionar acesso a uma ampla gama de recursos informacionais, promovendo o aprendizado e a pesquisa no campo da administração de empresas com ênfase em empreendedorismo e outras áreas do conhecimento.
@@ -198,8 +199,8 @@ const Sobre = () => {
           <div className="lsb-container">
             <div className="lsb-content">
               <div className="text-center mb-12">
-                <h2 className="h2-title text-gray-900">Função da Biblioteca Digital Link</h2>
-                <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                <h2 className="h2-title">Função da Biblioteca Digital Link</h2>
+                <p className="subtitle max-w-2xl mx-auto">
                   Compete à Biblioteca Digital Link realizar as seguintes funções
                 </p>
               </div>
@@ -217,7 +218,7 @@ const Sobre = () => {
                             <IconComponent className="h-6 w-6" style={{ color: '#7D8BA5' }} />
                           </div>
                         </div>
-                        <CardTitle className="text-xl text-gray-900">{func.title}</CardTitle>
+                        <CardTitle className="text-xl">{func.title}</CardTitle>
                       </CardHeader>
                       
                       <CardContent>
@@ -238,8 +239,8 @@ const Sobre = () => {
           <div className="lsb-container">
             <div className="lsb-content">
               <div className="text-center mb-12">
-                <h2 className="h2-title text-gray-900">Função do Bibliotecário</h2>
-                <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                <h2 className="h2-title">Função do Bibliotecário</h2>
+                <p className="subtitle max-w-2xl mx-auto">
                   O bibliotecário da Link tem um papel fundamental na gestão da Biblioteca Digital Link
                 </p>
               </div>
@@ -251,7 +252,7 @@ const Sobre = () => {
                     <Card key={index} className="p-8 text-center hover:shadow-lg transition-all duration-300 group h-full">
                       <div className="flex flex-col items-center space-y-4">
                         <IconComponent className="h-8 w-8" style={{ color: '#7D8BA5' }} />
-                        <CardTitle className="text-lg text-gray-900 uppercase font-bold leading-tight">
+                        <CardTitle className="text-lg uppercase font-bold leading-tight">
                           {func.title}
                         </CardTitle>
                         <CardDescription className="text-gray-600 leading-relaxed text-sm">

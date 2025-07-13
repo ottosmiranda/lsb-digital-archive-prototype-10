@@ -138,6 +138,7 @@
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold uppercase;
+    color: #1D3253 !important;
   }
 
   h1 {
@@ -156,6 +157,35 @@
     @apply text-xl md:text-2xl font-semibold;
   }
 
+  /* Espaçamento entre H1 e subtítulos */
+  h1 + p,
+  h1 + .subtitle {
+    margin-top: 16px;
+  }
+
+  /* Classe global para subtítulos */
+  .subtitle {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-weight: 500;
+    font-size: 16px;
+    letter-spacing: 0px;
+    line-height: 140%;
+    margin-bottom: 40px;
+    color: #626F88;
+  }
+
+  @media (min-width: 768px) {
+    .subtitle {
+      font-size: 20px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .subtitle {
+      font-size: 22px;
+    }
+  }
+
   /* H2 Global Title Style - Aeonik Bold, Uppercase, Responsive */
   .h2-title {
     font-family: 'Aeonik', 'Montserrat', sans-serif;
@@ -167,7 +197,7 @@
     margin-bottom: 60px;
     margin-top: 0;
     padding: 0;
-    color: inherit;
+    color: #1D3253 !important;
   }
 
   @media (min-width: 768px) {
@@ -203,6 +233,7 @@
     line-height: 100%;
     margin: 0;
     padding: 0;
+    color: #1D3253 !important;
   }
 
   /* P1 Paragraph Style */
@@ -218,7 +249,7 @@
 
   /* Existing LSB Classes */
   .lsb-primary {
-    color: hsl(var(--lsb-primary));
+    color: #1D3253;
   }
 
   .lsb-accent {

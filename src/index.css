@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -139,6 +138,16 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold uppercase;
     color: #1D3253 !important;
+  }
+
+  /* Specific override for Hero section titles */
+  .bg-\[#10284E\] h1,
+  .bg-\[#10284E\] h2,
+  .bg-\[#10284E\] h3,
+  .bg-\[#10284E\] h4,
+  .bg-\[#10284E\] h5,
+  .bg-\[#10284E\] h6 {
+    color: #FFFFFF !important;
   }
 
   h1 {

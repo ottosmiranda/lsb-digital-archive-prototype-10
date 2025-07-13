@@ -138,6 +138,7 @@
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold uppercase;
+    color: #1D3253; /* Cor primária LSB para fundos claros */
   }
 
   h1 {
@@ -154,6 +155,45 @@
 
   h4 {
     @apply text-xl md:text-2xl font-semibold;
+  }
+
+  /* Títulos em fundos escuros devem ser brancos */
+  .bg-lsb-primary h1,
+  .bg-lsb-primary h2,
+  .bg-lsb-primary h3,
+  .bg-lsb-primary h4,
+  .bg-lsb-primary h5,
+  .bg-lsb-primary h6,
+  footer.bg-lsb-primary h1,
+  footer.bg-lsb-primary h2,
+  footer.bg-lsb-primary h3,
+  footer.bg-lsb-primary h4,
+  footer.bg-lsb-primary h5,
+  footer.bg-lsb-primary h6 {
+    color: #FFFFFF !important;
+  }
+
+  /* Subtítulo global associado a H1 */
+  .h1-subtitle {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-weight: 500; /* Medium */
+    font-size: 22px; /* Desktop */
+    letter-spacing: 0px;
+    line-height: 140%;
+    margin-bottom: 40px;
+    margin-top: 24px; /* Espaçamento padrão do H1 */
+  }
+
+  @media (max-width: 1023px) and (min-width: 768px) {
+    .h1-subtitle {
+      font-size: 20px; /* Tablet */
+    }
+  }
+
+  @media (max-width: 767px) {
+    .h1-subtitle {
+      font-size: 16px; /* Mobile */
+    }
   }
 
   /* H2 Global Title Style - Aeonik Bold, Uppercase, Responsive */

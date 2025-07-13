@@ -149,7 +149,7 @@ const Sobre = () => {
                     <span className="block text-lsb-accent">Biblioteca Digital da Link</span>
                   </h1>
                   
-                  <p className="p1-text max-w-4xl mx-auto">
+                  <p className="h1-subtitle text-white max-w-4xl mx-auto">
                     Oferecemos acesso qualificado à informação e ao conhecimento, promovendo a educação, a pesquisa e a cultura
                   </p>
                 </div>

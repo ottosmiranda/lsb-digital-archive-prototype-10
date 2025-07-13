@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Users, Download, Globe, Heart, Mail, Phone, MapPin, Target, Eye, Award, Database, FileText, Video, Headphones, User, Search, Settings, TrendingUp, UserCheck, GraduationCap, Megaphone, BarChart3, BookMarked } from "lucide-react";
+
 const stats = [{
   label: 'Recursos Disponíveis',
   value: '1,026',
@@ -21,6 +22,7 @@ const stats = [{
   value: '45',
   icon: Globe
 }];
+
 const teamMembers = [{
   name: 'Dr. Maria Silva',
   role: 'Diretora Acadêmica',
@@ -38,6 +40,7 @@ const teamMembers = [{
   role: 'Designer UX/UI',
   expertise: 'Experiência do Usuário'
 }];
+
 const missionVisionValues = [{
   number: "01",
   title: "Missão",
@@ -158,7 +161,7 @@ const Sobre = () => {
                     <span className="block text-lsb-accent">Biblioteca Digital da Link</span>
                   </h1>
                   
-                  <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-4xl mx-auto leading-relaxed">
+                  <p className="p1-text max-w-4xl mx-auto">
                     Oferecemos acesso qualificado à informação e ao conhecimento, promovendo a educação, a pesquisa e a cultura
                   </p>
                 </div>

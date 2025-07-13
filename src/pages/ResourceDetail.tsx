@@ -45,8 +45,8 @@ const ResourceDetail = () => {
     );
   }
   
-  // Resource not found - but provide more context
-  if (!resource || error) {
+  // ✅ CORREÇÃO: Só mostrar "não encontrado" quando realmente não está carregando
+  if ((!resource || error) && !loading) {
     return (
       <>
         <Navigation />
@@ -56,8 +56,13 @@ const ResourceDetail = () => {
   }
 
   // If podcast detected
-  if (resource.type === 'podcast') {
+  if (resource && resource.type === 'podcast') {
     return <PodcastDetailView podcast={resource} />;
+  }
+
+  // ✅ SEGURANÇA ADICIONAL: Se não tem resource mas não está loading, não renderizar nada
+  if (!resource) {
+    return null;
   }
 
   return (

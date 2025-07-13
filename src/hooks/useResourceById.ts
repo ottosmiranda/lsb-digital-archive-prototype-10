@@ -63,6 +63,8 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
       if (dataLoading && !dataLoaded) {
         console.log('⏳ AGUARDANDO: Dados ainda carregando...');
         setRetrying(true);
+        // ✅ CORREÇÃO: Manter loading true durante retry
+        setLoading(true);
         
         retryTimeoutRef.current = setTimeout(() => {
           console.log('🔄 RETRY: Tentando buscar novamente após dados carregarem');
@@ -99,6 +101,9 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
       if (!apiAttempted) {
         console.log('📡 FASE 4: Busca na API - PRIORITIZANDO LIVROS');
         setApiAttempted(true);
+        // ✅ CORREÇÃO: Manter loading true durante busca na API
+        setLoading(true);
+        setError(null); // ✅ CORREÇÃO: Limpar erro durante tentativas
         
         // ✅ CORREÇÃO: Para títulos, tentar apenas livro (não artigo)
         const searchTypes = resourceInfo?.type ? [resourceInfo.type] : ['titulo', 'video', 'podcast'];
@@ -162,7 +167,13 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
     setLoading(true);
   }, [id]);
 
-  return { resource, loading: dataLoading || loading, error, retrying };
+  // ✅ CORREÇÃO PRINCIPAL: Garantir que loading seja true até recurso ser definido OU erro confirmado
+  return { 
+    resource, 
+    loading: dataLoading || loading || (!resource && !error), 
+    error, 
+    retrying 
+  };
 };
 
 // ✅ VALIDAÇÃO MAIS PERMISSIVA para recursos transformados
@@ -196,7 +207,6 @@ function isValidTransformedResource(resource: Resource): boolean {
   return true;
 }
 
-// ✅ TRANSFORMAÇÃO MAIS ROBUSTA para cache local
 function transformToResource(item: any): Resource {
   console.log('🔄 Transformando item do cache local:', item);
   

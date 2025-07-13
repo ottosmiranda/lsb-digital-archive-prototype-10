@@ -15,23 +15,23 @@ import PodcastDetailView from '@/components/ResourceDetail/PodcastDetailView';
 import { useResourceById } from '@/hooks/useResourceById';
 
 const ResourceDetail = () => {
-  const { id } = useParams<{ id: string }>();
-  const { resource, loading, error, retrying } = useResourceById(id);
+  const { id, type } = useParams<{ id: string; type?: string }>();
+  const { resource, loading, error, retrying } = useResourceById(id, type);
 
   // Scroll to top when component mounts or when resource changes
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id, resource]);
 
-  console.group('🎯 RESOURCE DETAIL DEBUG (OTIMIZADO)');
+  console.group('🎯 RESOURCE DETAIL DEBUG (NAVEGAÇÃO COM TIPO)');
   console.log('📋 URL ID:', id);
+  console.log('📋 URL Type:', type);
   console.log('📋 Resource found:', resource ? { id: resource.id, type: resource.type, title: resource.title.substring(0, 50) + '...' } : 'null');
   console.log('📋 Loading:', loading);
   console.log('📋 Retrying:', retrying);
   console.log('📋 Error:', error);
   console.groupEnd();
 
-  // ✅ CORREÇÃO: Seguir ordem exata solicitada pelo usuário
   if (loading) {
     const loadingMessage = retrying 
       ? 'Aguardando dados serem carregados...' 
@@ -43,8 +43,7 @@ const ResourceDetail = () => {
         <EnhancedLoadingSkeleton retrying={retrying} message={loadingMessage} />
       </>
     );
-  } else if (!resource && error) {
-    // ✅ Só mostrar erro quando loading terminou e resource não foi encontrado
+  } else if (!resource && error && !retrying) {
     return (
       <>
         <Navigation />
@@ -86,7 +85,6 @@ const ResourceDetail = () => {
     );
   }
 
-  // ✅ Fallback final (não deveria chegar aqui)
   return null;
 };
 

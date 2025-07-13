@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Resource } from '@/types/resourceTypes';
 import { useDataLoader } from './useDataLoader';
@@ -12,7 +11,7 @@ interface UseResourceByIdResult {
   retrying: boolean;
 }
 
-export const useResourceById = (id: string | undefined): UseResourceByIdResult => {
+export const useResourceById = (id: string | undefined, type?: string): UseResourceByIdResult => {
   const { allData, loading: dataLoading, dataLoaded } = useDataLoader();
   const [resource, setResource] = useState<Resource | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,21 +29,26 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         return;
       }
 
-      console.group('🔍 BUSCA OTIMIZADA DE RECURSO - FOCO EM LIVROS');
+      console.group('🎯 BUSCA OTIMIZADA COM TIPO CONHECIDO');
       console.log('🎯 Target ID:', id);
+      console.log('🎯 Target Type (URL):', type);
 
-      // ✅ CORREÇÃO: Garantir loading true no início
       setLoading(true);
       setError(null);
 
       // FASE 1: Busca no cache de lookup primeiro (muito rápida)
       const resourceInfo = resourceLookupService.getResourceInfo(id);
-      if (resourceInfo) {
-        console.log('⚡ FASE 1: Info encontrada no cache lookup:', resourceInfo);
+      const knownType = type || resourceInfo?.type;
+      
+      console.log('📦 Cache info:', resourceInfo);
+      console.log('🎯 Known Type:', knownType);
+      
+      if (resourceInfo || knownType) {
+        console.log('⚡ FASE 1: Info disponível, buscando no cache local');
         
         // Busca direta no allData usando o tipo conhecido
         const foundResource = allData.find(item => 
-          String(item.id) === id && item.type === resourceInfo.type
+          String(item.id) === id && (!knownType || item.type === knownType)
         );
 
         if (foundResource) {
@@ -57,8 +61,6 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
             setError(null);
             console.groupEnd();
             return;
-          } else {
-            console.log('❌ FASE 1: Recurso inválido após transformação');
           }
         }
       }
@@ -67,7 +69,6 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
       if (dataLoading && !dataLoaded) {
         console.log('⏳ AGUARDANDO: Dados ainda carregando...');
         setRetrying(true);
-        // ✅ CORREÇÃO: Manter loading true durante retry
         setLoading(true);
         
         retryTimeoutRef.current = setTimeout(() => {
@@ -95,24 +96,31 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
             setRetrying(false);
             console.groupEnd();
             return;
-          } else {
-            console.log('❌ FASE 3: Recurso inválido após transformação');
           }
         }
       }
 
-      // FASE 4: Busca na API - FOCO EM LIVROS
+      // FASE 4: Busca na API - USANDO TIPO CONHECIDO PRIMEIRO
       if (!apiAttempted) {
-        console.log('📡 FASE 4: Busca na API - PRIORITIZANDO LIVROS');
+        console.log('📡 FASE 4: Busca na API - BUSCA DIRETA POR TIPO');
         setApiAttempted(true);
-        // ✅ CORREÇÃO CRÍTICA: Manter loading true durante TODA a busca sequencial
         setLoading(true);
         setError(null);
         
-        // ✅ CORREÇÃO: Para títulos, tentar apenas livro (não artigo)
-        const searchTypes = resourceInfo?.type ? [resourceInfo.type] : ['titulo', 'video', 'podcast'];
+        // ✅ NOVA LÓGICA: Se temos tipo conhecido, buscar só ele primeiro
+        let searchTypes: string[];
         
-        // ✅ NOVA LÓGICA: Loop sequencial mantendo loading true
+        if (knownType) {
+          // Se tipo conhecido da URL ou cache, buscar apenas ele
+          const actualType = knownType === 'titulo' ? 'livro' : knownType;
+          searchTypes = [actualType];
+          console.log(`🎯 BUSCA DIRETA: Usando tipo conhecido "${actualType}"`);
+        } else {
+          // Fallback para busca sequencial (URLs antigas)
+          searchTypes = ['titulo', 'video', 'podcast'];
+          console.log('🔄 FALLBACK: Busca sequencial para URL sem tipo');
+        }
+
         let foundValidResource = false;
         
         for (let i = 0; i < searchTypes.length; i++) {
@@ -121,41 +129,32 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
           try {
             console.log(`🔍 Tentando buscar ${resourceType} com ID: ${id} (${i + 1}/${searchTypes.length})`);
             
-            // ✅ CORREÇÃO ESPECÍFICA: Para 'titulo', usar endpoint de livro
             const actualType = resourceType === 'titulo' ? 'livro' : resourceType;
-            
             const apiResource = await ResourceByIdService.fetchResourceById(id, actualType);
             
             if (apiResource && isValidTransformedResource(apiResource)) {
               console.log(`✅ FASE 4 SUCCESS: Encontrado na API como ${actualType}`);
               setResource(apiResource);
-              setLoading(false); // ✅ Só agora definir como false
+              setLoading(false);
               setError(null);
               setRetrying(false);
               foundValidResource = true;
               console.groupEnd();
               return;
-            } else if (apiResource) {
-              console.log(`❌ FASE 4: Recurso ${actualType} inválido após validação`);
             }
           } catch (apiError) {
             console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, apiError);
           }
-          
-          // ✅ CRUCIAL: Manter loading true entre tentativas
-          // Não definir loading false aqui!
         }
         
-        // ✅ Só definir estados finais após TODAS as tentativas
         if (!foundValidResource) {
           console.log('💀 FALHA TOTAL: Recurso não encontrado após todas as tentativas');
           setResource(null);
-          setLoading(false); // ✅ Agora sim, loading false após todas tentativas
+          setLoading(false);
           setError('Recurso não encontrado ou dados inválidos');
           setRetrying(false);
         }
       } else {
-        // Se já tentou API mas não encontrou nada
         console.log('💀 FALHA TOTAL: Recurso não encontrado ou inválido');
         setResource(null);
         setLoading(false);
@@ -179,17 +178,16 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         clearTimeout(retryTimeoutRef.current);
       }
     };
-  }, [id, allData, dataLoading, dataLoaded, apiAttempted]);
+  }, [id, type, allData, dataLoading, dataLoaded, apiAttempted]);
 
-  // Reset states when ID changes
+  // Reset states when ID or type changes
   useEffect(() => {
     setApiAttempted(false);
     setRetrying(false);
     setError(null);
     setLoading(true);
-  }, [id]);
+  }, [id, type]);
 
-  // ✅ RETORNO SIMPLIFICADO: Confiar na lógica interna do hook
   return { 
     resource, 
     loading, 

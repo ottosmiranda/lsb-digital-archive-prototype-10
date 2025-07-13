@@ -1,3 +1,4 @@
+
 import { Play, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -48,7 +49,8 @@ const FeaturedMedia = () => {
         title: video.title,
         duration: video.duration || 'N/A',
         thumbnail: video.thumbnail,
-        author: video.author
+        author: video.author,
+        type: video.type || 'video'
       }));
 
     const podcastData = content.podcasts
@@ -58,7 +60,8 @@ const FeaturedMedia = () => {
         title: podcast.title,
         duration: podcast.duration || 'N/A',
         thumbnail: podcast.thumbnail,
-        author: podcast.author
+        author: podcast.author,
+        type: podcast.type || 'podcast'
       }));
 
     console.log('✅ PHASE 3: FeaturedMedia data processed:', {
@@ -71,7 +74,7 @@ const FeaturedMedia = () => {
   }, [content, rotatedContent.dailyMedia]);
 
   const MediaCard = ({ item, type }: { item: any; type: 'video' | 'podcast' }) => (
-    <Link to={`/recurso/${item.id}`}>
+    <Link to={`/recurso/${item.type || type}/${item.id}`}>
       <Card className="group hover-lift cursor-pointer">
         <CardContent className="p-0">
           <div className="relative aspect-video bg-gray-200 rounded-t-lg overflow-hidden">

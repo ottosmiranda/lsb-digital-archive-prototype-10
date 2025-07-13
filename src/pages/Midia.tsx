@@ -49,7 +49,7 @@ const featuredContent = [
   {
     id: 2,
     title: 'Manual de Sustentabilidade Empresarial',
-    type: 'book',
+    type: 'titulo',
     duration: '324 páginas',
     views: '8.2K',
     thumbnail: '/placeholder.svg'
@@ -112,7 +112,7 @@ const Midia = () => {
               <h2 className="text-2xl font-semibold mb-6">Conteúdo em Destaque</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {featuredContent.map((content) => (
-                  <Link key={content.id} to={`/recurso/${content.id}`}>
+                  <Link key={content.id} to={`/recurso/${content.type}/${content.id}`}>
                     <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                       <div className="aspect-video relative overflow-hidden rounded-t-lg">
                         <img 

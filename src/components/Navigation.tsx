@@ -47,7 +47,7 @@ const Navigation = () => {
               <Link to="/" className="flex items-center">
                 <img 
                   alt="Biblioteca Digital & Link" 
-                  className="h-10 w-auto" 
+                  className="h-9 w-auto" 
                   src="/lovable-uploads/72ecc68a-ee89-4b03-a37b-1d2c8813f321.png" 
                 />
               </Link>

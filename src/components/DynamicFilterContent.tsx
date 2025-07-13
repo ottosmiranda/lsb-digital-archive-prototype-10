@@ -15,57 +15,46 @@ import { extractAuthorsFromResults, extractProgramsFromResults, extractChannelsF
 
 // MELHORADO: Anos baseados em dados reais, não apenas últimos 10 anos
 const currentYear = new Date().getFullYear();
-const years = Array.from({ length: 30 }, (_, i) => (currentYear - i).toString()).filter(year => parseInt(year) >= 1990);
-
+const years = Array.from({
+  length: 30
+}, (_, i) => (currentYear - i).toString()).filter(year => parseInt(year) >= 1990);
 interface DynamicFilterContentProps {
   filters: SearchFilters;
-  onFiltersChange: (filters: SearchFilters, options?: { authorTyping?: boolean }) => void;
+  onFiltersChange: (filters: SearchFilters, options?: {
+    authorTyping?: boolean;
+  }) => void;
   currentResults: SearchResult[];
   openSections: Record<string, boolean>;
   onToggleSection: (section: string) => void;
   activeContentType: string;
   globalContentCounts?: ContentCounts; // ✅ NOVA PROP: Para badges corretas
 }
-
-const DynamicFilterContent = React.memo(({ 
-  filters, 
-  onFiltersChange, 
-  currentResults, 
-  openSections, 
+const DynamicFilterContent = React.memo(({
+  filters,
+  onFiltersChange,
+  currentResults,
+  openSections,
   onToggleSection,
   activeContentType,
   globalContentCounts // ✅ NOVA PROP
 }: DynamicFilterContentProps) => {
-  const { contentStats, filterRelevance } = useContentAwareFilters({
+  const {
+    contentStats,
+    filterRelevance
+  } = useContentAwareFilters({
     currentResults,
     activeContentType
   });
-
-  const { authors: allAuthors, loading: loadingAllAuthors } = useAllAuthors();
-
-  const hasActiveFilters = useMemo(() => 
-    filters.language.length > 0 ||
-    filters.subject.length > 0 || 
-    filters.author.length > 0 || // CORRIGIDO: Múltiplos autores
-    filters.year || 
-    filters.duration ||
-    filters.program.length > 0 ||
-    filters.channel.length > 0 ||
-    filters.documentType.length > 0,
-    [filters]
-  );
-
-  const activeFilterCount = useMemo(() => 
-    filters.language.length +
-    filters.subject.length + 
-    filters.author.length + // CORRIGIDO: Múltiplos autores
-    (filters.year ? 1 : 0) + 
-    (filters.duration ? 1 : 0) +
-    filters.program.length +
-    filters.channel.length +
-    filters.documentType.length,
-    [filters]
-  );
+  const {
+    authors: allAuthors,
+    loading: loadingAllAuthors
+  } = useAllAuthors();
+  const hasActiveFilters = useMemo(() => filters.language.length > 0 || filters.subject.length > 0 || filters.author.length > 0 ||
+  // CORRIGIDO: Múltiplos autores
+  filters.year || filters.duration || filters.program.length > 0 || filters.channel.length > 0 || filters.documentType.length > 0, [filters]);
+  const activeFilterCount = useMemo(() => filters.language.length + filters.subject.length + filters.author.length + (
+  // CORRIGIDO: Múltiplos autores
+  filters.year ? 1 : 0) + (filters.duration ? 1 : 0) + filters.program.length + filters.channel.length + filters.documentType.length, [filters]);
 
   // ✅ NOVO: Usar contagens globais para tipos de documento em vez de extração local
   const availableDocumentTypes = useMemo(() => {
@@ -75,28 +64,24 @@ const DynamicFilterContent = React.memo(({
       console.log('📊 Usando contagens GLOBAIS para badges:', globalTypes);
       return globalTypes;
     }
-    
+
     // Fallback: extrair da página atual
-    return extractDocumentTypesFromResults(currentResults)
-      .sort((a, b) => b.count - a.count);
+    return extractDocumentTypesFromResults(currentResults).sort((a, b) => b.count - a.count);
   }, [currentResults, globalContentCounts]);
 
   // NOVO: Extrair programas disponíveis nos resultados atuais
   const availablePrograms = useMemo(() => {
-    return extractProgramsFromResults(currentResults)
-      .sort((a, b) => b.count - a.count);
+    return extractProgramsFromResults(currentResults).sort((a, b) => b.count - a.count);
   }, [currentResults]);
 
   // NOVO: Extrair canais disponíveis nos resultados atuais
   const availableChannels = useMemo(() => {
-    return extractChannelsFromResults(currentResults)
-      .sort((a, b) => b.count - a.count);
+    return extractChannelsFromResults(currentResults).sort((a, b) => b.count - a.count);
   }, [currentResults]);
 
   // CORRIGIDO: Autores da página atual para comparação
   const currentPageAuthors = useMemo(() => {
-    return extractAuthorsFromResults(currentResults)
-      .sort((a, b) => b.count - a.count);
+    return extractAuthorsFromResults(currentResults).sort((a, b) => b.count - a.count);
   }, [currentResults]);
 
   // MELHORADO: Verificar se há anos válidos nos resultados atuais, incluindo vídeos
@@ -112,86 +97,94 @@ const DynamicFilterContent = React.memo(({
     console.log(`📅 Available years from current results:`, yearsArray);
     return yearsArray;
   }, [currentResults]);
-
   const handleLanguageChange = useCallback((languageId: string, checked: boolean) => {
-    const newLanguages = checked
-      ? [...filters.language, languageId]
-      : filters.language.filter((lang: string) => lang !== languageId);
-    onFiltersChange({ ...filters, language: newLanguages });
+    const newLanguages = checked ? [...filters.language, languageId] : filters.language.filter((lang: string) => lang !== languageId);
+    onFiltersChange({
+      ...filters,
+      language: newLanguages
+    });
   }, [filters, onFiltersChange]);
-
   const handleSubjectChange = useCallback((subjectId: string, checked: boolean) => {
-    const newSubjects = checked 
-      ? [...filters.subject, subjectId]
-      : filters.subject.filter((s: string) => s !== subjectId);
-    onFiltersChange({ ...filters, subject: newSubjects });
+    const newSubjects = checked ? [...filters.subject, subjectId] : filters.subject.filter((s: string) => s !== subjectId);
+    onFiltersChange({
+      ...filters,
+      subject: newSubjects
+    });
   }, [filters, onFiltersChange]);
 
   // ✅ ADICIONADO: Handler para mudança de tipo de documento
   const handleDocumentTypeChange = useCallback((documentTypeId: string, checked: boolean) => {
-    const newDocumentTypes = checked 
-      ? [...filters.documentType, documentTypeId]
-      : filters.documentType.filter((dt: string) => dt !== documentTypeId);
-    onFiltersChange({ ...filters, documentType: newDocumentTypes });
+    const newDocumentTypes = checked ? [...filters.documentType, documentTypeId] : filters.documentType.filter((dt: string) => dt !== documentTypeId);
+    onFiltersChange({
+      ...filters,
+      documentType: newDocumentTypes
+    });
   }, [filters, onFiltersChange]);
-
   const handleProgramChange = useCallback((programId: string, checked: boolean) => {
-    const newPrograms = checked 
-      ? [...filters.program, programId]
-      : filters.program.filter((p: string) => p !== programId);
-    onFiltersChange({ ...filters, program: newPrograms });
+    const newPrograms = checked ? [...filters.program, programId] : filters.program.filter((p: string) => p !== programId);
+    onFiltersChange({
+      ...filters,
+      program: newPrograms
+    });
   }, [filters, onFiltersChange]);
-
   const handleChannelChange = useCallback((channelId: string, checked: boolean) => {
-    const newChannels = checked 
-      ? [...filters.channel, channelId]
-      : filters.channel.filter((c: string) => c !== channelId);
-    onFiltersChange({ ...filters, channel: newChannels });
+    const newChannels = checked ? [...filters.channel, channelId] : filters.channel.filter((c: string) => c !== channelId);
+    onFiltersChange({
+      ...filters,
+      channel: newChannels
+    });
   }, [filters, onFiltersChange]);
-
   const handleYearChange = useCallback((value: string) => {
     const yearValue = value === 'all' ? '' : value;
-    onFiltersChange({ ...filters, year: yearValue });
+    onFiltersChange({
+      ...filters,
+      year: yearValue
+    });
   }, [filters, onFiltersChange]);
-
   const handleDurationChange = useCallback((value: string) => {
     const durationValue = value === 'all' ? '' : value;
-    onFiltersChange({ ...filters, duration: durationValue });
+    onFiltersChange({
+      ...filters,
+      duration: durationValue
+    });
   }, [filters, onFiltersChange]);
-
   const handleAuthorChange = useCallback((value: string) => {
     // CORRIGIDO: Suportar múltiplos autores
     const authors = value ? [value] : [];
-    onFiltersChange({ ...filters, author: authors }, { authorTyping: true });
+    onFiltersChange({
+      ...filters,
+      author: authors
+    }, {
+      authorTyping: true
+    });
   }, [filters, onFiltersChange]);
 
   // NOVO: Função para selecionar autores via dropdown
   const handleAuthorSelect = useCallback((authorName: string) => {
     const isSelected = filters.author.includes(authorName);
-    const newAuthors = isSelected
-      ? filters.author.filter(a => a !== authorName)
-      : [...filters.author, authorName];
-    onFiltersChange({ ...filters, author: newAuthors });
+    const newAuthors = isSelected ? filters.author.filter(a => a !== authorName) : [...filters.author, authorName];
+    onFiltersChange({
+      ...filters,
+      author: newAuthors
+    });
   }, [filters, onFiltersChange]);
-
   const clearFilters = useCallback(() => {
     onFiltersChange({
       resourceType: filters.resourceType,
       subject: [],
-      author: [], // CORRIGIDO: Array vazio
+      author: [],
+      // CORRIGIDO: Array vazio
       year: '',
       duration: '',
       language: [],
-      documentType: [], // ✅ ADICIONADO: Limpar documentType
+      documentType: [],
+      // ✅ ADICIONADO: Limpar documentType
       program: [],
       channel: []
     });
   }, [onFiltersChange, filters.resourceType]);
-
-  return (
-    <div className="space-y-4">
-      {hasActiveFilters && (
-        <div className="flex items-center justify-between p-3 bg-lsb-section rounded-lg">
+  return <div className="space-y-4">
+      {hasActiveFilters && <div className="flex items-center justify-between p-3 bg-lsb-section rounded-lg">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Filtros ativos</span>
             <Badge variant="outline">{activeFilterCount}</Badge>
@@ -200,40 +193,27 @@ const DynamicFilterContent = React.memo(({
             <X className="h-4 w-4 mr-1" />
             Limpar
           </Button>
-        </div>
-      )}
+        </div>}
 
       {/* CORRIGIDO: Mostrar autores selecionados como tags */}
-      {filters.author.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-3 bg-blue-50 rounded-lg">
+      {filters.author.length > 0 && <div className="flex flex-wrap gap-2 p-3 bg-blue-50 rounded-lg">
           <span className="text-sm font-medium text-blue-700">Autores selecionados:</span>
-          {filters.author.map((author, index) => (
-            <Badge key={index} variant="secondary" className="text-xs">
+          {filters.author.map((author, index) => <Badge key={index} variant="secondary" className="text-xs">
               {author}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto w-auto p-0 ml-1"
-                onClick={() => handleAuthorSelect(author)}
-              >
+              <Button variant="ghost" size="sm" className="h-auto w-auto p-0 ml-1" onClick={() => handleAuthorSelect(author)}>
                 <X className="h-3 w-3" />
               </Button>
-            </Badge>
-          ))}
-        </div>
-      )}
+            </Badge>)}
+        </div>}
 
       {/* ✅ CORRIGIDO: Filtro de Tipo de Item com contagens REAIS da API */}
-      {filterRelevance.documentType && availableDocumentTypes.length > 0 && (
-        <Collapsible open={openSections.documentType} onOpenChange={() => onToggleSection('documentType')}>
+      {filterRelevance.documentType && availableDocumentTypes.length > 0 && <Collapsible open={openSections.documentType} onOpenChange={() => onToggleSection('documentType')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-2">
               <Label className="text-sm font-medium">Tipo de Item</Label>
-              {filters.documentType.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
+              {filters.documentType.length > 0 && <Badge variant="secondary" className="text-xs">
                   {filters.documentType.length}
-                </Badge>
-              )}
+                </Badge>}
               <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
                 {/* ✅ CORRIGIDO: Mostrar totais REAIS (47 Livros + 35 Artigos = 82) */}
                 Itens ({availableDocumentTypes.reduce((sum, doc) => sum + doc.count, 0)})
@@ -243,13 +223,8 @@ const DynamicFilterContent = React.memo(({
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2">
             <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-              {availableDocumentTypes.map((documentType) => (
-                <div key={documentType.name} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`documentType-${documentType.name}`}
-                    checked={filters.documentType.includes(documentType.name)}
-                    onCheckedChange={(checked) => handleDocumentTypeChange(documentType.name, !!checked)}
-                  />
+              {availableDocumentTypes.map(documentType => <div key={documentType.name} className="flex items-center space-x-2">
+                  <Checkbox id={`documentType-${documentType.name}`} checked={filters.documentType.includes(documentType.name)} onCheckedChange={checked => handleDocumentTypeChange(documentType.name, !!checked)} />
                   <Label htmlFor={`documentType-${documentType.name}`} className="text-sm cursor-pointer flex-1">
                     <div className="flex justify-between items-center">
                       <span>{documentType.name}</span>
@@ -257,24 +232,19 @@ const DynamicFilterContent = React.memo(({
                       <span className="text-xs text-gray-500">({documentType.count})</span>
                     </div>
                   </Label>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CollapsibleContent>
-        </Collapsible>
-      )}
+        </Collapsible>}
 
       {/* NOVO: Filtro de Programa (apenas para podcasts) */}
-      {(activeContentType === 'podcast' || activeContentType === 'all') && availablePrograms.length > 0 && (
-        <Collapsible open={openSections.program} onOpenChange={() => onToggleSection('program')}>
+      {(activeContentType === 'podcast' || activeContentType === 'all') && availablePrograms.length > 0 && <Collapsible open={openSections.program} onOpenChange={() => onToggleSection('program')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-2">
               <Label className="text-sm font-medium">Programa</Label>
-              {filters.program.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
+              {filters.program.length > 0 && <Badge variant="secondary" className="text-xs">
                   {filters.program.length}
-                </Badge>
-              )}
+                </Badge>}
               <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
                 Podcasts ({availablePrograms.length})
               </Badge>
@@ -283,37 +253,27 @@ const DynamicFilterContent = React.memo(({
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2">
             <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-              {availablePrograms.map((program) => (
-                <div key={program.name} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`program-${program.name}`}
-                    checked={filters.program.includes(program.name)}
-                    onCheckedChange={(checked) => handleProgramChange(program.name, !!checked)}
-                  />
+              {availablePrograms.map(program => <div key={program.name} className="flex items-center space-x-2">
+                  <Checkbox id={`program-${program.name}`} checked={filters.program.includes(program.name)} onCheckedChange={checked => handleProgramChange(program.name, !!checked)} />
                   <Label htmlFor={`program-${program.name}`} className="text-sm cursor-pointer flex-1">
                     <div className="flex justify-between items-center">
                       <span>{program.name}</span>
                       <span className="text-xs text-gray-500">({program.count})</span>
                     </div>
                   </Label>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CollapsibleContent>
-        </Collapsible>
-      )}
+        </Collapsible>}
 
       {/* NOVO: Filtro de Canal (apenas para vídeos) */}
-      {(activeContentType === 'video' || activeContentType === 'all') && availableChannels.length > 0 && (
-        <Collapsible open={openSections.channel} onOpenChange={() => onToggleSection('channel')}>
+      {(activeContentType === 'video' || activeContentType === 'all') && availableChannels.length > 0 && <Collapsible open={openSections.channel} onOpenChange={() => onToggleSection('channel')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-2">
               <Label className="text-sm font-medium">Canal</Label>
-              {filters.channel.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
+              {filters.channel.length > 0 && <Badge variant="secondary" className="text-xs">
                   {filters.channel.length}
-                </Badge>
-              )}
+                </Badge>}
               <Badge variant="outline" className="text-xs bg-red-50 text-red-700">
                 Vídeos ({availableChannels.length})
               </Badge>
@@ -322,70 +282,49 @@ const DynamicFilterContent = React.memo(({
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2">
             <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-              {availableChannels.map((channel) => (
-                <div key={channel.name} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`channel-${channel.name}`}
-                    checked={filters.channel.includes(channel.name)}
-                    onCheckedChange={(checked) => handleChannelChange(channel.name, !!checked)}
-                  />
+              {availableChannels.map(channel => <div key={channel.name} className="flex items-center space-x-2">
+                  <Checkbox id={`channel-${channel.name}`} checked={filters.channel.includes(channel.name)} onCheckedChange={checked => handleChannelChange(channel.name, !!checked)} />
                   <Label htmlFor={`channel-${channel.name}`} className="text-sm cursor-pointer flex-1">
                     <div className="flex justify-between items-center">
                       <span>{channel.name}</span>
                       <span className="text-xs text-gray-500">({channel.count})</span>
                     </div>
                   </Label>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CollapsibleContent>
-        </Collapsible>
-      )}
+        </Collapsible>}
 
-      {filterRelevance.subject && contentStats.availableSubjects.length > 0 && (
-        <Collapsible open={openSections.subject} onOpenChange={() => onToggleSection('subject')}>
+      {filterRelevance.subject && contentStats.availableSubjects.length > 0 && <Collapsible open={openSections.subject} onOpenChange={() => onToggleSection('subject')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium">Assunto</Label>
-              {filters.subject.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
+              <Label className="text-sm font-medium">Assuntos</Label>
+              {filters.subject.length > 0 && <Badge variant="secondary" className="text-xs">
                   {filters.subject.length}
-                </Badge>
-              )}
+                </Badge>}
             </div>
             {openSections.subject ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2">
             <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-              {contentStats.availableSubjects.map((subject) => (
-                <div key={subject} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={subject}
-                    checked={filters.subject.includes(subject)}
-                    onCheckedChange={(checked) => handleSubjectChange(subject, !!checked)}
-                  />
+              {contentStats.availableSubjects.map(subject => <div key={subject} className="flex items-center space-x-2">
+                  <Checkbox id={subject} checked={filters.subject.includes(subject)} onCheckedChange={checked => handleSubjectChange(subject, !!checked)} />
                   <Label htmlFor={subject} className="text-sm cursor-pointer">{subject}</Label>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CollapsibleContent>
-        </Collapsible>
-      )}
+        </Collapsible>}
 
       <Collapsible open={openSections.author} onOpenChange={() => onToggleSection('author')}>
         <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium">Autor</Label>
-            {filters.author.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
+            {filters.author.length > 0 && <Badge variant="secondary" className="text-xs">
                 {filters.author.length}
-              </Badge>
-            )}
-            {loadingAllAuthors && (
-              <Badge variant="outline" className="text-xs">
+              </Badge>}
+            {loadingAllAuthors && <Badge variant="outline" className="text-xs">
                 Carregando...
-              </Badge>
-            )}
+              </Badge>}
           </div>
           {openSections.author ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </CollapsibleTrigger>
@@ -394,12 +333,7 @@ const DynamicFilterContent = React.memo(({
             {/* Busca por nome */}
             <div className="p-3 border border-gray-200 rounded-lg bg-white">
               <Label className="text-xs text-gray-600 mb-2 block">Buscar por nome</Label>
-              <AuthorInput
-                value={filters.author.length > 0 ? filters.author[0] : ''}
-                onChange={handleAuthorChange}
-                placeholder="Nome do autor"
-                currentResults={currentResults}
-              />
+              <AuthorInput value={filters.author.length > 0 ? filters.author[0] : ''} onChange={handleAuthorChange} placeholder="Nome do autor" currentResults={currentResults} />
             </div>
             
             {/* NOVO: Dropdown de autores */}
@@ -412,23 +346,15 @@ const DynamicFilterContent = React.memo(({
                   <SelectValue placeholder="Selecionar autor" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
-                  {allAuthors.map((author) => (
-                    <SelectItem 
-                      key={author.name} 
-                      value={author.name}
-                      className={filters.author.includes(author.name) ? "font-medium bg-blue-50" : ""}
-                    >
+                  {allAuthors.map(author => <SelectItem key={author.name} value={author.name} className={filters.author.includes(author.name) ? "font-medium bg-blue-50" : ""}>
                       <div className="flex items-center justify-between w-full">
                         <span>{author.name}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-gray-500">({author.count})</span>
-                          {filters.author.includes(author.name) && (
-                            <span className="text-xs text-blue-600">✓</span>
-                          )}
+                          {filters.author.includes(author.name) && <span className="text-xs text-blue-600">✓</span>}
                         </div>
                       </div>
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
               
@@ -441,62 +367,43 @@ const DynamicFilterContent = React.memo(({
         </CollapsibleContent>
       </Collapsible>
 
-      {filterRelevance.language && contentStats.availableLanguages.length > 0 && (
-        <Collapsible open={openSections.language} onOpenChange={() => onToggleSection('language')}>
+      {filterRelevance.language && contentStats.availableLanguages.length > 0 && <Collapsible open={openSections.language} onOpenChange={() => onToggleSection('language')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-2">
               <Label className="text-sm font-medium">Idioma</Label>
-              {filters.language.length > 0 && (
-                <Badge variant="secondary" className="text-xs">
+              {filters.language.length > 0 && <Badge variant="secondary" className="text-xs">
                   {filters.language.length}
-                </Badge>
-              )}
-              {activeContentType === 'podcast' && (
-                <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
+                </Badge>}
+              {activeContentType === 'podcast' && <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
                   <AlertCircle className="h-3 w-3 mr-1" />
                   Campo não disponível
-                </Badge>
-              )}
-              {(activeContentType === 'video' || activeContentType === 'titulo') && (
-                <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                </Badge>}
+              {(activeContentType === 'video' || activeContentType === 'titulo') && <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                   Disponível ({contentStats.availableLanguages.length})
-                </Badge>
-              )}
+                </Badge>}
             </div>
             {openSections.language ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2">
             <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-white max-h-48 overflow-y-auto">
-              {contentStats.availableLanguages.map((language) => (
-                <div key={language} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`language-${language}`}
-                    checked={filters.language.includes(language)}
-                    onCheckedChange={(checked) => handleLanguageChange(language, !!checked)}
-                  />
+              {contentStats.availableLanguages.map(language => <div key={language} className="flex items-center space-x-2">
+                  <Checkbox id={`language-${language}`} checked={filters.language.includes(language)} onCheckedChange={checked => handleLanguageChange(language, !!checked)} />
                   <Label htmlFor={`language-${language}`} className="text-sm cursor-pointer">{language}</Label>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CollapsibleContent>
-        </Collapsible>
-      )}
+        </Collapsible>}
 
-      {filterRelevance.year && (
-        <Collapsible open={openSections.year} onOpenChange={() => onToggleSection('year')}>
+      {filterRelevance.year && <Collapsible open={openSections.year} onOpenChange={() => onToggleSection('year')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-2">
               <Label className="text-sm font-medium">Ano</Label>
-              {filters.year && (
-                <Badge variant="secondary" className="text-xs">
+              {filters.year && <Badge variant="secondary" className="text-xs">
                   {filters.year}
-                </Badge>
-              )}
-              {availableYears.length > 0 && (
-                <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                </Badge>}
+              {availableYears.length > 0 && <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                   {availableYears.length} anos disponíveis
-                </Badge>
-              )}
+                </Badge>}
             </div>
             {openSections.year ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </CollapsibleTrigger>
@@ -508,47 +415,33 @@ const DynamicFilterContent = React.memo(({
                 </SelectTrigger>
                 <SelectContent className="max-h-48">
                   <SelectItem value="all">Todos os anos</SelectItem>
-                  {availableYears.length > 0 && (
-                    <>
+                  {availableYears.length > 0 && <>
                       <SelectItem disabled value="separator-available" className="text-xs text-gray-500 font-medium">
                         Disponíveis nesta busca:
                       </SelectItem>
-                      {availableYears.map((year) => (
-                        <SelectItem key={`available-${year}`} value={year.toString()}>
+                      {availableYears.map(year => <SelectItem key={`available-${year}`} value={year.toString()}>
                           {year} ✓
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                       <SelectItem disabled value="separator-all" className="text-xs text-gray-500 font-medium">
                         Todos os anos:
                       </SelectItem>
-                    </>
-                  )}
-                  {years.map((year) => (
-                    <SelectItem 
-                      key={year} 
-                      value={year}
-                      className={availableYears.includes(parseInt(year)) ? "font-medium" : ""}
-                    >
+                    </>}
+                  {years.map(year => <SelectItem key={year} value={year} className={availableYears.includes(parseInt(year)) ? "font-medium" : ""}>
                       {year}
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </CollapsibleContent>
-        </Collapsible>
-      )}
+        </Collapsible>}
 
-      {filterRelevance.duration && (
-        <Collapsible open={openSections.duration} onOpenChange={() => onToggleSection('duration')}>
+      {filterRelevance.duration && <Collapsible open={openSections.duration} onOpenChange={() => onToggleSection('duration')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-2">
               <Label className="text-sm font-medium">Duração</Label>
-              {filters.duration && (
-                <Badge variant="secondary" className="text-xs">
+              {filters.duration && <Badge variant="secondary" className="text-xs">
                   1 
-                </Badge>
-              )}
+                </Badge>}
               <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                 Mídia ({contentStats.videoCount + contentStats.podcastCount})
               </Badge>
@@ -570,12 +463,8 @@ const DynamicFilterContent = React.memo(({
               </Select>
             </div>
           </CollapsibleContent>
-        </Collapsible>
-      )}
-    </div>
-  );
+        </Collapsible>}
+    </div>;
 });
-
 DynamicFilterContent.displayName = 'DynamicFilterContent';
-
 export default DynamicFilterContent;

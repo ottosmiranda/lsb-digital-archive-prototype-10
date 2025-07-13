@@ -1,5 +1,5 @@
 
-import { Book, Video, Headphones, Calendar } from 'lucide-react';
+import { Book, Video, Headphones, Calendar, Sparkles, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ const getIcon = (type: string) => {
     case 'titulo': return Book;
     case 'video': return Video;
     case 'podcast': return Headphones;
+    case 'artigo': return Book;
     default: return Book;
   }
 };
@@ -25,6 +26,7 @@ const getTypeColor = (type: string) => {
     case 'titulo': return 'bg-blue-100 text-blue-800';
     case 'video': return 'bg-red-100 text-red-800';
     case 'podcast': return 'bg-purple-100 text-purple-800';
+    case 'artigo': return 'bg-green-100 text-green-800';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
@@ -34,6 +36,7 @@ const getTypeLabel = (type: string) => {
     case 'titulo': return 'Livro';
     case 'video': return 'Vídeo';
     case 'podcast': return 'Podcast';
+    case 'artigo': return 'Artigo';
     default: return 'Conteúdo';
   }
 };
@@ -46,27 +49,47 @@ const formatDate = (year: number) => {
 };
 
 const RecentAdditions = () => {
-  const { content, loading, error } = useHomepageContentContext();
+  const { content, rotatedContent, loading, error } = useHomepageContentContext();
   const { handleImageError } = useThumbnailFallback();
 
-  console.log('🆕 RecentAdditions - Rendering with context data including articles:', {
+  console.log('🆕 RecentAdditions - Rendering with context data and rotation:', {
     loading,
     error,
     videosCount: content.videos.length,
     booksCount: content.books.length,
     podcastsCount: content.podcasts.length,
-    articlesCount: content.articles.length
+    articlesCount: content.articles.length,
+    rotatedItemsCount: rotatedContent.recentAdditions.items.length,
+    isRealContent: rotatedContent.recentAdditions.isRealContent
   });
 
-  // Get mixed recent items from homepage API including articles
+  // Get mixed recent items - prioritize real content over rotated
   const recentItems = useMemo(() => {
     const allItems = [...content.videos, ...content.books, ...content.podcasts, ...content.articles];
     
-    console.log('🆕 RecentAdditions - Processing items including articles:', {
-      totalItems: allItems.length,
-      allItems: allItems.map(item => ({ id: item.id, title: item.title, type: item.type }))
+    console.log('🆕 RecentAdditions - Processing items:', {
+      totalRealItems: allItems.length,
+      rotatedItems: rotatedContent.recentAdditions.items.length,
+      useRotated: rotatedContent.recentAdditions.items.length > 0
     });
+
+    // Check if we should use rotated content
+    if (rotatedContent.recentAdditions.items.length > 0) {
+      // Use rotated content from database
+      console.log('🎲 Using rotated content from database');
+      return rotatedContent.recentAdditions.items.map(item => ({
+        id: item.id,
+        title: item.title,
+        type: item.type,
+        author: item.author,
+        description: item.description,
+        thumbnail: item.thumbnail,
+        addedDate: item.year.toString(),
+        isRotated: !rotatedContent.recentAdditions.isRealContent
+      }));
+    }
     
+    // Fallback to real content if no rotation available
     if (allItems.length === 0) {
       return [];
     }
@@ -82,10 +105,11 @@ const RecentAdditions = () => {
         description: item.description,
         thumbnail: item.thumbnail,
         addedDate: item.year.toString(),
+        isRotated: false
       }));
-  }, [content]);
+  }, [content, rotatedContent]);
 
-  console.log('🆕 RecentAdditions - Final recent items including articles:', recentItems);
+  console.log('🆕 RecentAdditions - Final items:', recentItems);
 
   if (loading) {
     console.log('🆕 RecentAdditions - Showing skeleton loader');
@@ -140,9 +164,20 @@ const RecentAdditions = () => {
                                 <Badge className={getTypeColor(item.type)}>
                                   {getTypeLabel(item.type)}
                                 </Badge>
-                                <Badge variant="outline" className="bg-lsb-accent text-lsb-primary border-lsb-accent">
-                                  Novo
-                                </Badge>
+                                {item.isRotated ? (
+                                  <Badge 
+                                    variant="outline" 
+                                    className="bg-blue-50 text-blue-700 border-blue-200"
+                                  >
+                                    <Star className="h-3 w-3 mr-1" />
+                                    Destacado
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="bg-lsb-accent text-lsb-primary border-lsb-accent">
+                                    <Sparkles className="h-3 w-3 mr-1" />
+                                    Novo
+                                  </Badge>
+                                )}
                                 <div className="flex items-center text-xs text-gray-500">
                                   <Calendar className="h-3 w-3 mr-1" />
                                   {formatDate(parseInt(item.addedDate))}

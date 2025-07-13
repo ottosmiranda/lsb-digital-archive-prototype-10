@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { SearchResult } from '@/types/searchTypes';
 import { newApiService } from '@/services/newApiService';
@@ -27,11 +28,22 @@ interface DailyMediaData {
   podcasts: SearchResult[];
 }
 
+interface RecentAdditionsData {
+  items: SearchResult[];
+  rotation_date: string;
+  is_real_content: boolean;
+}
+
 interface RotatedContent {
   weeklyHighlights: SearchResult[];
   dailyMedia: {
     videos: SearchResult[];
     podcasts: SearchResult[];
+  };
+  recentAdditions: {
+    items: SearchResult[];
+    isRealContent: boolean;
+    rotationDate: string;
   };
 }
 
@@ -71,7 +83,8 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   });
   const [rotatedContent, setRotatedContent] = useState<RotatedContent>({
     weeklyHighlights: [],
-    dailyMedia: { videos: [], podcasts: [] }
+    dailyMedia: { videos: [], podcasts: [] },
+    recentAdditions: { items: [], isRealContent: true, rotationDate: '' }
   });
   const [contentCounts, setContentCounts] = useState<ContentCounts>({
     videos: 0,
@@ -85,7 +98,7 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   const [isUsingFallback, setIsUsingFallback] = useState(false);
   const [apiStatus, setApiStatus] = useState<any>({});
 
-  console.group('🏠 HomepageContentProvider - ENHANCED Constructor with Rotation and Articles + CACHE BUSTER');
+  console.group('🏠 HomepageContentProvider - ENHANCED Constructor with Recent Additions Rotation');
   console.log('📊 Provider initialized at:', new Date().toISOString());
   console.log('🔄 Initial state:', { loading, countsLoading, error, isUsingFallback });
   console.groupEnd();
@@ -106,7 +119,8 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
     // Limpar rotated content
     setRotatedContent({
       weeklyHighlights: [],
-      dailyMedia: { videos: [], podcasts: [] }
+      dailyMedia: { videos: [], podcasts: [] },
+      recentAdditions: { items: [], isRealContent: true, rotationDate: '' }
     });
     console.log('✅ Rotated content limpo');
     
@@ -135,7 +149,7 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   };
 
   const loadRotatedContent = async () => {
-    console.group('🔄 Loading rotated content from database...');
+    console.group('🔄 Loading rotated content from database including recent additions...');
     
     try {
       // 🔥 CACHE BUSTER: Adicionar timestamp para forçar refresh
@@ -158,6 +172,7 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
 
       const weeklyRotation = rotations?.find(r => r.content_type === 'weekly_highlights');
       const dailyRotation = rotations?.find(r => r.content_type === 'daily_media');
+      const recentAdditionsRotation = rotations?.find(r => r.content_type === 'recent_additions');
 
       const newRotatedContent: RotatedContent = {
         weeklyHighlights: weeklyRotation?.content_data 
@@ -170,6 +185,17 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
           podcasts: dailyRotation?.content_data 
             ? (dailyRotation.content_data as unknown as DailyMediaData).podcasts || []
             : []
+        },
+        recentAdditions: {
+          items: recentAdditionsRotation?.content_data 
+            ? (recentAdditionsRotation.content_data as unknown as RecentAdditionsData).items || []
+            : [],
+          isRealContent: recentAdditionsRotation?.content_data 
+            ? (recentAdditionsRotation.content_data as unknown as RecentAdditionsData).is_real_content ?? true
+            : true,
+          rotationDate: recentAdditionsRotation?.content_data 
+            ? (recentAdditionsRotation.content_data as unknown as RecentAdditionsData).rotation_date || ''
+            : ''
         }
       };
 
@@ -178,7 +204,9 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
       console.log('✅ Rotated content loaded:', {
         weeklyHighlights: newRotatedContent.weeklyHighlights.length,
         dailyVideos: newRotatedContent.dailyMedia.videos.length,
-        dailyPodcasts: newRotatedContent.dailyMedia.podcasts.length
+        dailyPodcasts: newRotatedContent.dailyMedia.podcasts.length,
+        recentAdditions: newRotatedContent.recentAdditions.items.length,
+        isRealContent: newRotatedContent.recentAdditions.isRealContent
       });
 
     } catch (err) {

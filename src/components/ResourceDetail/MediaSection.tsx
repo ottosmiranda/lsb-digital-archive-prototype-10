@@ -56,6 +56,14 @@ const MediaSection = ({ resource }: { resource: Resource }) => {
   }
 
   if (resource.type === 'titulo') {
+    console.log('📄 MediaSection - Livro detectado:', {
+      id: resource.id,
+      title: resource.title.substring(0, 50) + '...',
+      hasPdfUrl: !!resource.pdfUrl,
+      pdfUrl: resource.pdfUrl,
+      hasThumbnail: !!resource.thumbnail
+    });
+
     // If we have a PDF URL, show the PDF viewer
     if (resource.pdfUrl) {
       return <PDFViewer pdfUrl={resource.pdfUrl} title={resource.title} />;

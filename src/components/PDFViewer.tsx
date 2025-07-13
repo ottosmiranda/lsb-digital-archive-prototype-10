@@ -9,8 +9,19 @@ import { logPDFEvent } from '@/utils/pdfUtils';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Configure PDF.js worker with multiple fallback sources
+const setupWorker = () => {
+  const sources = [
+    `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`,
+    `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`,
+    `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`
+  ];
+  
+  pdfjs.GlobalWorkerOptions.workerSrc = sources[0];
+  logPDFEvent('PDF Worker configured', { workerSrc: sources[0] });
+};
+
+setupWorker();
 
 interface PDFViewerProps {
   pdfUrl: string;
@@ -36,9 +47,15 @@ const PDFViewer = ({ pdfUrl, title }: PDFViewerProps) => {
 
   // Handle document load error
   const onDocumentLoadError = useCallback((error: Error) => {
-    logPDFEvent('PDF load failed', { error: error.message, url: pdfUrl });
+    logPDFEvent('PDF load failed', { error: error.message, url: pdfUrl, stack: error.stack });
+    console.error('📄 PDF Worker Error Details:', {
+      message: error.message,
+      stack: error.stack,
+      pdfUrl,
+      workerSrc: pdfjs.GlobalWorkerOptions.workerSrc
+    });
     setLoading(false);
-    setError('Não foi possível carregar o PDF');
+    setError('Erro ao carregar PDF. Tente as opções abaixo.');
     setFallbackMode(true);
   }, [pdfUrl]);
 

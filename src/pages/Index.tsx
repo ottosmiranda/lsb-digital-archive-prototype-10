@@ -1,3 +1,4 @@
+
 import Navigation from '@/components/Navigation';
 import Hero from '@/components/Hero';
 import FeaturedHighlights from '@/components/FeaturedHighlights';
@@ -24,7 +25,7 @@ const IndexContent = () => {
         isUsingFallback={isUsingFallback} 
       />
       
-      {/* Seções da homepage sem o QuickAccess */}
+      {/* Homepage sections */}
       <FeaturedHighlights />
       <MostAccessed />
       <FeaturedMedia />

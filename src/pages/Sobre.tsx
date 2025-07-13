@@ -1,4 +1,3 @@
-
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -242,21 +241,16 @@ const Sobre = () => {
                 {librarianFunctions.map((func, index) => {
                   const IconComponent = func.icon;
                   return (
-                    <Card key={index} className="relative overflow-hidden hover:shadow-lg transition-all duration-300 group h-full" style={{ borderColor: '#A7B1C6' }}>
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 rounded-lg" style={{ backgroundColor: '#F1F3F7' }}>
-                            <IconComponent className="h-5 w-5" style={{ color: '#7D8BA5' }} />
-                          </div>
-                        </div>
-                        <CardTitle className="text-lg text-gray-900 leading-tight">{func.title}</CardTitle>
-                      </CardHeader>
-                      
-                      <CardContent>
+                    <Card key={index} className="p-8 text-center hover:shadow-lg transition-all duration-300 group h-full">
+                      <div className="flex flex-col items-center space-y-4">
+                        <IconComponent className="h-8 w-8" style={{ color: '#7D8BA5' }} />
+                        <CardTitle className="text-lg text-gray-900 uppercase font-bold leading-tight">
+                          {func.title}
+                        </CardTitle>
                         <CardDescription className="text-gray-600 leading-relaxed text-sm">
                           {func.description}
                         </CardDescription>
-                      </CardContent>
+                      </div>
                     </Card>
                   );
                 })}

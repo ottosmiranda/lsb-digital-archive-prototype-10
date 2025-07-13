@@ -33,10 +33,6 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
       console.group('🔍 BUSCA OTIMIZADA DE RECURSO - FOCO EM LIVROS');
       console.log('🎯 Target ID:', id);
 
-      // ✅ CORREÇÃO: Manter loading true durante todo o processo
-      setLoading(true);
-      setError(null); // Limpar erros anteriores
-
       // FASE 1: Busca no cache de lookup primeiro (muito rápida)
       const resourceInfo = resourceLookupService.getResourceInfo(id);
       if (resourceInfo) {
@@ -54,7 +50,7 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
           if (isValidTransformedResource(transformedResource)) {
             setResource(transformedResource);
             setLoading(false);
-            setRetrying(false);
+            setError(null);
             console.groupEnd();
             return;
           } else {
@@ -67,7 +63,6 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
       if (dataLoading && !dataLoaded) {
         console.log('⏳ AGUARDANDO: Dados ainda carregando...');
         setRetrying(true);
-        // ✅ CORREÇÃO: Manter loading true
         
         retryTimeoutRef.current = setTimeout(() => {
           console.log('🔄 RETRY: Tentando buscar novamente após dados carregarem');
@@ -90,6 +85,7 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
           if (isValidTransformedResource(transformedResource)) {
             setResource(transformedResource);
             setLoading(false);
+            setError(null);
             setRetrying(false);
             console.groupEnd();
             return;
@@ -103,8 +99,6 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
       if (!apiAttempted) {
         console.log('📡 FASE 4: Busca na API - PRIORITIZANDO LIVROS');
         setApiAttempted(true);
-        setRetrying(true); // Indicar que está tentando na API
-        // ✅ CORREÇÃO: Manter loading true durante todas as tentativas
         
         // ✅ CORREÇÃO: Para títulos, tentar apenas livro (não artigo)
         const searchTypes = resourceInfo?.type ? [resourceInfo.type] : ['titulo', 'video', 'podcast'];
@@ -122,6 +116,7 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
               console.log(`✅ FASE 4 SUCCESS: Encontrado na API como ${actualType}`);
               setResource(apiResource);
               setLoading(false);
+              setError(null);
               setRetrying(false);
               console.groupEnd();
               return;
@@ -134,7 +129,7 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
         }
       }
         
-      // ✅ CORREÇÃO: Só aqui que realmente falhou - definir estados finais
+      // Se chegou aqui, recurso não foi encontrado
       console.log('💀 FALHA TOTAL: Recurso não encontrado ou inválido');
       setResource(null);
       setLoading(false);
@@ -167,7 +162,6 @@ export const useResourceById = (id: string | undefined): UseResourceByIdResult =
     setLoading(true);
   }, [id]);
 
-  // ✅ CORREÇÃO: Manter loading true se dataLoading ou loading interno
   return { resource, loading: dataLoading || loading, error, retrying };
 };
 
@@ -202,6 +196,7 @@ function isValidTransformedResource(resource: Resource): boolean {
   return true;
 }
 
+// ✅ TRANSFORMAÇÃO MAIS ROBUSTA para cache local
 function transformToResource(item: any): Resource {
   console.log('🔄 Transformando item do cache local:', item);
   

@@ -45,8 +45,8 @@ const ResourceDetail = () => {
     );
   }
   
-  // Resource not found - but provide more context
-  if (!resource || error) {
+  // ✅ CORREÇÃO: Só mostrar "não encontrado" quando realmente não está carregando nem tentando
+  if ((!resource || error) && !loading && !retrying) {
     return (
       <>
         <Navigation />
@@ -55,9 +55,33 @@ const ResourceDetail = () => {
     );
   }
 
+  // Se ainda não tem resource mas está tentando, mostrar loading
+  if (!resource && (loading || retrying)) {
+    const loadingMessage = retrying 
+      ? 'Buscando recurso na API...' 
+      : 'Carregando recurso...';
+      
+    return (
+      <>
+        <Navigation />
+        <EnhancedLoadingSkeleton retrying={retrying} message={loadingMessage} />
+      </>
+    );
+  }
+
   // If podcast detected
-  if (resource.type === 'podcast') {
+  if (resource && resource.type === 'podcast') {
     return <PodcastDetailView podcast={resource} />;
+  }
+
+  // Se chegou aqui sem resource, algo deu errado
+  if (!resource) {
+    return (
+      <>
+        <Navigation />
+        <ResourceNotFound />
+      </>
+    );
   }
 
   return (

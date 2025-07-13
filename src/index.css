@@ -141,6 +141,26 @@
     color: #1D3253 !important;
   }
 
+  /* Títulos em fundos escuros devem ser brancos */
+  .bg-[#10284E] h1,
+  .bg-[#10284E] h2,
+  .bg-[#10284E] h3,
+  .bg-[#10284E] h4,
+  .bg-[#10284E] h5,
+  .bg-[#10284E] h6,
+  section[style*="background-color: rgb(16, 40, 78)"] h1,
+  section[style*="background-color: rgb(16, 40, 78)"] h2,
+  section[style*="background-color: rgb(16, 40, 78)"] h3,
+  section[style*="background-color: rgb(16, 40, 78)"] h4,
+  section[style*="background-color: rgb(16, 40, 78)"] h5,
+  section[style*="background-color: rgb(16, 40, 78)"] h6,
+  div[style*="backgroundColor: '#697794'"] h3,
+  div[style*="background-color: #697794"] h3,
+  [style*="backgroundColor: '#697794'"] h3,
+  [style*="background-color: #697794"] h3 {
+    color: #FFFFFF !important;
+  }
+
   h1 {
     @apply text-4xl md:text-5xl lg:text-6xl;
   }

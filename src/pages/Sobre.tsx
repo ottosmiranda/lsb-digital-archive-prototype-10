@@ -173,7 +173,14 @@ const Sobre = () => {
                 </div>
                 
                 <div className="relative">
-                  <div className="bg-gradient-to-br from-lsb-primary to-blue-600 rounded-2xl p-8 text-white">
+                  <div 
+                    className="rounded-sm p-8 text-white border" 
+                    style={{ 
+                      backgroundColor: '#697794',
+                      borderColor: '#A7B1C6',
+                      borderRadius: '2px'
+                    }}
+                  >
                     <BookOpen className="h-12 w-12 text-lsb-accent mb-4" />
                     <h3 className="text-2xl font-semibold mb-4">Conhecimento Acessível</h3>
                     <p className="text-blue-100 leading-relaxed">

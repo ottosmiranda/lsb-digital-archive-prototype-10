@@ -1,4 +1,3 @@
-
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -165,7 +164,7 @@ const Sobre = () => {
             <div className="lsb-content">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                 <div className="animate-slide-up">
-                  <h2 className="h2-title">Missão</h2>
+                  <h2 className="h2-title mb-6">Missão</h2>
                   <div className="prose prose-lg text-gray-600">
                     <p className="leading-relaxed">
                       A Biblioteca Digital Link tem como objetivo proporcionar acesso a uma ampla gama de recursos informacionais, promovendo o aprendizado e a pesquisa no campo da administração de empresas com ênfase em empreendedorismo e outras áreas do conhecimento.

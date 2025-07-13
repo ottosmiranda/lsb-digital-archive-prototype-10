@@ -230,7 +230,7 @@ export class NewApiService {
           this.contentDiscovery.discoverTotalContent('livro'),
           this.contentDiscovery.discoverTotalContent('aula'), 
           this.contentDiscovery.discoverTotalContent('podcast'),
-          this.contentDiscovery.discoverTotalContent('artigos')
+          this.contentDiscovery.discoverTotalContent('artigo')
         ]);
 
         const books = results[0].status === 'fulfilled' ? results[0].value : 30;

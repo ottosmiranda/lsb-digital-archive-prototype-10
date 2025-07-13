@@ -1,4 +1,3 @@
-
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -157,7 +156,7 @@ const SearchResultsGrid = ({
                       </div>
                     </div>
 
-                    <p className="p3-text text-sm line-clamp-3">
+                    <p className="text-sm text-gray-600 line-clamp-3">
                       {result.description}
                     </p>
 

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -137,17 +138,6 @@
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold uppercase;
-    color: #1D3253 !important;
-  }
-
-  /* Specific override for Hero section titles */
-  .bg-\[#10284E\] h1,
-  .bg-\[#10284E\] h2,
-  .bg-\[#10284E\] h3,
-  .bg-\[#10284E\] h4,
-  .bg-\[#10284E\] h5,
-  .bg-\[#10284E\] h6 {
-    color: #FFFFFF !important;
   }
 
   h1 {
@@ -166,111 +156,6 @@
     @apply text-xl md:text-2xl font-semibold;
   }
 
-  /* Espaçamento entre H1 e subtítulos */
-  h1 + p,
-  h1 + .subtitle {
-    margin-top: 16px;
-  }
-
-  /* Espaçamento entre H2 e subtítulos - atualizado para 24px */
-  h2 + p,
-  h2 + .subtitle {
-    margin-top: 24px;
-  }
-
-  /* Classe global para subtítulos */
-  .subtitle {
-    font-family: 'Aeonik', 'Montserrat', sans-serif;
-    font-weight: 500;
-    font-size: 16px;
-    letter-spacing: 0px;
-    line-height: 140%;
-    margin-bottom: 40px;
-    color: #626F88;
-  }
-
-  @media (min-width: 768px) {
-    .subtitle {
-      font-size: 20px;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .subtitle {
-      font-size: 22px;
-    }
-  }
-
-  /* P1 Paragraph Style - Updated color to #292929 */
-  .p1-text {
-    font-family: 'Aeonik', 'Montserrat', sans-serif;
-    font-weight: 400;
-    color: #292929;
-    font-size: 24px;
-    letter-spacing: 0.02em;
-    line-height: 140%;
-    margin-bottom: 23px;
-  }
-
-  /* P2 Paragraph Style - Updated color to #292929 */
-  .p2-text {
-    font-family: 'Aeonik', 'Montserrat', sans-serif;
-    font-weight: 400;
-    font-size: 18px;
-    letter-spacing: 0em;
-    line-height: 140%;
-    margin-bottom: 20px;
-    color: #292929;
-  }
-
-  @media (min-width: 1024px) {
-    .p2-text {
-      font-size: 20px;
-    }
-  }
-
-  /* P3 Paragraph Style - For card body text */
-  .p3-text {
-    font-family: 'Aeonik', 'Montserrat', sans-serif;
-    font-weight: 400;
-    font-size: 16px;
-    letter-spacing: 0em;
-    line-height: 140%;
-    margin-bottom: 20px;
-    color: #292929;
-  }
-
-  /* P4, P5, P6 Paragraph Styles - Prepared for future use */
-  .p4-text {
-    font-family: 'Aeonik', 'Montserrat', sans-serif;
-    font-weight: 400;
-    font-size: 14px;
-    letter-spacing: 0em;
-    line-height: 140%;
-    margin-bottom: 16px;
-    color: #292929;
-  }
-
-  .p5-text {
-    font-family: 'Aeonik', 'Montserrat', sans-serif;
-    font-weight: 400;
-    font-size: 12px;
-    letter-spacing: 0em;
-    line-height: 140%;
-    margin-bottom: 12px;
-    color: #292929;
-  }
-
-  .p6-text {
-    font-family: 'Aeonik', 'Montserrat', sans-serif;
-    font-weight: 400;
-    font-size: 10px;
-    letter-spacing: 0em;
-    line-height: 140%;
-    margin-bottom: 10px;
-    color: #292929;
-  }
-
   /* H2 Global Title Style - Aeonik Bold, Uppercase, Responsive */
   .h2-title {
     font-family: 'Aeonik', 'Montserrat', sans-serif;
@@ -279,10 +164,10 @@
     font-size: 38px;
     letter-spacing: -1.2px;
     line-height: 120%;
-    margin-bottom: 24px; /* Atualizado para 24px */
+    margin-bottom: 60px;
     margin-top: 0;
     padding: 0;
-    color: #1D3253 !important;
+    color: inherit;
   }
 
   @media (min-width: 768px) {
@@ -318,12 +203,22 @@
     line-height: 100%;
     margin: 0;
     padding: 0;
-    color: #1D3253 !important;
+  }
+
+  /* P1 Paragraph Style */
+  .p1-text {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-weight: 400;
+    color: #FFFFFF;
+    font-size: 24px;
+    letter-spacing: 0.02em;
+    line-height: 140%;
+    margin-bottom: 23px;
   }
 
   /* Existing LSB Classes */
   .lsb-primary {
-    color: #1D3253;
+    color: hsl(var(--lsb-primary));
   }
 
   .lsb-accent {

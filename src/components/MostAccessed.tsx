@@ -1,5 +1,4 @@
 
-
 import { Flame } from 'lucide-react';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useMemo, useRef } from 'react';
@@ -78,10 +77,10 @@ const MostAccessed = () => {
         <div className="lsb-container">
           <div className="lsb-content">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
                 Mais Acessados
               </h2>
-              <p className="subtitle max-w-2xl mx-auto">
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                 Os conteúdos mais populares da nossa biblioteca digital
               </p>
             </div>
@@ -100,7 +99,7 @@ const MostAccessed = () => {
         <div className="lsb-content">
           {/* Section Header */}
           <div className="text-center mb-12 animate-fade-in">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
               Mais Acessados
             </h2>
             <div className="w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
@@ -153,7 +152,7 @@ const MostAccessed = () => {
                           <h3 className="font-semibold text-sm mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight flex-1">
                             {item.title}
                           </h3>
-                          <p className="p3-text text-xs mb-3">{item.author}</p>
+                          <p className="text-xs text-gray-600 mb-3">{item.author}</p>
                           <Button 
                             variant="ghost" 
                             size="sm" 

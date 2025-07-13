@@ -36,7 +36,7 @@ export interface ApiResourceResponse {
 }
 
 export class ResourceByIdService {
-  private static readonly TIMEOUT_MS = 8000; // Aumentado para livros
+  private static readonly TIMEOUT_MS = 8000;
 
   static async fetchResourceById(id: string, resourceType: string): Promise<Resource | null> {
     console.group(`🎯 FETCH RESOURCE BY ID - OTIMIZADO PARA LIVROS`);
@@ -67,15 +67,18 @@ export class ResourceByIdService {
       const data = await response.json();
       console.log(`✅ API SUCCESS: ${resourceType} ID ${id}`, data);
       
-      // Para artigos via edge function, extrair o artigo do wrapper
-      const actualData = (resourceType === 'artigo' || resourceType === 'artigos') && data.article 
-        ? data.article 
-        : data;
+      // ✅ NOVO: Para livros via Edge Function, extrair o livro do wrapper
+      let actualData;
+      if (resourceType === 'livro' && data.book) {
+        actualData = data.book;
+      } else if ((resourceType === 'artigo' || resourceType === 'artigos') && data.article) {
+        actualData = data.article;
+      } else {
+        actualData = data;
+      }
       
-      // ✅ CORREÇÃO: Transformar sempre, com fallbacks robustos
       const transformedResource = this.transformToResource(actualData, resourceType, id);
       
-      // ✅ NOVO: Validação final mais permissiva
       if (transformedResource && this.isValidResource(transformedResource)) {
         console.log(`✅ RECURSO VÁLIDO CRIADO:`, transformedResource.title);
         console.groupEnd();
@@ -97,7 +100,6 @@ export class ResourceByIdService {
     }
   }
 
-  // ✅ NOVO: Validação mais permissiva e robusta
   private static isValidResource(resource: Resource): boolean {
     if (!resource) {
       console.log('❌ VALIDAÇÃO: Recurso é null/undefined');
@@ -124,26 +126,23 @@ export class ResourceByIdService {
   }
 
   private static getEndpointForType(resourceType: string, id: string): string {
-    const baseUrl = `${API_BASE_URL}/conteudo-lbs`;
-    
     switch (resourceType) {
       case 'video':
-        return `${baseUrl}/aula/${id}`;
+        return `${API_BASE_URL}/conteudo-lbs/aula/${id}`;
       case 'titulo':
-        // Para títulos, tentaremos livro primeiro
-        return `${baseUrl}/livro/${id}`;
+      case 'livro':
+        // ✅ CORREÇÃO: Usar Edge Function para livros também
+        return `https://acnympbxfptajtxvmkqn.supabase.co/functions/v1/fetch-books?id=${id}`;
       case 'artigo':
       case 'artigos':
-        // Usar a edge function para artigos
         return `https://acnympbxfptajtxvmkqn.supabase.co/functions/v1/fetch-articles?id=${id}`;
       case 'podcast':
-        return `${baseUrl}/podcast/${id}`;
+        return `${API_BASE_URL}/conteudo-lbs/podcast/${id}`;
       default:
         throw new Error(`Tipo de recurso não suportado: ${resourceType}`);
     }
   }
 
-  // Método auxiliar para buscar artigo especificamente
   static async fetchArticleById(id: string): Promise<Resource | null> {
     console.log(`🎯 BUSCA ARTIGO: ID ${id}`);
     
@@ -186,7 +185,6 @@ export class ResourceByIdService {
     console.log('📋 Raw API data:', data);
 
     try {
-      // ✅ MELHORADO: Para podcasts, usar categorias para subject (badges)
       if (resourceType === 'podcast' && Array.isArray(data)) {
         const podcast = data[0];
         
@@ -216,18 +214,15 @@ export class ResourceByIdService {
         return resource;
       }
 
-      // ✅ CORREÇÃO CRÍTICA: Para livros e artigos - Fallbacks mais robustos
       if (resourceType === 'titulo' || resourceType === 'livro' || resourceType === 'artigos') {
         const year = this.extractYearFromDate(data.data_publicacao || data.ano);
         const documentType = resourceType === 'artigos' ? 'Artigo' : (data.tipo_documento || 'Livro');
         
-        // ✅ FALLBACKS MAIS ROBUSTOS para campos essenciais
         const resourceId = data.id || requestedId;
         const title = data.titulo || data.title || `${documentType} ID ${resourceId}`;
         const author = data.autor || data.author || 'Link Business School';
         const description = data.descricao || data.description || `${documentType} de ${author}`;
         
-        // ✅ NOVO: Verificar se temos dados mínimos válidos
         if (!resourceId || !title || title === 'Título não disponível') {
           console.error('❌ DADOS INSUFICIENTES PARA TRANSFORMAÇÃO:', { resourceId, title });
           console.groupEnd();
@@ -256,7 +251,6 @@ export class ResourceByIdService {
         return resource;
       }
 
-      // ✅ MELHORADO: Para vídeos/classes
       if (resourceType === 'video') {
         const videoYear = data.ano || new Date().getFullYear();
         
@@ -298,15 +292,12 @@ export class ResourceByIdService {
   private static extractYearFromDate(dateValue: any): number {
     if (!dateValue) return new Date().getFullYear();
     
-    // Se já é um número, retornar diretamente
     if (typeof dateValue === 'number') return dateValue;
     
-    // Se é string "desconhecida", retornar ano atual
     if (typeof dateValue === 'string' && dateValue.toLowerCase().includes('desconhecida')) {
       return new Date().getFullYear();
     }
     
-    // Tentar extrair ano de string de data
     if (typeof dateValue === 'string') {
       const dateObj = new Date(dateValue);
       if (!isNaN(dateObj.getTime())) {

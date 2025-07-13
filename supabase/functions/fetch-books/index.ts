@@ -29,7 +29,7 @@ interface BookItem {
 }
 
 interface TransformedBook {
-  id: string; // Using real API ID instead of artificial number
+  id: string;
   title: string;
   type: 'titulo';
   author: string;
@@ -50,9 +50,18 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const url = new URL(req.url);
+    const bookId = url.searchParams.get('id');
+    
+    // ✅ NOVA LÓGICA: Se ID fornecido, buscar livro específico
+    if (bookId && bookId.trim() !== '') {
+      console.log(`📖 BUSCA LIVRO POR ID: ${bookId}`);
+      return await fetchBookById(bookId);
+    }
+
+    // ✅ MANTER: Lógica original de paginação para listagem
     console.log('📚 Starting optimized books API fetch...');
     
-    // Parse request body for pagination parameters
     let page = 1;
     let limit = 10;
     
@@ -76,7 +85,6 @@ const handler = async (req: Request): Promise<Response> => {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
-        // ✅ REMOVIDO: 'Content-Type': 'application/json' que causava preflight OPTIONS
         'User-Agent': 'LSB-Digital-Library/1.0'
       },
       signal: AbortSignal.timeout(10000)
@@ -90,7 +98,6 @@ const handler = async (req: Request): Promise<Response> => {
     const data: BookApiResponse = await response.json();
     console.log(`✅ API Response: ${data.conteudo.length} books, page ${data.page}/${data.totalPages}`);
 
-    // Transform books to match SearchResult interface using REAL IDs
     const transformedBooks: TransformedBook[] = data.conteudo.map((book) => {
       let description = book.descricao;
       if (!description || description.trim() === '') {
@@ -101,7 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
       const defaultThumbnail = '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png';
 
       return {
-        id: book.id, // Use REAL ID from API
+        id: book.id,
         title: book.titulo || 'Livro sem título',
         type: 'titulo' as const,
         author: book.autor || 'Autor não informado',
@@ -155,5 +162,101 @@ const handler = async (req: Request): Promise<Response> => {
     });
   }
 };
+
+// ✅ NOVA FUNÇÃO: Buscar livro específico por ID
+async function fetchBookById(bookId: string): Promise<Response> {
+  try {
+    console.log(`🎯 BUSCANDO LIVRO ESPECÍFICO: ID ${bookId}`);
+    
+    const apiUrl = `https://lbs-src1.onrender.com/api/v1/conteudo-lbs/livro/${bookId}`;
+    console.log(`📡 Calling API: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'LSB-Digital-Library/1.0'
+      },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    console.log(`📊 API Response Status: ${response.status}`);
+
+    if (response.status === 404) {
+      console.log(`📚 LIVRO NÃO ENCONTRADO: ID ${bookId}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Book not found',
+        message: `Livro com ID ${bookId} não foi encontrado`,
+        book: null
+      }), {
+        status: 404,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
+    }
+
+    if (!response.ok) {
+      console.error(`❌ API Error: ${response.status} ${response.statusText}`);
+      throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+    }
+
+    const bookData = await response.json();
+    console.log(`✅ LIVRO ENCONTRADO:`, {
+      id: bookData.id,
+      titulo: bookData.titulo,
+      autor: bookData.autor
+    });
+
+    // ✅ TRANSFORMAR DADOS DO LIVRO
+    const transformedBook: TransformedBook = {
+      id: bookData.id,
+      title: bookData.titulo || 'Livro sem título',
+      type: 'titulo' as const,
+      author: bookData.autor || 'Autor não informado',
+      pages: bookData.paginas || undefined,
+      thumbnail: '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
+      description: bookData.descricao || `Livro de ${bookData.autor || 'autor desconhecido'}`,
+      year: bookData.ano ? parseInt(bookData.ano) : 2024,
+      subject: bookData.categorias && bookData.categorias.length > 0 ? bookData.categorias[0] : 'Literatura',
+      documentType: bookData.tipo_documento || 'Livro',
+      pdfUrl: bookData.arquivo || undefined,
+      language: bookData.language || undefined,
+      categories: bookData.categorias || []
+    };
+
+    console.log(`✅ LIVRO TRANSFORMADO COM SUCESSO: ${transformedBook.title}`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      book: transformedBook,
+      message: `Livro ${transformedBook.title} carregado com sucesso`
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+      },
+    });
+
+  } catch (error: any) {
+    console.error(`❌ ERRO AO BUSCAR LIVRO ${bookId}:`, error);
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message,
+      message: `Erro ao carregar livro com ID ${bookId}`,
+      book: null
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+      },
+    });
+  }
+}
 
 serve(handler);

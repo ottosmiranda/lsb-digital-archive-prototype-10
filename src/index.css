@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -90,6 +91,9 @@
     --lsb-section-gray: 225 28% 92%;
     --lsb-gray-line: 0 0% 88%;
     --lsb-hover-blue: 210 65% 25%;
+    --lsb-card-accent: #7D8BA5;
+    --lsb-card-accent-bg: #F1F3F7;
+    --lsb-card-border: #A7B1C6;
   }
 
   .dark {
@@ -217,6 +221,23 @@
 
   .bg-lsb-hover-blue {
     background-color: hsl(var(--lsb-hover-blue));
+  }
+
+  /* New LSB Card Classes */
+  .bg-lsb-card-accent {
+    background-color: var(--lsb-card-accent);
+  }
+
+  .bg-lsb-card-accent-bg {
+    background-color: var(--lsb-card-accent-bg);
+  }
+
+  .border-lsb-card-border {
+    border-color: var(--lsb-card-border);
+  }
+
+  .text-lsb-card-accent {
+    color: var(--lsb-card-accent);
   }
 
   /* Enhanced Animations */

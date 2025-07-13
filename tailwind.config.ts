@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -66,11 +67,14 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				lsb: {
-					primary: 'hsl(208 65% 19%)',
+					primary: 'hsl(210 28% 19%)',
 					accent: 'hsl(45 99% 63%)',
 					neutral: 'hsl(0 0% 100%)',
 					section: 'hsl(210 20% 97%)',
-					gray: 'hsl(0 0% 88%)'
+					gray: 'hsl(0 0% 88%)',
+					'card-accent': '#7D8BA5',
+					'card-accent-bg': '#F1F3F7',
+					'card-border': '#A7B1C6'
 				}
 			},
 			screens: {

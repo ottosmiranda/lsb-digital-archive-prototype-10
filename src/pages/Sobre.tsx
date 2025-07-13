@@ -65,26 +65,22 @@ const libraryFunctions = [
   {
     title: 'Acesso aos recursos',
     description: 'Disponibilizar uma coleção diversificada de livros (e-books), artigos, periódicos, teses, dissertações, podcasts, videoaulas e outros materiais relevantes para o estudo e pesquisa em administração de empresas com foco em empreendedorismo.',
-    icon: Database,
-    color: 'bg-blue-500'
+    icon: Database
   },
   {
     title: 'Suporte ao aprendizado',
     description: 'Facilitar o acesso a informações atualizadas e de qualidade, contribuindo para a formação acadêmica e profissional dos alunos e professores.',
-    icon: GraduationCap,
-    color: 'bg-green-500'
+    icon: GraduationCap
   },
   {
     title: 'Promoção da pesquisa',
     description: 'Incentivar a pesquisa acadêmica e a produção de conhecimento, oferecendo ferramentas e recursos que auxiliem os alunos e professores em suas investigações.',
-    icon: TrendingUp,
-    color: 'bg-purple-500'
+    icon: TrendingUp
   },
   {
     title: 'Ambiente colaborativo',
     description: 'Criar um espaço virtual onde alunos e professores possam compartilhar conhecimentos, experiências e recursos, promovendo a troca de ideias e a inovação.',
-    icon: Users,
-    color: 'bg-orange-500'
+    icon: Users
   }
 ];
 
@@ -92,50 +88,42 @@ const librarianFunctions = [
   {
     title: 'Gestão de recursos',
     description: 'Selecionar, organizar e manter a coleção de materiais disponíveis na Biblioteca Digital Link garantindo que os recursos sejam relevantes e atualizados.',
-    icon: Settings,
-    color: 'bg-blue-500'
+    icon: Settings
   },
   {
     title: 'Atendimento ao estudante e docente',
     description: 'Realizar pesquisas, levantamentos bibliográficos, oferecer suporte e orientação aos alunos e professores na busca por informações.',
-    icon: UserCheck,
-    color: 'bg-green-500'
+    icon: UserCheck
   },
   {
     title: 'Promoção de capacitação',
     description: 'Realizar treinamentos sobre o uso da Biblioteca Digital Link e da Minha Biblioteca e das ferramentas de pesquisa, capacitando os usuários.',
-    icon: GraduationCap,
-    color: 'bg-purple-500'
+    icon: GraduationCap
   },
   {
     title: 'Desenvolvimento de políticas',
     description: 'Contribuir para a elaboração de políticas e diretrizes que regulem o uso da biblioteca digital, assegurando que as normas sejam seguidas.',
-    icon: FileText,
-    color: 'bg-red-500'
+    icon: FileText
   },
   {
     title: 'Plano de ensino',
     description: 'Validar as bibliografias indicadas pelos professores nos planos de ensino, assegurando sua conformidade com as normas do MEC.',
-    icon: BookOpen,
-    color: 'bg-yellow-500'
+    icon: BookOpen
   },
   {
     title: 'Marketing',
     description: 'Promover, em parceria com a equipe de Comunicação Interna, ações para divulgação da Biblioteca Digital Link.',
-    icon: Megaphone,
-    color: 'bg-pink-500'
+    icon: Megaphone
   },
   {
     title: 'Minha Biblioteca',
     description: 'Extrair relatórios semanais, realizar o monitoramento dos problemas e solucioná-los com a equipe da Minha Biblioteca.',
-    icon: BarChart3,
-    color: 'bg-indigo-500'
+    icon: BarChart3
   },
   {
     title: 'Clube de Leitura',
     description: 'Promover encontros dos estudantes com autores de livros que contemplem temas de interesse.',
-    icon: BookMarked,
-    color: 'bg-teal-500'
+    icon: BookMarked
   }
 ];
 
@@ -146,7 +134,7 @@ const Sobre = () => {
       
       <main>
         {/* Hero Section */}
-        <section className="relative bg-lsb-primary py-20 md:py-32 overflow-hidden">
+        <section className="relative py-20 md:py-32 overflow-hidden" style={{ backgroundColor: '#10284E' }}>
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
@@ -213,13 +201,13 @@ const Sobre = () => {
                 {libraryFunctions.map((func, index) => {
                   const IconComponent = func.icon;
                   return (
-                    <Card key={index} className="relative overflow-hidden hover:shadow-xl transition-all duration-300 group">
-                      <div className={`absolute top-0 left-0 w-2 h-full ${func.color}`}></div>
+                    <Card key={index} className="relative overflow-hidden hover:shadow-xl transition-all duration-300 group border-lsb-card-border">
+                      <div className="absolute top-0 left-0 w-2 h-full bg-lsb-card-accent"></div>
                       
                       <CardHeader className="pb-4">
                         <div className="flex items-center gap-4 mb-3">
-                          <div className={`p-3 rounded-lg ${func.color.replace('bg-', 'bg-').replace('-500', '-50')}`}>
-                            <IconComponent className={`h-6 w-6 ${func.color.replace('bg-', 'text-')}`} />
+                          <div className="p-3 rounded-lg bg-lsb-card-accent-bg">
+                            <IconComponent className="h-6 w-6 text-lsb-card-accent" />
                           </div>
                         </div>
                         <CardTitle className="text-xl text-gray-900">{func.title}</CardTitle>
@@ -253,11 +241,11 @@ const Sobre = () => {
                 {librarianFunctions.map((func, index) => {
                   const IconComponent = func.icon;
                   return (
-                    <Card key={index} className="relative overflow-hidden hover:shadow-lg transition-all duration-300 group h-full">
+                    <Card key={index} className="relative overflow-hidden hover:shadow-lg transition-all duration-300 group h-full border-lsb-card-border">
                       <CardHeader className="pb-3">
                         <div className="flex items-center gap-3 mb-2">
-                          <div className={`p-2 rounded-lg ${func.color.replace('bg-', 'bg-').replace('-500', '-50')}`}>
-                            <IconComponent className={`h-5 w-5 ${func.color.replace('bg-', 'text-')}`} />
+                          <div className="p-2 rounded-lg bg-lsb-card-accent-bg">
+                            <IconComponent className="h-5 w-5 text-lsb-card-accent" />
                           </div>
                         </div>
                         <CardTitle className="text-lg text-gray-900 leading-tight">{func.title}</CardTitle>

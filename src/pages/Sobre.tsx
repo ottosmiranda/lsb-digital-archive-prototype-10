@@ -165,11 +165,9 @@ const Sobre = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                 <div className="animate-slide-up">
                   <h2 className="h2-title mb-6">Missão</h2>
-                  <div className="prose prose-lg text-gray-600">
-                    <p className="leading-relaxed">
-                      A Biblioteca Digital Link tem como objetivo proporcionar acesso a uma ampla gama de recursos informacionais, promovendo o aprendizado e a pesquisa no campo da administração de empresas com ênfase em empreendedorismo e outras áreas do conhecimento.
-                    </p>
-                  </div>
+                  <p className="p2-text">
+                    A Biblioteca Digital Link tem como objetivo proporcionar acesso a uma ampla gama de recursos informacionais, promovendo o aprendizado e a pesquisa no campo da administração de empresas com ênfase em empreendedorismo e outras áreas do conhecimento.
+                  </p>
                 </div>
                 
                 <div className="relative">
@@ -221,7 +219,7 @@ const Sobre = () => {
                       </CardHeader>
                       
                       <CardContent>
-                        <CardDescription className="text-gray-600 leading-relaxed">
+                        <CardDescription className="p2-text text-sm">
                           {func.description}
                         </CardDescription>
                       </CardContent>
@@ -254,7 +252,7 @@ const Sobre = () => {
                         <CardTitle className="text-lg uppercase font-bold leading-tight">
                           {func.title}
                         </CardTitle>
-                        <CardDescription className="text-gray-600 leading-relaxed text-sm">
+                        <CardDescription className="p2-text text-sm">
                           {func.description}
                         </CardDescription>
                       </div>

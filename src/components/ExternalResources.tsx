@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Database, BookOpen, Users, Globe, FileText, Microscope, TrendingUp, GraduationCap, Leaf, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,13 +7,11 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import Autoplay from 'embla-carousel-autoplay';
 import { supabase } from '@/integrations/supabase/client';
 import ExternalResourcesSkeleton from '@/components/skeletons/ExternalResourcesSkeleton';
-
 interface ExternalResource {
   Nome: string;
   Descricao: string;
   Link: string;
 }
-
 const ExternalResources = () => {
   const [resources, setResources] = useState<ExternalResource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +24,6 @@ const ExternalResources = () => {
     stopOnInteraction: false,
     stopOnMouseEnter: false
   }));
-
   useEffect(() => {
     const loadResources = async () => {
       try {
@@ -72,7 +68,6 @@ const ExternalResources = () => {
     };
     loadResources();
   }, []);
-
   const getResourceConfig = (nome: string) => {
     const configs = {
       'SciELO Brasil': {
@@ -186,19 +181,15 @@ const ExternalResources = () => {
       highlight: 'Conteúdo especializado'
     };
   };
-
   const handleResourceClick = (url: string, name: string) => {
     console.log(`Accessing external resource: ${name}`);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
-
   if (loading) {
     return <ExternalResourcesSkeleton />;
   }
-
   if (error) {
-    return (
-      <section className="py-16 md:py-20 bg-lsb-section-gray">
+    return <section className="py-16 md:py-20 bg-lsb-section-gray">
         <div className="lsb-container">
           <div className="lsb-content">
             <div className="text-center">
@@ -206,12 +197,9 @@ const ExternalResources = () => {
             </div>
           </div>
         </div>
-      </section>
-    );
+      </section>;
   }
-
-  return (
-    <section className="py-16 md:py-20 bg-lsb-section-gray">
+  return <section className="py-16 md:py-20 bg-lsb-section-gray bg-slate-50">
       <div className="lsb-container">
         <div className="lsb-content">
           <div className="text-center mb-12 animate-fade-in">
@@ -301,8 +289,6 @@ const ExternalResources = () => {
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default ExternalResources;

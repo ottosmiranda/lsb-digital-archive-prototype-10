@@ -141,6 +141,44 @@
     color: #1D3253 !important;
   }
 
+  /* Títulos em fundos escuros devem ser brancos */
+  .dark-bg h1,
+  .dark-bg h2,
+  .dark-bg h3,
+  .dark-bg h4,
+  .dark-bg h5,
+  .dark-bg h6,
+  .bg-lsb-primary h1,
+  .bg-lsb-primary h2,
+  .bg-lsb-primary h3,
+  .bg-lsb-primary h4,
+  .bg-lsb-primary h5,
+  .bg-lsb-primary h6,
+  footer.bg-lsb-primary h1,
+  footer.bg-lsb-primary h2,
+  footer.bg-lsb-primary h3,
+  footer.bg-lsb-primary h4,
+  footer.bg-lsb-primary h5,
+  footer.bg-lsb-primary h6 {
+    color: #FFFFFF !important;
+  }
+
+  /* Override para hero section com fundo escuro */
+  .bg-\[#10284E\] h1,
+  .bg-\[#10284E\] h2,
+  .bg-\[#10284E\] h3,
+  .bg-\[#10284E\] h4,
+  .bg-\[#10284E\] h5,
+  .bg-\[#10284E\] h6,
+  section[class*="bg-[#10284E]"] h1,
+  section[class*="bg-[#10284E]"] h2,
+  section[class*="bg-[#10284E]"] h3,
+  section[class*="bg-[#10284E]"] h4,
+  section[class*="bg-[#10284E]"] h5,
+  section[class*="bg-[#10284E]"] h6 {
+    color: #FFFFFF !important;
+  }
+
   h1 {
     @apply text-4xl md:text-5xl lg:text-6xl;
   }

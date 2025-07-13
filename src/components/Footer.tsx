@@ -51,7 +51,7 @@ const Footer = () => {
 
               {/* Institutional Links */}
               <div>
-                <h3 className="font-semibold text-lg mb-4 text-lsb-accent">Institucional</h3>
+                <h3 className="font-semibold text-lg mb-4 text-white">Institucional</h3>
                 <ul className="space-y-2">
                   {institutionalLinks.map((link) => (
                     <li key={link.label}>
@@ -68,7 +68,7 @@ const Footer = () => {
 
               {/* Quick Links */}
               <div>
-                <h3 className="font-semibold text-lg mb-4 text-lsb-accent">Links Rápidos</h3>
+                <h3 className="font-semibold text-lg mb-4 text-white">Links Rápidos</h3>
                 <ul className="space-y-2">
                   {quickLinks.map((link) => (
                     <li key={link.label}>
@@ -85,7 +85,7 @@ const Footer = () => {
 
               {/* Contact */}
               <div>
-                <h3 className="font-semibold text-lg mb-4 text-lsb-accent">Contato</h3>
+                <h3 className="font-semibold text-lg mb-4 text-white">Contato</h3>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4 text-lsb-accent" />

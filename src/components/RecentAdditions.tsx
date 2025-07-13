@@ -1,4 +1,3 @@
-
 import { Book, Video, Headphones, Calendar, Sparkles, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,48 +9,64 @@ import RecentAdditionsSkeleton from '@/components/skeletons/RecentAdditionsSkele
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { shouldShowImage } from '@/utils/thumbnailUtils';
 import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
-
 const getIcon = (type: string) => {
   switch (type) {
-    case 'titulo': return Book;
-    case 'video': return Video;
-    case 'podcast': return Headphones;
-    case 'artigo': return Book;
-    default: return Book;
+    case 'titulo':
+      return Book;
+    case 'video':
+      return Video;
+    case 'podcast':
+      return Headphones;
+    case 'artigo':
+      return Book;
+    default:
+      return Book;
   }
 };
-
 const getTypeColor = (type: string) => {
   switch (type) {
-    case 'titulo': return 'bg-blue-100 text-blue-800';
-    case 'video': return 'bg-red-100 text-red-800';
-    case 'podcast': return 'bg-purple-100 text-purple-800';
-    case 'artigo': return 'bg-green-100 text-green-800';
-    default: return 'bg-gray-100 text-gray-800';
+    case 'titulo':
+      return 'bg-blue-100 text-blue-800';
+    case 'video':
+      return 'bg-red-100 text-red-800';
+    case 'podcast':
+      return 'bg-purple-100 text-purple-800';
+    case 'artigo':
+      return 'bg-green-100 text-green-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
   }
 };
-
 const getTypeLabel = (type: string) => {
   switch (type) {
-    case 'titulo': return 'Livro';
-    case 'video': return 'Vídeo';
-    case 'podcast': return 'Podcast';
-    case 'artigo': return 'Artigo';
-    default: return 'Conteúdo';
+    case 'titulo':
+      return 'Livro';
+    case 'video':
+      return 'Vídeo';
+    case 'podcast':
+      return 'Podcast';
+    case 'artigo':
+      return 'Artigo';
+    default:
+      return 'Conteúdo';
   }
 };
-
 const formatDate = (year: number) => {
   return new Date(year, 0, 1).toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit'
   });
 };
-
 const RecentAdditions = () => {
-  const { content, rotatedContent, loading, error } = useHomepageContentContext();
-  const { handleImageError } = useThumbnailFallback();
-
+  const {
+    content,
+    rotatedContent,
+    loading,
+    error
+  } = useHomepageContentContext();
+  const {
+    handleImageError
+  } = useThumbnailFallback();
   console.log('🆕 RecentAdditions - Rendering with context data and rotation:', {
     loading,
     error,
@@ -66,7 +81,6 @@ const RecentAdditions = () => {
   // Get mixed recent items - prioritize real content over rotated
   const recentItems = useMemo(() => {
     const allItems = [...content.videos, ...content.books, ...content.podcasts, ...content.articles];
-    
     console.log('🆕 RecentAdditions - Processing items:', {
       totalRealItems: allItems.length,
       rotatedItems: rotatedContent.recentAdditions.items.length,
@@ -88,40 +102,31 @@ const RecentAdditions = () => {
         isRotated: !rotatedContent.recentAdditions.isRealContent
       }));
     }
-    
+
     // Fallback to real content if no rotation available
     if (allItems.length === 0) {
       return [];
     }
-
-    return allItems
-      .sort((a, b) => b.year - a.year)
-      .slice(0, 6)
-      .map(item => ({
-        id: item.id,
-        title: item.title,
-        type: item.type,
-        author: item.author,
-        description: item.description,
-        thumbnail: item.thumbnail,
-        addedDate: item.year.toString(),
-        isRotated: false
-      }));
+    return allItems.sort((a, b) => b.year - a.year).slice(0, 6).map(item => ({
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      author: item.author,
+      description: item.description,
+      thumbnail: item.thumbnail,
+      addedDate: item.year.toString(),
+      isRotated: false
+    }));
   }, [content, rotatedContent]);
-
   console.log('🆕 RecentAdditions - Final items:', recentItems);
-
   if (loading) {
     console.log('🆕 RecentAdditions - Showing skeleton loader');
     return <RecentAdditionsSkeleton />;
   }
-
   if (error) {
     console.log('🆕 RecentAdditions - Error state:', error);
   }
-
-  return (
-    <section className="py-16 md:py-24 bg-lsb-section-gray">
+  return <section className="py-16 md:py-24 bg-lsb-section-gray">
       <div className="lsb-container">
         <div className="lsb-content">
           <div className="text-center mb-12 animate-fade-in">
@@ -133,25 +138,20 @@ const RecentAdditions = () => {
             </p>
           </div>
 
-          {error && (
-            <div className="bg-[#FEC641]/10 border border-[#FEC641]/30 rounded-lg p-4 mb-8">
+          {error && <div className="bg-[#FEC641]/10 border border-[#FEC641]/30 rounded-lg p-4 mb-8">
               <p className="text-[#B78A00] text-center">
                 ⚠️ Problemas ao carregar conteúdo recente. Mostrando dados disponíveis.
               </p>
-            </div>
-          )}
+            </div>}
 
-          {recentItems.length > 0 ? (
-            <>
+          {recentItems.length > 0 ? <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 {recentItems.map((item, index) => {
-                  const IconComponent = getIcon(item.type);
-                  return (
-                    <Link key={item.type + '-' + item.id} to={`/recurso/${item.id}`}>
-                      <Card
-                        className="group hover-lift animate-fade-in cursor-pointer"
-                        style={{ animationDelay: `${index * 0.1}s` }}
-                      >
+              const IconComponent = getIcon(item.type);
+              return <Link key={item.type + '-' + item.id} to={`/recurso/${item.id}`}>
+                      <Card className="group hover-lift animate-fade-in cursor-pointer" style={{
+                  animationDelay: `${index * 0.1}s`
+                }}>
                         <CardContent className="p-6">
                           <div className="flex items-start space-x-4">
                             <div className="flex-shrink-0">
@@ -164,24 +164,14 @@ const RecentAdditions = () => {
                                 <Badge className={getTypeColor(item.type)}>
                                   {getTypeLabel(item.type)}
                                 </Badge>
-                                {item.isRotated ? (
-                                  <Badge 
-                                    variant="outline" 
-                                    className="bg-blue-50 text-blue-700 border-blue-200"
-                                  >
+                                {item.isRotated ? <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                                     <Star className="h-3 w-3 mr-1" />
                                     Destacado
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="bg-lsb-accent text-lsb-primary border-lsb-accent">
+                                  </Badge> : <Badge variant="outline" className="bg-lsb-accent text-lsb-primary border-lsb-accent">
                                     <Sparkles className="h-3 w-3 mr-1" />
                                     Novo
-                                  </Badge>
-                                )}
-                                <div className="flex items-center text-xs text-gray-500">
-                                  <Calendar className="h-3 w-3 mr-1" />
-                                  {formatDate(parseInt(item.addedDate))}
-                                </div>
+                                  </Badge>}
+                                
                               </div>
                               <h3 className="font-semibold text-lg mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2">
                                 {item.title}
@@ -193,63 +183,35 @@ const RecentAdditions = () => {
                             </div>
                             <div className="flex-shrink-0">
                               <div className="w-20 h-20 relative overflow-hidden">
-                                {shouldShowImage(item.thumbnail, item.type) ? (
-                                  <img 
-                                    src={item.thumbnail} 
-                                    alt={item.title}
-                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                    onError={handleImageError}
-                                  />
-                                ) : (
-                                  <ThumbnailPlaceholder
-                                    type={item.type as 'titulo' | 'video' | 'podcast'}
-                                    className="w-20 h-20"
-                                    size="small"
-                                    style={{ display: item.thumbnail ? 'none' : 'flex' }}
-                                  />
-                                )}
+                                {shouldShowImage(item.thumbnail, item.type) ? <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" onError={handleImageError} /> : <ThumbnailPlaceholder type={item.type as 'titulo' | 'video' | 'podcast'} className="w-20 h-20" size="small" style={{
+                            display: item.thumbnail ? 'none' : 'flex'
+                          }} />}
                               </div>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-                    </Link>
-                  );
-                })}
+                    </Link>;
+            })}
               </div>
 
               <div className="text-center mt-12">
                 <Link to="/buscar?ordenar=recentes">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
-                  >
+                  <Button size="lg" variant="outline" className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white">
                     Ver Todas as Novidades
                   </Button>
                 </Link>
               </div>
-            </>
-          ) : (
-            <div className="text-center py-8">
+            </> : <div className="text-center py-8">
               <p className="text-gray-600">
                 {loading ? 'Carregando novidades...' : 'Nenhum conteúdo disponível no momento.'}
               </p>
-              {!loading && (
-                <Button 
-                  onClick={() => window.location.reload()} 
-                  variant="outline" 
-                  className="mt-4"
-                >
+              {!loading && <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">
                   Tentar Novamente
-                </Button>
-              )}
-            </div>
-          )}
+                </Button>}
+            </div>}
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default RecentAdditions;

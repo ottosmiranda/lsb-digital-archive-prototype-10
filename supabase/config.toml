@@ -5,7 +5,7 @@ project_id = "acnympbxfptajtxvmkqn"
 verify_jwt = false
 
 [functions.fetch-books]
-verify_jwt = true
+verify_jwt = false
 
 [functions.fetch-videos]
 verify_jwt = true

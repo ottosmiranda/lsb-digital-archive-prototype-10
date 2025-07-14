@@ -725,22 +725,9 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
         
         if (apiType) {
           try {
-            console.log(`🔍 Descobrindo total de ${apiType}...`);
+            console.log(`🔍 Buscando ${apiType} - página ${page}, limit ${resultsPerPage}`);
             
-            // Etapa 1: Descobrir total real com chamada inicial
-            const discoveryData = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=1&limit=1`, TIMEOUTS.singleRequest);
-            const totalItems = discoveryData.total || 0;
-            
-            console.log(`📊 Total descoberto para ${apiType}: ${totalItems} itens`);
-            
-            if (totalItems === 0) {
-              console.log(`⚠️ Nenhum item encontrado para ${apiType}`);
-              return { items: [], total: 0, totalPages: 0 };
-            }
-            
-            // Etapa 2: Buscar TODOS os itens baseado no total descoberto
-            console.log(`🔍 Buscando TODOS os ${totalItems} itens de ${apiType}...`);
-            const data = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=1&limit=${totalItems}`, TIMEOUTS.globalSearch);
+            const data = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=${page}&limit=${resultsPerPage}`, TIMEOUTS.paginatedBatch);
             
             console.log(`📊 API Response para ${apiType}:`, {
               total: data.total,
@@ -796,15 +783,15 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
     const endIndex = startIndex + resultsPerPage;
     const paginatedResults = sortedItems.slice(startIndex, endIndex);
     
-    // CORREÇÃO CRÍTICA: Usar sempre sortedItems.length para garantir consistência
-    const finalTotalResults = sortedItems.length;
-    const finalTotalPages = Math.ceil(finalTotalResults / resultsPerPage);
+    // CORREÇÃO: Usar totais da API se disponível, senão calcular
+    const finalTotalResults = totalResultsFromAPI > 0 ? totalResultsFromAPI : sortedItems.length;
+    const finalTotalPages = totalPagesFromAPI > 0 ? totalPagesFromAPI : Math.ceil(finalTotalResults / resultsPerPage);
     
     console.log(`📄 Paginação correta aplicada: ${startIndex + 1}-${Math.min(endIndex, finalTotalResults)} de ${finalTotalResults} totais (página ${page}/${finalTotalPages})`);
     
     const response = {
       success: true,
-      results: sortedItems, // Retornar TODOS os itens para que a UI possa paginar corretamente
+      results: paginatedResults,
       pagination: {
         currentPage: page,
         totalPages: finalTotalPages,
@@ -1015,16 +1002,13 @@ const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResul
   });
 
   const filtered = data.filter(item => {
-    // Resource type filter - SKIP completamente quando array vazio (busca paginada já filtrou)
+    // Resource type filter - CORRIGIDO: Não aplicar se foi usado para busca paginada
     if (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) {
       const hasResourceMatch = filters.resourceType.includes(item.type);
       if (!hasResourceMatch) {
         console.log(`❌ Item "${item.title}" eliminado por resourceType: ${item.type} não está em ${filters.resourceType.join(', ')}`);
         return false;
       }
-    } else {
-      // SKIP: resourceType já foi usado na busca paginada ou é busca global
-      console.log(`✅ SKIP resourceType filter para "${item.title}" (${item.type}) - array vazio ou contém 'all'`);
     }
 
     if (filters.subject.length > 0) {

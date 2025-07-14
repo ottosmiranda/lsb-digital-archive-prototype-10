@@ -16,6 +16,7 @@ const WipeButton = React.forwardRef<HTMLButtonElement, WipeButtonProps>(
           "relative overflow-hidden cursor-pointer border-none rounded-lg px-8 py-4 text-sm font-medium group",
           "bg-lsb-accent text-lsb-primary transition-colors duration-300",
           "hover:text-white",
+          "font-aeonik font-medium uppercase tracking-[-0.02em]",
           className
         )}
         {...props}

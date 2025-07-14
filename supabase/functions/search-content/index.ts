@@ -1015,13 +1015,16 @@ const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResul
   });
 
   const filtered = data.filter(item => {
-    // Resource type filter - CORRIGIDO: Não aplicar se foi usado para busca paginada
+    // Resource type filter - SKIP completamente quando array vazio (busca paginada já filtrou)
     if (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) {
       const hasResourceMatch = filters.resourceType.includes(item.type);
       if (!hasResourceMatch) {
         console.log(`❌ Item "${item.title}" eliminado por resourceType: ${item.type} não está em ${filters.resourceType.join(', ')}`);
         return false;
       }
+    } else {
+      // SKIP: resourceType já foi usado na busca paginada ou é busca global
+      console.log(`✅ SKIP resourceType filter para "${item.title}" (${item.type}) - array vazio ou contém 'all'`);
     }
 
     if (filters.subject.length > 0) {

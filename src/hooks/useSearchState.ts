@@ -39,7 +39,6 @@ export const useSearchState = () => {
   useEffect(() => {
     // Se for uma atualização interna, ignore para evitar condição de corrida
     if (isInternalUpdate.current) {
-      isInternalUpdate.current = false;
       return;
     }
 
@@ -66,6 +65,13 @@ export const useSearchState = () => {
     setCurrentPageState(pageFromUrlEffect);
     
     console.log('✅ State synchronized with URL:', { resourceType: resourceTypesFromUrl, sortBy: sortParam || 'relevance', pagina: pageFromUrlEffect });
+  }, [searchParams]);
+
+  // Reset flag after URL update is processed
+  useEffect(() => {
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false;
+    }
   }, [searchParams]);
 
   // Track searches when query changes (from URL navigation)

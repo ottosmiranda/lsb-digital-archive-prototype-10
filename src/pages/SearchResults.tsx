@@ -1,12 +1,12 @@
 
 import { useEffect } from "react";
 import { useSearchResults } from '@/hooks/useSearchResults';
-import { useSearchParams } from 'react-router-dom';
+import { useQueryClear } from '@/hooks/useQueryClear';
 import SearchLayout from '@/components/SearchLayout';
 import { HomepageContentProvider } from '@/contexts/HomepageContentContext';
 
 const SearchResultsContent = () => {
-  const [, setSearchParams] = useSearchParams();
+  const { clearQuery } = useQueryClear();
   const {
     query,
     filters,
@@ -29,13 +29,13 @@ const SearchResultsContent = () => {
     handleFilterChange({
       resourceType: [],
       subject: [],
-      author: [], // CORRIGIDO: Array vazio para múltiplos autores
+      author: [],
       year: '',
       duration: '',
       language: [],
       documentType: [],
-      program: [], // Add program filter
-      channel: [], // Add channel filter
+      program: [],
+      channel: [],
     });
   };
 
@@ -45,11 +45,11 @@ const SearchResultsContent = () => {
   };
 
   const handleClearQuery = () => {
-    // Criar nova URL com apenas filtros=all, removendo q completamente
-    const newSearchParams = new URLSearchParams();
-    newSearchParams.set('filtros', 'all');
-    setSearchParams(newSearchParams);
-    handlePageChange(1);
+    console.log('🔍 SearchResults: handleClearQuery chamado');
+    const success = clearQuery();
+    if (success) {
+      handlePageChange(1);
+    }
   };
 
   // Scroll to top when the search results page is opened (only on mount)

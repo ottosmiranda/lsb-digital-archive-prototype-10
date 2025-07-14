@@ -59,6 +59,12 @@ const SearchLayout = ({
   // ✅ NOVO: Obter contentCounts do contexto para badges corretas
   const { contentCounts } = useHomepageContentContext();
 
+  console.log('🔍 SearchLayout: Recebeu props:', {
+    query,
+    hasQuery: !!query,
+    onClearQuery: !!onClearQuery
+  });
+
   // Sync activeContentType with filters.resourceType
   useEffect(() => {
     if (filters.resourceType.length === 1) {

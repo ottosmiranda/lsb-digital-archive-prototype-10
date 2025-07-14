@@ -62,6 +62,7 @@ const TIMEOUTS = {
 const CACHE_STRATEGIES = {
   paginated: { ttl: 10 * 60 * 1000, prefix: 'paginated' },
   global: { ttl: 15 * 60 * 1000, prefix: 'global' },
+  global_page: { ttl: 10 * 60 * 1000, prefix: 'global_page' },
   filtered: { ttl: 2 * 60 * 1000, prefix: 'filtered' },
   queryBased: { ttl: 5 * 60 * 1000, prefix: 'query' }
 };
@@ -460,239 +461,178 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
   }
 };
 
-// BUSCA GLOBAL ROBUSTA - Para filtro "Todos" - IMPLEMENTAÇÃO DEFINITIVA
+// BUSCA GLOBAL COM PAGINAÇÃO DINÂMICA VERDADEIRA - IMPLEMENTAÇÃO DEFINITIVA
 const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
-  const requestId = `global_search_${Date.now()}`;
-  console.group(`🌍 ${requestId} - GLOBAL SEARCH ROBUSTA (Filtro Todos)`);
-  console.log(`📋 Global search - página ${page}, limit ${resultsPerPage}`);
-  
-  // Cache inteligente para busca global
-  const cacheKey = getCacheKey('global', `all_types_page${page}_limit${resultsPerPage}_sort${sortBy}`);
-  
-  if (isValidCache(cacheKey)) {
-    const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT Global: ${cached.results.length} itens, página ${cached.pagination.currentPage}`);
-    console.groupEnd();
-    return cached;
-  }
+  const requestId = `global_dynamic_${page}_${Date.now()}`;
+  console.group(`🎯 ${requestId} - PAGINAÇÃO DINÂMICA VERDADEIRA (Página ${page})`);
+  console.log(`📋 Global search dinâmica - página ${page}/${resultsPerPage} itens`);
   
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // ✅ PASSO 1: Buscar totais reais de cada tipo primeiro
-    console.log(`🔍 PASSO 1: Descobrindo totais reais de cada tipo...`);
+    // PASSO 1: Descobrir totais reais (cache por 20 minutos)
+    const totalsKey = `global_totals_${Math.floor(Date.now() / (20 * 60 * 1000))}`;
+    let realTotals = globalCache.get(totalsKey)?.data;
     
-    const totalsResults = await Promise.allSettled([
-      Promise.race([
-        supabase.functions.invoke('fetch-books', { body: { page: 1, limit: 1 } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
-      ]),
-      Promise.race([
-        supabase.functions.invoke('fetch-videos', { body: { page: 1, limit: 1 } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
-      ]),
-      Promise.race([
-        supabase.functions.invoke('fetch-podcasts', { body: { page: 1, limit: 1 } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
-      ]),
-      Promise.race([
-        supabase.functions.invoke('fetch-articles', { body: { page: 1, limit: 1 } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
-      ])
-    ]);
-    
-    // Extrair totais reais de cada tipo
-    let totalBooks = 71, totalVideos = 276, totalPodcasts = 633, totalArticles = 79; // fallbacks
-    
-    if (totalsResults[0].status === 'fulfilled' && totalsResults[0].value?.data?.length >= 0) {
-      totalBooks = totalsResults[0].value?.totalCount || 71;
-      console.log(`📚 Total de livros descoberto: ${totalBooks}`);
-    }
-    if (totalsResults[1].status === 'fulfilled' && totalsResults[1].value?.data?.length >= 0) {
-      totalVideos = totalsResults[1].value?.totalCount || 276;
-      console.log(`🎬 Total de vídeos descoberto: ${totalVideos}`);
-    }
-    if (totalsResults[2].status === 'fulfilled' && totalsResults[2].value?.data?.length >= 0) {
-      totalPodcasts = totalsResults[2].value?.totalCount || 633;
-      console.log(`🎧 Total de podcasts descoberto: ${totalPodcasts}`);
-    }
-    if (totalsResults[3].status === 'fulfilled' && totalsResults[3].value?.data?.length >= 0) {
-      totalArticles = totalsResults[3].value?.totalCount || 79;
-      console.log(`📄 Total de artigos descoberto: ${totalArticles}`);
-    }
-    
-    const totalCombinado = totalBooks + totalVideos + totalPodcasts + totalArticles;
-    const totalPagesCalculated = Math.ceil(totalCombinado / resultsPerPage);
-    
-    console.log(`📊 TOTAIS DESCOBERTOS: ${totalBooks} livros + ${totalVideos} vídeos + ${totalPodcasts} podcasts + ${totalArticles} artigos = ${totalCombinado} total`);
-    console.log(`📄 Total de páginas calculado: ${totalPagesCalculated} (${totalCombinado}÷${resultsPerPage})`);
-    
-    // ✅ PASSO 2: Buscar dados suficientes para atender a paginação
-    const limitPerType = Math.min(50, Math.ceil(resultsPerPage * 2 / 4)); // Distribuição inteligente
-    console.log(`🚀 PASSO 2: Buscando ${limitPerType} itens de cada tipo para formar mix global...`);
-    
-    const dataResults = await Promise.allSettled([
-      Promise.race([
-        supabase.functions.invoke('fetch-books', { body: { page: 1, limit: limitPerType } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000))
-      ]),
-      Promise.race([
-        supabase.functions.invoke('fetch-videos', { body: { page: 1, limit: limitPerType } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000))
-      ]),
-      Promise.race([
-        supabase.functions.invoke('fetch-podcasts', { body: { page: 1, limit: limitPerType } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000))
-      ]),
-      Promise.race([
-        supabase.functions.invoke('fetch-articles', { body: { page: 1, limit: limitPerType } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000))
-      ])
-    ]);
-    
-    // ✅ PASSO 3: Coletar todos os dados disponíveis
-    const allItems: SearchResult[] = [];
-    let hasAnyData = false;
-    
-    // Processar livros
-    if (dataResults[0].status === 'fulfilled' && dataResults[0].value?.data) {
-      try {
-        const books = Array.isArray(dataResults[0].value.data) ? dataResults[0].value.data : [];
-        if (books.length > 0) {
-          allItems.push(...books);
-          console.log(`✅ Livros coletados: ${books.length}`);
-          hasAnyData = true;
-        }
-      } catch (e) {
-        console.warn('⚠️ Erro processando livros:', e);
-      }
-    } else {
-      console.warn('⚠️ Falha ao buscar livros');
-    }
-    
-    // Processar vídeos
-    if (dataResults[1].status === 'fulfilled' && dataResults[1].value?.data) {
-      try {
-        const videos = Array.isArray(dataResults[1].value.data) ? dataResults[1].value.data : [];
-        if (videos.length > 0) {
-          allItems.push(...videos);
-          console.log(`✅ Vídeos coletados: ${videos.length}`);
-          hasAnyData = true;
-        }
-      } catch (e) {
-        console.warn('⚠️ Erro processando vídeos:', e);
-      }
-    } else {
-      console.warn('⚠️ Falha ao buscar vídeos');
-    }
-    
-    // Processar podcasts
-    if (dataResults[2].status === 'fulfilled' && dataResults[2].value?.data) {
-      try {
-        const podcasts = Array.isArray(dataResults[2].value.data) ? dataResults[2].value.data : [];
-        if (podcasts.length > 0) {
-          allItems.push(...podcasts);
-          console.log(`✅ Podcasts coletados: ${podcasts.length}`);
-          hasAnyData = true;
-        }
-      } catch (e) {
-        console.warn('⚠️ Erro processando podcasts:', e);
-      }
-    } else {
-      console.warn('⚠️ Falha ao buscar podcasts');
-    }
-    
-    // Processar artigos
-    if (dataResults[3].status === 'fulfilled' && dataResults[3].value?.data) {
-      try {
-        const articles = Array.isArray(dataResults[3].value.data) ? dataResults[3].value.data : [];
-        if (articles.length > 0) {
-          allItems.push(...articles);
-          console.log(`✅ Artigos coletados: ${articles.length}`);
-          hasAnyData = true;
-        }
-      } catch (e) {
-        console.warn('⚠️ Erro processando artigos:', e);
-      }
-    } else {
-      console.warn('⚠️ Falha ao buscar artigos');
-    }
-    
-    console.log(`📊 PASSO 3: Total de itens coletados para mix: ${allItems.length}`);
-    
-    // ✅ PASSO 4: Fallback robusto se não temos dados
-    if (!hasAnyData || allItems.length === 0) {
-      console.warn('⚠️ FALLBACK: Nenhum dado obtido - tentando fallback emergencial...');
+    if (!realTotals || !isValidCache(totalsKey)) {
+      console.log(`📊 PASSO 1: Descobrindo totais reais...`);
       
-      // Tentar usar API externa como último recurso
-      try {
-        const emergencyData = await fetchFromAPI('/conteudo-lbs?page=1&limit=20', 8000);
-        if (emergencyData?.conteudo?.length > 0) {
-          const emergencyItems = emergencyData.conteudo.map((item: any) => transformApiItem(item));
-          allItems.push(...emergencyItems);
-          console.log(`🚨 FALLBACK EMERGENCIAL: ${emergencyItems.length} itens da API externa`);
-          hasAnyData = true;
-        }
-      } catch (fallbackError) {
-        console.warn('⚠️ Fallback emergencial também falhou:', fallbackError);
-      }
+      const totalsPromises = [
+        supabase.functions.invoke('fetch-books', { body: { page: 1, limit: 1 } }).catch(() => ({ totalCount: 71 })),
+        supabase.functions.invoke('fetch-videos', { body: { page: 1, limit: 1 } }).catch(() => ({ totalCount: 276 })),
+        supabase.functions.invoke('fetch-podcasts', { body: { page: 1, limit: 1 } }).catch(() => ({ totalCount: 633 })),
+        supabase.functions.invoke('fetch-articles', { body: { page: 1, limit: 1 } }).catch(() => ({ totalCount: 79 }))
+      ];
       
-      // Se ainda não temos dados, retornar resposta vazia mas válida
-      if (!hasAnyData) {
-        const emptyResponse = {
-          success: true,
-          results: [],
-          pagination: {
-            currentPage: page,
-            totalPages: 0,
-            totalResults: 0,
-            hasNextPage: false,
-            hasPreviousPage: false
-          },
-          searchInfo: {
-            query,
-            appliedFilters: filters,
-            sortBy
+      const [books, videos, podcasts, articles] = await Promise.all(totalsPromises);
+      
+      realTotals = {
+        books: books?.totalCount || books?.data?.length || 71,
+        videos: videos?.totalCount || videos?.data?.length || 276,
+        podcasts: podcasts?.totalCount || podcasts?.data?.length || 633,
+        articles: articles?.totalCount || articles?.data?.length || 79
+      };
+      
+      globalCache.set(totalsKey, { data: realTotals, timestamp: Date.now(), ttl: 20 * 60 * 1000 });
+      console.log(`📊 TOTAIS DESCOBERTOS: ${JSON.stringify(realTotals)}`);
+    } else {
+      console.log(`📦 TOTAIS DO CACHE: ${JSON.stringify(realTotals)}`);
+    }
+    
+    const totalItems = realTotals.books + realTotals.videos + realTotals.podcasts + realTotals.articles;
+    const totalPages = Math.ceil(totalItems / resultsPerPage);
+    
+    // Verificar se a página solicitada é válida
+    if (page > totalPages) {
+      console.log(`⚠️ Página ${page} maior que total ${totalPages} - retornando vazio`);
+      console.groupEnd();
+      return {
+        success: true,
+        results: [],
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalResults: totalItems,
+          hasNextPage: false,
+          hasPreviousPage: page > 1
+        },
+        searchInfo: { query, appliedFilters: filters, sortBy }
+      };
+    }
+    
+    // Cache da página específica (10 minutos)
+    const cacheKey = getCacheKey('global_page', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
+    if (isValidCache(cacheKey)) {
+      const cached = getCache(cacheKey);
+      console.log(`📦 CACHE HIT: Página ${page}`);
+      console.groupEnd();
+      return {
+        ...cached,
+        pagination: {
+          ...cached.pagination,
+          totalPages,
+          totalResults: totalItems
+        }
+      };
+    }
+    
+    // PASSO 2: Calcular posições globais dos itens para esta página
+    const globalStartIndex = (page - 1) * resultsPerPage;
+    const globalEndIndex = Math.min(globalStartIndex + resultsPerPage, totalItems);
+    const itemsNeeded = globalEndIndex - globalStartIndex;
+    
+    console.log(`🧮 PASSO 2: Página ${page} - Índices globais ${globalStartIndex}-${globalEndIndex} (${itemsNeeded} itens)`);
+    
+    // PASSO 3: Mapear posições globais para posições específicas de cada tipo
+    const typeRanges = [
+      { type: 'books', start: 0, end: realTotals.books, apiPageSize: 10 },
+      { type: 'videos', start: realTotals.books, end: realTotals.books + realTotals.videos, apiPageSize: 50 },
+      { type: 'podcasts', start: realTotals.books + realTotals.videos, end: realTotals.books + realTotals.videos + realTotals.podcasts, apiPageSize: 10 },
+      { type: 'articles', start: realTotals.books + realTotals.videos + realTotals.podcasts, end: totalItems, apiPageSize: 10 }
+    ];
+    
+    const pageData: SearchResult[] = [];
+    const fetchPromises: Promise<void>[] = [];
+    
+    // PASSO 4: Para cada posição global necessária, buscar o item correspondente
+    for (let globalIndex = globalStartIndex; globalIndex < globalEndIndex; globalIndex++) {
+      const typeRange = typeRanges.find(range => globalIndex >= range.start && globalIndex < range.end);
+      if (!typeRange) continue;
+      
+      const typeSpecificIndex = globalIndex - typeRange.start;
+      const typeApiPage = Math.floor(typeSpecificIndex / typeRange.apiPageSize) + 1;
+      const typeApiOffset = typeSpecificIndex % typeRange.apiPageSize;
+      
+      // Buscar página específica deste tipo
+      const fetchPromise = (async () => {
+        try {
+          let response;
+          const timeout = Promise.race([
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+          ]);
+          
+          switch (typeRange.type) {
+            case 'books':
+              response = await Promise.race([
+                supabase.functions.invoke('fetch-books', { body: { page: typeApiPage, limit: typeRange.apiPageSize } }),
+                timeout
+              ]);
+              break;
+            case 'videos':
+              response = await Promise.race([
+                supabase.functions.invoke('fetch-videos', { body: { page: typeApiPage, limit: typeRange.apiPageSize } }),
+                timeout
+              ]);
+              break;
+            case 'podcasts':
+              response = await Promise.race([
+                supabase.functions.invoke('fetch-podcasts', { body: { page: typeApiPage, limit: typeRange.apiPageSize } }),
+                timeout
+              ]);
+              break;
+            case 'articles':
+              response = await Promise.race([
+                supabase.functions.invoke('fetch-articles', { body: { page: typeApiPage, limit: typeRange.apiPageSize } }),
+                timeout
+              ]);
+              break;
           }
-        };
-        console.groupEnd();
-        return emptyResponse;
-      }
+          
+          if (response?.data && Array.isArray(response.data) && response.data[typeApiOffset]) {
+            pageData[globalIndex - globalStartIndex] = response.data[typeApiOffset];
+            console.log(`✅ Item ${globalIndex}: ${typeRange.type}[${typeSpecificIndex}] -> posição ${globalIndex - globalStartIndex}`);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Erro buscando ${typeRange.type}[${typeSpecificIndex}]:`, error.message);
+        }
+      })();
+      
+      fetchPromises.push(fetchPromise);
     }
     
-    // ✅ PASSO 5: Aplicar filtros se necessário
-    let filteredItems = allItems;
-    if (hasActiveFilters(filters)) {
-      filteredItems = applyFilters(allItems, filters);
-      console.log(`🔍 PASSO 5: Após filtros aplicados: ${filteredItems.length} itens`);
-    }
+    // Aguardar todas as buscas
+    await Promise.allSettled(fetchPromises);
     
-    // ✅ PASSO 6: Ordenar resultados
-    const sortedItems = sortResults(filteredItems, sortBy, query);
-    console.log(`📊 PASSO 6: Após ordenação: ${sortedItems.length} itens`);
+    // Filtrar itens válidos e manter ordem
+    const validItems = pageData.filter(item => item != null);
+    console.log(`✅ Página ${page} montada: ${validItems.length}/${itemsNeeded} itens válidos`);
     
-    // ✅ PASSO 7: Aplicar paginação correta baseada nos totais REAIS
-    // Usar os totais reais descobertos, não apenas os dados coletados
-    const startIndex = (page - 1) * resultsPerPage;
-    const endIndex = startIndex + resultsPerPage;
-    const paginatedItems = sortedItems.slice(startIndex, endIndex);
+    // PASSO 5: Aplicar ordenação se necessário
+    const sortedItems = sortResults(validItems, sortBy, query);
     
-    console.log(`📄 PASSO 7: Paginação aplicada: itens ${startIndex + 1}-${Math.min(endIndex, sortedItems.length)} de ${totalCombinado} totais`);
-    console.log(`📄 Exibindo ${paginatedItems.length} itens na página ${page} de ${totalPagesCalculated} páginas`);
-    
-    // ✅ PASSO 8: Montar resposta final
+    // PASSO 6: Montar resposta final
     const response = {
       success: true,
-      results: paginatedItems,
+      results: sortedItems,
       pagination: {
         currentPage: page,
-        totalPages: totalPagesCalculated,
-        totalResults: totalCombinado, // Usar totais reais descobertos
-        hasNextPage: page < totalPagesCalculated,
+        totalPages,
+        totalResults: totalItems,
+        hasNextPage: page < totalPages,
         hasPreviousPage: page > 1
       },
       searchInfo: {
@@ -702,13 +642,13 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
       }
     };
     
-    // ✅ PASSO 9: Cachear resultado se válido
-    if (paginatedItems.length > 0) {
-      setCache(cacheKey, response, 'global');
-      console.log(`💾 Cache SET para busca global: ${paginatedItems.length} itens cacheados`);
+    // Cache por 10 minutos se temos dados válidos
+    if (validItems.length > 0) {
+      setCache(cacheKey, response, 'global_page');
+      console.log(`💾 Cache SET: Página ${page} com ${validItems.length} itens`);
     }
     
-    console.log(`✅ BUSCA GLOBAL CONCLUÍDA: ${paginatedItems.length} itens exibidos de ${totalCombinado} totais (página ${page}/${totalPagesCalculated})`);
+    console.log(`✅ PAGINAÇÃO DINÂMICA CONCLUÍDA: ${validItems.length} itens, página ${page}/${totalPages} (${totalItems} total)`);
     console.groupEnd();
     return response;
     
@@ -770,7 +710,7 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
           const allTitulosCacheKey = `all-titulos-${sortBy}`;
           let allTitulosData = globalCache.get(allTitulosCacheKey);
           
-          if (!allTitulosData || !globalCache.isValid(allTitulosCacheKey)) {
+          if (!allTitulosData || !isValidCache(allTitulosCacheKey)) {
             console.log(`🔄 Cache miss para 'titulo' - buscando todos os dados da API`);
             
             // PASSO 1: Descobrir totais reais com chamada inicial

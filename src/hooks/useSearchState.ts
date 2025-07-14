@@ -95,7 +95,7 @@ export const useSearchState = () => {
       pagina: resourceTypeChanged ? 1 : parseInt(searchParams.get('pagina') || '1', 10),
       resourceTypeChanged
     });
-  }, [searchParams, query]);
+  }, [searchParams, query, setSearchParams]);
 
   // Track searches when query changes (from URL navigation)
   useEffect(() => {

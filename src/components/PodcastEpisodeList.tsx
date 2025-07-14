@@ -77,7 +77,7 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
 
     if (loading) {
       return (
-        <section className="mt-10" id="all-episodes-list">
+        <section className="mt-8 md:mt-10 px-4 md:px-0" id="all-episodes-list">
           <div className="flex justify-center items-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-gray-600" />
             <span className="ml-2 text-gray-600">Carregando episódios...</span>
@@ -88,13 +88,13 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
 
     if (error) {
       return (
-        <section className="mt-10" id="all-episodes-list">
+        <section className="mt-8 md:mt-10 px-4 md:px-0" id="all-episodes-list">
           <div className="flex flex-col items-center py-8 text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               Erro ao carregar episódios
             </h3>
-            <p className="text-gray-600 mb-4">{error}</p>
+            <p className="text-gray-600 mb-4 px-4">{error}</p>
             <Button onClick={() => window.location.reload()} variant="outline">
               Tentar novamente
             </Button>
@@ -104,20 +104,20 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
     }
 
     return (
-      <section className="mt-10" id="all-episodes-list">
+      <section className="mt-8 md:mt-10 px-4 md:px-0" id="all-episodes-list">
         <EpisodesHeader
           episodeCount={totalEpisodes}
           episodesLoading={false}
         />
         
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4 md:gap-5">
           {/* Main Player Section */}
           {embedUrl && (
-            <div className="bg-white rounded-[2px] border shadow-sm px-6 pt-6 pb-6">
-              <h3 className="font-semibold text-lg mb-4">
+            <div className="bg-white rounded-[2px] border shadow-sm p-4 md:px-6 md:pt-6 md:pb-6">
+              <h3 className="font-semibold text-base md:text-lg mb-3 md:mb-4 text-center md:text-left">
                 {selectedEpisode ? selectedEpisode.title : "Player Principal"}
               </h3>
-              <div className="w-full rounded-[2px] overflow-hidden" style={{ height: '352px' }}>
+              <div className="w-full rounded-[2px] overflow-hidden" style={{ height: '280px' }}>
                 <iframe
                   src={selectedEpisode?.embedUrl || embedUrl}
                   width="100%"
@@ -145,7 +145,7 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
               />
             ))
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 px-4">
               <p>Nenhum episódio encontrado para este programa.</p>
             </div>
           )}
@@ -156,13 +156,13 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
               {loadingMore ? (
                 <div className="flex items-center gap-2 text-gray-600">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Carregando mais episódios...</span>
+                  <span className="text-sm md:text-base">Carregando mais episódios...</span>
                 </div>
               ) : (
                 <Button 
                   onClick={loadMoreEpisodes} 
                   variant="outline" 
-                  className="w-48"
+                  className="w-full sm:w-48"
                   disabled={loadingMore}
                 >
                   Carregar mais episódios
@@ -172,8 +172,10 @@ const PodcastEpisodeList = forwardRef<PodcastEpisodeListHandles, PodcastEpisodeL
           )}
 
           {!hasMore && episodes.length > 0 && (
-            <div className="text-center py-6 text-gray-500">
-              <p>Você visualizou todos os {episodes.length} episódios disponíveis</p>
+            <div className="text-center py-6 text-gray-500 px-4">
+              <p className="text-sm md:text-base">
+                Você visualizou todos os {episodes.length} episódios disponíveis
+              </p>
             </div>
           )}
         </div>

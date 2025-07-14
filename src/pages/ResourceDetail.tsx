@@ -61,18 +61,22 @@ const ResourceDetail = () => {
         <Navigation />
         <div className="lsb-container">
           <div className="lsb-content">
-            <div className="py-8 pb-[100px]">
-              <ResourceBreadcrumb title={resource.title} />
-              <BackButton />
+            <div className="py-4 md:py-8 pb-20 md:pb-[100px]">
+              <div className="px-4 md:px-0">
+                <ResourceBreadcrumb title={resource.title} />
+                <BackButton />
+              </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Content */}
-                <div className="lg:col-span-2">
+              {/* Mobile-first responsive grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 px-4 md:px-0">
+                {/* Main Content - Full width on mobile, 2/3 on desktop */}
+                <div className="lg:col-span-2 space-y-6 md:space-y-8">
                   <ResourceContent resource={resource} />
                   <MediaSection resource={resource} />
                 </div>
-                {/* Sidebar */}
-                <div className="space-y-6">
+                
+                {/* Sidebar - Full width on mobile, 1/3 on desktop */}
+                <div className="space-y-4 md:space-y-6">
                   <ResourceInfo resource={resource} />
                   <ActionButtons resource={resource} />
                 </div>

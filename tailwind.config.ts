@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -89,17 +88,6 @@ export default {
 				lg: '2px',
 				md: '1px',
 				sm: '0px'
-			},
-			letterSpacing: {
-				'tighter-custom': '-0.02em',
-			},
-			lineHeight: {
-				'160': '1.6',
-			},
-			spacing: {
-				'16': '1rem',
-				'32': '2rem',
-				'64': '4rem',
 			},
 			keyframes: {
 				'accordion-down': {

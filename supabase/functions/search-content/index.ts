@@ -460,88 +460,166 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
   }
 };
 
-// BUSCA GLOBAL CORRIGIDA - Para filtro "Todos" - AUMENTAR LIMITE E INCLUIR ARTIGOS
+// BUSCA GLOBAL CORRIGIDA - Para filtro "Todos" - IMPLEMENTAÇÃO MELHORADA
 const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
   const requestId = `global_search_${Date.now()}`;
-  console.group(`🌍 ${requestId} - GLOBAL SEARCH (Filtro Todos) - CORRIGIDO`);
+  console.group(`🌍 ${requestId} - GLOBAL SEARCH (Filtro Todos) - IMPLEMENTAÇÃO MELHORADA`);
   console.log(`📋 Global search - página ${page}, limit ${resultsPerPage}`);
   
-  const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
-  
-  if (isValidCache(cacheKey)) {
-    const cached = getCache(cacheKey);
-    console.log(`📦 Cache HIT Global: ${cached.results.length} itens`);
-    console.groupEnd();
-    return cached;
-  }
+  // CORREÇÃO: Cache buster durante debugging para garantir dados frescos
+  const cacheKey = getCacheKey('global', `all_content_v2_${Date.now()}`); // Cache buster temporário
   
   try {
-    // ✅ CORREÇÃO: Aumentar limite significativamente para buscar mais dados
-    const itemsPerType = Math.max(500, resultsPerPage * 5); // CORRIGIDO: Era 50, agora 500
-    
-    console.log(`📊 CORRIGIDO: Buscando ${itemsPerType} itens de cada tipo para mix global`);
-    
-    // ✅ CORREÇÃO: Incluir busca de ARTIGOS explicitamente
-    const [livrosData, aulasData, podcastsData, artigosData] = await Promise.allSettled([
-      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
-      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
-      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
-      fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation) // ✅ NOVO: Buscar artigos
+    // CORREÇÃO 1: Descobrir totais reais da API primeiro
+    console.log(`🔍 STEP 1: Descobrindo totais reais de cada endpoint...`);
+    const [livrosInfo, aulasInfo, podcastsInfo, artigosInfo] = await Promise.allSettled([
+      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=1`, TIMEOUTS.singleRequest),
+      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=1`, TIMEOUTS.singleRequest),
+      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=1`, TIMEOUTS.singleRequest),
+      fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=1`, TIMEOUTS.singleRequest)
     ]);
     
-    const allItems: SearchResult[] = [];
+    // Extrair totais descobertos
+    let totalLivros = 100; // fallback
+    let totalAulas = 100; // fallback  
+    let totalPodcasts = 100; // fallback
+    let totalArtigos = 100; // fallback
     
-    // Processar livros
+    if (livrosInfo.status === 'fulfilled' && livrosInfo.value.total) totalLivros = livrosInfo.value.total;
+    if (aulasInfo.status === 'fulfilled' && aulasInfo.value.total) totalAulas = aulasInfo.value.total;
+    if (podcastsInfo.status === 'fulfilled' && podcastsInfo.value.total) totalPodcasts = podcastsInfo.value.total;
+    if (artigosInfo.status === 'fulfilled' && artigosInfo.value.total) totalArtigos = artigosInfo.value.total;
+    
+    console.log(`📊 TOTAIS DESCOBERTOS:`, {
+      livros: totalLivros,
+      aulas: totalAulas, 
+      podcasts: totalPodcasts,
+      artigos: totalArtigos,
+      total: totalLivros + totalAulas + totalPodcasts + totalArtigos
+    });
+    
+    // CORREÇÃO 2: Buscar TODOS os dados baseado nos totais reais (com limite mínimo de 1000)
+    const maxLivros = Math.max(totalLivros, 1000);
+    const maxAulas = Math.max(totalAulas, 1000);
+    const maxPodcasts = Math.max(totalPodcasts, 1000);
+    const maxArtigos = Math.max(totalArtigos, 1000);
+    
+    console.log(`🚀 STEP 2: Buscando TODOS os dados com limites aumentados:`, {
+      livros: maxLivros,
+      aulas: maxAulas,
+      podcasts: maxPodcasts, 
+      artigos: maxArtigos
+    });
+    
+    // CORREÇÃO 3: Buscar todos os dados em paralelo com limites adequados
+    const [livrosData, aulasData, podcastsData, artigosData] = await Promise.allSettled([
+      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${maxLivros}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${maxAulas}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${maxPodcasts}`, TIMEOUTS.globalOperation),
+      fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${maxArtigos}`, TIMEOUTS.globalOperation)
+    ]);
+    
+    console.log(`📡 STEP 3: Status das requisições:`, {
+      livros: livrosData.status,
+      aulas: aulasData.status,
+      podcasts: podcastsData.status,
+      artigos: artigosData.status
+    });
+    
+    const allItems: SearchResult[] = [];
+    let contadores = { livros: 0, aulas: 0, podcasts: 0, artigos: 0 };
+    
+    // CORREÇÃO 4: Processar cada tipo com logs detalhados
     if (livrosData.status === 'fulfilled' && livrosData.value.conteudo) {
       const livros = livrosData.value.conteudo.map((item: any) => transformApiItem(item));
       allItems.push(...livros);
-      console.log(`✅ Livros carregados: ${livros.length}`);
+      contadores.livros = livros.length;
+      console.log(`✅ LIVROS: ${livros.length} itens processados (total API: ${livrosData.value.total})`);
+    } else {
+      console.error(`❌ LIVROS: Falha na requisição`, livrosData.status === 'rejected' ? livrosData.reason : 'Sem conteúdo');
     }
     
-    // Processar aulas/vídeos
     if (aulasData.status === 'fulfilled' && aulasData.value.conteudo) {
       const aulas = aulasData.value.conteudo.map((item: any) => transformApiItem(item));
       allItems.push(...aulas);
-      console.log(`✅ Vídeos carregados: ${aulas.length}`);
+      contadores.aulas = aulas.length;
+      console.log(`✅ AULAS: ${aulas.length} itens processados (total API: ${aulasData.value.total})`);
+    } else {
+      console.error(`❌ AULAS: Falha na requisição`, aulasData.status === 'rejected' ? aulasData.reason : 'Sem conteúdo');
     }
     
-    // Processar podcasts
     if (podcastsData.status === 'fulfilled' && podcastsData.value.conteudo) {
       const podcasts = podcastsData.value.conteudo.map((item: any) => transformApiItem(item));
       allItems.push(...podcasts);
-      console.log(`✅ Podcasts carregados: ${podcasts.length}`);
+      contadores.podcasts = podcasts.length;
+      console.log(`✅ PODCASTS: ${podcasts.length} itens processados (total API: ${podcastsData.value.total})`);
+    } else {
+      console.error(`❌ PODCASTS: Falha na requisição`, podcastsData.status === 'rejected' ? podcastsData.reason : 'Sem conteúdo');
     }
     
-    // ✅ NOVO: Processar artigos
     if (artigosData.status === 'fulfilled' && artigosData.value.conteudo) {
       const artigos = artigosData.value.conteudo.map((item: any) => transformApiItem(item));
       allItems.push(...artigos);
-      console.log(`✅ Artigos carregados: ${artigos.length}`);
+      contadores.artigos = artigos.length;
+      console.log(`✅ ARTIGOS: ${artigos.length} itens processados (total API: ${artigosData.value.total})`);
+    } else {
+      console.error(`❌ ARTIGOS: Falha na requisição`, artigosData.status === 'rejected' ? artigosData.reason : 'Sem conteúdo');
     }
     
-    console.log(`📊 Total de itens combinados CORRIGIDO: ${allItems.length}`);
+    console.log(`📊 STEP 4: TOTAL COMBINADO: ${allItems.length} itens`, contadores);
+    
+    // CORREÇÃO 5: Verificar se há dados válidos
+    if (allItems.length === 0) {
+      console.error(`❌ ERRO CRÍTICO: Nenhum item foi carregado de nenhum endpoint!`);
+      const response = {
+        success: false,
+        results: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalResults: 0,
+          hasNextPage: false,
+          hasPreviousPage: false
+        },
+        searchInfo: {
+          query,
+          appliedFilters: filters,
+          sortBy
+        },
+        error: 'Nenhum conteúdo foi carregado dos endpoints da API'
+      };
+      console.groupEnd();
+      return response;
+    }
     
     // Aplicar filtros se necessário
     let filteredItems = allItems;
     if (hasActiveFilters(filters)) {
       filteredItems = applyFilters(allItems, filters);
-      console.log(`🔍 Após filtros: ${filteredItems.length} itens`);
+      console.log(`🔍 STEP 5: Após filtros: ${filteredItems.length} itens`);
     }
     
     // Ordenar resultados
     const sortedItems = sortResults(filteredItems, sortBy, query);
-    console.log(`📊 Após ordenação: ${sortedItems.length} itens`);
+    console.log(`📊 STEP 6: Após ordenação: ${sortedItems.length} itens`);
     
-    // CORREÇÃO: Paginação correta dos resultados combinados
+    // CORREÇÃO 6: Paginação correta - primeiro combinar TUDO, depois paginar
     const totalResults = sortedItems.length;
     const totalPages = Math.ceil(totalResults / resultsPerPage);
     const startIndex = (page - 1) * resultsPerPage;
     const endIndex = startIndex + resultsPerPage;
     const paginatedItems = sortedItems.slice(startIndex, endIndex);
     
-    console.log(`📄 Paginação: ${startIndex}-${endIndex} de ${totalResults} (página ${page}/${totalPages})`);
+    console.log(`📄 STEP 7: PAGINAÇÃO CORRETA:`, {
+      totalResults,
+      totalPages,
+      currentPage: page,
+      startIndex,
+      endIndex,
+      itemsThisPage: paginatedItems.length
+    });
     
     const response = {
       success: true,
@@ -557,12 +635,15 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
         query,
         appliedFilters: filters,
         sortBy
+      },
+      debug: {
+        requestId,
+        contadores,
+        totalCombinado: allItems.length
       }
     };
     
-    setCache(cacheKey, response, 'global');
-    
-    console.log(`✅ Global search CORRIGIDO: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
+    console.log(`✅ GLOBAL SEARCH MELHORADO: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
     console.groupEnd();
     return response;
     

@@ -227,12 +227,23 @@ export const useSearchResults = () => {
   // Handlers otimizados
   const handleFilterChange = useCallback((newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
     console.log('🔄 Mudança de filtro (Nova API):', { newFilters, options });
+    
+    // ✅ CORREÇÃO: Detectar mudança de resourceType e resetar página
+    const resourceTypeChanged = 
+      newFilters.resourceType.length !== filters.resourceType.length ||
+      newFilters.resourceType.some((type, index) => type !== filters.resourceType[index]);
+
+    if (resourceTypeChanged) {
+      console.log('🔄 ResourceType mudou, resetando página para 1');
+      setCurrentPage(1);
+    }
+    
     setFilters(newFilters);
     
-    if (!options?.authorTyping) {
-      setCurrentPage(1); // Reset para página 1 em nova busca
+    if (!options?.authorTyping && !resourceTypeChanged) {
+      setCurrentPage(1); // Reset para página 1 em nova busca (exceto mudança de tipo)
     }
-  }, [setFilters, setCurrentPage]);
+  }, [setFilters, setCurrentPage, filters.resourceType]);
 
   const handleSortChange = useCallback((newSort: string) => {
     console.log('📊 Mudança de ordenação (Nova API):', newSort);

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -59,7 +60,6 @@ const SearchLayout = ({
   // ✅ NOVO: Obter contentCounts do contexto para badges corretas
   const { contentCounts } = useHomepageContentContext();
 
-
   // Sync activeContentType with filters.resourceType
   useEffect(() => {
     if (filters.resourceType.length === 1) {
@@ -118,6 +118,11 @@ const SearchLayout = ({
 
   const handleContentTypeChange = (type: string) => {
     console.log('🎯 Content type change:', { from: activeContentType, to: type });
+    
+    // ✅ CORREÇÃO: Reset página para 1 quando mudar tipo de conteúdo
+    console.log('🔄 Resetando página para 1 devido à mudança de tipo');
+    onPageChange(1);
+    
     setActiveContentType(type); 
     const newFilters = { ...filters };
     newFilters.resourceType = [type]; 

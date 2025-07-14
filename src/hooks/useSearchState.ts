@@ -22,6 +22,9 @@ export const useSearchState = () => {
   
   const [sortBy, setSortByState] = useState('relevance');
   
+  // ✅ CORREÇÃO: Ref para detectar mudanças de resourceType
+  const previousResourceTypeRef = useRef<string[]>([]);
+  
   // Ler página da URL e sincronizar com estado
   const pageFromUrl = parseInt(searchParams.get('pagina') || '1', 10);
   const [currentPage, setCurrentPageState] = useState(pageFromUrl);
@@ -46,10 +49,36 @@ export const useSearchState = () => {
       reverseFilterMapping[filter] || filter
     );
 
+    // ✅ CORREÇÃO: Detectar mudança de resourceType e resetar página
+    const previousResourceType = previousResourceTypeRef.current;
+    const resourceTypeChanged = 
+      mappedFilters.length !== previousResourceType.length ||
+      mappedFilters.some((type, index) => type !== previousResourceType[index]);
+
+    if (resourceTypeChanged && mappedFilters.length > 0 && previousResourceType.length > 0) {
+      console.log('🔄 ResourceType mudou, resetando página para 1:', {
+        anterior: previousResourceType,
+        novo: mappedFilters
+      });
+      setCurrentPageState(1);
+      
+      // Atualizar URL para remover parâmetro de página
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('pagina');
+      setSearchParams(newSearchParams, { replace: true });
+    } else {
+      // Sincronizar página da URL com estado apenas se não houve mudança de tipo
+      const pageFromUrlEffect = parseInt(searchParams.get('pagina') || '1', 10);
+      setCurrentPageState(pageFromUrlEffect);
+    }
+
     setFilters(prev => ({
       ...prev,
       resourceType: mappedFilters
     }));
+
+    // Atualizar ref com o novo resourceType
+    previousResourceTypeRef.current = mappedFilters;
 
     const sortParam = searchParams.get('ordenar');
     if (sortParam === 'recentes') {
@@ -59,15 +88,12 @@ export const useSearchState = () => {
     } else {
       setSortByState('relevance');
     }
-
-    // Sincronizar página da URL com estado
-    const pageFromUrlEffect = parseInt(searchParams.get('pagina') || '1', 10);
-    setCurrentPageState(pageFromUrlEffect);
     
     console.log('✅ State synchronized with URL:', { 
       resourceType: mappedFilters, 
       sortBy: sortParam || 'relevance', 
-      pagina: pageFromUrlEffect
+      pagina: resourceTypeChanged ? 1 : parseInt(searchParams.get('pagina') || '1', 10),
+      resourceTypeChanged
     });
   }, [searchParams, query]);
 

@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
 import { useApiSearch } from '@/hooks/useApiSearch';
@@ -23,6 +24,7 @@ interface SearchResponse {
 
 export const useSearchResults = () => {
   const resultsPerPage = 9;
+  const [searchParams] = useSearchParams();
   
   const {
     query,
@@ -70,22 +72,29 @@ export const useSearchResults = () => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
-  // NOVA LÓGICA: Verificar se deve executar busca
+  // LÓGICA CORRIGIDA: Verificar se deve executar busca - incluindo filtro "all"
   const shouldSearch = useMemo((): boolean => {
     const hasQuery = query.trim() !== '';
     const hasResourceTypeFilters = filters.resourceType.length > 0;
     const hasOtherFilters = hasActiveFilters;
     
-    console.log('🔍 Nova lógica shouldSearch:', { 
+    // CORREÇÃO: Detectar se filtro "all" está ativo na URL
+    const currentFilters = searchParams.getAll('filtros');
+    const hasAllFilter = currentFilters.includes('all');
+    
+    console.log('🔍 Lógica shouldSearch CORRIGIDA:', { 
       hasQuery, 
       hasResourceTypeFilters, 
       hasOtherFilters,
+      hasAllFilter,
+      currentUrlFilters: currentFilters,
       resourceType: filters.resourceType,
-      result: hasQuery || hasResourceTypeFilters || hasOtherFilters
+      result: hasQuery || hasResourceTypeFilters || hasOtherFilters || hasAllFilter
     });
     
-    return hasQuery || hasResourceTypeFilters || hasOtherFilters;
-  }, [query, filters.resourceType, hasActiveFilters]);
+    // CORREÇÃO: Se filtro "all" está ativo, deve executar busca global
+    return hasQuery || hasResourceTypeFilters || hasOtherFilters || hasAllFilter;
+  }, [query, filters.resourceType, hasActiveFilters, searchParams]);
 
   // NOVA IMPLEMENTAÇÃO: Busca com paginação real
   const performSearch = useCallback(async () => {

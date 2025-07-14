@@ -1,5 +1,4 @@
 
-import { supabase } from '@/integrations/supabase/client';
 import { SearchFilters } from '@/types/searchTypes';
 import { SearchResponse } from './types';
 
@@ -35,7 +34,11 @@ export class SearchService {
         });
       }
       
-      const urlWithParams = `${supabase.functions._url}/search-content?${params.toString()}`;
+      // ✅ CORREÇÃO: Usar URL base do Supabase Functions corretamente
+      const SUPABASE_URL = "https://acnympbxfptajtxvmkqn.supabase.co";
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjbnltcGJ4ZnB0YWp0eHZta3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MDMzODcsImV4cCI6MjA2NjI3OTM4N30.7cAJTwzL28v0QyycI2wQyEotlQh34Nygfp4WnSZR66Q";
+      
+      const urlWithParams = `${SUPABASE_URL}/functions/v1/search-content?${params.toString()}`;
       console.log('🌐 GET URL:', urlWithParams);
       
       // ✅ REQUISIÇÃO GET COM TIMEOUT
@@ -46,8 +49,8 @@ export class SearchService {
       const fetchPromise = fetch(urlWithParams, {
         method: 'GET',
         headers: {
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json'
         }
       });

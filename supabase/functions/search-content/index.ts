@@ -698,9 +698,13 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
             console.log(`📦 Cache HIT para 'titulo' - usando dados em cache (${allTitulosData.totalCombinado} itens)`);
           }
           
-          // PASSO 5: Adicionar TODOS os itens (paginação será aplicada depois da ordenação)
-          allItems.push(...allTitulosData.items);
-          console.log(`📄 Adicionados ${allTitulosData.items.length} itens de 'titulo' ao conjunto completo`);
+          // PASSO 5: Aplicar paginação correta no conjunto completo
+          const startIndex = (page - 1) * resultsPerPage;
+          const endIndex = startIndex + resultsPerPage;
+          const paginatedItems = allTitulosData.items.slice(startIndex, endIndex);
+          
+          allItems.push(...paginatedItems);
+          console.log(`📄 Página ${page}: exibindo itens ${startIndex + 1}-${Math.min(endIndex, allTitulosData.totalCombinado)} de ${allTitulosData.totalCombinado} totais`);
           
           // ✅ TOTAIS CORRETOS baseados no conjunto completo
           totalResultsFromAPI = Math.max(totalResultsFromAPI, allTitulosData.totalCombinado);
@@ -778,20 +782,13 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
     // Ordenar resultados
     const sortedItems = sortResults(filteredItems, sortBy, query);
     
-    // CORREÇÃO CRÍTICA: Aplicar paginação APÓS ordenação
-    const startIndex = (page - 1) * resultsPerPage;
-    const endIndex = startIndex + resultsPerPage;
-    const paginatedResults = sortedItems.slice(startIndex, endIndex);
-    
     // CORREÇÃO: Usar totais da API se disponível, senão calcular
     const finalTotalResults = totalResultsFromAPI > 0 ? totalResultsFromAPI : sortedItems.length;
     const finalTotalPages = totalPagesFromAPI > 0 ? totalPagesFromAPI : Math.ceil(finalTotalResults / resultsPerPage);
     
-    console.log(`📄 Paginação correta aplicada: ${startIndex + 1}-${Math.min(endIndex, finalTotalResults)} de ${finalTotalResults} totais (página ${page}/${finalTotalPages})`);
-    
     const response = {
       success: true,
-      results: paginatedResults,
+      results: sortedItems,
       pagination: {
         currentPage: page,
         totalPages: finalTotalPages,

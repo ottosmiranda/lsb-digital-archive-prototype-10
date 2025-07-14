@@ -67,9 +67,10 @@ const SearchLayout = ({
         setActiveContentType(filters.resourceType[0]);
       }
     } else if (filters.resourceType.length === 0) {
-      setActiveContentType('titulo'); // Default to first available type
+      // ✅ CORREÇÃO: Quando não há filtro, usar 'all' (busca global)
+      setActiveContentType('all');
     } else {
-      setActiveContentType('titulo'); 
+      setActiveContentType('all'); // Múltiplos filtros = busca global
     }
   }, [filters.resourceType]);
   
@@ -125,7 +126,16 @@ const SearchLayout = ({
     
     setActiveContentType(type); 
     const newFilters = { ...filters };
-    newFilters.resourceType = [type]; 
+    
+    if (type === 'all') {
+      // Para busca global (Todos), usar array vazio
+      newFilters.resourceType = [];
+      console.log('🌍 Filtro "Todos" selecionado - resourceType vazio para busca global');
+    } else {
+      // Para filtros específicos
+      newFilters.resourceType = [type];
+    }
+    
     console.log('🔄 Calling onFiltersChange with:', newFilters);
     onFiltersChange(newFilters);
   };

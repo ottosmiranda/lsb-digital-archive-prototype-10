@@ -124,8 +124,8 @@ const detectSearchType = (query: string, filters: SearchFilters): SearchType => 
     cleanQuery: `"${cleanQuery}"`,
     hasQuery,
     resourceType: filters.resourceType,
-    isAll: filters.resourceType.includes('all'),
-    hasResourceTypeFilters: filters.resourceType.length > 0 && !filters.resourceType.includes('all')
+    resourceTypeLength: filters.resourceType.length,
+    isEmpty: filters.resourceType.length === 0
   });
 
   // PRIORIDADE 1: Query sempre tem precedência ABSOLUTA
@@ -134,8 +134,8 @@ const detectSearchType = (query: string, filters: SearchFilters): SearchType => 
     return 'queryBased';
   }
 
-  // PRIORIDADE 2: Filtros de tipo específico
-  const hasResourceTypeFilters = filters.resourceType.length > 0 && !filters.resourceType.includes('all');
+  // PRIORIDADE 2: Filtros de tipo específico (array não vazio)
+  const hasResourceTypeFilters = filters.resourceType.length > 0;
   const hasOtherFilters = filters.subject.length > 0 || filters.author.length > 0 || 
                           filters.year || filters.duration || filters.language.length > 0 ||
                           filters.program.length > 0 || filters.channel.length > 0;
@@ -150,8 +150,8 @@ const detectSearchType = (query: string, filters: SearchFilters): SearchType => 
     return 'filtered';
   }
   
-  // PRIORIDADE 3: Busca global (filtro "Todos" ou sem filtros)
-  console.log('🌍 SEM FILTROS ESPECÍFICOS → GLOBAL SEARCH');
+  // PRIORIDADE 3: Busca global (resourceType vazio = filtro "Todos")
+  console.log('🌍 BUSCA GLOBAL (TODOS) → GLOBAL SEARCH');
   return 'global';
 };
 

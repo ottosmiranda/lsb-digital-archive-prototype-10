@@ -7,24 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface SearchRequest {
-  query: string;
-  filters: {
-    resourceType: string[];
-    subject: string[];
-    author: string[];
-    year: string;
-    duration: string;
-    language: string[];
-    documentType: string[];
-    program: string[];
-    channel: string[];
-  };
-  sortBy: string;
-  page: number;
-  resultsPerPage: number;
-}
-
 interface SearchResult {
   id: string;
   title: string;
@@ -60,11 +42,11 @@ interface SearchResponse {
   error?: string;
 }
 
-// Cache em memória para resultados (15 minutos)
+// Cache em memória simplificado
 const resultCache = new Map<string, { data: SearchResponse; timestamp: number }>();
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutos
 
-// Totais reais conhecidos
+// Totais conhecidos
 const CONTENT_TOTALS = {
   books: 71,
   videos: 276, 
@@ -72,30 +54,52 @@ const CONTENT_TOTALS = {
   articles: 79
 };
 
-const COMBINED_TOTAL = CONTENT_TOTALS.books + CONTENT_TOTALS.videos + CONTENT_TOTALS.podcasts + CONTENT_TOTALS.articles; // 1059
+const COMBINED_TOTAL = CONTENT_TOTALS.books + CONTENT_TOTALS.videos + CONTENT_TOTALS.podcasts + CONTENT_TOTALS.articles;
 
 serve(async (req) => {
   const requestId = `search_${Date.now()}`;
-  console.log(`🚀 ${requestId} - SEARCH DEFINITIVO (Sem erro 500)`);
+  console.log(`🚀 ${requestId} - SEARCH GET SIMPLIFICADO`);
   
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ✅ MIGRAÇÃO PARA GET: Extrair parâmetros da URL
+  if (req.method !== 'GET') {
+    console.warn(`❌ ${requestId} - Método ${req.method} não suportado`);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Método não suportado. Use GET.'
+    }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
   try {
-    const body: SearchRequest = await req.json();
-    const { query, filters, sortBy, page, resultsPerPage } = body;
+    const url = new URL(req.url);
+    const params = url.searchParams;
     
-    console.log(`📋 ${requestId} - Params:`, { 
+    // Extrair parâmetros com valores padrão
+    const query = params.get('q') || '';
+    const page = parseInt(params.get('page') || '1', 10);
+    const resultsPerPage = parseInt(params.get('limit') || '9', 10);
+    const sortBy = params.get('sort') || 'relevance';
+    
+    // Filtros simplificados
+    const resourceTypes = params.getAll('type') || [];
+    
+    console.log(`📋 ${requestId} - GET Params:`, { 
       query: query || '(empty)', 
       page, 
       resultsPerPage,
-      hasFilters: filters.resourceType.length > 0 
+      sortBy,
+      resourceTypes 
     });
 
-    // Cache key baseado em parâmetros
-    const cacheKey = JSON.stringify({ query, filters, sortBy, page, resultsPerPage });
+    // Cache key baseado em parâmetros GET
+    const cacheKey = `${query}_${page}_${resultsPerPage}_${sortBy}_${resourceTypes.join(',')}`;
     
     // Verificar cache válido
     const cached = resultCache.get(cacheKey);
@@ -106,49 +110,37 @@ serve(async (req) => {
       });
     }
 
-    console.log(`🔍 ${requestId} - Cache MISS - Executando busca real`);
+    console.log(`🔍 ${requestId} - Cache MISS - Executando busca GET`);
 
     // Inicializar Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // ESTRATÉGIA SIMPLIFICADA: Distribuição fixa por página
-    const getPageDistribution = (currentPage: number) => {
-      // Distribuição alternada para variedade
-      const patterns = [
-        { books: 2, videos: 2, podcasts: 4, articles: 1 }, // Página ímpar
-        { books: 1, videos: 3, podcasts: 4, articles: 1 }, // Página par
-      ];
+    // ✅ LÓGICA SIMPLIFICADA: Distribuição fixa por página
+    const getSimpleDistribution = (currentPage: number) => {
+      // Padrão simples: 2 livros, 3 vídeos, 3 podcasts, 1 artigo = 9 total
+      const booksPerPage = 2;
+      const videosPerPage = 3;
+      const podcastsPerPage = 3;
+      const articlesPerPage = 1;
       
-      const pattern = patterns[currentPage % 2];
-      
-      // Calcular offsets simples baseados na página
-      const booksOffset = Math.max(0, (currentPage - 1) * pattern.books);
-      const videosOffset = Math.max(0, (currentPage - 1) * pattern.videos);
-      const podcastsOffset = Math.max(0, (currentPage - 1) * pattern.podcasts);
-      const articlesOffset = Math.max(0, (currentPage - 1) * pattern.articles);
+      // Offset linear simples
+      const baseOffset = (currentPage - 1);
       
       return {
-        books: { limit: pattern.books, offset: booksOffset },
-        videos: { limit: pattern.videos, offset: videosOffset },
-        podcasts: { limit: pattern.podcasts, offset: podcastsOffset },
-        articles: { limit: pattern.articles, offset: articlesOffset }
+        books: { limit: booksPerPage, offset: baseOffset * booksPerPage },
+        videos: { limit: videosPerPage, offset: baseOffset * videosPerPage },
+        podcasts: { limit: podcastsPerPage, offset: baseOffset * podcastsPerPage },
+        articles: { limit: articlesPerPage, offset: baseOffset * articlesPerPage }
       };
     };
 
-    const distribution = getPageDistribution(page);
-    console.log(`📊 ${requestId} - Distribuição página ${page}:`, distribution);
+    const distribution = getSimpleDistribution(page);
+    console.log(`📊 ${requestId} - Distribuição simplificada página ${page}:`, distribution);
 
-    // Timeout individual de 8 segundos para cada fonte
-    const createTimeoutPromise = (ms: number) => {
-      return new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Timeout após ${ms}ms`)), ms);
-      });
-    };
-
-    // Buscar dados com timeout individual robusto
-    const fetchWithTimeout = async (
+    // ✅ BUSCA SIMPLIFICADA COM TIMEOUT INDIVIDUAL DE 8S
+    const fetchWithSimpleTimeout = async (
       functionName: string, 
       params: any, 
       label: string
@@ -156,13 +148,18 @@ serve(async (req) => {
       try {
         console.log(`📡 ${requestId} - Buscando ${label}...`);
         
-        const fetchPromise = supabase.functions.invoke(functionName, { body: params });
-        const timeoutPromise = createTimeoutPromise(8000);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
         
-        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+        const { data, error } = await supabase.functions.invoke(functionName, { 
+          body: params,
+          signal: controller.signal 
+        });
+        
+        clearTimeout(timeoutId);
         
         if (error) {
-          console.warn(`⚠️ ${requestId} - Erro ${label}:`, error);
+          console.warn(`⚠️ ${requestId} - Erro ${label}:`, error.message);
           return [];
         }
         
@@ -181,31 +178,31 @@ serve(async (req) => {
       }
     };
 
-    // Buscar dados de todas as fontes com fallback robusto
-    console.log(`🌐 ${requestId} - Iniciando busca paralela com fallbacks...`);
+    // ✅ BUSCA PARALELA SIMPLIFICADA
+    console.log(`🌐 ${requestId} - Iniciando busca paralela simplificada...`);
     
     const startTime = Date.now();
     
     const [booksResult, videosResult, podcastsResult, articlesResult] = await Promise.allSettled([
-      fetchWithTimeout('fetch-books', distribution.books, 'Livros'),
-      fetchWithTimeout('fetch-videos', distribution.videos, 'Vídeos'), 
-      fetchWithTimeout('fetch-podcasts', distribution.podcasts, 'Podcasts'),
-      fetchWithTimeout('fetch-articles', distribution.articles, 'Artigos')
+      fetchWithSimpleTimeout('fetch-books', distribution.books, 'Livros'),
+      fetchWithSimpleTimeout('fetch-videos', distribution.videos, 'Vídeos'), 
+      fetchWithSimpleTimeout('fetch-podcasts', distribution.podcasts, 'Podcasts'),
+      fetchWithSimpleTimeout('fetch-articles', distribution.articles, 'Artigos')
     ]);
 
     const elapsedTime = Date.now() - startTime;
     console.log(`⏱️ ${requestId} - Busca concluída em ${elapsedTime}ms`);
 
-    // Extrair resultados com fallback
+    // Extrair resultados
     const books = booksResult.status === 'fulfilled' ? booksResult.value : [];
     const videos = videosResult.status === 'fulfilled' ? videosResult.value : [];
     const podcasts = podcastsResult.status === 'fulfilled' ? podcastsResult.value : [];
     const articles = articlesResult.status === 'fulfilled' ? articlesResult.value : [];
 
-    // Combinar todos os resultados
+    // Combinar resultados
     const allResults: SearchResult[] = [...books, ...videos, ...podcasts, ...articles];
     
-    console.log(`📊 ${requestId} - Resultados por tipo:`, {
+    console.log(`📊 ${requestId} - Resultados obtidos:`, {
       books: books.length,
       videos: videos.length, 
       podcasts: podcasts.length,
@@ -213,43 +210,38 @@ serve(async (req) => {
       total: allResults.length
     });
 
-    // Aplicar filtros se especificados
+    // ✅ FILTROS SIMPLIFICADOS
     let filteredResults = allResults;
     
-    if (filters.resourceType.length > 0) {
-      console.log(`🔍 ${requestId} - Aplicando filtro de tipo:`, filters.resourceType);
+    // Filtro por tipo se especificado
+    if (resourceTypes.length > 0) {
+      console.log(`🔍 ${requestId} - Aplicando filtro de tipo:`, resourceTypes);
       filteredResults = allResults.filter(item => {
-        const typeMapping: { [key: string]: string } = {
-          'titulo': 'titulo',
-          'video': 'video', 
-          'podcast': 'podcast'
-        };
-        return filters.resourceType.some(filterType => typeMapping[filterType] === item.type);
+        return resourceTypes.includes(item.type);
       });
     }
 
+    // Filtro por query se especificado
     if (query && query.trim()) {
       console.log(`🔍 ${requestId} - Aplicando busca por texto: "${query}"`);
       const searchTerm = query.toLowerCase();
       filteredResults = filteredResults.filter(item =>
         item.title.toLowerCase().includes(searchTerm) ||
         item.author.toLowerCase().includes(searchTerm) ||
-        item.description.toLowerCase().includes(searchTerm) ||
-        item.subject.toLowerCase().includes(searchTerm)
+        (item.description && item.description.toLowerCase().includes(searchTerm)) ||
+        (item.subject && item.subject.toLowerCase().includes(searchTerm))
       );
     }
 
-    // Aplicar ordenação
+    // ✅ ORDENAÇÃO SIMPLIFICADA
     if (sortBy === 'title') {
       filteredResults.sort((a, b) => a.title.localeCompare(b.title));
     } else if (sortBy === 'recent') {
       filteredResults.sort((a, b) => (b.year || 0) - (a.year || 0));
-    } else if (sortBy === 'accessed') {
-      // Ordenação por relevância/acesso - manter ordem atual
     }
 
-    // Calcular paginação baseada nos totais reais
-    const totalResults = filters.resourceType.length > 0 || query.trim() ? 
+    // ✅ PAGINAÇÃO BASEADA NOS TOTAIS REAIS
+    const totalResults = query.trim() || resourceTypes.length > 0 ? 
       filteredResults.length : COMBINED_TOTAL;
     const totalPages = Math.ceil(totalResults / resultsPerPage);
     
@@ -260,9 +252,9 @@ serve(async (req) => {
       resultsInPage: filteredResults.length
     });
 
-    // Montar resposta sempre com success: true
+    // ✅ RESPOSTA SEMPRE VÁLIDA
     const response: SearchResponse = {
-      success: true, // ✅ SEMPRE TRUE para evitar erro 500
+      success: true,
       results: filteredResults,
       pagination: {
         currentPage: page,
@@ -273,7 +265,17 @@ serve(async (req) => {
       },
       searchInfo: {
         query,
-        appliedFilters: filters,
+        appliedFilters: {
+          resourceType: resourceTypes,
+          subject: [],
+          author: [],
+          year: '',
+          duration: '',
+          language: [],
+          documentType: [],
+          program: [],
+          channel: []
+        },
         sortBy
       }
     };
@@ -281,30 +283,31 @@ serve(async (req) => {
     // Cachear resultado
     resultCache.set(cacheKey, { data: response, timestamp: Date.now() });
     
-    // Limpar cache antigo (manter apenas 50 entradas)
+    // Limpar cache antigo
     if (resultCache.size > 50) {
       const oldestKey = Array.from(resultCache.keys())[0];
       resultCache.delete(oldestKey);
     }
 
-    console.log(`✅ ${requestId} - Resposta final:`, {
+    console.log(`✅ ${requestId} - GET Response:`, {
       success: response.success,
       resultsCount: response.results.length,
       totalResults: response.pagination.totalResults,
       elapsedTime: `${elapsedTime}ms`,
-      cached: 'SIM (15min)'
+      method: 'GET'
     });
 
     return new Response(JSON.stringify(response), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error(`❌ ${requestId} - Erro crítico:`, error);
+    console.error(`❌ ${requestId} - Erro crítico GET:`, error);
     
-    // FALLBACK FINAL: Sempre retornar resposta válida mesmo em erro crítico
+    // ✅ FALLBACK FINAL SEMPRE VÁLIDO
     const fallbackResponse: SearchResponse = {
-      success: true, // ✅ SEMPRE TRUE mesmo em erro
+      success: true,
       results: [],
       pagination: {
         currentPage: 1,
@@ -331,10 +334,10 @@ serve(async (req) => {
       error: 'Erro temporário na busca. Tente novamente.'
     };
 
-    console.log(`🆘 ${requestId} - Retornando fallback de emergência`);
+    console.log(`🆘 ${requestId} - Retornando fallback GET`);
     
     return new Response(JSON.stringify(fallbackResponse), {
-      status: 200, // ✅ SEMPRE 200 para evitar erro 500
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }

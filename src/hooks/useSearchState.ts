@@ -113,7 +113,7 @@ export const useSearchState = () => {
 
   // Function to update filters and URL search params accordingly
   const updateFilters = (newFilters: SearchFilters) => {
-    console.log('🔄 Updating filters:', newFilters);
+    console.log('🔄 updateFilters received:', newFilters);
     
     // Marcar como atualização interna para evitar condição de corrida
     isInternalUpdate.current = true;
@@ -124,6 +124,7 @@ export const useSearchState = () => {
     
     // Update URL to match new filters
     const newSearchParams = new URLSearchParams(searchParams);
+    console.log('📋 Current URL params:', Object.fromEntries(searchParams.entries()));
     
     // Clear existing filtros
     newSearchParams.delete('filtros');
@@ -135,14 +136,16 @@ export const useSearchState = () => {
       'podcast': 'podcasts'
     };
     
-    // Add new resource type filters with proper mapping, or 'all' if empty
+    // Add new resource type filters with proper mapping
     if (processedFilters.resourceType.length > 0) {
       processedFilters.resourceType.forEach(type => {
         const urlValue = filterMapping[type] || type;
+        console.log('🎯 Mapping filter:', { type, urlValue });
         newSearchParams.append('filtros', urlValue);
       });
     }
     
+    console.log('📝 New URL params:', Object.fromEntries(newSearchParams.entries()));
     setSearchParams(newSearchParams);
   };
 

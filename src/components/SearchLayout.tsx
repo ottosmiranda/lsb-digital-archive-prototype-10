@@ -117,9 +117,11 @@ const SearchLayout = ({
   };
 
   const handleContentTypeChange = (type: string) => {
+    console.log('🎯 Content type change:', { from: activeContentType, to: type });
     setActiveContentType(type); 
     const newFilters = { ...filters };
     newFilters.resourceType = [type]; 
+    console.log('🔄 Calling onFiltersChange with:', newFilters);
     onFiltersChange(newFilters);
   };
 

@@ -13,6 +13,8 @@ interface SearchHeaderWithTabsProps {
   onSortChange: (value: string) => void;
   onViewChange: (view: 'grid' | 'list') => void;
   onContentTypeChange: (type: string) => void;
+  showFilters?: boolean;
+  onToggleFilters?: () => void;
 }
 
 const SearchHeaderWithTabs = ({ 

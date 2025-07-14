@@ -14,7 +14,8 @@ interface StreamlinedSearchFiltersProps {
   onFiltersChange: (filters: SearchFilters, options?: { authorTyping?: boolean }) => void;
   currentResults?: SearchResult[];
   activeContentType?: string;
-  globalContentCounts?: ContentCounts; // ✅ NOVA PROP: Para badges corretas
+  globalContentCounts?: ContentCounts;
+  isMobile?: boolean;
 }
 
 const StreamlinedSearchFilters = React.memo(({ 

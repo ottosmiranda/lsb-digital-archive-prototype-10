@@ -14,6 +14,7 @@ interface SearchPaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  isMobile?: boolean;
 }
 
 const SearchPagination = ({ currentPage, totalPages, onPageChange }: SearchPaginationProps) => {

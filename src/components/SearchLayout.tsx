@@ -53,79 +53,39 @@ const SearchLayout = ({
   onRefreshData
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [activeContentType, setActiveContentType] = useState('all');
+  const [activeContentType, setActiveContentType] = useState('titulo');
   const [searchParams] = useSearchParams();
   
   // ✅ NOVO: Obter contentCounts do contexto para badges corretas
   const { contentCounts } = useHomepageContentContext();
 
-  // ✅ CORREÇÃO: Detecção melhorada do estado "all" pela URL diretamente
-  const filtrosParam = searchParams.get('filtros');
-  const isAllState = filtrosParam === 'all' && !query;
-
-  console.log('🔍 SearchLayout: Estado atual:', {
-    query,
-    hasQuery: !!query,
-    isAllState,
-    filtrosParam,
-    resourceTypeFilters: filters.resourceType,
-    urlBasedDetection: 'Detectado diretamente da URL'
-  });
-
-  // ✅ CORREÇÃO: useEffect para monitorar mudanças na URL para sincronização imediata
-  useEffect(() => {
-    console.log('🔄 SearchLayout: URL mudou, re-sincronizando estado:', {
-      query,
-      filtrosParam,
-      isAllState,
-      timestamp: new Date().toISOString()
-    });
-  }, [searchParams, query, filtrosParam, isAllState]);
 
   // Sync activeContentType with filters.resourceType
   useEffect(() => {
     if (filters.resourceType.length === 1) {
       if (['titulo', 'video', 'podcast'].includes(filters.resourceType[0])) {
         setActiveContentType(filters.resourceType[0]);
-      } else if (filters.resourceType[0] === 'all') {
-        setActiveContentType('all');
       }
-    } else if (filters.resourceType.length === 0 || isAllState) {
-      setActiveContentType('all');
+    } else if (filters.resourceType.length === 0) {
+      setActiveContentType('titulo'); // Default to first available type
     } else {
-      setActiveContentType('all'); 
+      setActiveContentType('titulo'); 
     }
-  }, [filters.resourceType, isAllState]);
+  }, [filters.resourceType]);
   
   const hasResults = currentResults.length > 0;
   
-  // ✅ CORREÇÃO: Estados de exibição otimizados com detecção melhorada
   const shouldShowSearch = true; // Sempre mostrar interface de busca
-  const showEmptyState = !loading && !hasResults && (query || hasActiveFilters) && !isAllState;
+  const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
   const showWelcomeState = false; // Nunca mostrar estado de boas-vindas
-  const showPagination = hasResults && totalPages > 1; // CRÍTICO: Sempre mostrar quando há páginas
-
-  console.log('🎭 SearchLayout render:', {
-    hasResults,
-    totalPages,
-    showPagination,
-    shouldShowSearch,
-    showEmptyState,
-    showWelcomeState,
-    isAllState,
-    stateType: isAllState ? 'ALL_STATE' : 'SEARCH_STATE'
-  });
+  const showPagination = hasResults && totalPages > 1;
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
     const newFilters = { ...filters };
     
     switch (filterType) {
       case 'resourceType':
-        if (value === 'all') {
-          newFilters.resourceType = [];
-        } else {
-          newFilters.resourceType = newFilters.resourceType.filter(type => type !== value);
-        }
+        newFilters.resourceType = newFilters.resourceType.filter(type => type !== value);
         break;
       case 'subject':
         newFilters.subject = newFilters.subject.filter(subject => subject !== value);
@@ -157,20 +117,9 @@ const SearchLayout = ({
   };
 
   const handleContentTypeChange = (type: string) => {
-    console.log('🏷️ Mudança de tipo de conteúdo (Nova API):', type);
-    
     setActiveContentType(type); 
     const newFilters = { ...filters };
-    
-    if (type === 'all') {
-      newFilters.resourceType = ['all'];
-      onSortChange('title');
-      console.log('📋 "Todos" selecionado - aplicando ordenação alfabética');
-    } else {
-      newFilters.resourceType = [type]; 
-    }
-    
-    console.log('🔄 Chamando onFiltersChange com:', newFilters);
+    newFilters.resourceType = [type]; 
     onFiltersChange(newFilters);
   };
 

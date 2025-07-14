@@ -29,24 +29,12 @@ export const useSearchState = () => {
   const pageFromUrl = parseInt(searchParams.get('pagina') || '1', 10);
   const [currentPage, setCurrentPageState] = useState(pageFromUrl);
 
-  // ✅ CORREÇÃO: Detecção melhorada do estado "all" pela URL diretamente
   const query = searchParams.get('q') || '';
-  const filtrosParam = searchParams.get('filtros');
-  const isAllState = filtrosParam === 'all' && !query;
-  
-  console.log('🔍 useSearchState: Estado atual:', {
-    query,
-    isAllState,
-    filtrosParam,
-    queryExists: !!query,
-    urlDetection: 'Detectado diretamente da URL'
-  });
   
   const appliedFilters = useMemo(() => {
     return searchParams.getAll('filtros') || [];
   }, [searchParams]);
 
-  // ✅ CORREÇÃO: Sincronização melhorada com forceRefresh para transições
   useEffect(() => {
     // Se for uma atualização interna, ignore para evitar condição de corrida
     if (isInternalUpdate.current) {
@@ -55,30 +43,18 @@ export const useSearchState = () => {
     }
 
     const resourceTypesFromUrl = searchParams.getAll('filtros');
-    console.log('🔗 URL filters detected:', resourceTypesFromUrl);
-    console.log('🔗 Query from URL:', query);
-    console.log('🔗 Is "all" state (filtros=all, no query):', isAllState);
+    
+    // Map URL-friendly values back to internal filter values
+    const reverseFilterMapping: { [key: string]: string } = {
+      'livros': 'titulo',
+      'videos': 'video',
+      'podcasts': 'podcast'
+    };
+    
+    const mappedFilters = resourceTypesFromUrl.map(filter => 
+      reverseFilterMapping[filter] || filter
+    );
 
-    // ✅ CORREÇÃO: Detecção melhorada do estado "all"
-    let mappedFilters: string[];
-    if (isAllState || resourceTypesFromUrl.includes('all') || resourceTypesFromUrl.length === 0) {
-      mappedFilters = [];
-      console.log('🔄 Estado "ALL" detectado - definindo filtros como array vazio');
-    } else {
-      // Map URL-friendly values back to internal filter values
-      const reverseFilterMapping: { [key: string]: string } = {
-        'livros': 'titulo',
-        'videos': 'video',
-        'podcasts': 'podcast'
-      };
-      
-      mappedFilters = resourceTypesFromUrl.map(filter => 
-        reverseFilterMapping[filter] || filter
-      );
-      console.log('🔄 Mapeando filtros específicos:', mappedFilters);
-    }
-
-    // ✅ CORREÇÃO: Sempre atualizar filtros para corresponder à URL
     setFilters(prev => ({
       ...prev,
       resourceType: mappedFilters
@@ -100,11 +76,9 @@ export const useSearchState = () => {
     console.log('✅ State synchronized with URL:', { 
       resourceType: mappedFilters, 
       sortBy: sortParam || 'relevance', 
-      pagina: pageFromUrlEffect,
-      isAllState,
-      transitionType: isAllState ? 'GLOBAL_SEARCH' : 'SPECIFIC_SEARCH'
+      pagina: pageFromUrlEffect
     });
-  }, [searchParams, query, isAllState]);
+  }, [searchParams, query]);
 
   // Track searches when query changes (from URL navigation)
   useEffect(() => {
@@ -144,11 +118,7 @@ export const useSearchState = () => {
     // Marcar como atualização interna para evitar condição de corrida
     isInternalUpdate.current = true;
     
-    // ✅ CORREÇÃO: Se resourceType contém 'all', mapear para array vazio (busca global)  
-    const processedFilters = {
-      ...newFilters,
-      resourceType: newFilters.resourceType.includes('all') ? [] : newFilters.resourceType
-    };
+    const processedFilters = newFilters;
     
     setFilters(processedFilters);
     
@@ -171,9 +141,6 @@ export const useSearchState = () => {
         const urlValue = filterMapping[type] || type;
         newSearchParams.append('filtros', urlValue);
       });
-    } else {
-      // If no resource type filters, show 'all' in URL
-      newSearchParams.append('filtros', 'all');
     }
     
     setSearchParams(newSearchParams);

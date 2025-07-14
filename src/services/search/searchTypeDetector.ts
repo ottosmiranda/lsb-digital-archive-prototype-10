@@ -12,9 +12,8 @@ export class SearchTypeDetector {
   static detectSearchType(context: SearchContext): SearchType {
     const { query, resourceTypes, hasOtherFilters } = context;
     
-    // Busca global: filtro "Todos" sem query nem outros filtros
-    const isGlobalSearch = resourceTypes.includes('all') || 
-                          (resourceTypes.length === 0 && !query.trim() && !hasOtherFilters);
+    // Busca global: sem filtros de tipo, query ou outros filtros
+    const isGlobalSearch = resourceTypes.length === 0 && !query.trim() && !hasOtherFilters;
     
     if (isGlobalSearch) {
       return 'global';

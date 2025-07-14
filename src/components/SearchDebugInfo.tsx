@@ -28,8 +28,7 @@ const SearchDebugInfo: React.FC<SearchDebugInfoProps> = ({
   }
 
   const shouldSearch = shouldPerformSearch(query, filters);
-  const isGlobalSearch = filters.resourceType.includes('all') || 
-    (filters.resourceType.length === 0 && !hasActiveFilters);
+  const isGlobalSearch = filters.resourceType.length === 0 && !hasActiveFilters;
 
   return (
     <Card className="mb-4 border-blue-200 bg-blue-50">

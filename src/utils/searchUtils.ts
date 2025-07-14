@@ -160,9 +160,8 @@ export const filterResults = (
       }
     }
 
-    // Resource type filter - CORRIGIDO: Ignorar 'all' apenas se for o único filtro
-    if (filters.resourceType.length > 0 && 
-        !(filters.resourceType.length === 1 && filters.resourceType[0] === 'all')) {
+    // Resource type filter
+    if (filters.resourceType.length > 0) {
       if (!filters.resourceType.includes(item.type)) {
         return false;
       }
@@ -309,8 +308,7 @@ export const shouldPerformSearch = (query: string, filters: SearchFilters): bool
 // CORRIGIDO: Função para verificar filtros ativos - Para exibição na UI
 export const checkHasActiveFilters = (filters: SearchFilters): boolean => {
   return (
-    (filters.resourceType.length > 0 && 
-     !(filters.resourceType.length === 1 && filters.resourceType[0] === 'all')) ||
+    filters.resourceType.length > 0 ||
     filters.subject.length > 0 ||
     filters.author.length > 0 ||
     filters.year !== '' ||

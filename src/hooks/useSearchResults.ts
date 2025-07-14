@@ -78,7 +78,6 @@ export const useSearchResults = () => {
     const hasResourceTypeFilters = filters.resourceType.length > 0;
     const hasOtherFilters = hasActiveFilters;
     
-    // LÓGICA CORRIGIDA: Array vazio de resourceType significa busca global (filtro "all")
     const isGlobalSearch = filters.resourceType.length === 0 && !hasOtherFilters;
     
     console.log('🔍 Lógica shouldSearch SIMPLIFICADA:', { 

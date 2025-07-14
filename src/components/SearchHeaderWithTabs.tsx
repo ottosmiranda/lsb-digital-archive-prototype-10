@@ -26,19 +26,12 @@ const SearchHeaderWithTabs = ({
   onContentTypeChange
 }: SearchHeaderWithTabsProps) => {
   const contentTypes = [
-    { id: 'all', label: 'Todos', icon: Grid3X3 },
     { id: 'titulo', label: 'Livros & Artigos', icon: Book },
     { id: 'video', label: 'Vídeos', icon: Play },
     { id: 'podcast', label: 'Podcasts', icon: Headphones }
   ];
 
-  // Show different result text when "Todos" is active and sorted alphabetically
   const getResultDescription = () => {
-    if (activeContentType === 'all' && sortBy === 'title') {
-      return resultCount === 0 
-        ? 'Nenhum resultado encontrado'
-        : `${resultCount} resultado${resultCount !== 1 ? 's' : ''} encontrado${resultCount !== 1 ? 's' : ''} (todos os tipos, ordem alfabética)`;
-    }
     return resultCount === 0 
       ? 'Nenhum resultado encontrado'
       : `${resultCount} resultado${resultCount !== 1 ? 's' : ''} encontrado${resultCount !== 1 ? 's' : ''}`;

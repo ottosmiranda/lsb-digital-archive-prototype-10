@@ -460,12 +460,12 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
   }
 };
 
-// BUSCA GLOBAL CORRIGIDA - Para filtro "Todos" - AUMENTAR LIMITE E INCLUIR ARTIGOS
+// BUSCA GLOBAL CORRIGIDA - Para filtro "Todos" - COM FALLBACK PARA SUPABASE
 const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
   
   const requestId = `global_search_${Date.now()}`;
-  console.group(`🌍 ${requestId} - GLOBAL SEARCH (Filtro Todos) - CORRIGIDO`);
+  console.group(`🌍 ${requestId} - GLOBAL SEARCH (Filtro Todos) - COM FALLBACK`);
   console.log(`📋 Global search - página ${page}, limit ${resultsPerPage}`);
   
   const cacheKey = getCacheKey('global', `page${page}_limit${resultsPerPage}_sort${sortBy}`);
@@ -478,26 +478,28 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
   }
   
   try {
-    // ✅ CORREÇÃO: Aumentar limite significativamente para buscar mais dados
-    const itemsPerType = Math.max(500, resultsPerPage * 5); // CORRIGIDO: Era 50, agora 500
+    // ✅ PRIMEIRA TENTATIVA: API Externa
+    console.log(`🌐 Tentando busca global via API externa...`);
+    const itemsPerType = Math.max(200, resultsPerPage * 3); // Reduzir limite para evitar timeout
     
-    console.log(`📊 CORRIGIDO: Buscando ${itemsPerType} itens de cada tipo para mix global`);
+    console.log(`📊 Buscando ${itemsPerType} itens de cada tipo para mix global`);
     
-    // ✅ CORREÇÃO: Incluir busca de ARTIGOS explicitamente
     const [livrosData, aulasData, podcastsData, artigosData] = await Promise.allSettled([
-      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
-      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
-      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation),
-      fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${itemsPerType}`, TIMEOUTS.globalOperation) // ✅ NOVO: Buscar artigos
+      fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${itemsPerType}`, TIMEOUTS.singleRequest),
+      fetchFromAPI(`/conteudo-lbs?tipo=aula&page=1&limit=${itemsPerType}`, TIMEOUTS.singleRequest),
+      fetchFromAPI(`/conteudo-lbs?tipo=podcast&page=1&limit=${itemsPerType}`, TIMEOUTS.singleRequest),
+      fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${itemsPerType}`, TIMEOUTS.singleRequest)
     ]);
     
     const allItems: SearchResult[] = [];
+    let apiSuccess = false;
     
     // Processar livros
     if (livrosData.status === 'fulfilled' && livrosData.value.conteudo) {
       const livros = livrosData.value.conteudo.map((item: any) => transformApiItem(item));
       allItems.push(...livros);
       console.log(`✅ Livros carregados: ${livros.length}`);
+      apiSuccess = true;
     }
     
     // Processar aulas/vídeos
@@ -505,6 +507,7 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
       const aulas = aulasData.value.conteudo.map((item: any) => transformApiItem(item));
       allItems.push(...aulas);
       console.log(`✅ Vídeos carregados: ${aulas.length}`);
+      apiSuccess = true;
     }
     
     // Processar podcasts
@@ -512,16 +515,61 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
       const podcasts = podcastsData.value.conteudo.map((item: any) => transformApiItem(item));
       allItems.push(...podcasts);
       console.log(`✅ Podcasts carregados: ${podcasts.length}`);
+      apiSuccess = true;
     }
     
-    // ✅ NOVO: Processar artigos
+    // Processar artigos
     if (artigosData.status === 'fulfilled' && artigosData.value.conteudo) {
       const artigos = artigosData.value.conteudo.map((item: any) => transformApiItem(item));
       allItems.push(...artigos);
       console.log(`✅ Artigos carregados: ${artigos.length}`);
+      apiSuccess = true;
     }
     
-    console.log(`📊 Total de itens combinados CORRIGIDO: ${allItems.length}`);
+    // ✅ FALLBACK: Se API externa falhar, usar Supabase
+    if (!apiSuccess || allItems.length === 0) {
+      console.log(`🔄 API externa indisponível. Usando fallback do Supabase...`);
+      
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      const limitPerType = Math.max(15, Math.ceil(resultsPerPage * 1.5)); // Limite reduzido para Supabase
+      
+      const [booksResult, videosResult, podcastsResult, articlesResult] = await Promise.allSettled([
+        supabase.functions.invoke('fetch-books', { body: { page: 1, limit: limitPerType } }),
+        supabase.functions.invoke('fetch-videos', { body: { page: 1, limit: limitPerType } }),
+        supabase.functions.invoke('fetch-podcasts', { body: { page: 1, limit: limitPerType } }),
+        supabase.functions.invoke('fetch-articles', { body: { page: 1, limit: limitPerType } })
+      ]);
+      
+      // Processar resultados do Supabase
+      if (booksResult.status === 'fulfilled' && booksResult.value.data) {
+        const books = Array.isArray(booksResult.value.data) ? booksResult.value.data : [];
+        allItems.push(...books);
+        console.log(`✅ Fallback Supabase - Livros: ${books.length}`);
+      }
+      
+      if (videosResult.status === 'fulfilled' && videosResult.value.data) {
+        const videos = Array.isArray(videosResult.value.data) ? videosResult.value.data : [];
+        allItems.push(...videos);
+        console.log(`✅ Fallback Supabase - Vídeos: ${videos.length}`);
+      }
+      
+      if (podcastsResult.status === 'fulfilled' && podcastsResult.value.data) {
+        const podcasts = Array.isArray(podcastsResult.value.data) ? podcastsResult.value.data : [];
+        allItems.push(...podcasts);
+        console.log(`✅ Fallback Supabase - Podcasts: ${podcasts.length}`);
+      }
+      
+      if (articlesResult.status === 'fulfilled' && articlesResult.value.data) {
+        const articles = Array.isArray(articlesResult.value.data) ? articlesResult.value.data : [];
+        allItems.push(...articles);
+        console.log(`✅ Fallback Supabase - Artigos: ${articles.length}`);
+      }
+    }
+    
+    console.log(`📊 Total de itens combinados: ${allItems.length}`);
     
     // Aplicar filtros se necessário
     let filteredItems = allItems;
@@ -534,7 +582,7 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
     const sortedItems = sortResults(filteredItems, sortBy, query);
     console.log(`📊 Após ordenação: ${sortedItems.length} itens`);
     
-    // CORREÇÃO: Paginação correta dos resultados combinados
+    // Paginação correta dos resultados combinados
     const totalResults = sortedItems.length;
     const totalPages = Math.ceil(totalResults / resultsPerPage);
     const startIndex = (page - 1) * resultsPerPage;
@@ -562,14 +610,15 @@ const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> =>
     
     setCache(cacheKey, response, 'global');
     
-    console.log(`✅ Global search CORRIGIDO: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
+    console.log(`✅ Global search: ${paginatedItems.length} itens na página ${page} de ${totalResults} totais`);
     console.groupEnd();
     return response;
     
   } catch (error) {
-    console.error(`❌ Global search falhou:`, error);
+    console.error(`❌ Global search falhou completamente:`, error);
     console.groupEnd();
     
+    // ✅ FALLBACK FINAL: Retornar resposta vazia mas válida
     return {
       success: false,
       results: [],

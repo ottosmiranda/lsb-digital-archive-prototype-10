@@ -47,16 +47,22 @@ export const useSearchState = () => {
     const resourceTypesFromUrl = searchParams.getAll('filtros');
     console.log('🔗 URL filters detected:', resourceTypesFromUrl);
 
-    // Map URL-friendly values back to internal filter values
-    const reverseFilterMapping: { [key: string]: string } = {
-      'livros': 'titulo',
-      'videos': 'video',
-      'podcasts': 'podcast'
-    };
-    
-    const mappedFilters = resourceTypesFromUrl.map(filter => 
-      reverseFilterMapping[filter] || filter
-    );
+    // Handle 'all' filter specially - it means no resource type filters
+    let mappedFilters: string[];
+    if (resourceTypesFromUrl.includes('all') || resourceTypesFromUrl.length === 0) {
+      mappedFilters = [];
+    } else {
+      // Map URL-friendly values back to internal filter values
+      const reverseFilterMapping: { [key: string]: string } = {
+        'livros': 'titulo',
+        'videos': 'video',
+        'podcasts': 'podcast'
+      };
+      
+      mappedFilters = resourceTypesFromUrl.map(filter => 
+        reverseFilterMapping[filter] || filter
+      );
+    }
 
     // Always update filters to match URL (even if empty)
     setFilters(prev => ({
@@ -132,12 +138,15 @@ export const useSearchState = () => {
       'podcast': 'podcasts'
     };
     
-    // Add new resource type filters with proper mapping
+    // Add new resource type filters with proper mapping, or 'all' if empty
     if (newFilters.resourceType.length > 0) {
       newFilters.resourceType.forEach(type => {
         const urlValue = filterMapping[type] || type;
         newSearchParams.append('filtros', urlValue);
       });
+    } else {
+      // If no resource type filters, show 'all' in URL
+      newSearchParams.append('filtros', 'all');
     }
     
     setSearchParams(newSearchParams);

@@ -706,8 +706,8 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
           totalResultsFromAPI = Math.max(totalResultsFromAPI, allTitulosData.totalCombinado);
           totalPagesFromAPI = Math.max(totalPagesFromAPI, Math.ceil(allTitulosData.totalCombinado / resultsPerPage));
           
-          console.log(`📊 TITULO COMBINADO CORRIGIDO: ${totalCombinado} total (${totalLivros} livros + ${totalArtigos} artigos)`);
-          console.log(`📄 PÁGINAS CALCULADAS: ${Math.ceil(totalCombinado / resultsPerPage)} páginas (${totalCombinado}÷${resultsPerPage})`);
+          console.log(`📊 TITULO COMBINADO CORRIGIDO: ${allTitulosData.totalCombinado} total (${allTitulosData.totalLivros} livros + ${allTitulosData.totalArtigos} artigos)`);
+          console.log(`📄 PÁGINAS CALCULADAS: ${Math.ceil(allTitulosData.totalCombinado / resultsPerPage)} páginas (${allTitulosData.totalCombinado}÷${resultsPerPage})`);
           
         } catch (error) {
           console.warn(`⚠️ Falha ao buscar titulo (livros + artigos):`, error);

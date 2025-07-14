@@ -617,28 +617,26 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
       if (resourceType === 'titulo') {
         // CORREÇÃO ESPECIAL: Para 'titulo', buscar TANTO livros quanto artigos
         try {
-          console.log(`📚 Buscando 'titulo' - fazendo chamadas paralelas para livros E artigos - página ${page}`);
+          console.log(`📚 Buscando 'titulo' - implementando ordenação alfabética verdadeira - página ${page}`);
           
-          // ✅ CORREÇÃO: Distribuir limite com proporções REAIS (47:35 = 0.573:0.427)
-          const totalTitulos = 47 + 35; // 82 títulos totais
-          const limitLivros = Math.ceil(resultsPerPage * (47 / totalTitulos)); // 0.573
-          const limitArtigos = resultsPerPage - limitLivros;
+          // ✅ NOVA ABORDAGEM: Buscar limite expandido para permitir ordenação alfabética verdadeira
+          const expandedLimit = 30; // Buscar mais resultados para permitir mixing alfabético
           
-          console.log(`📊 Distribuição CORRIGIDA: ${limitLivros} livros (${47}/82=${(47/82).toFixed(3)}) + ${limitArtigos} artigos (${35}/82=${(35/82).toFixed(3)}) = ${resultsPerPage} total`);
+          console.log(`📊 Buscando ${expandedLimit} livros + ${expandedLimit} artigos para ordenação alfabética`);
           
           const [livrosResponse, artigosResponse] = await Promise.allSettled([
-            fetchFromAPI(`/conteudo-lbs?tipo=livro&page=${page}&limit=${limitLivros}`, TIMEOUTS.paginatedBatch),
-            fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=${page}&limit=${limitArtigos}`, TIMEOUTS.paginatedBatch)
+            fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${expandedLimit}`, TIMEOUTS.paginatedBatch),
+            fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${expandedLimit}`, TIMEOUTS.paginatedBatch)
           ]);
           
+          let allTitulosItems: any[] = [];
           let totalLivros = 0;
           let totalArtigos = 0;
           
           // Processar livros
           if (livrosResponse.status === 'fulfilled' && livrosResponse.value.conteudo) {
             const livros = livrosResponse.value.conteudo.map((item: any) => transformApiItem(item));
-            allItems.push(...livros);
-            // ✅ CORREÇÃO: Usar total REAL da API (47)
+            allTitulosItems.push(...livros);
             totalLivros = livrosResponse.value.total || 47;
             console.log(`✅ Livros: ${livros.length} carregados de ${totalLivros} totais`);
           }
@@ -646,14 +644,25 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
           // Processar artigos
           if (artigosResponse.status === 'fulfilled' && artigosResponse.value.conteudo) {
             const artigos = artigosResponse.value.conteudo.map((item: any) => transformApiItem(item));
-            allItems.push(...artigos);
-            // ✅ CORREÇÃO: Usar total REAL da API (35)
+            allTitulosItems.push(...artigos);
             totalArtigos = artigosResponse.value.total || 35;
             console.log(`✅ Artigos: ${artigos.length} carregados de ${totalArtigos} totais`);
           }
           
-          // ✅ CORREÇÃO: TOTAIS COMBINADOS REAIS para Livros & Artigos
-          const totalCombinado = totalLivros + totalArtigos; // 47 + 35 = 82
+          // ✅ ORDENAÇÃO ALFABÉTICA VERDADEIRA
+          allTitulosItems.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' }));
+          console.log(`🔤 Ordenação alfabética aplicada em ${allTitulosItems.length} itens combinados`);
+          
+          // ✅ APLICAR PAGINAÇÃO APÓS ORDENAÇÃO
+          const startIndex = (page - 1) * resultsPerPage;
+          const endIndex = startIndex + resultsPerPage;
+          const paginatedItems = allTitulosItems.slice(startIndex, endIndex);
+          
+          allItems.push(...paginatedItems);
+          console.log(`📄 Página ${page}: itens ${startIndex + 1}-${Math.min(endIndex, allTitulosItems.length)} de ${allTitulosItems.length} totais`);
+          
+          // ✅ TOTAIS COMBINADOS REAIS para Livros & Artigos
+          const totalCombinado = totalLivros + totalArtigos;
           totalResultsFromAPI = Math.max(totalResultsFromAPI, totalCombinado);
           totalPagesFromAPI = Math.max(totalPagesFromAPI, Math.ceil(totalCombinado / resultsPerPage));
           

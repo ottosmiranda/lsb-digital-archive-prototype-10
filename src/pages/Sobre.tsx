@@ -1,3 +1,4 @@
+
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,8 +134,8 @@ const Sobre = () => {
       <Navigation />
       
       <main>
-        {/* Hero Section */}
-        <section className="relative py-20 md:py-32 overflow-hidden" style={{ backgroundColor: '#10284E' }}>
+        {/* Hero Section - Mobile Optimized */}
+        <section className="relative py-12 md:py-20 lg:py-32 overflow-hidden" style={{ backgroundColor: '#10284E' }}>
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
@@ -142,14 +143,14 @@ const Sobre = () => {
           
           <div className="lsb-container">
             <div className="lsb-content">
-              <div className="relative text-center">
+              <div className="relative text-center px-4">
                 <div className="animate-fade-in">
-                  <h1 className="hero-title text-white mb-6">
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold uppercase text-white mb-4 md:mb-6 leading-tight">
                     Sobre a
-                    <span className="block text-lsb-accent">Biblioteca Digital da Link</span>
+                    <span className="block text-lsb-accent mt-2">Biblioteca Digital da Link</span>
                   </h1>
                   
-                  <p className="h1-subtitle text-white max-w-4xl mx-auto">
+                  <p className="text-base md:text-lg lg:text-xl text-white max-w-4xl mx-auto leading-relaxed px-4">
                     Oferecemos acesso qualificado à informação e ao conhecimento, promovendo a educação, a pesquisa e a cultura
                   </p>
                 </div>
@@ -158,32 +159,32 @@ const Sobre = () => {
           </div>
         </section>
 
-        {/* Missão Section */}
-        <section className="py-16 bg-white">
+        {/* Missão Section - Mobile Optimized */}
+        <section className="py-12 md:py-16 bg-white">
           <div className="lsb-container">
             <div className="lsb-content">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                <div className="animate-slide-up">
-                  <h2 className="h2-title text-gray-900">Missão</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center px-4">
+                <div className="animate-slide-up order-2 lg:order-1">
+                  <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold uppercase text-gray-900 mb-6">Missão</h2>
                   <div className="prose prose-lg text-gray-600">
-                    <p className="leading-relaxed">
+                    <p className="leading-relaxed text-base md:text-lg">
                       A Biblioteca Digital Link tem como objetivo proporcionar acesso a uma ampla gama de recursos informacionais, promovendo o aprendizado e a pesquisa no campo da administração de empresas com ênfase em empreendedorismo e outras áreas do conhecimento.
                     </p>
                   </div>
                 </div>
                 
-                <div className="relative">
+                <div className="relative order-1 lg:order-2">
                   <div 
-                    className="rounded-sm p-8 text-white border" 
+                    className="rounded-sm p-6 md:p-8 text-white border" 
                     style={{ 
                       backgroundColor: '#697794',
                       borderColor: '#A7B1C6',
                       borderRadius: '2px'
                     }}
                   >
-                    <BookOpen className="h-12 w-12 text-lsb-accent mb-4" />
-                    <h3 className="text-2xl font-semibold mb-4">Conhecimento Acessível</h3>
-                    <p className="text-blue-100 leading-relaxed">
+                    <BookOpen className="h-10 w-10 md:h-12 md:w-12 text-lsb-accent mb-4" />
+                    <h3 className="text-xl md:text-2xl font-semibold mb-3 md:mb-4">Conhecimento Acessível</h3>
+                    <p className="text-blue-100 leading-relaxed text-sm md:text-base">
                       Democratizamos o acesso ao conhecimento através de uma plataforma digital moderna e intuitiva, conectando estudantes e professores aos melhores recursos acadêmicos.
                     </p>
                   </div>
@@ -193,35 +194,35 @@ const Sobre = () => {
           </div>
         </section>
 
-        {/* Função da Biblioteca Digital */}
-        <section className="py-16 bg-gray-50">
+        {/* Função da Biblioteca Digital - Mobile Optimized */}
+        <section className="py-12 md:py-16 bg-gray-50">
           <div className="lsb-container">
-            <div className="lsb-content">
-              <div className="text-center mb-12">
-                <h2 className="h2-title text-gray-900">Função da Biblioteca Digital Link</h2>
-                <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <div className="lsb-content px-4">
+              <div className="text-center mb-8 md:mb-12">
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold uppercase text-gray-900 mb-4 md:mb-6">Função da Biblioteca Digital Link</h2>
+                <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">
                   Compete à Biblioteca Digital Link realizar as seguintes funções
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                 {libraryFunctions.map((func, index) => {
                   const IconComponent = func.icon;
                   return (
                     <Card key={index} className="relative overflow-hidden hover:shadow-xl transition-all duration-300 group" style={{ borderColor: '#A7B1C6' }}>
                       <div className="absolute top-0 left-0 w-2 h-full" style={{ backgroundColor: '#7D8BA5' }}></div>
                       
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center gap-4 mb-3">
-                          <div className="p-3 rounded-lg" style={{ backgroundColor: '#F1F3F7' }}>
-                            <IconComponent className="h-6 w-6" style={{ color: '#7D8BA5' }} />
+                      <CardHeader className="pb-3 md:pb-4">
+                        <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-3">
+                          <div className="p-2 md:p-3 rounded-lg flex-shrink-0" style={{ backgroundColor: '#F1F3F7' }}>
+                            <IconComponent className="h-5 w-5 md:h-6 md:w-6" style={{ color: '#7D8BA5' }} />
                           </div>
                         </div>
-                        <CardTitle className="text-xl text-gray-900">{func.title}</CardTitle>
+                        <CardTitle className="text-lg md:text-xl text-gray-900 leading-tight">{func.title}</CardTitle>
                       </CardHeader>
                       
-                      <CardContent>
-                        <CardDescription className="text-gray-600 leading-relaxed">
+                      <CardContent className="pt-0">
+                        <CardDescription className="text-gray-600 leading-relaxed text-sm md:text-base">
                           {func.description}
                         </CardDescription>
                       </CardContent>
@@ -233,28 +234,30 @@ const Sobre = () => {
           </div>
         </section>
 
-        {/* Função do Bibliotecário */}
-        <section className="py-16 bg-white">
+        {/* Função do Bibliotecário - Mobile Optimized */}
+        <section className="py-12 md:py-16 bg-white">
           <div className="lsb-container">
-            <div className="lsb-content">
-              <div className="text-center mb-12">
-                <h2 className="h2-title text-gray-900">Função do Bibliotecário</h2>
-                <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <div className="lsb-content px-4">
+              <div className="text-center mb-8 md:mb-12">
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold uppercase text-gray-900 mb-4 md:mb-6">Função do Bibliotecário</h2>
+                <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">
                   O bibliotecário da Link tem um papel fundamental na gestão da Biblioteca Digital Link
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                 {librarianFunctions.map((func, index) => {
                   const IconComponent = func.icon;
                   return (
-                    <Card key={index} className="p-8 text-center hover:shadow-lg transition-all duration-300 group h-full">
-                      <div className="flex flex-col items-center space-y-4">
-                        <IconComponent className="h-8 w-8" style={{ color: '#7D8BA5' }} />
-                        <CardTitle className="text-lg text-gray-900 uppercase font-bold leading-tight">
+                    <Card key={index} className="p-4 md:p-6 lg:p-8 text-center hover:shadow-lg transition-all duration-300 group h-full">
+                      <div className="flex flex-col items-center space-y-3 md:space-y-4">
+                        <div className="flex-shrink-0">
+                          <IconComponent className="h-6 w-6 md:h-8 md:w-8" style={{ color: '#7D8BA5' }} />
+                        </div>
+                        <CardTitle className="text-sm md:text-base lg:text-lg text-gray-900 uppercase font-bold leading-tight text-center">
                           {func.title}
                         </CardTitle>
-                        <CardDescription className="text-gray-600 leading-relaxed text-sm">
+                        <CardDescription className="text-gray-600 leading-relaxed text-xs md:text-sm text-center">
                           {func.description}
                         </CardDescription>
                       </div>

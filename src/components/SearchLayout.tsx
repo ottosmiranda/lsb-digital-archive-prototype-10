@@ -13,6 +13,7 @@ import SearchDebugInfo from '@/components/SearchDebugInfo';
 import Footer from '@/components/Footer';
 import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
 import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
+import { useSearchParams } from 'react-router-dom';
 
 interface SearchLayoutProps {
   query: string;
@@ -55,20 +56,34 @@ const SearchLayout = ({
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [activeContentType, setActiveContentType] = useState('all');
+  const [searchParams] = useSearchParams();
   
   // ✅ NOVO: Obter contentCounts do contexto para badges corretas
   const { contentCounts } = useHomepageContentContext();
 
-  // CORREÇÃO: Detectar estado "all" (sem query específica)
-  const isAllState = !query && filters.resourceType.length === 0;
+  // ✅ CORREÇÃO: Detecção melhorada do estado "all" pela URL diretamente
+  const filtrosParam = searchParams.get('filtros');
+  const isAllState = filtrosParam === 'all' && !query;
 
   console.log('🔍 SearchLayout: Estado atual:', {
     query,
     hasQuery: !!query,
     onClearQuery: !!onClearQuery,
     isAllState,
-    resourceTypeFilters: filters.resourceType
+    filtrosParam,
+    resourceTypeFilters: filters.resourceType,
+    urlBasedDetection: 'Detectado diretamente da URL'
   });
+
+  // ✅ CORREÇÃO: useEffect para monitorar mudanças na URL para sincronização imediata
+  useEffect(() => {
+    console.log('🔄 SearchLayout: URL mudou, re-sincronizando estado:', {
+      query,
+      filtrosParam,
+      isAllState,
+      timestamp: new Date().toISOString()
+    });
+  }, [searchParams, query, filtrosParam, isAllState]);
 
   // Sync activeContentType with filters.resourceType
   useEffect(() => {
@@ -78,18 +93,18 @@ const SearchLayout = ({
       } else if (filters.resourceType[0] === 'all') {
         setActiveContentType('all');
       }
-    } else if (filters.resourceType.length === 0) {
+    } else if (filters.resourceType.length === 0 || isAllState) {
       setActiveContentType('all');
     } else {
       setActiveContentType('all'); 
     }
-  }, [filters.resourceType]);
+  }, [filters.resourceType, isAllState]);
   
   const hasResults = currentResults.length > 0;
   
-  // NOVA LÓGICA: Estados de exibição otimizados
+  // ✅ CORREÇÃO: Estados de exibição otimizados com detecção melhorada
   const shouldShowSearch = true; // Sempre mostrar interface de busca
-  const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
+  const showEmptyState = !loading && !hasResults && (query || hasActiveFilters) && !isAllState;
   const showWelcomeState = false; // Nunca mostrar estado de boas-vindas
   const showPagination = hasResults && totalPages > 1; // CRÍTICO: Sempre mostrar quando há páginas
 
@@ -100,7 +115,8 @@ const SearchLayout = ({
     shouldShowSearch,
     showEmptyState,
     showWelcomeState,
-    isAllState
+    isAllState,
+    stateType: isAllState ? 'ALL_STATE' : 'SEARCH_STATE'
   });
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {

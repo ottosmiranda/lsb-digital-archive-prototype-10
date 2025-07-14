@@ -46,8 +46,10 @@ const SearchResultsContent = () => {
 
   const handleClearQuery = () => {
     console.log('🔍 SearchResults: handleClearQuery chamado');
+    console.log('🔄 SearchResults: Executando limpeza com navegação instantânea');
     const success = clearQuery();
     if (success) {
+      console.log('✅ SearchResults: Query limpa, atualizando página');
       handlePageChange(1);
     }
   };

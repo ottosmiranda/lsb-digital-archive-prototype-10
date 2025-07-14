@@ -21,10 +21,11 @@ export const useQueryClear = () => {
         filtros: newSearchParams.get('filtros')
       });
       
-      // Aplicar a nova URL (isso remove completamente o parâmetro 'q')
-      setSearchParams(newSearchParams);
+      // ✅ CORREÇÃO: Usar replace: true para navegação instantânea sem histórico
+      console.log('🔄 useQueryClear: Aplicando navegação com replace=true');
+      setSearchParams(newSearchParams, { replace: true });
       
-      console.log('✅ useQueryClear: Query COMPLETAMENTE limpa - apenas filtros=all permanece');
+      console.log('✅ useQueryClear: Query COMPLETAMENTE limpa com navegação instantânea');
       return true;
     } catch (error) {
       console.error('❌ useQueryClear: Erro ao limpar query:', error);

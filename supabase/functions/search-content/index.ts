@@ -688,7 +688,11 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
               totalCombinado: totalLivros + totalArtigos
             };
             
-            globalCache.set(allTitulosCacheKey, allTitulosData, CACHE_DURATION);
+            globalCache.set(allTitulosCacheKey, {
+              data: allTitulosData,
+              timestamp: Date.now(),
+              ttl: CACHE_STRATEGIES.global.ttl
+            });
             console.log(`💾 Cache criado com ${allTitulosData.totalCombinado} itens totais`);
           } else {
             console.log(`📦 Cache HIT para 'titulo' - usando dados em cache (${allTitulosData.totalCombinado} itens)`);

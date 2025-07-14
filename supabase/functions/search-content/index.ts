@@ -725,9 +725,22 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
         
         if (apiType) {
           try {
-            console.log(`🔍 Buscando ${apiType} - página ${page}, limit ${resultsPerPage}`);
+            console.log(`🔍 Descobrindo total de ${apiType}...`);
             
-            const data = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=${page}&limit=${resultsPerPage}`, TIMEOUTS.paginatedBatch);
+            // Etapa 1: Descobrir total real com chamada inicial
+            const discoveryData = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=1&limit=1`, TIMEOUTS.singleRequest);
+            const totalItems = discoveryData.total || 0;
+            
+            console.log(`📊 Total descoberto para ${apiType}: ${totalItems} itens`);
+            
+            if (totalItems === 0) {
+              console.log(`⚠️ Nenhum item encontrado para ${apiType}`);
+              return { items: [], total: 0, totalPages: 0 };
+            }
+            
+            // Etapa 2: Buscar TODOS os itens baseado no total descoberto
+            console.log(`🔍 Buscando TODOS os ${totalItems} itens de ${apiType}...`);
+            const data = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=1&limit=${totalItems}`, TIMEOUTS.globalSearch);
             
             console.log(`📊 API Response para ${apiType}:`, {
               total: data.total,

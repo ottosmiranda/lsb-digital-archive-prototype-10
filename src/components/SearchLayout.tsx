@@ -77,9 +77,9 @@ const SearchLayout = ({
   const hasResults = currentResults.length > 0;
   
   // NOVA LÓGICA: Estados de exibição otimizados
-  const shouldShowSearch = query || filters.resourceType.length > 0 || hasActiveFilters;
-  const showEmptyState = !loading && !hasResults && shouldShowSearch;
-  const showWelcomeState = !loading && !shouldShowSearch;
+  const shouldShowSearch = true; // Sempre mostrar interface de busca
+  const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
+  const showWelcomeState = false; // Nunca mostrar estado de boas-vindas
   const showPagination = hasResults && totalPages > 1; // CRÍTICO: Sempre mostrar quando há páginas
 
   console.log('🎭 SearchLayout render:', {

@@ -783,9 +783,9 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
     const endIndex = startIndex + resultsPerPage;
     const paginatedResults = sortedItems.slice(startIndex, endIndex);
     
-    // CORREÇÃO CRÍTICA: Usar sempre sortedItems.length para garantir consistência
-    const finalTotalResults = sortedItems.length;
-    const finalTotalPages = Math.ceil(finalTotalResults / resultsPerPage);
+    // CORREÇÃO: Usar totais da API se disponível, senão calcular
+    const finalTotalResults = totalResultsFromAPI > 0 ? totalResultsFromAPI : sortedItems.length;
+    const finalTotalPages = totalPagesFromAPI > 0 ? totalPagesFromAPI : Math.ceil(finalTotalResults / resultsPerPage);
     
     console.log(`📄 Paginação correta aplicada: ${startIndex + 1}-${Math.min(endIndex, finalTotalResults)} de ${finalTotalResults} totais (página ${page}/${finalTotalPages})`);
     

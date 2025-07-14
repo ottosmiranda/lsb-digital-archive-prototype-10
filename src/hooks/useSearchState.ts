@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SearchFilters } from '@/types/searchTypes';
 import { useSearchAnalytics } from '@/hooks/useSearchAnalytics';
@@ -7,6 +7,9 @@ import { useSearchAnalytics } from '@/hooks/useSearchAnalytics';
 export const useSearchState = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { trackSearch } = useSearchAnalytics();
+  
+  // Flag para controlar se a mudança vem do próprio componente
+  const isInternalUpdate = useRef(false);
   
   const [filters, setFilters] = useState<SearchFilters>({
     resourceType: [],
@@ -34,6 +37,12 @@ export const useSearchState = () => {
 
   // Initialize filters from URL params
   useEffect(() => {
+    // Se for uma atualização interna, ignore para evitar condição de corrida
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false;
+      return;
+    }
+
     const resourceTypesFromUrl = searchParams.getAll('filtros');
     console.log('🔗 URL filters detected:', resourceTypesFromUrl);
 
@@ -92,6 +101,10 @@ export const useSearchState = () => {
   // Function to update filters and URL search params accordingly
   const updateFilters = (newFilters: SearchFilters) => {
     console.log('🔄 Updating filters:', newFilters);
+    
+    // Marcar como atualização interna para evitar condição de corrida
+    isInternalUpdate.current = true;
+    
     setFilters(newFilters);
     
     // Update URL to match new filters

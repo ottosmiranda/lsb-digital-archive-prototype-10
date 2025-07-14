@@ -21,7 +21,10 @@ export const useSearchState = () => {
   });
   
   const [sortBy, setSortByState] = useState('relevance');
-  const [currentPage, setCurrentPage] = useState(1);
+  
+  // Ler página da URL e sincronizar com estado
+  const pageFromUrl = parseInt(searchParams.get('pagina') || '1', 10);
+  const [currentPage, setCurrentPageState] = useState(pageFromUrl);
 
   const query = searchParams.get('q') || '';
   
@@ -48,8 +51,12 @@ export const useSearchState = () => {
     } else {
       setSortByState('relevance');
     }
+
+    // Sincronizar página da URL com estado
+    const pageFromUrlEffect = parseInt(searchParams.get('pagina') || '1', 10);
+    setCurrentPageState(pageFromUrlEffect);
     
-    console.log('✅ State synchronized with URL:', { resourceType: resourceTypesFromUrl, sortBy: sortParam || 'relevance' });
+    console.log('✅ State synchronized with URL:', { resourceType: resourceTypesFromUrl, sortBy: sortParam || 'relevance', pagina: pageFromUrlEffect });
   }, [searchParams]);
 
   // Track searches when query changes (from URL navigation)
@@ -100,6 +107,18 @@ export const useSearchState = () => {
       });
     }
     
+    setSearchParams(newSearchParams);
+  };
+
+  // Function to update current page and URL accordingly
+  const setCurrentPage = (newPage: number) => {
+    setCurrentPageState(newPage);
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (newPage > 1) {
+      newSearchParams.set('pagina', newPage.toString());
+    } else {
+      newSearchParams.delete('pagina');
+    }
     setSearchParams(newSearchParams);
   };
 

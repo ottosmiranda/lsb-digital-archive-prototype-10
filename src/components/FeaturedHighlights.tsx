@@ -1,8 +1,7 @@
-
 import { Star } from 'lucide-react';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useMemo, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { WipeButton } from '@/components/ui/WipeButton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
@@ -194,7 +193,6 @@ const FeaturedHighlights = () => {
                                 alt={item.title}
                                 className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
                                 onError={(e) => {
-                                  // 🔥 DEBUG: Log de erro de imagem
                                   console.error('🖼️ THUMBNAIL ERROR:', {
                                     src: item.thumbnail,
                                     title: item.title,
@@ -223,13 +221,15 @@ const FeaturedHighlights = () => {
                               {item.title}
                             </h3>
                             <p className="text-xs text-gray-600 mb-3">{item.author}</p>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="w-full text-lsb-primary hover:bg-lsb-primary hover:text-white transition-all duration-300 text-xs"
+                            <WipeButton 
+                              className="w-full text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/recurso/${item.id}`);
+                              }}
                             >
-                              Ver Detalhes
-                            </Button>
+                              Saiba Mais
+                            </WipeButton>
                           </div>
                         </CardContent>
                       </Card>

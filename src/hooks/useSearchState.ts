@@ -123,7 +123,13 @@ export const useSearchState = () => {
     // Marcar como atualização interna para evitar condição de corrida
     isInternalUpdate.current = true;
     
-    setFilters(newFilters);
+    // CORREÇÃO: Se resourceType contém 'all', mapear para array vazio (busca global)
+    const processedFilters = {
+      ...newFilters,
+      resourceType: newFilters.resourceType.includes('all') ? [] : newFilters.resourceType
+    };
+    
+    setFilters(processedFilters);
     
     // Update URL to match new filters
     const newSearchParams = new URLSearchParams(searchParams);
@@ -139,8 +145,8 @@ export const useSearchState = () => {
     };
     
     // Add new resource type filters with proper mapping, or 'all' if empty
-    if (newFilters.resourceType.length > 0) {
-      newFilters.resourceType.forEach(type => {
+    if (processedFilters.resourceType.length > 0) {
+      processedFilters.resourceType.forEach(type => {
         const urlValue = filterMapping[type] || type;
         newSearchParams.append('filtros', urlValue);
       });

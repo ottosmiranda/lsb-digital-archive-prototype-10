@@ -72,29 +72,27 @@ export const useSearchResults = () => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
-  // LÓGICA CORRIGIDA: Verificar se deve executar busca - incluindo filtro "all"
+  // LÓGICA SIMPLIFICADA: Verificar se deve executar busca
   const shouldSearch = useMemo((): boolean => {
     const hasQuery = query.trim() !== '';
     const hasResourceTypeFilters = filters.resourceType.length > 0;
     const hasOtherFilters = hasActiveFilters;
     
-    // CORREÇÃO: Detectar se filtro "all" está ativo na URL
-    const currentFilters = searchParams.getAll('filtros');
-    const hasAllFilter = currentFilters.includes('all');
+    // LÓGICA CORRIGIDA: Array vazio de resourceType significa busca global (filtro "all")
+    const isGlobalSearch = filters.resourceType.length === 0 && !hasOtherFilters;
     
-    console.log('🔍 Lógica shouldSearch CORRIGIDA:', { 
+    console.log('🔍 Lógica shouldSearch SIMPLIFICADA:', { 
       hasQuery, 
       hasResourceTypeFilters, 
       hasOtherFilters,
-      hasAllFilter,
-      currentUrlFilters: currentFilters,
+      isGlobalSearch,
       resourceType: filters.resourceType,
-      result: hasQuery || hasResourceTypeFilters || hasOtherFilters || hasAllFilter
+      result: hasQuery || hasResourceTypeFilters || hasOtherFilters || isGlobalSearch
     });
     
-    // CORREÇÃO: Se filtro "all" está ativo, deve executar busca global
-    return hasQuery || hasResourceTypeFilters || hasOtherFilters || hasAllFilter;
-  }, [query, filters.resourceType, hasActiveFilters, searchParams]);
+    // Se há query, filtros específicos, ou deve fazer busca global, executar busca
+    return hasQuery || hasResourceTypeFilters || hasOtherFilters || isGlobalSearch;
+  }, [query, filters.resourceType, hasActiveFilters]);
 
   // NOVA IMPLEMENTAÇÃO: Busca com paginação real
   const performSearch = useCallback(async () => {

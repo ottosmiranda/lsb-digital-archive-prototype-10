@@ -1,6 +1,6 @@
 
 import { Play, Clock } from 'lucide-react';
-import { WipeButton } from '@/components/WipeButton';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
@@ -137,9 +137,12 @@ const FeaturedMedia = () => {
                   </div>
                   <div className="text-center mt-8">
                     <Link to="/buscar?filtros=video">
-                      <WipeButton size="md">
+                      <Button
+                        variant="outline"
+                        className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
+                      >
                         Ver Todos os Vídeos
-                      </WipeButton>
+                      </Button>
                     </Link>
                   </div>
                 </>
@@ -160,9 +163,12 @@ const FeaturedMedia = () => {
                   </div>
                   <div className="text-center mt-8">
                     <Link to="/buscar?filtros=podcast">
-                      <WipeButton size="md">
+                      <Button
+                        variant="outline"
+                        className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
+                      >
                         Ver Todos os Podcasts
-                      </WipeButton>
+                      </Button>
                     </Link>
                   </div>
                 </>

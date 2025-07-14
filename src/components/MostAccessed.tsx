@@ -2,7 +2,7 @@
 import { Flame } from 'lucide-react';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useMemo, useRef } from 'react';
-import { WipeButton } from '@/components/WipeButton';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
@@ -153,16 +153,13 @@ const MostAccessed = () => {
                             {item.title}
                           </h3>
                           <p className="text-xs text-gray-600 mb-3">{item.author}</p>
-                          <WipeButton 
+                          <Button 
+                            variant="ghost" 
                             size="sm" 
-                            className="w-full text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/recurso/${item.id}`);
-                            }}
+                            className="w-full text-lsb-primary hover:bg-lsb-primary hover:text-white transition-all duration-300 text-xs"
                           >
                             Ver Detalhes
-                          </WipeButton>
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>

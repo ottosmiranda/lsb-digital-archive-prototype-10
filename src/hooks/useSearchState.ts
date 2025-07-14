@@ -8,9 +8,6 @@ export const useSearchState = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { trackSearch } = useSearchAnalytics();
   
-  // Flag para controlar se a mudança vem do próprio componente
-  const isInternalUpdate = useRef(false);
-  
   const [filters, setFilters] = useState<SearchFilters>({
     resourceType: [],
     subject: [],
@@ -36,12 +33,6 @@ export const useSearchState = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    // Se for uma atualização interna, ignore para evitar condição de corrida
-    if (isInternalUpdate.current) {
-      isInternalUpdate.current = false;
-      return;
-    }
-
     const resourceTypesFromUrl = searchParams.getAll('filtros');
     
     // Map URL-friendly values back to internal filter values
@@ -115,14 +106,11 @@ export const useSearchState = () => {
   const updateFilters = (newFilters: SearchFilters) => {
     console.log('🔄 updateFilters received:', newFilters);
     
-    // Marcar como atualização interna para evitar condição de corrida
-    isInternalUpdate.current = true;
-    
     const processedFilters = newFilters;
     
     setFilters(processedFilters);
     
-    // Update URL to match new filters
+    // CORREÇÃO: Força atualização da URL sem race condition
     const newSearchParams = new URLSearchParams(searchParams);
     console.log('📋 Current URL params:', Object.fromEntries(searchParams.entries()));
     
@@ -146,7 +134,12 @@ export const useSearchState = () => {
     }
     
     console.log('📝 New URL params:', Object.fromEntries(newSearchParams.entries()));
-    setSearchParams(newSearchParams);
+    
+    // CORREÇÃO: Força atualização imediata da URL
+    setTimeout(() => {
+      console.log('🚀 Forçando atualização da URL...');
+      setSearchParams(newSearchParams, { replace: false });
+    }, 0);
   };
 
   // Function to update current page and URL accordingly

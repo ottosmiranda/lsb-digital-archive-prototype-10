@@ -1,7 +1,7 @@
 import { Star } from 'lucide-react';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useMemo, useRef, useEffect } from 'react';
-import { WipeButton } from '@/components/ui/WipeButton';
+import { WipeButton } from '@/components/WipeButton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
@@ -222,6 +222,7 @@ const FeaturedHighlights = () => {
                             </h3>
                             <p className="text-xs text-gray-600 mb-3">{item.author}</p>
                             <WipeButton 
+                              size="sm"
                               className="w-full text-xs"
                               onClick={(e) => {
                                 e.stopPropagation();

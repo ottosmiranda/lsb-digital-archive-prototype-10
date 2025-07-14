@@ -1,9 +1,9 @@
 
+import { supabase } from '@/integrations/supabase/client';
 import { SearchFilters } from '@/types/searchTypes';
 import { SearchResponse } from './types';
 
 export class SearchService {
-  // ✅ MIGRAÇÃO PARA GET: Nova implementação com parâmetros URL
   async executeSearch(
     query: string,
     filters: SearchFilters,
@@ -12,85 +12,69 @@ export class SearchService {
     resultsPerPage: number
   ): Promise<SearchResponse> {
     const requestId = `search_${Date.now()}`;
-    console.group(`🔍 ${requestId} - API Search GET Request`);
+    console.group(`🔍 ${requestId} - API Search Request`);
     console.log('📋 Parameters:', { query, filters, sortBy, page, resultsPerPage });
     
     try {
-      // ✅ CONSTRUIR PARÂMETROS GET
-      const params = new URLSearchParams();
+      const requestBody = {
+        query: query.trim() || '',
+        filters, 
+        sortBy,
+        page,
+        resultsPerPage
+      };
       
-      if (query.trim()) {
-        params.set('q', query.trim());
-      }
+      console.log('📡 Edge function body:', requestBody);
       
-      params.set('page', page.toString());
-      params.set('limit', resultsPerPage.toString());
-      params.set('sort', sortBy);
-      
-      // Adicionar filtros de tipo
-      if (filters.resourceType.length > 0) {
-        filters.resourceType.forEach(type => {
-          params.append('type', type);
-        });
-      }
-      
-      // ✅ CORREÇÃO: Usar URL base do Supabase Functions corretamente
-      const SUPABASE_URL = "https://acnympbxfptajtxvmkqn.supabase.co";
-      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjbnltcGJ4ZnB0YWp0eHZta3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3MDMzODcsImV4cCI6MjA2NjI3OTM4N30.7cAJTwzL28v0QyycI2wQyEotlQh34Nygfp4WnSZR66Q";
-      
-      const urlWithParams = `${SUPABASE_URL}/functions/v1/search-content?${params.toString()}`;
-      console.log('🌐 GET URL:', urlWithParams);
-      
-      // ✅ REQUISIÇÃO GET COM TIMEOUT
+      // Timeout de 30 segundos para evitar hangs
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Search timeout after 25 seconds')), 25000);
+        setTimeout(() => reject(new Error('Search timeout after 30 seconds')), 30000);
       });
       
-      const fetchPromise = fetch(urlWithParams, {
-        method: 'GET',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
-        }
+      const searchPromise = supabase.functions.invoke('search-content', {
+        body: requestBody
       });
       
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      const { data, error: searchError } = await Promise.race([searchPromise, timeoutPromise]);
 
-      if (!response.ok) {
-        console.error('❌ GET request failed:', response.status, response.statusText);
-        throw new Error(`GET request failed: ${response.status}`);
+      if (searchError) {
+        console.error('❌ Edge function error:', searchError);
+        throw new Error(`Search function error: ${searchError.message}`);
       }
-
-      const data = await response.json();
 
       if (!data || !data.success) {
-        console.error('❌ GET response invalid:', data);
-        throw new Error(data?.error || 'Search failed - invalid response');
+        console.error('❌ Edge function returned error:', data);
+        throw new Error(data?.error || 'Search failed - no data returned');
       }
 
-      const searchResponse: SearchResponse = data;
+      const response: SearchResponse = data;
       
-      // Validação crítica
-      if (!searchResponse.results || !Array.isArray(searchResponse.results)) {
-        console.error('❌ Invalid response structure:', searchResponse);
+      // VALIDAÇÃO CRÍTICA: Verificar se resposta é válida
+      if (!response.results || !Array.isArray(response.results)) {
+        console.error('❌ Invalid response structure:', response);
         throw new Error('Invalid response structure from search function');
       }
       
-      console.log('✅ GET Search successful:', {
-        results: searchResponse.results.length,
-        totalResults: searchResponse.pagination.totalResults,
-        currentPage: searchResponse.pagination.currentPage,
-        totalPages: searchResponse.pagination.totalPages
+      // VALIDAÇÃO: Alertar sobre inconsistências
+      if (response.results.length === 0 && response.pagination.totalResults > 0) {
+        console.warn('⚠️ INCONSISTÊNCIA: 0 results mas totalResults > 0');
+      }
+
+      console.log('✅ Search successful:', {
+        results: response.results.length,
+        totalResults: response.pagination.totalResults,
+        currentPage: response.pagination.currentPage,
+        totalPages: response.pagination.totalPages
       });
 
       console.groupEnd();
-      return searchResponse;
+      return response;
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Search failed';
-      console.error('❌ GET Search complete failure:', errorMessage);
+      console.error('❌ Search complete failure:', errorMessage);
       
+      // Retornar resposta vazia em caso de erro
       const errorResponse: SearchResponse = {
         success: false,
         results: [],
@@ -114,7 +98,7 @@ export class SearchService {
     }
   }
 
-  // ✅ MANTER MÉTODO EXISTENTE PARA COMPATIBILIDADE
+  // ✅ NOVA FUNÇÃO: Busca por query usando o novo endpoint
   async searchByQuery(
     query: string,
     page: number = 1,

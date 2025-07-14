@@ -2,7 +2,7 @@ import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import InfiniteContentSkeleton from '@/components/skeletons/InfiniteContentSkeleton';
@@ -26,6 +26,7 @@ const SearchResultsList = ({
   enableInfiniteScroll = false
 }: SearchResultsListProps) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   const { loadingRef, containerRef, shouldShowLoading } = useInfiniteScroll({
     hasMore,
@@ -83,8 +84,12 @@ const SearchResultsList = ({
     const navigationId = String(result.id);
     console.log('🔗 Using REAL API ID for navigation:', navigationId);
     
-    const targetRoute = `/recurso/${navigationId}`;
-    console.log('🔗 Navigating to:', targetRoute);
+    // Preserve current search state in the detail page URL
+    const currentParams = new URLSearchParams(searchParams);
+    currentParams.set('from', 'buscar');
+    
+    const targetRoute = `/recurso/${navigationId}?${currentParams.toString()}`;
+    console.log('🔗 Navigating to with preserved state:', targetRoute);
     console.groupEnd();
     
     navigate(targetRoute);

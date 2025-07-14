@@ -47,10 +47,21 @@ export const useSearchState = () => {
     const resourceTypesFromUrl = searchParams.getAll('filtros');
     console.log('🔗 URL filters detected:', resourceTypesFromUrl);
 
+    // Map URL-friendly values back to internal filter values
+    const reverseFilterMapping: { [key: string]: string } = {
+      'livros': 'titulo',
+      'videos': 'video',
+      'podcasts': 'podcast'
+    };
+    
+    const mappedFilters = resourceTypesFromUrl.map(filter => 
+      reverseFilterMapping[filter] || filter
+    );
+
     // Always update filters to match URL (even if empty)
     setFilters(prev => ({
       ...prev,
-      resourceType: resourceTypesFromUrl
+      resourceType: mappedFilters
     }));
 
     const sortParam = searchParams.get('ordenar');
@@ -114,10 +125,18 @@ export const useSearchState = () => {
     // Clear existing filtros
     newSearchParams.delete('filtros');
     
-    // Add new resource type filters
+    // Map internal filter values to URL-friendly values
+    const filterMapping: { [key: string]: string } = {
+      'titulo': 'livros',
+      'video': 'videos', 
+      'podcast': 'podcasts'
+    };
+    
+    // Add new resource type filters with proper mapping
     if (newFilters.resourceType.length > 0) {
       newFilters.resourceType.forEach(type => {
-        newSearchParams.append('filtros', type);
+        const urlValue = filterMapping[type] || type;
+        newSearchParams.append('filtros', urlValue);
       });
     }
     

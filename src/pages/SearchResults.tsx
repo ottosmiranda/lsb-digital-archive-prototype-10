@@ -1,12 +1,10 @@
 
 import { useEffect } from "react";
 import { useSearchResults } from '@/hooks/useSearchResults';
-import { useQueryClear } from '@/hooks/useQueryClear';
 import SearchLayout from '@/components/SearchLayout';
 import { HomepageContentProvider } from '@/contexts/HomepageContentContext';
 
 const SearchResultsContent = () => {
-  const { clearQuery } = useQueryClear();
   const {
     query,
     filters,
@@ -44,16 +42,6 @@ const SearchResultsContent = () => {
     handlePageChange(1); 
   };
 
-  const handleClearQuery = () => {
-    console.log('🔍 SearchResults: handleClearQuery chamado');
-    console.log('🔄 SearchResults: Executando limpeza com navegação instantânea');
-    const success = clearQuery();
-    if (success) {
-      console.log('✅ SearchResults: Query limpa, atualizando página');
-      handlePageChange(1);
-    }
-  };
-
   // Scroll to top when the search results page is opened (only on mount)
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -77,7 +65,6 @@ const SearchResultsContent = () => {
       onClearFilters={handleClearFilters}
       onQuickSearch={handleQuickSearch}
       onRefreshData={forceRefresh}
-      onClearQuery={handleClearQuery}
     />
   );
 };

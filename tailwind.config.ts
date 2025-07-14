@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -135,18 +134,22 @@ export default {
 						transform: 'translateY(-10px)'
 					}
 				},
-				'wipe-diagonal': {
+				'wipe-center-expand': {
 					'0%': {
-						transform: 'translateX(-100%) translateY(-100%)',
+						transform: 'scaleX(0)',
 						opacity: '1'
 					},
-					'50%': {
-						transform: 'translateX(0) translateY(0)',
+					'30%': {
+						transform: 'scaleX(1)',
 						opacity: '1'
+					},
+					'70%': {
+						transform: 'scaleX(1)',
+						opacity: '0.3'
 					},
 					'100%': {
-						transform: 'translateX(0) translateY(0)',
-						opacity: '0'
+						transform: 'scaleX(1)',
+						opacity: '1'
 					}
 				}
 			},
@@ -156,7 +159,7 @@ export default {
 				'fade-in': 'fade-in 0.6s ease-out',
 				'slide-up': 'slide-up 0.8s ease-out',
 				'float': 'float 3s ease-in-out infinite',
-				'wipe-diagonal': 'wipe-diagonal 0.8s ease-in-out forwards'
+				'wipe-center-expand': 'wipe-center-expand 0.8s ease-in-out forwards'
 			}
 		}
 	},

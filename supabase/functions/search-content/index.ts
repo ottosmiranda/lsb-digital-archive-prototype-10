@@ -804,7 +804,7 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
     
     const response = {
       success: true,
-      results: paginatedResults,
+      results: sortedItems, // Retornar TODOS os itens para que a UI possa paginar corretamente
       pagination: {
         currentPage: page,
         totalPages: finalTotalPages,

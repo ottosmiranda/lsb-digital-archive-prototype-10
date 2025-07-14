@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { SearchResult } from '@/types/searchTypes';
 import { newApiService } from '@/services/newApiService';
 import { supabase } from '@/integrations/supabase/client';
@@ -75,6 +75,10 @@ interface HomepageContentProviderProps {
 }
 
 export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = ({ children }) => {
+  // CORREÇÃO: Prevenir múltiplas inicializações simultâneas
+  const instanceId = useRef(`provider_${Date.now()}_${Math.random()}`);
+  const isInitializing = useRef(false);
+  
   const [content, setContent] = useState<HomepageContent>({
     videos: [],
     books: [],
@@ -98,9 +102,10 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   const [isUsingFallback, setIsUsingFallback] = useState(false);
   const [apiStatus, setApiStatus] = useState<any>({});
 
-  console.group('🏠 HomepageContentProvider - ENHANCED Constructor with Recent Additions Rotation');
+  console.group(`🏠 HomepageContentProvider [${instanceId.current}] - ENHANCED Constructor with Recent Additions Rotation`);
   console.log('📊 Provider initialized at:', new Date().toISOString());
   console.log('🔄 Initial state:', { loading, countsLoading, error, isUsingFallback });
+  console.log('🆔 Instance ID:', instanceId.current);
   console.groupEnd();
 
   // 🔥 NOVO: Método para limpeza total de todos os caches
@@ -412,16 +417,26 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
   };
 
   useEffect(() => {
-    console.log('🎯 useEffect triggered - Starting ENHANCED content and counts load with CACHE BUSTER');
+    // CORREÇÃO: Prevenir múltiplas inicializações simultâneas
+    if (isInitializing.current) {
+      console.log(`⚠️ [${instanceId.current}] Initialization already in progress, skipping...`);
+      return;
+    }
+    
+    isInitializing.current = true;
+    console.log(`🎯 [${instanceId.current}] useEffect triggered - Starting ENHANCED content and counts load with CACHE BUSTER`);
     
     Promise.allSettled([
       loadContent(),
       loadContentCounts()
     ]).then((results) => {
-      console.log('🏁 All loading operations completed:', {
+      console.log(`🏁 [${instanceId.current}] All loading operations completed:`, {
         contentResult: results[0].status,
         countsResult: results[1].status
       });
+      isInitializing.current = false;
+    }).catch(() => {
+      isInitializing.current = false;
     });
   }, []);
 

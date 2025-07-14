@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SearchFilters, SearchResult } from '@/types/searchTypes';
 import { useSearchState } from '@/hooks/useSearchState';
@@ -25,6 +25,11 @@ interface SearchResponse {
 export const useSearchResults = () => {
   const resultsPerPage = 9;
   const [searchParams] = useSearchParams();
+  
+  // CORREÇÃO: Debouncing para prevenir race conditions
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const instanceId = useRef(`search_instance_${Date.now()}_${Math.random()}`);
   
   const {
     query,
@@ -93,11 +98,20 @@ export const useSearchResults = () => {
     return hasQuery || hasResourceTypeFilters || hasOtherFilters || isGlobalSearch;
   }, [query, filters.resourceType, hasActiveFilters]);
 
-  // NOVA IMPLEMENTAÇÃO: Busca com paginação real
+  // NOVA IMPLEMENTAÇÃO: Busca com paginação real e debouncing
   const performSearch = useCallback(async () => {
     const requestId = `search_${Date.now()}`;
-    console.group(`🔍 ${requestId} - Nova Arquitetura de Busca`);
+    console.group(`🔍 ${requestId} - Nova Arquitetura de Busca [${instanceId.current}]`);
     console.log('📋 Parâmetros:', { query, filters, sortBy, currentPage, shouldSearch });
+    
+    // CORREÇÃO: Cancelar busca anterior se existir
+    if (abortControllerRef.current) {
+      console.log('🛑 Cancelando busca anterior...');
+      abortControllerRef.current.abort();
+    }
+    
+    // Criar novo AbortController para esta busca
+    abortControllerRef.current = new AbortController();
 
     // Se não deve buscar, limpar resultados
     if (!shouldSearch) {
@@ -123,6 +137,14 @@ export const useSearchResults = () => {
 
     try {
       console.log('🚀 Executando busca com paginação real via Nova API...');
+      
+      // CORREÇÃO: Verificar se a requisição foi cancelada
+      if (abortControllerRef.current?.signal.aborted) {
+        console.log('🛑 Busca cancelada antes da execução');
+        console.groupEnd();
+        return;
+      }
+      
       const response = await search(query, filters, sortBy, currentPage);
       
       // Validação da resposta
@@ -181,9 +203,25 @@ export const useSearchResults = () => {
     console.groupEnd();
   }, [query, filters, sortBy, currentPage, shouldSearch, search, prefetchNextPage]);
 
-  // Effect para executar busca quando parâmetros mudarem
+  // CORREÇÃO: Effect com debouncing para prevenir múltiplas buscas simultâneas
   useEffect(() => {
-    performSearch();
+    // Limpar timeout anterior
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // CORREÇÃO: Debouncing de 300ms para múltiplas mudanças rápidas
+    searchTimeoutRef.current = setTimeout(() => {
+      console.log(`🎯 [${instanceId.current}] Executando busca após debouncing...`);
+      performSearch();
+    }, 300);
+    
+    // Cleanup
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
   }, [performSearch]);
 
   // Handlers otimizados

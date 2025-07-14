@@ -21,7 +21,7 @@ const WipeButton = React.forwardRef<HTMLButtonElement, WipeButtonProps>(
       >
         <span className="relative z-10">{children}</span>
         <div 
-          className="absolute inset-0 w-full h-full bg-lsb-primary transform scale-x-0 origin-center transition-transform duration-300 ease-in-out group-hover:animate-wipe-center-expand"
+          className="absolute top-1/2 left-1/2 w-[200%] h-[200%] bg-lsb-primary transform -translate-x-1/2 -translate-y-1/2 scale-x-0 origin-center transition-transform duration-300 ease-in-out group-hover:animate-wipe-diagonal-reveal"
         />
       </button>
     );

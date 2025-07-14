@@ -55,6 +55,7 @@ const SearchLayout = ({
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [activeContentType, setActiveContentType] = useState('titulo');
+  const [showFilters, setShowFilters] = useState(false);
   const [searchParams] = useSearchParams();
   
   // ✅ NOVO: Obter contentCounts do contexto para badges corretas
@@ -146,7 +147,7 @@ const SearchLayout = ({
       
       <div className="lsb-container">
         <div className="lsb-content">
-          <div className="py-8">
+          <div className="py-4 md:py-8">
             {onRefreshData && (
               <DataRefreshButton
                 onRefresh={onRefreshData}
@@ -175,21 +176,86 @@ const SearchLayout = ({
                 onSortChange={onSortChange}
                 onViewChange={setView}
                 onContentTypeChange={handleContentTypeChange}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
               />
             )}
             
-            <div className="flex flex-col lg:flex-row gap-8 mt-8">
+            {/* Mobile Layout - Stack vertically */}
+            <div className="block lg:hidden">
               {!showWelcomeState && (
-                <StreamlinedSearchFilters 
-                  filters={filters}
-                  onFiltersChange={onFiltersChange}
-                  currentResults={currentResults}
-                  activeContentType={activeContentType}
-                  globalContentCounts={contentCounts}
-                />
+                <>
+                  {/* Mobile Filter Toggle - Always visible but collapsible */}
+                  <div className={`transition-all duration-300 overflow-hidden ${showFilters ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="bg-lsb-section rounded-lg p-4 mb-4">
+                      <StreamlinedSearchFilters 
+                        filters={filters}
+                        onFiltersChange={onFiltersChange}
+                        currentResults={currentResults}
+                        activeContentType={activeContentType}
+                        globalContentCounts={contentCounts}
+                        isMobile={true}
+                      />
+                    </div>
+                  </div>
+
+                  <FilterChips
+                    filters={filters}
+                    onRemoveFilter={handleRemoveFilter}
+                    onClearAll={onClearFilters}
+                  />
+                  
+                  {showEmptyState ? (
+                    <EmptySearchState 
+                      query={query} 
+                      onClearFilters={onClearFilters} 
+                    />
+                  ) : (
+                    <>
+                      {view === 'grid' ? (
+                        <SearchResultsGrid 
+                          results={currentResults}
+                          loading={loading}
+                        />
+                      ) : (
+                        <SearchResultsList 
+                          results={currentResults}
+                          loading={loading}
+                        />
+                      )}
+                      
+                      {/* Mobile Pagination */}
+                      {showPagination && (
+                        <div className="mt-6">
+                          <SearchPagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={onPageChange}
+                            isMobile={true}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Desktop Layout - Side by side */}
+            <div className="hidden lg:flex lg:gap-8 mt-8">
+              {!showWelcomeState && (
+                <div className="w-80 flex-shrink-0">
+                  <StreamlinedSearchFilters 
+                    filters={filters}
+                    onFiltersChange={onFiltersChange}
+                    currentResults={currentResults}
+                    activeContentType={activeContentType}
+                    globalContentCounts={contentCounts}
+                  />
+                </div>
               )}
               
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 {showWelcomeState ? (
                   <SearchWelcomeState onQuickSearch={onQuickSearch || (() => {})} />
                 ) : (
@@ -219,7 +285,7 @@ const SearchLayout = ({
                           />
                         )}
                         
-                        {/* CRÍTICO: Paginação sempre mostrada quando há resultados paginados */}
+                        {/* Desktop Pagination */}
                         {showPagination && (
                           <SearchPagination
                             currentPage={currentPage}

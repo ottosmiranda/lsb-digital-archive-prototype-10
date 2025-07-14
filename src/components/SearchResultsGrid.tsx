@@ -1,3 +1,4 @@
+
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -100,16 +101,17 @@ const SearchResultsGrid = ({
   }
 
   return (
-    <div ref={containerRef} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div ref={containerRef} className="space-y-4 md:space-y-6">
+      {/* Mobile: Single column, Tablet: 2 columns, Desktop: 3 columns */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {results.map(result => {
           const typeBadge = getTypeBadge(result.type, result.documentType);
           return (
             <Card key={result.id} className="group hover-lift animate-fade-in">
               <CardContent className="p-0">
-                <div className="space-y-4">
-                  {/* Thumbnail */}
-                  <div className="relative h-40 bg-gray-100 rounded-t-lg overflow-hidden">
+                <div className="space-y-3 md:space-y-4">
+                  {/* Thumbnail - Responsive height */}
+                  <div className="relative h-32 sm:h-36 md:h-40 bg-gray-100 rounded-t-lg overflow-hidden">
                     {shouldShowImage(result.thumbnail, result.type) ? (
                       <img 
                         src={result.thumbnail} 
@@ -125,9 +127,9 @@ const SearchResultsGrid = ({
                     )}
                     
                     <div className="absolute top-2 left-2">
-                      <Badge className={`${typeBadge.color} flex items-center gap-1`}>
+                      <Badge className={`${typeBadge.color} flex items-center gap-1 text-xs`}>
                         {getTypeIcon(result.type)}
-                        {typeBadge.label}
+                        <span className="hidden sm:inline">{typeBadge.label}</span>
                       </Badge>
                     </div>
                     
@@ -145,32 +147,32 @@ const SearchResultsGrid = ({
                     )}
                   </div>
 
-                  <div className="p-4 space-y-3">
-                    <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-lsb-primary transition-colors">
+                  <div className="p-3 md:p-4 space-y-2 md:space-y-3">
+                    <h3 className="font-semibold text-base md:text-lg line-clamp-2 group-hover:text-lsb-primary transition-colors">
                       {result.title}
                     </h3>
 
-                    <div className="flex items-center text-sm text-gray-600 space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center text-xs md:text-sm text-gray-600 space-y-1 sm:space-y-0 sm:space-x-4">
                       <div className="flex items-center">
-                        <User className="h-3 w-3 mr-1" />
-                        {result.author}
+                        <User className="h-3 w-3 mr-1 flex-shrink-0" />
+                        <span className="truncate">{result.author}</span>
                       </div>
                       <div className="flex items-center">
-                        <Calendar className="h-3 w-3 mr-1" />
+                        <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
                         {result.year}
                       </div>
                     </div>
 
-                    <p className="text-sm text-gray-600 line-clamp-3">
+                    <p className="text-xs md:text-sm text-gray-600 line-clamp-2 md:line-clamp-3">
                       {result.description}
                     </p>
 
-                    <Badge variant="outline" className="w-fit">
+                    <Badge variant="outline" className="w-fit text-xs">
                       {result.subject}
                     </Badge>
 
                     <Button 
-                      className="w-full mt-4 bg-lsb-primary hover:bg-lsb-primary/90 text-white" 
+                      className="w-full mt-3 md:mt-4 bg-lsb-primary hover:bg-lsb-primary/90 text-white text-sm md:text-base py-2" 
                       onClick={() => handleResourceClick(result)}
                     >
                       {result.type === 'video' && 'Assistir Vídeo'}
@@ -194,7 +196,7 @@ const SearchResultsGrid = ({
 
       {/* Load More Button (fallback) */}
       {!enableInfiniteScroll && hasMore && (
-        <div className="text-center mt-8">
+        <div className="text-center mt-6 md:mt-8">
           <Button 
             onClick={onLoadMore}
             disabled={loading}

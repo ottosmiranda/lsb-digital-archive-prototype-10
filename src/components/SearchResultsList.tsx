@@ -1,3 +1,4 @@
+
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -100,17 +101,17 @@ const SearchResultsList = ({
   }
 
   return (
-    <div ref={containerRef} className="space-y-6">
-      <div className="space-y-4">
+    <div ref={containerRef} className="space-y-4 md:space-y-6">
+      <div className="space-y-3 md:space-y-4">
         {results.map((result) => {
           const typeBadge = getTypeBadge(result.type, result.documentType);
           
           return (
             <Card key={result.id} className="group hover-lift animate-fade-in">
-              <CardContent className="p-6">
-                <div className="flex gap-4">
-                  {/* Thumbnail */}
-                  <div className="relative w-28 h-28 bg-gray-100 rounded flex-shrink-0 overflow-hidden">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+                  {/* Thumbnail - Responsive sizing */}
+                  <div className="relative w-full sm:w-24 md:w-28 h-24 md:h-28 bg-gray-100 rounded flex-shrink-0 overflow-hidden">
                     {shouldShowImage(result.thumbnail, result.type) ? (
                       <img 
                         src={result.thumbnail} 
@@ -120,17 +121,17 @@ const SearchResultsList = ({
                     ) : (
                       <ThumbnailPlaceholder
                         type={result.type}
-                        className="w-28 h-28"
+                        className="w-full h-full"
                         size="medium"
                       />
                     )}
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <Badge className={`${typeBadge.color} flex items-center gap-1`}>
+                  <div className="flex-1 space-y-2 md:space-y-3 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge className={`${typeBadge.color} flex items-center gap-1 text-xs`}>
                           {getTypeIcon(result.type)}
                           {typeBadge.label}
                         </Badge>
@@ -148,33 +149,33 @@ const SearchResultsList = ({
                       </div>
                     </div>
 
-                    <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-lsb-primary transition-colors">
+                    <h3 className="font-semibold text-base md:text-lg line-clamp-2 group-hover:text-lsb-primary transition-colors">
                       {result.title}
                     </h3>
 
-                    <div className="flex items-center text-sm text-gray-600 space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center text-xs md:text-sm text-gray-600 space-y-1 sm:space-y-0 sm:space-x-4">
                       <div className="flex items-center">
-                        <User className="h-3 w-3 mr-1" />
-                        {result.author}
+                        <User className="h-3 w-3 mr-1 flex-shrink-0" />
+                        <span className="truncate">{result.author}</span>
                       </div>
                       <div className="flex items-center">
-                        <Calendar className="h-3 w-3 mr-1" />
+                        <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
                         {result.year}
                       </div>
-                      <Badge variant="outline" className="w-fit">
+                      <Badge variant="outline" className="w-fit text-xs">
                         {result.subject}
                       </Badge>
                     </div>
 
-                    <p className="text-sm text-gray-600 line-clamp-2">
+                    <p className="text-xs md:text-sm text-gray-600 line-clamp-2">
                       {result.description}
                     </p>
                   </div>
 
                   {/* Action Button */}
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 w-full sm:w-auto">
                     <Button 
-                      className="bg-lsb-primary hover:bg-lsb-primary/90 text-white"
+                      className="w-full sm:w-auto bg-lsb-primary hover:bg-lsb-primary/90 text-white text-sm"
                       onClick={() => handleResourceClick(result)}
                     >
                       {result.type === 'video' && 'Assistir'}
@@ -198,7 +199,7 @@ const SearchResultsList = ({
 
       {/* Load More Button (fallback) */}
       {!enableInfiniteScroll && hasMore && (
-        <div className="text-center mt-8">
+        <div className="text-center mt-6 md:mt-8">
           <Button 
             onClick={onLoadMore}
             disabled={loading}

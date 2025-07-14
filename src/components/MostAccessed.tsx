@@ -1,4 +1,3 @@
-
 import { Flame } from 'lucide-react';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useMemo, useRef } from 'react';
@@ -13,6 +12,7 @@ import { SearchResult } from '@/types/searchTypes';
 import { useTopItems } from './MostAccessed/useTopItems';
 import MostAccessedSkeleton from '@/components/skeletons/MostAccessedSkeleton';
 import { shouldShowImage } from '@/utils/thumbnailUtils';
+import { WipeButton } from '@/components/ui/WipeButton';
 
 const typeBadge = (type: string) => {
   switch (type) {
@@ -73,18 +73,18 @@ const MostAccessed = () => {
 
   if (topItems.length === 0) {
     return (
-      <section className="py-16 md:py-24 bg-lsb-section-gray">
+      <section className="py-8 md:py-16 lg:py-24 bg-lsb-section-gray">
         <div className="lsb-container">
-          <div className="lsb-content">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
+          <div className="lsb-content px-4 md:px-0">
+            <div className="text-center mb-8 md:mb-12">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold lsb-primary mb-3 md:mb-4">
                 Mais Acessados
               </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
                 Os conteúdos mais populares da nossa biblioteca digital
               </p>
             </div>
-            <div className="text-center my-12 text-lg text-gray-400">
+            <div className="text-center my-8 md:my-12 text-base md:text-lg text-gray-400">
               Nenhum conteúdo encontrado.
             </div>
           </div>
@@ -94,15 +94,15 @@ const MostAccessed = () => {
   }
 
   return (
-    <section className="py-16 md:py-24 bg-lsb-section-gray">
+    <section className="py-8 md:py-16 lg:py-24 bg-lsb-section-gray">
       <div className="lsb-container">
-        <div className="lsb-content">
+        <div className="lsb-content px-4 md:px-0">
           {/* Section Header */}
-          <div className="text-center mb-12 animate-fade-in">
-            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
+          <div className="text-center mb-8 md:mb-12 animate-fade-in">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold lsb-primary mb-3 md:mb-4">
               Mais Acessados
             </h2>
-            <div className="w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
+            <div className="w-16 md:w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
           </div>
 
           {/* Most Accessed Carousel */}
@@ -117,9 +117,9 @@ const MostAccessed = () => {
               }}
               className="w-full"
             >
-              <CarouselContent className="-ml-4">
+              <CarouselContent className="-ml-2 md:-ml-4">
                 {topItems.map((item, index) => (
-                  <CarouselItem key={`${item.type}-${item.id}`} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                  <CarouselItem key={`${item.type}-${item.id}`} className="pl-2 md:pl-4 basis-full xs:basis-1/2 md:basis-1/3 lg:basis-1/4">
                     <Card
                       className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
                       style={{ animationDelay: `${index * 0.1}s` }}
@@ -131,43 +131,46 @@ const MostAccessed = () => {
                             <img 
                               src={item.thumbnail}
                               alt={item.title}
-                              className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                              className="w-full h-32 md:h-40 object-cover transition-transform duration-300 group-hover:scale-105"
                             />
                           ) : (
                             <ThumbnailPlaceholder
                               type={item.type}
-                              className="w-full h-40"
+                              className="w-full h-32 md:h-40"
                               size="large"
                             />
                           )}
-                          <Badge className="absolute top-3 left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
+                          <Badge className="absolute top-2 md:top-3 left-2 md:left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
                             <Flame className="h-3 w-3" />
-                            Mais Acessado
+                            <span className="hidden sm:inline">Mais Acessado</span>
+                            <span className="sm:hidden">Popular</span>
                           </Badge>
                         </div>
-                        <div className="p-3 flex-1 flex flex-col">
+                        <div className="p-2 md:p-3 flex-1 flex flex-col">
                           <Badge variant="outline" className={`mb-2 text-xs self-start ${typeBadgeColor(item.type)}`}>
                             {typeBadge(item.type)}
                           </Badge>
-                          <h3 className="font-semibold text-sm mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight flex-1">
+                          <h3 className="font-semibold text-xs md:text-sm mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight flex-1">
                             {item.title}
                           </h3>
-                          <p className="text-xs text-gray-600 mb-3">{item.author}</p>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="w-full text-lsb-primary hover:bg-lsb-primary hover:text-white transition-all duration-300 text-xs"
+                          <p className="text-xs text-gray-600 mb-2 md:mb-3 line-clamp-1">{item.author}</p>
+                          <WipeButton 
+                            className="w-full text-xs py-2 px-3 text-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/recurso/${item.id}`);
+                            }}
                           >
                             Ver Detalhes
-                          </Button>
+                          </WipeButton>
                         </div>
                       </CardContent>
                     </Card>
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              <CarouselPrevious className="hidden md:flex -left-8" />
-              <CarouselNext className="hidden md:flex -right-8" />
+              <CarouselPrevious className="hidden md:flex -left-6 lg:-left-8" />
+              <CarouselNext className="hidden md:flex -right-6 lg:-right-8" />
             </Carousel>
           </div>
         </div>

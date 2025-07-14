@@ -1,4 +1,3 @@
-
 import { Play, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useMemo } from 'react';
 import FeaturedMediaSkeleton from '@/components/skeletons/FeaturedMediaSkeleton';
+import { WipeButton } from '@/components/ui/WipeButton';
 
 const FeaturedMedia = () => {
   const { content, rotatedContent, loading } = useHomepageContentContext();
@@ -74,9 +74,9 @@ const FeaturedMedia = () => {
   }, [content, rotatedContent.dailyMedia]);
 
   const MediaCard = ({ item, type }: { item: any; type: 'video' | 'podcast' }) => (
-    <Link to={`/recurso/${item.type || type}/${item.id}`}>
-      <Card className="group hover-lift cursor-pointer">
-        <CardContent className="p-0">
+    <Link to={`/recurso/${item.type || type}/${item.id}`} className="block">
+      <Card className="group hover-lift cursor-pointer h-full">
+        <CardContent className="p-0 h-full flex flex-col">
           <div className="relative aspect-video bg-gray-200 rounded-t-lg overflow-hidden">
             <img
               src={item.thumbnail}
@@ -84,8 +84,8 @@ const FeaturedMedia = () => {
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-              <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Play className="h-6 w-6 text-lsb-primary ml-0.5" />
+              <div className="w-10 md:w-12 h-10 md:h-12 bg-white/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Play className="h-5 w-5 md:h-6 md:w-6 text-lsb-primary ml-0.5" />
               </div>
             </div>
             <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
@@ -93,11 +93,11 @@ const FeaturedMedia = () => {
               {item.duration}
             </div>
           </div>
-          <div className="p-4">
-            <h3 className="font-semibold text-sm mb-1 line-clamp-2 group-hover:text-lsb-primary transition-colors">
+          <div className="p-3 md:p-4 flex-1 flex flex-col">
+            <h3 className="font-semibold text-xs md:text-sm mb-1 line-clamp-2 group-hover:text-lsb-primary transition-colors flex-1">
               {item.title}
             </h3>
-            <p className="text-xs text-gray-600">{item.author}</p>
+            <p className="text-xs text-gray-600 line-clamp-1">{item.author}</p>
           </div>
         </CardContent>
       </Card>
@@ -109,45 +109,42 @@ const FeaturedMedia = () => {
   }
 
   return (
-    <section className="py-16 md:py-24 bg-white">
+    <section className="py-8 md:py-16 lg:py-24 bg-white">
       <div className="lsb-container">
-        <div className="lsb-content">
-          <div className="text-center mb-12 animate-fade-in">
-            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
+        <div className="lsb-content px-4 md:px-0">
+          <div className="text-center mb-8 md:mb-12 animate-fade-in">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold lsb-primary mb-3 md:mb-4">
               Mídia em Destaque
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
               Descubra nossos conteúdos audiovisuais mais populares
             </p>
           </div>
 
           <Tabs defaultValue="videos" className="w-full">
-            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
-              <TabsTrigger value="videos">Vídeos</TabsTrigger>
-              <TabsTrigger value="podcasts">Podcasts</TabsTrigger>
+            <TabsList className="grid w-full max-w-xs md:max-w-md mx-auto grid-cols-2 mb-6 md:mb-8">
+              <TabsTrigger value="videos" className="text-sm">Vídeos</TabsTrigger>
+              <TabsTrigger value="podcasts" className="text-sm">Podcasts</TabsTrigger>
             </TabsList>
 
             <TabsContent value="videos" className="animate-fade-in">
               {videos.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                     {videos.map((video) => (
                       <MediaCard key={video.id} item={video} type="video" />
                     ))}
                   </div>
-                  <div className="text-center mt-8">
+                  <div className="text-center mt-6 md:mt-8">
                     <Link to="/buscar?filtros=video">
-                      <Button
-                        variant="outline"
-                        className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
-                      >
+                      <WipeButton className="px-6 md:px-8 py-3 md:py-4 text-sm md:text-base">
                         Ver Todos os Vídeos
-                      </Button>
+                      </WipeButton>
                     </Link>
                   </div>
                 </>
               ) : (
-                <div className="text-center py-8">
+                <div className="text-center py-6 md:py-8">
                   <p className="text-gray-600">Nenhum vídeo disponível no momento.</p>
                 </div>
               )}
@@ -156,24 +153,21 @@ const FeaturedMedia = () => {
             <TabsContent value="podcasts" className="animate-fade-in">
               {podcasts.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                     {podcasts.map((podcast) => (
                       <MediaCard key={podcast.id} item={podcast} type="podcast" />
                     ))}
                   </div>
-                  <div className="text-center mt-8">
+                  <div className="text-center mt-6 md:mt-8">
                     <Link to="/buscar?filtros=podcast">
-                      <Button
-                        variant="outline"
-                        className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white"
-                      >
+                      <WipeButton className="px-6 md:px-8 py-3 md:py-4 text-sm md:text-base">
                         Ver Todos os Podcasts
-                      </Button>
+                      </WipeButton>
                     </Link>
                   </div>
                 </>
               ) : (
-                <div className="text-center py-8">
+                <div className="text-center py-6 md:py-8">
                   <p className="text-gray-600">Nenhum podcast disponível no momento.</p>
                 </div>
               )}

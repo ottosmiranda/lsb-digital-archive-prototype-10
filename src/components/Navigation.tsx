@@ -38,25 +38,25 @@ const Navigation = () => {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
       <div className="lsb-container">
         <div className="lsb-content">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
+          <div className="flex justify-between items-center h-14 md:h-16 px-4 md:px-0">
+            {/* Logo - Responsive sizing */}
             <div className="flex-shrink-0">
               <Link to="/" className="flex items-center">
                 <img 
                   alt="Biblioteca Digital & Link" 
-                  className="h-9 w-auto" 
+                  className="h-7 md:h-9 w-auto" 
                   src="/lovable-uploads/72ecc68a-ee89-4b03-a37b-1d2c8813f321.png" 
                 />
               </Link>
             </div>
 
-            {/* Desktop Navigation - Reorganized Layout */}
+            {/* Desktop Navigation - Hidden on mobile */}
             <div className="hidden lg:flex items-center justify-end flex-1 min-w-0">
               {/* Navigation Links Container */}
-              <div className="flex items-center space-x-3 flex-shrink-0">
+              <div className="flex items-center space-x-2 xl:space-x-3 flex-shrink-0">
                 {navItems.map((item) => (
                   item.external ? (
                     <a
@@ -85,7 +85,7 @@ const Navigation = () => {
                 ))}
               </div>
 
-              {/* Compact Search Bar - Optimized size */}
+              {/* Compact Search Bar - Desktop only */}
               {!isHomePage && (
                 <div className="ml-4 flex-shrink-0">
                   <CompactSearchBar />
@@ -97,7 +97,8 @@ const Navigation = () => {
             <div className="lg:hidden flex items-center">
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition-colors"
+                aria-label="Menu principal"
               >
                 {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
@@ -106,10 +107,10 @@ const Navigation = () => {
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu - Improved styling and transitions */}
       {isOpen && (
-        <div className="lg:hidden">
-          <div className="pt-2 pb-3 space-y-1">
+        <div className="lg:hidden bg-white border-t border-gray-200 shadow-lg">
+          <div className="px-4 pt-2 pb-3 space-y-1">
             {navItems.map((item) => (
               item.external ? (
                 <a
@@ -117,19 +118,19 @@ const Navigation = () => {
                   href={item.path}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                  className="flex items-center px-3 py-3 border-l-4 border-transparent text-base font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors rounded-r-md"
                   onClick={() => setIsOpen(false)}
                 >
                   {item.label}
-                  <ExternalLink className="ml-1 h-4 w-4" />
+                  <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               ) : (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors ${
+                  className={`block px-3 py-3 border-l-4 text-base font-medium transition-colors rounded-r-md ${
                     isActive(item.path)
-                      ? "bg-lsb-light border-lsb-primary text-lsb-primary"
+                      ? "bg-lsb-section border-lsb-primary text-lsb-primary"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-300"
                   }`}
                   onClick={() => setIsOpen(false)}
@@ -141,7 +142,7 @@ const Navigation = () => {
             
             {/* Mobile Search Bar - Only show on internal pages */}
             {!isHomePage && (
-              <div className="px-3 py-2">
+              <div className="px-3 py-3 border-t border-gray-200 mt-2">
                 <CompactSearchBar />
               </div>
             )}

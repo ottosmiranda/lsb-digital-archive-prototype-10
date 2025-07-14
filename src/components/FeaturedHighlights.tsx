@@ -153,18 +153,18 @@ const FeaturedHighlights = () => {
   }
 
   return (
-    <section className="py-16 md:py-24 bg-white">
+    <section className="py-8 md:py-16 lg:py-24 bg-white">
       <div className="lsb-container">
-        <div className="lsb-content">
-          <div className="text-center mb-12 animate-fade-in">
-            <h2 className="text-3xl md:text-4xl font-bold lsb-primary mb-4">
+        <div className="lsb-content px-4 md:px-0">
+          <div className="text-center mb-8 md:mb-12 animate-fade-in">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold lsb-primary mb-3 md:mb-4">
               Destaques da Semana
             </h2>
-            <div className="w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
+            <div className="w-16 md:w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
           </div>
 
           {highlights.length === 0 ? (
-            <div className="text-center my-12 text-lg text-gray-400">Nenhum destaque encontrado.</div>
+            <div className="text-center my-8 md:my-12 text-lg text-gray-400">Nenhum destaque encontrado.</div>
           ) : (
             <div className="relative">
               <Carousel
@@ -177,9 +177,9 @@ const FeaturedHighlights = () => {
                 }}
                 className="w-full"
               >
-                <CarouselContent className="-ml-4">
+                <CarouselContent className="-ml-2 md:-ml-4">
                   {highlights.map((item, index) => (
-                    <CarouselItem key={`${item.type}-${item.id}`} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                    <CarouselItem key={`${item.type}-${item.id}`} className="pl-2 md:pl-4 basis-full xs:basis-1/2 md:basis-1/3 lg:basis-1/4">
                       <Card
                         className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
                         style={{ animationDelay: `${index * 0.1}s` }}
@@ -191,7 +191,7 @@ const FeaturedHighlights = () => {
                               <img 
                                 src={item.thumbnail}
                                 alt={item.title}
-                                className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                                className="w-full h-32 md:h-40 object-cover transition-transform duration-300 group-hover:scale-105"
                                 onError={(e) => {
                                   console.error('🖼️ THUMBNAIL ERROR:', {
                                     src: item.thumbnail,
@@ -204,25 +204,26 @@ const FeaturedHighlights = () => {
                             ) : (
                               <ThumbnailPlaceholder
                                 type={item.type}
-                                className="w-full h-40"
+                                className="w-full h-32 md:h-40"
                                 size="large"
                               />
                             )}
-                            <Badge className="absolute top-3 left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
+                            <Badge className="absolute top-2 md:top-3 left-2 md:left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
                               <Star className="h-3 w-3" />
-                              Escolha da Equipe
+                              <span className="hidden sm:inline">Escolha da Equipe</span>
+                              <span className="sm:hidden">Destaque</span>
                             </Badge>
                           </div>
-                          <div className="p-3 flex-1 flex flex-col">
+                          <div className="p-2 md:p-3 flex-1 flex flex-col">
                             <Badge variant="outline" className={`mb-2 text-xs self-start ${typeBadgeColor(item.type)}`}>
                               {typeBadge(item.type)}
                             </Badge>
-                            <h3 className="font-semibold text-sm mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight flex-1">
+                            <h3 className="font-semibold text-xs md:text-sm mb-1 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight flex-1">
                               {item.title}
                             </h3>
-                            <p className="text-xs text-gray-600 mb-3">{item.author}</p>
+                            <p className="text-xs text-gray-600 mb-2 md:mb-3 line-clamp-1">{item.author}</p>
                             <WipeButton 
-                              className="w-full text-xs"
+                              className="w-full text-xs py-2 px-3 text-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/recurso/${item.id}`);
@@ -236,8 +237,8 @@ const FeaturedHighlights = () => {
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <CarouselPrevious className="hidden md:flex -left-8" />
-                <CarouselNext className="hidden md:flex -right-8" />
+                <CarouselPrevious className="hidden md:flex -left-6 lg:-left-8" />
+                <CarouselNext className="hidden md:flex -right-6 lg:-right-8" />
               </Carousel>
             </div>
           )}

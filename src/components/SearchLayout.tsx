@@ -59,10 +59,15 @@ const SearchLayout = ({
   // ✅ NOVO: Obter contentCounts do contexto para badges corretas
   const { contentCounts } = useHomepageContentContext();
 
-  console.log('🔍 SearchLayout: Recebeu props:', {
+  // CORREÇÃO: Detectar estado "all" (sem query específica)
+  const isAllState = !query && filters.resourceType.length === 0;
+
+  console.log('🔍 SearchLayout: Estado atual:', {
     query,
     hasQuery: !!query,
-    onClearQuery: !!onClearQuery
+    onClearQuery: !!onClearQuery,
+    isAllState,
+    resourceTypeFilters: filters.resourceType
   });
 
   // Sync activeContentType with filters.resourceType
@@ -94,7 +99,8 @@ const SearchLayout = ({
     showPagination,
     shouldShowSearch,
     showEmptyState,
-    showWelcomeState
+    showWelcomeState,
+    isAllState
   });
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {

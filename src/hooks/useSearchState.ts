@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SearchFilters } from '@/types/searchTypes';
@@ -14,13 +13,13 @@ export const useSearchState = () => {
   const [filters, setFilters] = useState<SearchFilters>({
     resourceType: [],
     subject: [],
-    author: [], // CORRIGIDO: Array vazio para múltiplos autores
+    author: [],
     year: '',
     duration: '',
     language: [],
     documentType: [],
-    program: [], // Add program filter
-    channel: [], // Add channel filter
+    program: [],
+    channel: [],
   });
   
   const [sortBy, setSortByState] = useState('relevance');
@@ -29,7 +28,16 @@ export const useSearchState = () => {
   const pageFromUrl = parseInt(searchParams.get('pagina') || '1', 10);
   const [currentPage, setCurrentPageState] = useState(pageFromUrl);
 
+  // CORREÇÃO: Detectar quando query foi limpa pelo botão X
   const query = searchParams.get('q') || '';
+  const isAllState = searchParams.get('filtros') === 'all' && !query;
+  
+  console.log('🔍 useSearchState: Estado atual:', {
+    query,
+    isAllState,
+    filtrosParam: searchParams.get('filtros'),
+    queryExists: !!query
+  });
   
   const appliedFilters = useMemo(() => {
     return searchParams.getAll('filtros') || [];
@@ -39,18 +47,20 @@ export const useSearchState = () => {
   useEffect(() => {
     // Se for uma atualização interna, ignore para evitar condição de corrida
     if (isInternalUpdate.current) {
-      // Reset the flag at the end of processing internal updates
       isInternalUpdate.current = false;
       return;
     }
 
     const resourceTypesFromUrl = searchParams.getAll('filtros');
     console.log('🔗 URL filters detected:', resourceTypesFromUrl);
+    console.log('🔗 Query from URL:', query);
+    console.log('🔗 Is "all" state (filtros=all, no query):', isAllState);
 
-    // Handle 'all' filter specially - it means no resource type filters
+    // CORREÇÃO: Handle 'all' filter specially - it means no resource type filters
     let mappedFilters: string[];
     if (resourceTypesFromUrl.includes('all') || resourceTypesFromUrl.length === 0) {
       mappedFilters = [];
+      console.log('🔄 Definindo filtros como array vazio (busca global)');
     } else {
       // Map URL-friendly values back to internal filter values
       const reverseFilterMapping: { [key: string]: string } = {
@@ -62,6 +72,7 @@ export const useSearchState = () => {
       mappedFilters = resourceTypesFromUrl.map(filter => 
         reverseFilterMapping[filter] || filter
       );
+      console.log('🔄 Mapeando filtros específicos:', mappedFilters);
     }
 
     // Always update filters to match URL (even if empty)
@@ -83,8 +94,13 @@ export const useSearchState = () => {
     const pageFromUrlEffect = parseInt(searchParams.get('pagina') || '1', 10);
     setCurrentPageState(pageFromUrlEffect);
     
-    console.log('✅ State synchronized with URL:', { resourceType: resourceTypesFromUrl, sortBy: sortParam || 'relevance', pagina: pageFromUrlEffect });
-  }, [searchParams]);
+    console.log('✅ State synchronized with URL:', { 
+      resourceType: mappedFilters, 
+      sortBy: sortParam || 'relevance', 
+      pagina: pageFromUrlEffect,
+      isAllState 
+    });
+  }, [searchParams, query, isAllState]);
 
   // Track searches when query changes (from URL navigation)
   useEffect(() => {
@@ -94,6 +110,7 @@ export const useSearchState = () => {
   }, [query, trackSearch]);
 
   const setQuery = (newQuery: string) => {
+    console.log('🔄 setQuery chamado:', newQuery);
     const newSearchParams = new URLSearchParams(searchParams);
     if (newQuery) {
       newSearchParams.set('q', newQuery);
@@ -123,7 +140,7 @@ export const useSearchState = () => {
     // Marcar como atualização interna para evitar condição de corrida
     isInternalUpdate.current = true;
     
-    // CORREÇÃO: Se resourceType contém 'all', mapear para array vazio (busca global)
+    // CORREÇÃO: Se resourceType contém 'all', mapear para array vazio (busca global)  
     const processedFilters = {
       ...newFilters,
       resourceType: newFilters.resourceType.includes('all') ? [] : newFilters.resourceType

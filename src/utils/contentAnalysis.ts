@@ -46,7 +46,14 @@ export const analyzeContent = (results: SearchResult[]): ContentStats => {
   const subjectSet = new Set<string>();
   const documentTypeSet = new Set<string>(); // ✅ ADICIONADO
 
-  results.forEach(item => {
+  // ✅ CORRIGIDO: Filtrar itens nulos para evitar TypeError
+  results.filter(Boolean).forEach(item => {
+    // ✅ VALIDAÇÃO ADICIONAL: Garantir que o item tem as propriedades necessárias
+    if (!item || typeof item !== 'object' || !item.type) {
+      console.warn('⚠️ Item inválido ignorado na análise de conteúdo:', item);
+      return;
+    }
+
     // Contagem por tipo
     switch (item.type) {
       case 'titulo':

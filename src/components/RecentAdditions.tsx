@@ -1,4 +1,3 @@
-
 import { Book, Video, Headphones, Calendar, Sparkles, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -207,9 +206,9 @@ const RecentAdditions = () => {
                           </p>
                         </div>
                         
-                        {/* Thumbnail na parte inferior */}
+                        {/* Thumbnail na parte inferior - versão mobile melhorada */}
                         <div className="mt-3 flex justify-center">
-                          <div className="w-16 h-16 relative overflow-hidden rounded">
+                          <div className="w-full h-20 md:w-16 md:h-16 relative overflow-hidden rounded">
                             {shouldShowImage(item.thumbnail, item.type) ? (
                               <img 
                                 src={item.thumbnail} 
@@ -220,7 +219,7 @@ const RecentAdditions = () => {
                             ) : (
                               <ThumbnailPlaceholder 
                                 type={item.type as 'titulo' | 'video' | 'podcast'} 
-                                className="w-16 h-16" 
+                                className="w-full h-20 md:w-16 md:h-16" 
                                 size="small" 
                                 style={{
                                   display: item.thumbnail ? 'none' : 'flex'

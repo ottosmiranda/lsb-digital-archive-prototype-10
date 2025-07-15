@@ -79,9 +79,24 @@ export class AllContentService {
         };
       }
       
-      console.log(`✅ All content success: ${data.conteudo.length} items found`);
+      // ✅ FILTRO CRÍTICO: Transformar e filtrar nulls IMEDIATAMENTE
+      const transformedItems = data.conteudo
+        .map((item: any) => this.transformToSearchResult(item))
+        .filter((item: any) => item !== null && item !== undefined);
+      
+      const originalCount = data.conteudo.length;
+      const validCount = transformedItems.length;
+      
+      console.log(`✅ All content success: ${originalCount} items received, ${validCount} valid after filtering`);
+      
+      if (validCount < originalCount) {
+        console.warn(`⚠️ FILTERED OUT ${originalCount - validCount} invalid items from API response`);
+      }
+      
       console.log('📊 Response data:', {
-        items: data.conteudo.length,
+        originalItems: originalCount,
+        validItems: validCount,
+        filteredOut: originalCount - validCount,
         total: data.total,
         totalPages: data.totalPages,
         page: data.page
@@ -90,7 +105,7 @@ export class AllContentService {
       console.groupEnd();
       
       return {
-        conteudo: data.conteudo,
+        conteudo: transformedItems, // Retornar apenas items válidos
         total: data.total || 0,
         totalPages: data.totalPages || 0,
         page: data.page || page
@@ -143,7 +158,7 @@ export class AllContentService {
     }
   }
 
-  static transformToSearchResult(item: AllContentItem): SearchResult {
+  static transformToSearchResult(item: AllContentItem): SearchResult | null {
     console.group('🔄 ALL CONTENT - Lógica Polimórfica Robusta');
     
     // ✅ FASE 1: Extração Polimórfica de ID, Título e Imagem
@@ -152,6 +167,21 @@ export class AllContentService {
     const extractedTitle = item.episodio_titulo || item.titulo || item.title || 'Título não disponível';
     const extractedThumbnail = item.imagem_url || item.thumbnail || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png';
     const extractedType = item.tipo || item.type || 'unknown';
+
+    // ✅ VALIDAÇÃO CRÍTICA: Rejeitar itens com ID inválido PRIMEIRO
+    const invalidIds = ['', '0', 'undefined', 'null', 'missing-id', null, undefined];
+    const idString = String(extractedId);
+    
+    if (!extractedId || invalidIds.includes(idString) || idString.trim() === '') {
+      console.error('❌ ID INVÁLIDO REJEITADO IMEDIATAMENTE:', {
+        originalItem: { id: item.id, episodio_id: item.episodio_id, titulo: item.titulo },
+        extractedId: extractedId,
+        idString: idString,
+        reason: 'ID inválido detectado antes da transformação'
+      });
+      console.groupEnd();
+      return null; // Retornar null explicitamente para ser filtrado
+    }
 
     // ✅ FASE 2: Detecção Inteligente de Tipo de Conteúdo
     let detectedType: 'video' | 'titulo' | 'podcast';
@@ -178,7 +208,7 @@ export class AllContentService {
     }
 
     // ✅ FASE 3: Logs Diagnósticos Detalhados
-    console.log('📊 Dados extraídos:', {
+    console.log('📊 Dados extraídos (ID VÁLIDO):', {
       originalData: {
         id: item.id,
         episodio_id: item.episodio_id,
@@ -193,18 +223,8 @@ export class AllContentService {
         type: detectedType,
         thumbnail: extractedThumbnail ? 'presente' : 'ausente'
       },
-      isValidId: extractedId !== 'missing-id' && extractedId !== 'undefined' && extractedId !== null
+      validationPassed: true
     });
-
-    // ✅ VALIDAÇÃO: Rejeitar itens com ID inválido
-    if (!extractedId || extractedId === 'missing-id' || extractedId === 'undefined' || extractedId === 'null') {
-      console.error('❌ ID INVÁLIDO REJEITADO:', {
-        item: item,
-        extractedId: extractedId
-      });
-      console.groupEnd();
-      return null;
-    }
 
     const searchResult: SearchResult = {
       id: String(extractedId),

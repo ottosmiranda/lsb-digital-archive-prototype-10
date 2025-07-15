@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import EnhancedLoadingSkeleton from '@/components/ResourceDetail/EnhancedLoadingSkeleton';
@@ -15,21 +15,27 @@ import PodcastDetailView from '@/components/ResourceDetail/PodcastDetailView';
 import { useResourceById } from '@/hooks/useResourceById';
 
 const ResourceDetail = () => {
-  const { id, type } = useParams<{ id: string; type?: string }>();
-  const { resource, loading, error, retrying } = useResourceById(id, type);
+  const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  
+  // ✅ FASE 3: Extrair tipo dos search params (vem da navegação otimizada)
+  const typeFromUrl = searchParams.get('tipo');
+  
+  const { resource, loading, error, retrying } = useResourceById(id, typeFromUrl || undefined);
 
   // Scroll to top when component mounts or when resource changes
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id, resource]);
 
-  console.group('🎯 RESOURCE DETAIL DEBUG (NAVEGAÇÃO COM TIPO)');
+  console.group('🎯 RESOURCE DETAIL DEBUG (NAVEGAÇÃO OTIMIZADA COM TIPO)');
   console.log('📋 URL ID:', id);
-  console.log('📋 URL Type:', type);
+  console.log('📋 Type from search params:', typeFromUrl);
   console.log('📋 Resource found:', resource ? { id: resource.id, type: resource.type, title: resource.title.substring(0, 50) + '...' } : 'null');
   console.log('📋 Loading:', loading);
   console.log('📋 Retrying:', retrying);
   console.log('📋 Error:', error);
+  console.log('📋 Optimized lookup:', typeFromUrl ? 'YES (single API call expected)' : 'NO (fallback to sequential)');
   console.groupEnd();
 
   if (loading) {

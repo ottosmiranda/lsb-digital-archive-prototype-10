@@ -154,24 +154,41 @@ export const useSearchResults = () => {
       const currentStateFilter = filters.resourceType[0] || 'none';
       
       if (responseFilterType !== 'unknown' && responseFilterType !== currentStateFilter) {
-        console.warn('⚠️ INCONSISTÊNCIA DETECTADA:', {
+        console.warn('⚠️ INCONSISTÊNCIA DETECTADA - IGNORANDO RESPOSTA:', {
           estadoAtual: currentStateFilter,
           respostaRecebida: responseFilterType,
+          requestId: requestId,
           ignorandoResposta: true
         });
         console.groupEnd();
         return; // Ignorar resposta inconsistente
       }
       
-      // Validação da estrutura da resposta
+      // ✅ VALIDAÇÃO DA ESTRUTURA E FILTRO DE NULLS
       if (!response.results || !Array.isArray(response.results)) {
         console.error('❌ Estrutura de resposta inválida:', response);
         throw new Error('Estrutura de resposta inválida');
       }
       
+      // ✅ FILTRO CRÍTICO: Remover qualquer null/undefined que possa ter passado
+      const validResults = response.results.filter(result => 
+        result !== null && 
+        result !== undefined && 
+        result.id && 
+        String(result.id).trim() !== '' &&
+        !['0', 'undefined', 'null', 'missing-id'].includes(String(result.id))
+      );
+      
+      if (validResults.length < response.results.length) {
+        console.warn(`⚠️ FILTERED OUT ${response.results.length - validResults.length} invalid results in useSearchResults`);
+      }
+      
       setSearchResponse({
-        results: response.results,
-        pagination: response.pagination,
+        results: validResults, // Usar apenas resultados válidos
+        pagination: {
+          ...response.pagination,
+          totalResults: Math.max(validResults.length, response.pagination.totalResults) // Ajustar total se necessário
+        },
         searchInfo: response.searchInfo
       });
 
@@ -227,22 +244,37 @@ export const useSearchResults = () => {
     console.groupEnd();
   }, [query, filters, sortBy, currentPage, shouldSearch, search, prefetchNextPage, clearCache, searchParams]);
 
-  // ✅ CORREÇÃO: Effect com debouncing otimizado
+  // ✅ CORREÇÃO: Effect com debouncing ultra-agressivo para mudanças de filtro
   useEffect(() => {
     // Limpar timeout anterior
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
     
-    // ✅ DEBOUNCING: Reduzido para 100ms em mudanças de filtro
+    // ✅ DEBOUNCING AGRESSIVO: 50ms para filtros, 200ms para queries
     const currentFilterType = filters.resourceType[0] || 'none';
     const isFilterChange = currentFilterType !== lastActiveFilterRef.current;
-    const debounceTime = isFilterChange ? 100 : 300;
+    const isQueryChange = query.trim() !== '';
     
-    console.log(`🎯 [${instanceId.current}] Agendando busca com debounce ${debounceTime}ms...`);
+    let debounceTime: number;
+    if (isFilterChange) {
+      debounceTime = 50; // Super rápido para mudanças de filtro
+    } else if (isQueryChange) {
+      debounceTime = 200; // Rápido para digitação
+    } else {
+      debounceTime = 100; // Default
+    }
+    
+    console.log(`🎯 [${instanceId.current}] Agendando busca - Filtro: ${isFilterChange}, Query: ${isQueryChange}, Debounce: ${debounceTime}ms`);
+    
+    // ✅ LOADING IMEDIATO: Mostrar loading na mudança de filtro
+    if (isFilterChange && shouldSearch) {
+      console.log('⚡ LOADING IMEDIATO para mudança de filtro');
+      // O hook useApiSearch já gerencia o loading state internamente
+    }
     
     searchTimeoutRef.current = setTimeout(() => {
-      console.log(`🎯 [${instanceId.current}] Executando busca após debouncing...`);
+      console.log(`🎯 [${instanceId.current}] Executando busca após debouncing (${debounceTime}ms)...`);
       performSearch();
     }, debounceTime);
     
@@ -252,7 +284,7 @@ export const useSearchResults = () => {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [performSearch]);
+  }, [performSearch, query, filters.resourceType, shouldSearch]);
 
   // Handlers otimizados
   const handleFilterChange = useCallback((newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {

@@ -107,18 +107,35 @@ export const useResourceById = (id: string | undefined, type?: string): UseResou
         setLoading(true);
         setError(null);
         
-        // ✅ NOVA LÓGICA: Se temos tipo conhecido, buscar só ele primeiro
+        // ✅ LÓGICA OTIMIZADA: Busca direta por tipo quando conhecido
         let searchTypes: string[];
+        let optimizedSearch = false;
         
         if (knownType) {
-          // Se tipo conhecido da URL ou cache, buscar apenas ele
-          const actualType = knownType === 'titulo' ? 'livro' : knownType;
-          searchTypes = [actualType];
-          console.log(`🎯 BUSCA DIRETA: Usando tipo conhecido "${actualType}"`);
+          // Se tipo conhecido da URL ou cache, buscar apenas ele PRIMEIRO
+          let actualType = knownType;
+          
+          // Mapeamento para tipos da API
+          if (knownType === 'titulo') {
+            searchTypes = ['livro', 'artigos']; // Tentar livro primeiro, depois artigo
+            optimizedSearch = true;
+          } else if (knownType === 'video') {
+            searchTypes = ['video'];
+            optimizedSearch = true;
+          } else if (knownType === 'podcast') {
+            searchTypes = ['podcast'];
+            optimizedSearch = true;
+          } else {
+            actualType = knownType === 'titulo' ? 'livro' : knownType;
+            searchTypes = [actualType];
+            optimizedSearch = true;
+          }
+          
+          console.log(`🎯 BUSCA DIRETA OTIMIZADA: Tipo "${knownType}" → API calls: [${searchTypes.join(', ')}]`);
         } else {
-          // Fallback para busca sequencial (URLs antigas)
-          searchTypes = ['titulo', 'video', 'podcast'];
-          console.log('🔄 FALLBACK: Busca sequencial para URL sem tipo');
+          // Fallback para busca sequencial (URLs antigas sem tipo)
+          searchTypes = ['livro', 'video', 'podcast', 'artigos'];
+          console.log('🔄 FALLBACK: Busca sequencial completa para URL sem tipo');
         }
 
         let foundValidResource = false;
@@ -127,19 +144,12 @@ export const useResourceById = (id: string | undefined, type?: string): UseResou
           const resourceType = searchTypes[i];
           
           try {
-            console.log(`🔍 Tentando buscar ${resourceType} com ID: ${id} (${i + 1}/${searchTypes.length})`);
+            console.log(`🔍 ${optimizedSearch ? 'BUSCA DIRETA' : 'BUSCA SEQUENCIAL'}: ${resourceType} com ID: ${id} (${i + 1}/${searchTypes.length})`);
             
-            const actualType = resourceType === 'titulo' ? 'livro' : resourceType;
-            let apiResource = await ResourceByIdService.fetchResourceById(id, actualType);
-            
-            // ✅ NOVA LÓGICA: Se é titulo e não encontrou como livro, tentar como artigo
-            if (!apiResource && resourceType === 'titulo') {
-              console.log(`📰 Tentando buscar como artigo...`);
-              apiResource = await ResourceByIdService.fetchResourceById(id, 'artigos');
-            }
+            let apiResource = await ResourceByIdService.fetchResourceById(id, resourceType);
             
             if (apiResource && isValidTransformedResource(apiResource)) {
-              console.log(`✅ FASE 4 SUCCESS: Encontrado na API como ${actualType === 'livro' && !apiResource ? 'artigo' : actualType}`);
+              console.log(`✅ FASE 4 SUCCESS: Encontrado na API como ${resourceType} ${optimizedSearch ? '(BUSCA OTIMIZADA)' : '(FALLBACK)'}`);
               setResource(apiResource);
               setLoading(false);
               setError(null);
@@ -147,9 +157,18 @@ export const useResourceById = (id: string | undefined, type?: string): UseResou
               foundValidResource = true;
               console.groupEnd();
               return;
+            } else if (optimizedSearch && i === 0 && !apiResource) {
+              // Se busca otimizada falhou no primeiro tipo, log especial
+              console.log(`⚠️ BUSCA OTIMIZADA FALHOU para tipo "${resourceType}" - continuando...`);
             }
           } catch (apiError) {
-            console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, apiError);
+            const errorMsg = apiError instanceof Error ? apiError.message : String(apiError);
+            
+            if (optimizedSearch && errorMsg.includes('404')) {
+              console.log(`❌ Busca otimizada: HTTP 404 para ${resourceType} ID ${id}`);
+            } else {
+              console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, errorMsg);
+            }
           }
         }
         

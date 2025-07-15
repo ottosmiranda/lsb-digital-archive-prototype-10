@@ -185,12 +185,25 @@ export class SearchService {
         throw new Error('Request aborted');
       }
       
-      // Transformar itens para SearchResult
-      let results = response.conteudo.map(item => 
-        AllContentService.transformToSearchResult(item)
+      // ✅ INTEGRAÇÃO: response.conteudo já contém itens transformados e filtrados
+      // AllContentService.fetchAllContent agora já faz a transformação e filtragem
+      let results = response.conteudo; // Já são SearchResult[] válidos
+      
+      // ✅ LOG: Verificar qualidade dos resultados
+      const originalCount = results.length;
+      const validResults = results.filter(item => 
+        item && 
+        item.id && 
+        String(item.id).trim() !== '' &&
+        !['0', 'undefined', 'null', 'missing-id'].includes(String(item.id))
       );
       
-      // ✅ CORREÇÃO: Garantir que apenas resultsPerPage itens sejam retornados
+      if (validResults.length < originalCount) {
+        console.warn(`⚠️ FILTERED OUT ${originalCount - validResults.length} invalid items in SearchService`);
+        results = validResults;
+      }
+      
+      // ✅ LIMITE: Garantir que apenas resultsPerPage itens sejam retornados
       if (results.length > resultsPerPage) {
         console.warn(`⚠️ API retornou ${results.length} itens, limitando para ${resultsPerPage}`);
         results = results.slice(0, resultsPerPage);

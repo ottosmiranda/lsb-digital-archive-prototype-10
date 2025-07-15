@@ -1,4 +1,5 @@
 
+import { useEffect } from 'react';
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -37,20 +38,37 @@ const SearchResultsGrid = ({
     enabled: enableInfiniteScroll
   });
 
-  // ✅ LOG TEMPORÁRIO: Verificar dados dos podcasts
-  const podcastResults = results.filter(r => r.type === 'podcast');
-  if (podcastResults.length > 0) {
-    console.group('🎧 SEARCH GRID - Verificação badges podcasts');
-    podcastResults.slice(0, 3).forEach((podcast, index) => {
-      console.log(`Podcast ${index + 1}:`, {
-        title: podcast.title.substring(0, 40) + '...',
-        subject: podcast.subject,
-        program: (podcast as any).program,
-        badgeOK: podcast.subject !== (podcast as any).program
-      });
-    });
-    console.groupEnd();
-  }
+  // ✅ MONITORAMENTO: Verificar qualidade dos dados renderizados
+  useEffect(() => {
+    if (results.length > 0) {
+      const invalidItems = results.filter(r => 
+        !r.id || 
+        ['0', 'undefined', 'null', 'missing-id'].includes(String(r.id)) ||
+        !r.title ||
+        !r.type
+      );
+      
+      if (invalidItems.length > 0) {
+        console.warn('⚠️ SEARCH GRID: Items inválidos detectados durante renderização:', {
+          totalItems: results.length,
+          invalidCount: invalidItems.length,
+          invalidItems: invalidItems.map(item => ({
+            id: item.id,
+            title: item.title?.substring(0, 30) + '...',
+            type: item.type
+          }))
+        });
+      } else {
+        console.log('✅ SEARCH GRID: Todos os items são válidos', {
+          totalItems: results.length,
+          types: results.reduce((acc, r) => {
+            acc[r.type] = (acc[r.type] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>)
+        });
+      }
+    }
+  }, [results]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -72,7 +90,7 @@ const SearchResultsGrid = ({
   };
 
   const handleResourceClick = (result: SearchResult) => {
-    console.group('🎯 SEARCH GRID NAVIGATION - VALIDAÇÃO RIGOROSA');
+    console.group('🎯 SEARCH GRID NAVIGATION - VALIDAÇÃO E TIPO NA URL');
     console.log('📋 Clicked resource:', {
       id: result.id,
       originalId: result.originalId,
@@ -81,7 +99,7 @@ const SearchResultsGrid = ({
       filtroAtual: searchParams.get('filtros')
     });
     
-    // ✅ FASE 4: Validação Rigorosa de ID antes da navegação
+    // ✅ VALIDAÇÃO RIGOROSA de ID antes da navegação
     const invalidIds = ['', '0', 'undefined', 'null', 'missing-id', null, undefined];
     const navigationId = String(result.id);
     
@@ -101,18 +119,23 @@ const SearchResultsGrid = ({
       return;
     }
     
-    console.log('✅ ID VÁLIDO - PROSSEGUINDO COM NAVEGAÇÃO:', {
+    console.log('✅ ID VÁLIDO - PROSSEGUINDO COM NAVEGAÇÃO OTIMIZADA:', {
       validId: navigationId,
       type: result.type,
       title: result.title.substring(0, 40) + '...'
     });
     
-    // Preserve current search state in the detail page URL
+    // ✅ FASE 3: Preservar estado atual E incluir tipo do recurso
     const currentParams = new URLSearchParams(searchParams);
     currentParams.set('from', 'buscar');
+    currentParams.set('tipo', result.type); // Passar tipo para eliminar busca sequencial
     
     const targetRoute = `/recurso/${navigationId}?${currentParams.toString()}`;
-    console.log('🔗 Navigating to with preserved state:', targetRoute);
+    console.log('🔗 Navigating to with preserved state + resource type:', {
+      route: targetRoute,
+      resourceType: result.type,
+      optimizedLookup: true
+    });
     console.groupEnd();
     
     navigate(targetRoute);

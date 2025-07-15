@@ -1,5 +1,7 @@
+
 import Navigation from '@/components/Navigation';
 import Hero from '@/components/Hero';
+import MinhaBlibioteca from '@/components/MinhaBlibioteca';
 import FeaturedHighlights from '@/components/FeaturedHighlights';
 import MostAccessed from '@/components/MostAccessed';
 import FeaturedMedia from '@/components/FeaturedMedia';
@@ -16,6 +18,7 @@ const IndexContent = () => {
     <div className="min-h-screen bg-white">
       <Navigation />
       <Hero />
+      <MinhaBlibioteca />
       
       {/* Show error state if there are issues with the API */}
       <HomepageErrorState 

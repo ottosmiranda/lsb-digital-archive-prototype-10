@@ -176,9 +176,16 @@ export class SearchService {
       const response = await AllContentService.fetchAllContent(page, resultsPerPage);
       
       // Transformar itens para SearchResult
-      const results = response.conteudo.map(item => 
+      let results = response.conteudo.map(item => 
         AllContentService.transformToSearchResult(item)
       );
+      
+      // ✅ CORREÇÃO: Garantir que apenas resultsPerPage itens sejam retornados
+      // Fallback para quando a API externa não respeita o parâmetro limit
+      if (results.length > resultsPerPage) {
+        console.warn(`⚠️ API retornou ${results.length} itens, limitando para ${resultsPerPage}`);
+        results = results.slice(0, resultsPerPage);
+      }
       
       const searchResponse: SearchResponse = {
         success: true,

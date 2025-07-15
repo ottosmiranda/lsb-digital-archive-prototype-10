@@ -34,7 +34,7 @@ export class GlobalContentService {
     }
     
     try {
-      const request: UnifiedPageRequest = { page, limit, sortBy, contentType: type };
+      const request: UnifiedPageRequest = { page, limit, sortBy };
       const response = await UnifiedPaginationService.fetchUnifiedPage(request);
       
       const result = {

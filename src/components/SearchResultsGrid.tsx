@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { WipeButton } from '@/components/ui/WipeButton';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';

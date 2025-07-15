@@ -13,7 +13,7 @@ const WipeButton = React.forwardRef<HTMLButtonElement, WipeButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "relative overflow-hidden cursor-pointer border-none rounded-lg px-6 md:px-8 py-3 md:py-4 text-base lg:text-lg font-medium group",
+          "relative overflow-hidden cursor-pointer border-none rounded-lg px-6 md:px-8 py-3 md:py-4 font-medium group",
           "bg-lsb-accent text-lsb-primary transition-colors duration-300",
           "hover:text-white",
           "font-aeonik font-medium uppercase tracking-[-0.02em]",
@@ -25,17 +25,24 @@ const WipeButton = React.forwardRef<HTMLButtonElement, WipeButtonProps>(
         }}
         {...props}
       >
-        <span className="relative z-10 transition-colors duration-300 lg:text-lg">{children}</span>
+        <span 
+          className="relative z-10 transition-colors duration-300"
+          style={{
+            fontSize: typeof window !== 'undefined' && window.innerWidth >= 1024 ? '18px' : '16px'
+          }}
+        >
+          {children}
+        </span>
         <div 
           className="absolute top-1/2 left-1/2 w-[500%] h-[500%] bg-lsb-primary transform -translate-x-1/2 -translate-y-1/2 scale-x-0 rotate-45 z-0 group-hover:animate-wipe-diagonal-reveal"
           style={{ transformOrigin: '50% 50%', willChange: 'transform' }}
         />
-        <style jsx>{`
+        <style>{`
           @media (min-width: 1024px) {
-            button {
+            .wipe-button-desktop {
               font-size: 18px !important;
             }
-            button span {
+            .wipe-button-desktop span {
               font-size: 18px !important;
             }
           }

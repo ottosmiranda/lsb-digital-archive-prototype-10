@@ -224,13 +224,13 @@
 }
 
 @layer components {
-  /* LSB Layout System - Container 1440px, Content 1320px */
+  /* Padronização do sistema de container para toda a plataforma */
   .lsb-container {
-    @apply max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16;
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
   .lsb-content {
-    @apply max-w-[1320px] mx-auto;
+    @apply w-full max-w-none mx-auto;
   }
 
   /* Hero Title Custom Style */

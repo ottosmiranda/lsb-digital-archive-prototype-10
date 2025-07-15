@@ -61,27 +61,41 @@ const SearchLayout = ({
   // ✅ NOVO: Obter contentCounts do contexto para badges corretas
   const { contentCounts } = useHomepageContentContext();
 
-  // Sync activeContentType with filters.resourceType
+  // ✅ CORRIGIDO: Sync activeContentType com filters.resourceType PRESERVANDO contexto da URL
   useEffect(() => {
+    console.group('🔄 SearchLayout - Sync activeContentType');
+    console.log('📋 Current filters.resourceType:', filters.resourceType);
+    console.log('📋 Current activeContentType:', activeContentType);
+    console.log('📋 URL params:', Object.fromEntries(searchParams.entries()));
+    
+    // Verificar se há filtros ativos na URL
+    const urlFilters = searchParams.getAll('filtros');
+    console.log('📋 URL filtros:', urlFilters);
+    
     if (filters.resourceType.length === 1) {
-      if (['titulo', 'video', 'podcast'].includes(filters.resourceType[0])) {
-        setActiveContentType(filters.resourceType[0]);
+      const resourceType = filters.resourceType[0];
+      if (['titulo', 'video', 'podcast'].includes(resourceType)) {
+        console.log(`✅ Setting activeContentType to: ${resourceType}`);
+        setActiveContentType(resourceType);
       }
-    } else if (filters.resourceType.length === 0) {
-      // Quando não há filtro, usar 'titulo' como padrão
+    } else if (filters.resourceType.length === 0 && urlFilters.length === 0) {
+      // ✅ CORREÇÃO: Só definir 'titulo' como padrão se NÃO houver filtros na URL
+      console.log('✅ No filters - setting default to titulo');
       setActiveContentType('titulo');
-      // Definir 'titulo' como filtro padrão quando não há nenhum
-      if (filters.resourceType.length === 0) {
-        onFiltersChange({ ...filters, resourceType: ['titulo'] });
-      }
+      onFiltersChange({ ...filters, resourceType: ['titulo'] });
+    } else if (urlFilters.length > 0) {
+      // ✅ NOVO: Respeitar filtros da URL sem forçar 'titulo'
+      console.log('🔗 URL has filters - preserving navigation context');
     }
-  }, [filters.resourceType]);
+    
+    console.groupEnd();
+  }, [filters.resourceType, searchParams]);
   
   const hasResults = currentResults.length > 0;
   
-  const shouldShowSearch = true; // Sempre mostrar interface de busca
+  const shouldShowSearch = true;
   const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
-  const showWelcomeState = false; // Nunca mostrar estado de boas-vindas
+  const showWelcomeState = false;
   const showPagination = hasResults && totalPages > 1;
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
@@ -121,7 +135,9 @@ const SearchLayout = ({
   };
 
   const handleContentTypeChange = (type: string) => {
-    console.log('🎯 Content type change:', { from: activeContentType, to: type });
+    console.group('🎯 SearchLayout - Content type change');
+    console.log('📋 From:', activeContentType, 'To:', type);
+    console.log('📋 Current URL params:', Object.fromEntries(searchParams.entries()));
     
     // Reset página para 1 quando mudar tipo de conteúdo
     console.log('🔄 Resetando página para 1 devido à mudança de tipo');
@@ -134,6 +150,7 @@ const SearchLayout = ({
     newFilters.resourceType = [type];
     
     console.log('🔄 Calling onFiltersChange with:', newFilters);
+    console.groupEnd();
     onFiltersChange(newFilters);
   };
 

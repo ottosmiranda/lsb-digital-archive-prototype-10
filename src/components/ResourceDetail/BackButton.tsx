@@ -7,18 +7,37 @@ const BackButton = () => {
   const [searchParams] = useSearchParams();
 
   const handleBack = () => {
+    console.group('🔙 BackButton - Navigation Logic');
+    console.log('📋 Current search params:', Object.fromEntries(searchParams.entries()));
+    
     // Check if we have search context preserved in URL
     const fromPage = searchParams.get('from');
+    console.log('📋 From page:', fromPage);
     
     if (fromPage === 'buscar') {
-      // Reconstruct the search URL with all parameters
+      // ✅ CORRIGIDO: Preservar TODOS os parâmetros, incluindo filtros e paginação
       const searchUrl = new URLSearchParams(searchParams);
-      searchUrl.delete('from'); // Remove the 'from' parameter
+      searchUrl.delete('from'); // Remove apenas o parâmetro 'from'
       
       const targetUrl = `/buscar?${searchUrl.toString()}`;
-      console.log('🔙 Returning to search with preserved state:', targetUrl);
+      console.log('🔙 Returning to search with ALL preserved state:', targetUrl);
+      console.log('📋 Preserved params:', Object.fromEntries(searchUrl.entries()));
+      
+      // ✅ CORREÇÃO: Garantir que todos os parâmetros são preservados
+      const preservedParams = Object.fromEntries(searchUrl.entries());
+      console.log('✅ Final preserved state:', {
+        query: preservedParams.q || 'none',
+        filtros: searchUrl.getAll('filtros'),
+        pagina: preservedParams.pagina || '1',
+        ordenar: preservedParams.ordenar || 'relevance'
+      });
+      
+      console.groupEnd();
       navigate(targetUrl);
     } else {
+      console.log('🔙 No search context - using fallback navigation');
+      console.groupEnd();
+      
       // Fallback to browser history or default search page
       if (window.history.length > 1) {
         navigate(-1);

@@ -13,11 +13,12 @@ const WipeButton = React.forwardRef<HTMLButtonElement, WipeButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "relative overflow-hidden cursor-pointer border-none rounded-lg px-6 md:px-8 py-3 md:py-4 font-medium group",
+          "relative overflow-hidden cursor-pointer border-none rounded-lg px-6 md:px-8 font-medium group",
           "bg-lsb-accent text-lsb-primary transition-colors duration-300",
           "hover:text-white",
           "font-aeonik font-medium uppercase tracking-[-0.02em]",
           "text-center inline-block",
+          "h-[54px] md:h-auto md:py-3 lg:py-4", // Fixed height for mobile, auto for larger screens
           className
         )}
         style={{
@@ -26,7 +27,7 @@ const WipeButton = React.forwardRef<HTMLButtonElement, WipeButtonProps>(
         {...props}
       >
         <span 
-          className="relative z-10 transition-colors duration-300"
+          className="relative z-10 transition-colors duration-300 flex items-center justify-center h-full"
           style={{
             fontSize: typeof window !== 'undefined' && window.innerWidth >= 1024 ? '18px' : '16px'
           }}

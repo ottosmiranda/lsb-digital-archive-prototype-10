@@ -1,4 +1,3 @@
-
 export interface SearchResult {
   id: string; // ✅ CORRIGIDO: Agora sempre string (era number antes)
   originalId?: string;
@@ -19,6 +18,7 @@ export interface SearchResult {
   program?: string;
   channel?: string;
   categories?: string[];
+  pais?: string; // ✅ ADICIONADO: Propriedade para país/origem do conteúdo
 }
 
 export interface SearchFilters {

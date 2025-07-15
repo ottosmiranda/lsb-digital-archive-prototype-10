@@ -38,8 +38,9 @@ export const useTopItems = (allData: SearchResult[]): SearchResult[] => {
 function calculatePopularityScore(item: SearchResult): number {
   let score = 0;
   
-  // Base score pelo ID (itens com IDs menores são "mais antigos" e podem ser mais populares)
-  const idScore = Math.max(1000 - (item.id || 1000), 100);
+  // Base score pelo ID (converter string para hash numérico)
+  const idHash = item.id ? hashStringToNumber(item.id) : 1000;
+  const idScore = Math.max(1000 - (idHash % 1000), 100);
   score += idScore;
   
   // Bonus por tipo (podcasts tendem a ter mais replay value)
@@ -65,4 +66,15 @@ function calculatePopularityScore(item: SearchResult): number {
   score += Math.random() * 50;
   
   return Math.round(score);
+}
+
+// Helper function para converter string ID em número
+function hashStringToNumber(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
 }

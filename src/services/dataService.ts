@@ -1,3 +1,4 @@
+
 import { SearchResult } from '@/types/searchTypes';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -174,8 +175,7 @@ export class DataService {
     
     // Final summary of video IDs for debugging
     console.log('🎬 Final video ID ranges:', {
-      minId: Math.min(...allVideos.map(v => v.id)),
-      maxId: Math.max(...allVideos.map(v => v.id)),
+      sampleIds: allVideos.slice(0, 5).map(v => v.id),
       sampleOriginalIds: allVideos.slice(0, 5).map(v => v.originalId),
       totalCount: allVideos.length
     });

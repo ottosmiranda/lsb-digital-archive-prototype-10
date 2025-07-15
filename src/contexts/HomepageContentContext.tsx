@@ -337,10 +337,11 @@ export const HomepageContentProvider: React.FC<HomepageContentProviderProps> = (
       });
       console.groupEnd();
       
-      const usingFallback = homepageContent.videos.some(v => v.id > 1000000) || 
-                           homepageContent.books.some(b => b.id > 2000) ||
-                           homepageContent.podcasts.some(p => p.id > 1000) ||
-                           homepageContent.articles.some(a => a.id > 2000);
+      // ✅ CORRIGIDO: Detectar fallback baseado em padrões de ID string
+      const usingFallback = homepageContent.videos.some(v => v.id.startsWith('fallback_')) || 
+                           homepageContent.books.some(b => b.id.startsWith('fallback_')) ||
+                           homepageContent.podcasts.some(p => p.id.startsWith('fallback_')) ||
+                           homepageContent.articles.some(a => a.id.startsWith('fallback_'));
       
       console.log('Data source:', usingFallback ? 'SUPABASE FALLBACK' : 'EXTERNAL API');
       console.groupEnd();

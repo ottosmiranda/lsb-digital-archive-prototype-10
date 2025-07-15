@@ -188,7 +188,7 @@ const RecentAdditions = () => {
                                     Destacado
                                   </Badge>
                                 ) : (
-                                  <Badge variant="outline" className="bg-lsb-accent text-lsb-primary border-lsb-accent">
+                                  <Badge variant="outline" className="bg-lsb-card-accent text-white border-lsb-card-accent">
                                     <Sparkles className="h-3 w-3 mr-1" />
                                     Novo
                                   </Badge>

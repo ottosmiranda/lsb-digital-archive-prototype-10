@@ -35,152 +35,141 @@ export const useResourceById = (id: string | undefined, type?: string): UseResou
 
       setLoading(true);
       setError(null);
+      setRetrying(false);
 
-      // FASE 1: Busca no cache de lookup primeiro (muito rápida)
-      const resourceInfo = resourceLookupService.getResourceInfo(id);
-      const knownType = type || resourceInfo?.type;
-      
-      console.log('📦 Cache info:', resourceInfo);
-      console.log('🎯 Known Type:', knownType);
-      
-      if (resourceInfo || knownType) {
-        console.log('⚡ FASE 1: Info disponível, buscando no cache local');
+      try {
+        // FASE 1: Busca no cache de lookup primeiro (muito rápida)
+        const resourceInfo = resourceLookupService.getResourceInfo(id);
+        const knownType = type || resourceInfo?.type;
         
-        // Busca direta no allData usando o tipo conhecido
-        const foundResource = allData.find(item => 
-          String(item.id) === id && (!knownType || item.type === knownType)
-        );
-
-        if (foundResource) {
-          console.log('✅ FASE 1 SUCCESS: Encontrado no cache local');
-          const transformedResource = transformToResource(foundResource);
+        console.log('📦 Cache info:', resourceInfo);
+        console.log('🎯 Known Type:', knownType);
+        
+        if (resourceInfo || knownType) {
+          console.log('⚡ FASE 1: Info disponível, buscando no cache local');
           
-          if (isValidTransformedResource(transformedResource)) {
-            setResource(transformedResource);
-            setLoading(false);
-            setError(null);
-            console.groupEnd();
-            return;
-          }
-        }
-      }
+          // Busca direta no allData usando o tipo conhecido
+          const foundResource = allData.find(item => 
+            String(item.id) === id && (!knownType || item.type === knownType)
+          );
 
-      // FASE 2: Se não encontrou no cache, mas dados ainda estão carregando, aguarda
-      if (dataLoading && !dataLoaded) {
-        console.log('⏳ AGUARDANDO: Dados ainda carregando...');
-        setRetrying(true);
-        setLoading(true);
-        
-        retryTimeoutRef.current = setTimeout(() => {
-          console.log('🔄 RETRY: Tentando buscar novamente após dados carregarem');
-          findResource();
-        }, 1000);
-        
-        console.groupEnd();
-        return;
-      }
-
-      // FASE 3: Busca geral no allData (fallback)
-      if (allData && allData.length > 0) {
-        console.log('📊 FASE 3: Busca geral no cache local...');
-        
-        const foundResource = allData.find(item => String(item.id) === id);
-        if (foundResource) {
-          console.log('✅ FASE 3 SUCCESS: Encontrado no cache geral');
-          const transformedResource = transformToResource(foundResource);
-          
-          if (isValidTransformedResource(transformedResource)) {
-            setResource(transformedResource);
-            setLoading(false);
-            setError(null);
-            setRetrying(false);
-            console.groupEnd();
-            return;
-          }
-        }
-      }
-
-      // FASE 4: Busca na API - USANDO TIPO CONHECIDO PRIMEIRO
-      if (!apiAttempted) {
-        console.log('📡 FASE 4: Busca na API - BUSCA DIRETA POR TIPO');
-        setApiAttempted(true);
-        setLoading(true);
-        setError(null);
-        
-        // ✅ LÓGICA OTIMIZADA: Busca direta por tipo quando conhecido
-        let searchTypes: string[];
-        let optimizedSearch = false;
-        
-        if (knownType) {
-          // Se tipo conhecido da URL ou cache, buscar apenas ele PRIMEIRO
-          let actualType = knownType;
-          
-          // Mapeamento para tipos da API
-          if (knownType === 'titulo') {
-            searchTypes = ['livro', 'artigos']; // Tentar livro primeiro, depois artigo
-            optimizedSearch = true;
-          } else if (knownType === 'video') {
-            searchTypes = ['video'];
-            optimizedSearch = true;
-          } else if (knownType === 'podcast') {
-            searchTypes = ['podcast'];
-            optimizedSearch = true;
-          } else {
-            actualType = knownType === 'titulo' ? 'livro' : knownType;
-            searchTypes = [actualType];
-            optimizedSearch = true;
-          }
-          
-          console.log(`🎯 BUSCA DIRETA OTIMIZADA: Tipo "${knownType}" → API calls: [${searchTypes.join(', ')}]`);
-        } else {
-          // Fallback para busca sequencial (URLs antigas sem tipo)
-          searchTypes = ['livro', 'video', 'podcast', 'artigos'];
-          console.log('🔄 FALLBACK: Busca sequencial completa para URL sem tipo');
-        }
-
-        let foundValidResource = false;
-        
-        for (let i = 0; i < searchTypes.length; i++) {
-          const resourceType = searchTypes[i];
-          
-          try {
-            console.log(`🔍 ${optimizedSearch ? 'BUSCA DIRETA' : 'BUSCA SEQUENCIAL'}: ${resourceType} com ID: ${id} (${i + 1}/${searchTypes.length})`);
+          if (foundResource) {
+            console.log('✅ FASE 1 SUCCESS: Encontrado no cache local');
+            const transformedResource = transformToResource(foundResource);
             
-            let apiResource = await ResourceByIdService.fetchResourceById(id, resourceType);
-            
-            if (apiResource && isValidTransformedResource(apiResource)) {
-              console.log(`✅ FASE 4 SUCCESS: Encontrado na API como ${resourceType} ${optimizedSearch ? '(BUSCA OTIMIZADA)' : '(FALLBACK)'}`);
-              setResource(apiResource);
+            if (isValidTransformedResource(transformedResource)) {
+              setResource(transformedResource);
               setLoading(false);
-              setError(null);
-              setRetrying(false);
-              foundValidResource = true;
               console.groupEnd();
               return;
-            } else if (optimizedSearch && i === 0 && !apiResource) {
-              // Se busca otimizada falhou no primeiro tipo, log especial
-              console.log(`⚠️ BUSCA OTIMIZADA FALHOU para tipo "${resourceType}" - continuando...`);
             }
-          } catch (apiError) {
-            const errorMsg = apiError instanceof Error ? apiError.message : String(apiError);
+          }
+        }
+
+        // FASE 2: Se não encontrou no cache, mas dados ainda estão carregando, aguarda
+        if (dataLoading && !dataLoaded) {
+          console.log('⏳ AGUARDANDO: Dados ainda carregando...');
+          setRetrying(true);
+          
+          retryTimeoutRef.current = setTimeout(() => {
+            console.log('🔄 RETRY: Tentando buscar novamente após dados carregarem');
+            findResource();
+          }, 1000);
+          
+          console.groupEnd();
+          return;
+        }
+
+        // FASE 3: Busca geral no allData (fallback)
+        if (allData && allData.length > 0) {
+          console.log('📊 FASE 3: Busca geral no cache local...');
+          
+          const foundResource = allData.find(item => String(item.id) === id);
+          if (foundResource) {
+            console.log('✅ FASE 3 SUCCESS: Encontrado no cache geral');
+            const transformedResource = transformToResource(foundResource);
             
-            if (optimizedSearch && errorMsg.includes('404')) {
-              console.log(`❌ Busca otimizada: HTTP 404 para ${resourceType} ID ${id}`);
+            if (isValidTransformedResource(transformedResource)) {
+              setResource(transformedResource);
+              setLoading(false);
+              console.groupEnd();
+              return;
+            }
+          }
+        }
+
+        // FASE 4: Busca na API - USANDO TIPO CONHECIDO PRIMEIRO
+        if (!apiAttempted) {
+          console.log('📡 FASE 4: Busca na API - BUSCA DIRETA POR TIPO');
+          setApiAttempted(true);
+          
+          // ✅ LÓGICA OTIMIZADA: Busca direta por tipo quando conhecido
+          let searchTypes: string[];
+          let optimizedSearch = false;
+          
+          if (knownType) {
+            // Se tipo conhecido da URL ou cache, buscar apenas ele PRIMEIRO
+            let actualType = knownType;
+            
+            // Mapeamento para tipos da API
+            if (knownType === 'titulo') {
+              searchTypes = ['livro', 'artigos']; // Tentar livro primeiro, depois artigo
+              optimizedSearch = true;
+            } else if (knownType === 'video') {
+              searchTypes = ['video'];
+              optimizedSearch = true;
+            } else if (knownType === 'podcast') {
+              searchTypes = ['podcast'];
+              optimizedSearch = true;
             } else {
-              console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, errorMsg);
+              actualType = knownType === 'titulo' ? 'livro' : knownType;
+              searchTypes = [actualType];
+              optimizedSearch = true;
+            }
+            
+            console.log(`🎯 BUSCA DIRETA OTIMIZADA: Tipo "${knownType}" → API calls: [${searchTypes.join(', ')}]`);
+          } else {
+            // Fallback para busca sequencial (URLs antigas sem tipo)
+            searchTypes = ['livro', 'video', 'podcast', 'artigos'];
+            console.log('🔄 FALLBACK: Busca sequencial completa para URL sem tipo');
+          }
+
+          // Aguardar todas as tentativas de API antes de decidir erro
+          for (let i = 0; i < searchTypes.length; i++) {
+            const resourceType = searchTypes[i];
+            
+            try {
+              console.log(`🔍 ${optimizedSearch ? 'BUSCA DIRETA' : 'BUSCA SEQUENCIAL'}: ${resourceType} com ID: ${id} (${i + 1}/${searchTypes.length})`);
+              
+              const apiResource = await ResourceByIdService.fetchResourceById(id, resourceType);
+              
+              if (apiResource && isValidTransformedResource(apiResource)) {
+                console.log(`✅ FASE 4 SUCCESS: Encontrado na API como ${resourceType} ${optimizedSearch ? '(BUSCA OTIMIZADA)' : '(FALLBACK)'}`);
+                setResource(apiResource);
+                setLoading(false);
+                console.groupEnd();
+                return;
+              } else if (optimizedSearch && i === 0 && !apiResource) {
+                // Se busca otimizada falhou no primeiro tipo, log especial
+                console.log(`⚠️ BUSCA OTIMIZADA FALHOU para tipo "${resourceType}" - continuando...`);
+              }
+            } catch (apiError) {
+              const errorMsg = apiError instanceof Error ? apiError.message : String(apiError);
+              
+              if (optimizedSearch && errorMsg.includes('404')) {
+                console.log(`❌ Busca otimizada: HTTP 404 para ${resourceType} ID ${id}`);
+              } else {
+                console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, errorMsg);
+              }
             }
           }
         }
         
-        if (!foundValidResource) {
-          console.log('💀 FALHA TOTAL: Recurso não encontrado após todas as tentativas');
-          setResource(null);
-          setLoading(false);
-          setError('Recurso não encontrado ou dados inválidos');
-          setRetrying(false);
-        }
-      } else {
-        console.log('💀 FALHA TOTAL: Recurso não encontrado ou inválido');
+        // ⚠️ ERRO SÓ É DEFINIDO AQUI, APÓS TODAS AS TENTATIVAS FALHAREM
+        throw new Error('Recurso não encontrado após todas as tentativas');
+        
+      } catch (finalError) {
+        console.log('💀 FALHA FINAL: Recurso não encontrado após todas as tentativas');
         setResource(null);
         setLoading(false);
         setError('Recurso não encontrado ou dados inválidos');

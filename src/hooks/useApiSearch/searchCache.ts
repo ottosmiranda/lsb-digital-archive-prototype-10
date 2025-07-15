@@ -7,14 +7,17 @@ export class SearchCache {
   private readonly cacheLimit = 2 * 60 * 1000; // 2 minutes
 
   getCacheKey(query: string, filters: SearchFilters, sortBy: string, page: number): string {
+    // ✅ NOVO: Incluir tipo de filtro ativo na chave do cache para diferenciação
+    const activeFilterType = filters.resourceType[0] || 'none';
+    
     // Cache buster para Warren: Forçar chave única para evitar cache
     if (query.toLowerCase().includes('warren')) {
       const timestamp = Date.now();
       console.log('🔥 WARREN CACHE BUSTER - Chave única gerada:', timestamp);
-      return JSON.stringify({ query, filters, sortBy, page, warrenBuster: timestamp });
+      return JSON.stringify({ query, filters, sortBy, page, activeFilterType, warrenBuster: timestamp });
     }
     
-    return JSON.stringify({ query, filters, sortBy, page });
+    return JSON.stringify({ query, filters, sortBy, page, activeFilterType });
   }
 
   isValidCache(cacheKey: string): boolean {
@@ -73,7 +76,19 @@ export class SearchCache {
     this.cache.clear();
   }
 
-  // Novo: Método para limpeza total forçada
+  // ✅ NOVO: Método para invalidar cache específico por tipo de filtro
+  invalidateFilterCache(filterType: string): void {
+    console.log(`🗑️ Invalidando cache para filtro: ${filterType}`);
+    const keysToDelete = Array.from(this.cache.keys()).filter(key => 
+      key.includes(`"activeFilterType":"${filterType}"`)
+    );
+    keysToDelete.forEach(key => {
+      this.cache.delete(key);
+      console.log(`🗑️ Cache removido: ${key}`);
+    });
+  }
+
+  // ✅ NOVO: Método para limpeza total forçada
   forceFullCacheClear(): void {
     console.log('🔥 SEARCH CACHE - LIMPEZA TOTAL FORÇADA');
     this.cache.clear();

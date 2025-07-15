@@ -89,7 +89,7 @@ const SearchLayout = ({
     }
     
     console.groupEnd();
-  }, [filters.resourceType, searchParams]);
+  }, [filters.resourceType, searchParams, onFiltersChange]);
   
   const hasResults = currentResults.length > 0;
   
@@ -139,7 +139,7 @@ const SearchLayout = ({
     console.log('📋 From:', activeContentType, 'To:', type);
     console.log('📋 Current URL params:', Object.fromEntries(searchParams.entries()));
     
-    // Reset página para 1 quando mudar tipo de conteúdo
+    // ✅ CORREÇÃO: Garantir que mudança de tipo força atualização de conteúdo
     console.log('🔄 Resetando página para 1 devido à mudança de tipo');
     onPageChange(1);
     
@@ -149,9 +149,19 @@ const SearchLayout = ({
     // Para filtros específicos
     newFilters.resourceType = [type];
     
-    console.log('🔄 Calling onFiltersChange with:', newFilters);
+    console.log('🔄 Calling onFiltersChange with force refresh for type:', type);
     console.groupEnd();
+    
+    // ✅ CORREÇÃO: Forçar refresh imediato ao mudar tipo de conteúdo
     onFiltersChange(newFilters);
+    
+    // ✅ NOVO: Forçar refresh se necessário
+    if (onRefreshData && type !== activeContentType) {
+      setTimeout(() => {
+        console.log('🔄 Forcing refresh due to content type change');
+        onRefreshData();
+      }, 50);
+    }
   };
 
   return (

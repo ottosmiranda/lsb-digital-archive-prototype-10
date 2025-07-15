@@ -75,7 +75,7 @@ const MostAccessed = () => {
     return (
       <section className="py-8 md:py-16 lg:py-24 bg-lsb-section-gray">
         <div className="lsb-container">
-          <div className="lsb-content px-4 md:px-0">
+          <div className="lsb-content">
             <div className="text-center mb-8 md:mb-12">
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold lsb-primary mb-3 md:mb-4">
                 Mais Acessados
@@ -96,7 +96,7 @@ const MostAccessed = () => {
   return (
     <section className="py-8 md:py-16 lg:py-24 bg-lsb-section-gray">
       <div className="lsb-container">
-        <div className="lsb-content px-4 md:px-0">
+        <div className="lsb-content">
           {/* Section Header */}
           <div className="text-center mb-8 md:mb-12 animate-fade-in">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold lsb-primary mb-3 md:mb-4">

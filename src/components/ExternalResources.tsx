@@ -7,11 +7,13 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import Autoplay from 'embla-carousel-autoplay';
 import { supabase } from '@/integrations/supabase/client';
 import ExternalResourcesSkeleton from '@/components/skeletons/ExternalResourcesSkeleton';
+
 interface ExternalResource {
   Nome: string;
   Descricao: string;
   Link: string;
 }
+
 const ExternalResources = () => {
   const [resources, setResources] = useState<ExternalResource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +26,7 @@ const ExternalResources = () => {
     stopOnInteraction: false,
     stopOnMouseEnter: false
   }));
+
   useEffect(() => {
     const loadResources = async () => {
       try {
@@ -68,6 +71,7 @@ const ExternalResources = () => {
     };
     loadResources();
   }, []);
+
   const getResourceConfig = (nome: string) => {
     const configs = {
       'SciELO Brasil': {
@@ -181,15 +185,19 @@ const ExternalResources = () => {
       highlight: 'Conteúdo especializado'
     };
   };
+
   const handleResourceClick = (url: string, name: string) => {
     console.log(`Accessing external resource: ${name}`);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
+
   if (loading) {
     return <ExternalResourcesSkeleton />;
   }
+
   if (error) {
-    return <section className="py-16 md:py-20 bg-lsb-section-gray">
+    return (
+      <section className="py-16 md:py-20 bg-lsb-section-gray">
         <div className="lsb-container">
           <div className="lsb-content">
             <div className="text-center">
@@ -197,9 +205,12 @@ const ExternalResources = () => {
             </div>
           </div>
         </div>
-      </section>;
+      </section>
+    );
   }
-  return <section className="py-16 md:py-20 bg-lsb-section-gray bg-slate-50">
+
+  return (
+    <section className="py-16 md:py-20 bg-lsb-section-gray bg-slate-50">
       <div className="lsb-container">
         <div className="lsb-content">
           <div className="text-center mb-12 animate-fade-in">
@@ -210,34 +221,40 @@ const ExternalResources = () => {
               Explore bibliotecas digitais e bases de dados brasileiras cuidadosamente selecionadas 
               para complementar sua pesquisa acadêmica
             </p>
-            {usingFallback && <div className="mt-4">
+            {usingFallback && (
+              <div className="mt-4">
                 <Badge variant="outline" className="text-[#B78A00] border-[#FEC641]/30 bg-[#FEC641]/10">
                   Dados de fallback carregados
                 </Badge>
-              </div>}
+              </div>
+            )}
           </div>
 
-          <div className="px-4">
-            <Carousel plugins={[autoplayPlugin.current]} opts={{
-            align: "start",
-            loop: true,
-            dragFree: false,
-            containScroll: "trimSnaps"
-          }} className="w-full">
-              <CarouselContent className="py-4" style={{
-              marginLeft: '-1rem',
-              paddingLeft: '1rem',
-              paddingRight: '1rem'
-            }}>
+          <div className="relative">
+            <Carousel
+              plugins={[autoplayPlugin.current]}
+              opts={{
+                align: "start",
+                loop: true,
+                dragFree: false,
+                containScroll: "trimSnaps"
+              }}
+              className="w-full"
+            >
+              <CarouselContent className="-ml-2 md:-ml-4">
                 {resources.map((resource, index) => {
-                const config = getResourceConfig(resource.Nome);
-                const IconComponent = config.icon;
-                return <CarouselItem key={resource.Nome} className="basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4" style={{
-                  paddingLeft: '1rem'
-                }}>
-                      <Card className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full mx-2" style={{
-                    animationDelay: `${index * 0.1}s`
-                  }} onClick={() => handleResourceClick(resource.Link, resource.Nome)}>
+                  const config = getResourceConfig(resource.Nome);
+                  const IconComponent = config.icon;
+                  return (
+                    <CarouselItem
+                      key={resource.Nome}
+                      className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+                    >
+                      <Card
+                        className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
+                        style={{ animationDelay: `${index * 0.1}s` }}
+                        onClick={() => handleResourceClick(resource.Link, resource.Nome)}
+                      >
                         <CardContent className="p-4 h-full flex flex-col">
                           <div className="flex items-start justify-between mb-3">
                             <div className={`w-10 h-10 bg-gradient-to-br ${config.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
@@ -276,11 +293,12 @@ const ExternalResources = () => {
                           </Button>
                         </CardContent>
                       </Card>
-                    </CarouselItem>;
-              })}
+                    </CarouselItem>
+                  );
+                })}
               </CarouselContent>
-              <CarouselPrevious className="hidden md:flex -left-8" />
-              <CarouselNext className="hidden md:flex -right-8" />
+              <CarouselPrevious className="hidden md:flex -left-6 lg:-left-8" />
+              <CarouselNext className="hidden md:flex -right-6 lg:-right-8" />
             </Carousel>
           </div>
 
@@ -289,6 +307,8 @@ const ExternalResources = () => {
           </div>
         </div>
       </div>
-    </section>;
+    </section>
+  );
 };
+
 export default ExternalResources;

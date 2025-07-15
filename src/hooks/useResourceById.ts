@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Resource } from '@/types/resourceTypes';
 import { useDataLoader } from './useDataLoader';
@@ -17,7 +18,7 @@ export const useResourceById = (id: string | undefined, type?: string): UseResou
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const [apiAttempted, setApiAttempted] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
@@ -29,13 +30,24 @@ export const useResourceById = (id: string | undefined, type?: string): UseResou
         return;
       }
 
-      console.group('🎯 BUSCA OTIMIZADA COM TIPO CONHECIDO');
+      console.group('🎯 BUSCA BLINDADA COM CONTROLE TOTAL DE ESTADO');
       console.log('🎯 Target ID:', id);
       console.log('🎯 Target Type (URL):', type);
 
+      // ✅ BLINDAGEM TOTAL: Limpar estados anteriores e iniciar fresh
       setLoading(true);
       setError(null);
+      setResource(null); // Limpa recurso anterior para evitar mostrar dados velhos
       setRetrying(false);
+
+      // Cancelar busca anterior se existir
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Criar novo controller para esta busca
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
 
       try {
         // FASE 1: Busca no cache de lookup primeiro (muito rápida)
@@ -58,17 +70,20 @@ export const useResourceById = (id: string | undefined, type?: string): UseResou
             const transformedResource = transformToResource(foundResource);
             
             if (isValidTransformedResource(transformedResource)) {
-              setResource(transformedResource);
-              setLoading(false);
-              console.groupEnd();
-              return;
+              if (!signal.aborted) {
+                setResource(transformedResource);
+                setLoading(false);
+                console.log('🛡️ SUCESSO: Recurso setado com segurança do cache');
+                console.groupEnd();
+                return;
+              }
             }
           }
         }
 
-        // FASE 2: Se não encontrou no cache, mas dados ainda estão carregando, aguarda
+        // FASE 2: Se dados ainda estão carregando, aguardar com retry
         if (dataLoading && !dataLoaded) {
-          console.log('⏳ AGUARDANDO: Dados ainda carregando...');
+          console.log('⏳ AGUARDANDO: Dados ainda carregando - configurando retry');
           setRetrying(true);
           
           retryTimeoutRef.current = setTimeout(() => {
@@ -90,90 +105,117 @@ export const useResourceById = (id: string | undefined, type?: string): UseResou
             const transformedResource = transformToResource(foundResource);
             
             if (isValidTransformedResource(transformedResource)) {
-              setResource(transformedResource);
-              setLoading(false);
-              console.groupEnd();
-              return;
+              if (!signal.aborted) {
+                setResource(transformedResource);
+                setLoading(false);
+                console.log('🛡️ SUCESSO: Recurso setado com segurança do cache geral');
+                console.groupEnd();
+                return;
+              }
             }
           }
         }
 
         // FASE 4: Busca na API - USANDO TIPO CONHECIDO PRIMEIRO
-        if (!apiAttempted) {
-          console.log('📡 FASE 4: Busca na API - BUSCA DIRETA POR TIPO');
-          setApiAttempted(true);
-          
-          // ✅ LÓGICA OTIMIZADA: Busca direta por tipo quando conhecido
-          let searchTypes: string[];
-          let optimizedSearch = false;
-          
-          if (knownType) {
-            // Se tipo conhecido da URL ou cache, buscar apenas ele PRIMEIRO
-            let actualType = knownType;
-            
-            // Mapeamento para tipos da API
-            if (knownType === 'titulo') {
-              searchTypes = ['livro', 'artigos']; // Tentar livro primeiro, depois artigo
-              optimizedSearch = true;
-            } else if (knownType === 'video') {
-              searchTypes = ['video'];
-              optimizedSearch = true;
-            } else if (knownType === 'podcast') {
-              searchTypes = ['podcast'];
-              optimizedSearch = true;
-            } else {
-              actualType = knownType === 'titulo' ? 'livro' : knownType;
-              searchTypes = [actualType];
-              optimizedSearch = true;
-            }
-            
-            console.log(`🎯 BUSCA DIRETA OTIMIZADA: Tipo "${knownType}" → API calls: [${searchTypes.join(', ')}]`);
+        console.log('📡 FASE 4: Busca na API - BUSCA DIRETA POR TIPO');
+        
+        // ✅ LÓGICA OTIMIZADA: Busca direta por tipo quando conhecido
+        let searchTypes: string[];
+        let optimizedSearch = false;
+        
+        if (knownType) {
+          if (knownType === 'titulo') {
+            searchTypes = ['livro', 'artigos'];
+            optimizedSearch = true;
+          } else if (knownType === 'video') {
+            searchTypes = ['video'];
+            optimizedSearch = true;
+          } else if (knownType === 'podcast') {
+            searchTypes = ['podcast'];
+            optimizedSearch = true;
           } else {
-            // Fallback para busca sequencial (URLs antigas sem tipo)
-            searchTypes = ['livro', 'video', 'podcast', 'artigos'];
-            console.log('🔄 FALLBACK: Busca sequencial completa para URL sem tipo');
+            const actualType = knownType === 'titulo' ? 'livro' : knownType;
+            searchTypes = [actualType];
+            optimizedSearch = true;
+          }
+          
+          console.log(`🎯 BUSCA DIRETA OTIMIZADA: Tipo "${knownType}" → API calls: [${searchTypes.join(', ')}]`);
+        } else {
+          searchTypes = ['livro', 'video', 'podcast', 'artigos'];
+          console.log('🔄 FALLBACK: Busca sequencial completa para URL sem tipo');
+        }
+
+        // ✅ TENTATIVAS DE API COM CONTROLE TOTAL
+        for (let i = 0; i < searchTypes.length; i++) {
+          if (signal.aborted) {
+            console.log('⚠️ Busca cancelada pelo AbortController');
+            console.groupEnd();
+            return;
           }
 
-          // Aguardar todas as tentativas de API antes de decidir erro
-          for (let i = 0; i < searchTypes.length; i++) {
-            const resourceType = searchTypes[i];
+          const resourceType = searchTypes[i];
+          
+          try {
+            console.log(`🔍 ${optimizedSearch ? 'BUSCA DIRETA' : 'BUSCA SEQUENCIAL'}: ${resourceType} com ID: ${id} (${i + 1}/${searchTypes.length})`);
             
-            try {
-              console.log(`🔍 ${optimizedSearch ? 'BUSCA DIRETA' : 'BUSCA SEQUENCIAL'}: ${resourceType} com ID: ${id} (${i + 1}/${searchTypes.length})`);
-              
-              const apiResource = await ResourceByIdService.fetchResourceById(id, resourceType);
-              
-              if (apiResource && isValidTransformedResource(apiResource)) {
+            const apiResource = await ResourceByIdService.fetchResourceById(id, resourceType);
+            
+            if (apiResource && isValidTransformedResource(apiResource)) {
+              if (!signal.aborted) {
                 console.log(`✅ FASE 4 SUCCESS: Encontrado na API como ${resourceType} ${optimizedSearch ? '(BUSCA OTIMIZADA)' : '(FALLBACK)'}`);
                 setResource(apiResource);
                 setLoading(false);
+                console.log('🛡️ SUCESSO: Recurso setado com segurança da API');
                 console.groupEnd();
                 return;
-              } else if (optimizedSearch && i === 0 && !apiResource) {
-                // Se busca otimizada falhou no primeiro tipo, log especial
-                console.log(`⚠️ BUSCA OTIMIZADA FALHOU para tipo "${resourceType}" - continuando...`);
               }
-            } catch (apiError) {
-              const errorMsg = apiError instanceof Error ? apiError.message : String(apiError);
-              
-              if (optimizedSearch && errorMsg.includes('404')) {
-                console.log(`❌ Busca otimizada: HTTP 404 para ${resourceType} ID ${id}`);
-              } else {
-                console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, errorMsg);
-              }
+            } else if (optimizedSearch && i === 0 && !apiResource) {
+              console.log(`⚠️ BUSCA OTIMIZADA FALHOU para tipo "${resourceType}" - continuando...`);
+            }
+          } catch (apiError) {
+            if (signal.aborted) {
+              console.log('⚠️ Busca cancelada durante chamada de API');
+              console.groupEnd();
+              return;
+            }
+
+            const errorMsg = apiError instanceof Error ? apiError.message : String(apiError);
+            
+            if (optimizedSearch && errorMsg.includes('404')) {
+              console.log(`❌ Busca otimizada: HTTP 404 para ${resourceType} ID ${id}`);
+            } else {
+              console.log(`❌ Falha ao buscar ${resourceType} com ID ${id}:`, errorMsg);
             }
           }
         }
         
-        // ⚠️ ERRO SÓ É DEFINIDO AQUI, APÓS TODAS AS TENTATIVAS FALHAREM
-        throw new Error('Recurso não encontrado após todas as tentativas');
+        // ⚠️ SÓ CHEGA AQUI SE TODAS AS TENTATIVAS FALHARAM
+        if (!signal.aborted) {
+          throw new Error('Recurso não encontrado após todas as tentativas de busca');
+        }
         
       } catch (finalError) {
-        console.log('💀 FALHA FINAL: Recurso não encontrado após todas as tentativas');
+        if (signal.aborted) {
+          console.log('✅ Busca cancelada - ignorando erro final');
+          console.groupEnd();
+          return;
+        }
+
+        // ✅ ERRO DEFINITIVO: SÓ É SETADO AQUI, APÓS TODAS AS TENTATIVAS
+        console.log('💀 FALHA FINAL E DEFINITIVA: Todas as tentativas de busca falharam');
+        console.error('Detalhes do erro final:', finalError);
+        
         setResource(null);
-        setLoading(false);
         setError('Recurso não encontrado ou dados inválidos');
         setRetrying(false);
+        console.log('🛡️ ERRO DEFINITIVO: Estado de erro setado com segurança');
+      } finally {
+        // ✅ FINALIZAÇÃO SEGURA
+        if (!signal.aborted) {
+          setLoading(false);
+          setRetrying(false);
+          console.log('🛡️ FINALIZAÇÃO: Loading finalizado com segurança');
+        }
       }
         
       console.groupEnd();
@@ -188,18 +230,22 @@ export const useResourceById = (id: string | undefined, type?: string): UseResou
 
     // Cleanup
     return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
     };
-  }, [id, type, allData, dataLoading, dataLoaded, apiAttempted]);
+  }, [id, type, allData, dataLoading, dataLoaded]);
 
   // Reset states when ID or type changes
   useEffect(() => {
-    setApiAttempted(false);
+    console.log('🔄 ID ou tipo mudou - resetando estados:', { id, type });
     setRetrying(false);
     setError(null);
     setLoading(true);
+    setResource(null); // Limpar recurso anterior imediatamente
   }, [id, type]);
 
   return { 
@@ -210,7 +256,7 @@ export const useResourceById = (id: string | undefined, type?: string): UseResou
   };
 };
 
-// ✅ VALIDAÇÃO MAIS PERMISSIVA para recursos transformados
+// ✅ VALIDAÇÃO ROBUSTA para recursos transformados
 function isValidTransformedResource(resource: Resource): boolean {
   if (!resource) {
     console.log('❌ VALIDAÇÃO: Recurso é null/undefined');
@@ -237,7 +283,7 @@ function isValidTransformedResource(resource: Resource): boolean {
     return false;
   }
   
-  console.log('✅ VALIDAÇÃO: Recurso válido');
+  console.log('✅ VALIDAÇÃO: Recurso válido e seguro para renderização');
   return true;
 }
 

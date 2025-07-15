@@ -54,23 +54,18 @@ const SearchLayout = ({
   onRefreshData
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [activeContentType, setActiveContentType] = useState('all'); // ✅ NOVO: Padrão é 'all'
+  const [activeContentType, setActiveContentType] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [searchParams] = useSearchParams();
   
-  // ✅ NOVO: Obter contentCounts do contexto para badges corretas
   const { contentCounts } = useHomepageContentContext();
 
-  // ✅ CORRIGIDO: Sync activeContentType com filters.resourceType PRESERVANDO contexto da URL
+  // Sync activeContentType with filters.resourceType
   useEffect(() => {
     console.group('🔄 SearchLayout - Sync activeContentType');
     console.log('📋 Current filters.resourceType:', filters.resourceType);
     console.log('📋 Current activeContentType:', activeContentType);
-    console.log('📋 URL params:', Object.fromEntries(searchParams.entries()));
-    
-    // Verificar se há filtros ativos na URL
-    const urlFilters = searchParams.getAll('filtros');
-    console.log('📋 URL filtros:', urlFilters);
+    console.log('📋 Loading:', loading);
     
     if (filters.resourceType.length === 1) {
       const resourceType = filters.resourceType[0];
@@ -78,14 +73,10 @@ const SearchLayout = ({
         console.log(`✅ Setting activeContentType to: ${resourceType}`);
         setActiveContentType(resourceType);
       }
-    } else if (filters.resourceType.length === 0 && urlFilters.length === 0) {
-      // ✅ NOVO: Definir 'all' como padrão
+    } else if (filters.resourceType.length === 0) {
       console.log('✅ No filters - setting default to all (todos)');
       setActiveContentType('all');
       onFiltersChange({ ...filters, resourceType: ['all'] });
-    } else if (urlFilters.length > 0) {
-      // ✅ NOVO: Respeitar filtros da URL sem forçar 'titulo'
-      console.log('🔗 URL has filters - preserving navigation context');
     }
     
     console.groupEnd();
@@ -93,10 +84,23 @@ const SearchLayout = ({
   
   const hasResults = currentResults.length > 0;
   
+  // ✅ LÓGICA DE RENDERIZAÇÃO BLINDADA - Loading tem prioridade absoluta
   const shouldShowSearch = true;
+  
+  // SÓ mostrar estado vazio se NÃO estiver carregando E não houver resultados
   const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
   const showWelcomeState = false;
-  const showPagination = hasResults && totalPages > 1;
+  
+  // Paginação só aparece se NÃO estiver carregando E houver resultados
+  const showPagination = !loading && hasResults && totalPages > 1;
+
+  console.group('🛡️ SearchLayout - RENDERING GUARDS');
+  console.log('📋 Loading:', loading);
+  console.log('📋 HasResults:', hasResults);
+  console.log('📋 ShowEmptyState:', showEmptyState);
+  console.log('📋 ShowPagination:', showPagination);
+  console.log('🛡️ Loading state takes precedence over all other states');
+  console.groupEnd();
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
     const newFilters = { ...filters };
@@ -137,25 +141,17 @@ const SearchLayout = ({
   const handleContentTypeChange = (type: string) => {
     console.group('🎯 SearchLayout - Content type change');
     console.log('📋 From:', activeContentType, 'To:', type);
-    console.log('📋 Current URL params:', Object.fromEntries(searchParams.entries()));
     
-    // ✅ CORREÇÃO: Garantir que mudança de tipo força atualização de conteúdo
-    console.log('🔄 Resetando página para 1 devido à mudança de tipo');
     onPageChange(1);
-    
     setActiveContentType(type); 
     const newFilters = { ...filters };
-    
-    // Para filtros específicos
     newFilters.resourceType = [type];
     
-    console.log('🔄 Calling onFiltersChange with force refresh for type:', type);
+    console.log('🔄 Calling onFiltersChange for type:', type);
     console.groupEnd();
     
-    // ✅ CORREÇÃO: Forçar refresh imediato ao mudar tipo de conteúdo
     onFiltersChange(newFilters);
     
-    // ✅ NOVO: Forçar refresh se necessário
     if (onRefreshData && type !== activeContentType) {
       setTimeout(() => {
         console.log('🔄 Forcing refresh due to content type change');
@@ -228,7 +224,13 @@ const SearchLayout = ({
                     onClearAll={onClearFilters}
                   />
                   
-                  {showEmptyState ? (
+                  {/* ✅ RENDERIZAÇÃO BLINDADA - Loading tem prioridade máxima */}
+                  {loading ? (
+                    <SearchResultsGrid 
+                      results={[]}
+                      loading={true}
+                    />
+                  ) : showEmptyState ? (
                     <EmptySearchState 
                       query={query} 
                       onClearFilters={onClearFilters} 
@@ -238,16 +240,16 @@ const SearchLayout = ({
                       {view === 'grid' ? (
                         <SearchResultsGrid 
                           results={currentResults}
-                          loading={loading}
+                          loading={false}
                         />
                       ) : (
                         <SearchResultsList 
                           results={currentResults}
-                          loading={loading}
+                          loading={false}
                         />
                       )}
                       
-                      {/* Mobile Pagination */}
+                      {/* Mobile Pagination - só aparece se não estiver carregando */}
                       {showPagination && (
                         <div className="mt-6">
                           <SearchPagination
@@ -289,7 +291,13 @@ const SearchLayout = ({
                       onClearAll={onClearFilters}
                     />
                     
-                    {showEmptyState ? (
+                    {/* ✅ RENDERIZAÇÃO BLINDADA - Loading tem prioridade máxima */}
+                    {loading ? (
+                      <SearchResultsGrid 
+                        results={[]}
+                        loading={true}
+                      />
+                    ) : showEmptyState ? (
                       <EmptySearchState 
                         query={query} 
                         onClearFilters={onClearFilters} 
@@ -299,16 +307,16 @@ const SearchLayout = ({
                         {view === 'grid' ? (
                           <SearchResultsGrid 
                             results={currentResults}
-                            loading={loading}
+                            loading={false}
                           />
                         ) : (
                           <SearchResultsList 
                             results={currentResults}
-                            loading={loading}
+                            loading={false}
                           />
                         )}
                         
-                        {/* Desktop Pagination */}
+                        {/* Desktop Pagination - só aparece se não estiver carregando */}
                         {showPagination && (
                           <SearchPagination
                             currentPage={currentPage}

@@ -1,13 +1,36 @@
 
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface EmptySearchStateProps {
   query: string;
   onClearFilters: () => void;
+  isTransitioning?: boolean;
 }
 
-const EmptySearchState = ({ query, onClearFilters }: EmptySearchStateProps) => {
+const EmptySearchState = ({ query, onClearFilters, isTransitioning = false }: EmptySearchStateProps) => {
+  // ✅ Show loading state during filter transitions
+  if (isTransitioning) {
+    return (
+      <div className="text-center py-16">
+        <div className="max-w-md mx-auto">
+          <div className="w-24 h-24 mx-auto mb-6 bg-lsb-section rounded-full flex items-center justify-center">
+            <Loader2 className="h-12 w-12 text-lsb-primary animate-spin" />
+          </div>
+          
+          <h3 className="text-xl font-semibold lsb-primary mb-4">
+            Carregando conteúdo...
+          </h3>
+          
+          <p className="text-gray-600 mb-6">
+            Aguarde um momento enquanto buscamos os melhores resultados para você.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Original empty state when no results found
   return (
     <div className="text-center py-16">
       <div className="max-w-md mx-auto">

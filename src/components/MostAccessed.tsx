@@ -1,4 +1,3 @@
-
 import { Flame } from 'lucide-react';
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { useMemo, useRef, useCallback } from 'react';
@@ -160,13 +159,13 @@ const MostAccessed = () => {
                               <img 
                                 src={item.thumbnail}
                                 alt={item.title}
-                                className="w-full h-32 md:h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                                className="w-full h-40 md:h-48 object-cover transition-transform duration-300 group-hover:scale-105"
                                 loading="lazy"
                               />
                             ) : (
                               <ThumbnailPlaceholder
                                 type={item.type}
-                                className="w-full h-32 md:h-40"
+                                className="w-full h-40 md:h-48"
                                 size="large"
                               />
                             )}

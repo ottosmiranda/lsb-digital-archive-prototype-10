@@ -1,3 +1,4 @@
+
 import { SearchResult } from '@/types/searchTypes';
 
 export interface AllContentResponse {
@@ -99,12 +100,13 @@ export class AllContentService {
 
   static async fetchItemById(id: string): Promise<any> {
     const requestId = `all_item_${Date.now()}`;
-    console.group(`🎯 ${requestId} - All Content Item By ID`);
+    console.group(`🎯 ${requestId} - All Content Item By ID (ENDPOINT CORRIGIDO)`);
     console.log('📋 Item ID:', id);
     
     try {
-      const url = `${this.API_BASE_URL}/conteudo-lbs/todos/${id}`;
-      console.log('🌐 API URL:', url);
+      // ✅ CORREÇÃO CRÍTICA: Usar endpoint correto /item/{id}
+      const url = `${this.API_BASE_URL}/conteudo-lbs/item/${id}`;
+      console.log('🌐 API URL CORRIGIDA:', url);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT_MS);
@@ -137,6 +139,9 @@ export class AllContentService {
   }
 
   static transformToSearchResult(item: AllContentItem): SearchResult {
+    console.group('🔄 ALL CONTENT - Transform to SearchResult (IDs CORRIGIDOS)');
+    console.log('📋 Original item ID:', item.id, typeof item.id);
+    
     // Detectar tipo de conteúdo baseado nas propriedades
     let type: 'video' | 'titulo' | 'podcast';
     let title = '';
@@ -161,9 +166,12 @@ export class AllContentService {
       description = item.descricao || `${item.tipo_documento || 'Documento'} de ${author}`;
     }
 
-    return {
-      id: parseInt(item.id) || 0,
-      originalId: item.id,
+    // ✅ CORREÇÃO CRÍTICA: Preservar ID como string, não converter para número
+    const finalId = String(item.id);
+    
+    const searchResult: SearchResult = {
+      id: finalId,  // ✅ Manter como string
+      originalId: finalId,  // ✅ Manter como string
       title: title,
       type: type,
       author: author,
@@ -183,6 +191,16 @@ export class AllContentService {
       channel: type === 'video' ? item.canal : undefined,
       categories: item.categorias || []
     };
+
+    console.log('✅ RESULTADO FINAL:', {
+      originalId: item.id,
+      finalId: finalId,
+      type: type,
+      title: title.substring(0, 50) + '...'
+    });
+    console.groupEnd();
+
+    return searchResult;
   }
 
   private static formatDuration(durationMs: number): string {

@@ -40,12 +40,13 @@ export class ResourceByIdService {
   private static readonly TIMEOUT_MS = 8000;
 
   static async fetchResourceById(id: string, resourceType: string): Promise<Resource | null> {
-    console.group(`🎯 FETCH RESOURCE BY ID - OTIMIZADO PARA LIVROS`);
+    console.group(`🎯 FETCH RESOURCE BY ID - CORRIGIDO PARA 'ALL'`);
     console.log(`📋 Target: ${resourceType} ID ${id}`);
     
     try {
-      // ✅ NOVO: Usar AllContentService para tipo 'all'
+      // ✅ CORREÇÃO: Usar AllContentService corrigido para tipo 'all'
       if (resourceType === 'all') {
+        console.log('🎯 USANDO ENDPOINT CORRIGIDO /item/{id} para tipo "all"');
         const data = await AllContentService.fetchItemById(id);
         const transformedResource = this.transformToResource(data, resourceType, id);
         
@@ -59,6 +60,7 @@ export class ResourceByIdService {
           return null;
         }
       }
+
       const endpoint = this.getEndpointForType(resourceType, id);
       console.log(`🔗 Endpoint: ${endpoint}`);
       
@@ -204,6 +206,63 @@ export class ResourceByIdService {
     console.log('📋 Raw API data:', data);
 
     try {
+      // ✅ NOVA LÓGICA: Melhor detecção de tipo para 'all'
+      if (resourceType === 'all') {
+        console.log('🎯 PROCESSANDO ITEM DO FILTRO "ALL" COM DETECÇÃO AUTOMÁTICA');
+        
+        let detectedType: 'video' | 'titulo' | 'podcast';
+        let title = '';
+        let author = '';
+        let description = '';
+        
+        // Detectar tipo baseado nos dados
+        if (data.type === 'video' || data.canal || data.embed_url) {
+          detectedType = 'video';
+          title = data.titulo || 'Vídeo sem título';
+          author = data.canal || 'Canal desconhecido';
+          description = data.descricao || `Vídeo de ${author}`;
+        } else if (data.type === 'podcast' || data.podcast_titulo || data.episodio_titulo || data.duracao_ms) {
+          detectedType = 'podcast';
+          title = data.episodio_titulo || data.podcast_titulo || 'Podcast sem título';
+          author = data.publicador || 'Publicador desconhecido';
+          description = data.descricao || `Episódio de ${data.podcast_titulo || 'podcast'}`;
+        } else {
+          // Livros e artigos
+          detectedType = 'titulo';
+          title = data.titulo || 'Título não disponível';
+          author = data.autor || 'Autor desconhecido';
+          description = data.descricao || `${data.tipo_documento || 'Documento'} de ${author}`;
+        }
+        
+        console.log('🔍 TIPO DETECTADO:', detectedType);
+        
+        const resource: Resource = {
+          id: String(data.id || requestedId),
+          originalId: String(data.id || requestedId),
+          title: title,
+          author: author,
+          year: data.ano || new Date().getFullYear(),
+          description: description,
+          subject: data.categorias?.[0] || data.categoria || 'Geral',
+          type: detectedType,
+          thumbnail: data.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
+          duration: detectedType === 'video' && data.duracao ? this.formatDuration(data.duracao * 1000) :
+                    detectedType === 'podcast' && data.duracao_ms ? this.formatDuration(data.duracao_ms) : undefined,
+          pages: data.paginas,
+          episodes: detectedType === 'podcast' ? 1 : undefined,
+          embedUrl: data.embed_url,
+          pdfUrl: data.url,
+          documentType: data.tipo_documento,
+          language: this.mapLanguageCode(data.idioma),
+          categories: Array.isArray(data.categorias) ? data.categorias : (data.categoria ? [data.categoria] : []),
+          podcast_titulo: detectedType === 'podcast' ? data.podcast_titulo : undefined
+        };
+        
+        console.log('✅ RECURSO "ALL" TRANSFORMADO:', resource);
+        console.groupEnd();
+        return resource;
+      }
+
       if (resourceType === 'podcast' && Array.isArray(data)) {
         const podcast = data[0];
         
@@ -233,7 +292,7 @@ export class ResourceByIdService {
         return resource;
       }
 
-      if (resourceType === 'titulo' || resourceType === 'livro' || resourceType === 'artigos' || resourceType === 'all') {
+      if (resourceType === 'titulo' || resourceType === 'livro' || resourceType === 'artigos') {
         const year = this.extractYearFromDate(data.data_publicacao || data.ano);
         const documentType = resourceType === 'artigos' ? 'Artigo' : (data.tipo_documento || 'Livro');
         

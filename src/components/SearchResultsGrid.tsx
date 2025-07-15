@@ -72,18 +72,28 @@ const SearchResultsGrid = ({
   };
 
   const handleResourceClick = (result: SearchResult) => {
-    console.group('🎯 SEARCH GRID NAVIGATION (REAL IDs FIXED)');
+    console.group('🎯 SEARCH GRID NAVIGATION (IDs CORRIGIDOS PARA "ALL")');
     console.log('📋 Clicked resource:', {
       id: result.id,
       originalId: result.originalId,
       type: result.type,
       title: result.title.substring(0, 50) + '...',
-      idCorrection: '✅ Usando ID real da API'
+      filtroAtual: searchParams.get('filtros')
     });
     
-    // ✅ CORRIGIDO: Usar o ID real que agora é consistente entre busca e homepage
+    // ✅ VALIDAÇÃO: Garantir que ID não seja "0" ou inválido
     const navigationId = String(result.id);
-    console.log('🔗 Using REAL API ID for navigation:', navigationId);
+    if (!navigationId || navigationId === '0' || navigationId === 'undefined' || navigationId === 'null') {
+      console.error('❌ ID INVÁLIDO DETECTADO:', {
+        resultId: result.id,
+        originalId: result.originalId,
+        navigationId: navigationId
+      });
+      console.groupEnd();
+      return;
+    }
+    
+    console.log('✅ Using VALID ID for navigation:', navigationId);
     
     // Preserve current search state in the detail page URL
     const currentParams = new URLSearchParams(searchParams);
@@ -106,6 +116,17 @@ const SearchResultsGrid = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {results.map(result => {
           const typeBadge = getTypeBadge(result.type, result.documentType);
+          
+          // ✅ VALIDAÇÃO ADICIONAL: Log de IDs suspeitos
+          if (!result.id || result.id === '0' || result.id === 'undefined') {
+            console.warn('⚠️ ITEM COM ID SUSPEITO:', {
+              id: result.id,
+              originalId: result.originalId,
+              title: result.title.substring(0, 30) + '...',
+              type: result.type
+            });
+          }
+          
           return (
             <Card key={result.id} className="group hover-lift animate-fade-in">
               <CardContent className="p-0">
@@ -194,7 +215,6 @@ const SearchResultsGrid = ({
         </div>
       )}
 
-      {/* Load More Button (fallback) */}
       {!enableInfiniteScroll && hasMore && (
         <div className="text-center mt-6 md:mt-8">
           <Button 

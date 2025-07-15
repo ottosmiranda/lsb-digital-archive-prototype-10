@@ -459,7 +459,6 @@ const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any
   }
 };
 
-
 // BUSCA PAGINADA CORRIGIDA - Para filtros específicos
 const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any> => {
   const { query, filters, sortBy, page, resultsPerPage } = searchParams;
@@ -493,7 +492,7 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
           const allTitulosCacheKey = `all-titulos-${sortBy}`;
           let allTitulosData = globalCache.get(allTitulosCacheKey);
           
-          if (!allTitulosData || !globalCache.isValid(allTitulosCacheKey)) {
+          if (!allTitulosData || (Date.now() - allTitulosData.timestamp) > CACHE_STRATEGIES.paginated.ttl) {
             console.log(`🔄 Cache miss para 'titulo' - buscando todos os dados da API`);
             
             // PASSO 1: Descobrir totais reais com chamada inicial
@@ -522,8 +521,8 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
             console.log(`🚀 Buscando TODOS os itens: ${dinamicLimitLivros} livros + ${dinamicLimitArtigos} artigos`);
             
             const [livrosCompletos, artigosCompletos] = await Promise.allSettled([
-              fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${dinamicLimitLivros}`, TIMEOUTS.globalSearch),
-              fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${dinamicLimitArtigos}`, TIMEOUTS.globalSearch)
+              fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${dinamicLimitLivros}`, TIMEOUTS.globalOperation),
+              fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${dinamicLimitArtigos}`, TIMEOUTS.globalOperation)
             ]);
             
             let allTitulosItems: any[] = [];
@@ -552,36 +551,36 @@ const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any>
             
             // PASSO 4: Cachear o conjunto completo
             allTitulosData = {
-              items: allTitulosItems,
-              totalLivros,
-              totalArtigos,
-              totalCombinado: totalLivros + totalArtigos
+              data: {
+                items: allTitulosItems,
+                totalLivros,
+                totalArtigos,
+                totalCombinado: totalLivros + totalArtigos
+              },
+              timestamp: Date.now(),
+              ttl: CACHE_STRATEGIES.paginated.ttl
             };
             
-            globalCache.set(allTitulosCacheKey, {
-              data: allTitulosData,
-              timestamp: Date.now(),
-              ttl: CACHE_STRATEGIES.global.ttl
-            });
-            console.log(`💾 Cache criado com ${allTitulosData.totalCombinado} itens totais`);
+            globalCache.set(allTitulosCacheKey, allTitulosData);
+            console.log(`💾 Cache criado com ${allTitulosData.data.totalCombinado} itens totais`);
           } else {
-            console.log(`📦 Cache HIT para 'titulo' - usando dados em cache (${allTitulosData.totalCombinado} itens)`);
+            console.log(`📦 Cache HIT para 'titulo' - usando dados em cache (${allTitulosData.data.totalCombinado} itens)`);
           }
           
           // PASSO 5: Aplicar paginação correta no conjunto completo
           const startIndex = (page - 1) * resultsPerPage;
           const endIndex = startIndex + resultsPerPage;
-          const paginatedItems = allTitulosData.items.slice(startIndex, endIndex);
+          const paginatedItems = allTitulosData.data.items.slice(startIndex, endIndex);
           
           allItems.push(...paginatedItems);
-          console.log(`📄 Página ${page}: exibindo itens ${startIndex + 1}-${Math.min(endIndex, allTitulosData.totalCombinado)} de ${allTitulosData.totalCombinado} totais`);
+          console.log(`📄 Página ${page}: exibindo itens ${startIndex + 1}-${Math.min(endIndex, allTitulosData.data.totalCombinado)} de ${allTitulosData.data.totalCombinado} totais`);
           
           // ✅ TOTAIS CORRETOS baseados no conjunto completo
-          totalResultsFromAPI = Math.max(totalResultsFromAPI, allTitulosData.totalCombinado);
-          totalPagesFromAPI = Math.max(totalPagesFromAPI, Math.ceil(allTitulosData.totalCombinado / resultsPerPage));
+          totalResultsFromAPI = Math.max(totalResultsFromAPI, allTitulosData.data.totalCombinado);
+          totalPagesFromAPI = Math.max(totalPagesFromAPI, Math.ceil(allTitulosData.data.totalCombinado / resultsPerPage));
           
-          console.log(`📊 TITULO COMBINADO CORRIGIDO: ${allTitulosData.totalCombinado} total (${allTitulosData.totalLivros} livros + ${allTitulosData.totalArtigos} artigos)`);
-          console.log(`📄 PÁGINAS CALCULADAS: ${Math.ceil(allTitulosData.totalCombinado / resultsPerPage)} páginas (${allTitulosData.totalCombinado}÷${resultsPerPage})`);
+          console.log(`📊 TITULO COMBINADO CORRIGIDO: ${allTitulosData.data.totalCombinado} total (${allTitulosData.data.totalLivros} livros + ${allTitulosData.data.totalArtigos} artigos)`);
+          console.log(`📄 PÁGINAS CALCULADAS: ${Math.ceil(allTitulosData.data.totalCombinado / resultsPerPage)} páginas (${allTitulosData.data.totalCombinado}÷${resultsPerPage})`);
           
         } catch (error) {
           console.warn(`⚠️ Falha ao buscar titulo (livros + artigos):`, error);

@@ -168,8 +168,8 @@ const SearchResultsGrid = ({
             <Card key={result.id} className="group hover-lift animate-fade-in">
               <CardContent className="p-0">
                 <div className="space-y-3 md:space-y-4">
-                  {/* Thumbnail - Responsive height */}
-                  <div className="relative h-32 sm:h-36 md:h-40 bg-gray-100 rounded-t-lg overflow-hidden">
+                  {/* Thumbnail - Increased height for better visualization */}
+                  <div className="relative h-48 sm:h-52 md:h-56 bg-gray-100 rounded-t-lg overflow-hidden">
                     {shouldShowImage(result.thumbnail, result.type) ? (
                       <img 
                         src={result.thumbnail} 

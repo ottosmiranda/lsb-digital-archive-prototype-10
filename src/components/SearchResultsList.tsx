@@ -110,8 +110,8 @@ const SearchResultsList = ({
             <Card key={result.id} className="group hover-lift animate-fade-in">
               <CardContent className="p-4 md:p-6">
                 <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
-                  {/* Thumbnail - Responsive sizing */}
-                  <div className="relative w-full sm:w-24 md:w-28 h-24 md:h-28 bg-gray-100 rounded flex-shrink-0 overflow-hidden">
+                  {/* Thumbnail - Increased height for better visualization */}
+                  <div className="relative w-full sm:w-32 md:w-36 h-32 md:h-36 bg-gray-100 rounded flex-shrink-0 overflow-hidden">
                     {shouldShowImage(result.thumbnail, result.type) ? (
                       <img 
                         src={result.thumbnail} 

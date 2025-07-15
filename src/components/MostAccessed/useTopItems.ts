@@ -34,7 +34,7 @@ export const useTopItems = (allData: SearchResult[]): SearchResult[] => {
   }, [allData]);
 };
 
-// Simula um score de popularidade baseado em características do item
+// Simula um score de popularidade baseado em características do item (SEM ALEATORIEDADE)
 function calculatePopularityScore(item: SearchResult): number {
   let score = 0;
   
@@ -62,8 +62,12 @@ function calculatePopularityScore(item: SearchResult): number {
     score += 100;
   }
   
-  // Adicionar alguma aleatoriedade para variação
-  score += Math.random() * 50;
+  // REMOVIDO: Aleatoriedade que causava instabilidade
+  // score += Math.random() * 50;
+  
+  // Adicionar um valor fixo baseado no hash do título para variação determinística
+  const titleHash = item.title ? hashStringToNumber(item.title) % 50 : 0;
+  score += titleHash;
   
   return Math.round(score);
 }

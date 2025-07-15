@@ -85,6 +85,11 @@ const MostAccessed = () => {
     handleNavigate(id);
   }, [handleNavigate]);
 
+  // Memoizar chaves estáveis baseadas apenas no ID do item (não no index)
+  const stableKeys = useMemo(() => {
+    return topItems.map(item => `most-accessed-${item.id}`);
+  }, [topItems]);
+
   if (loading) {
     return <MostAccessedSkeleton />;
   }
@@ -139,11 +144,11 @@ const MostAccessed = () => {
             >
               <CarouselContent className="-ml-2 md:-ml-4">
                 {topItems.map((item, index) => {
-                  // Create a unique, stable key that won't change between renders
-                  const uniqueKey = `most-accessed-${item.type}-${item.id}-${index}`;
+                  // Usar chave estável baseada apenas no ID
+                  const stableKey = stableKeys[index];
                   
                   return (
-                    <CarouselItem key={uniqueKey} className="pl-2 md:pl-4 basis-full xs:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                    <CarouselItem key={stableKey} className="pl-2 md:pl-4 basis-full xs:basis-1/2 md:basis-1/3 lg:basis-1/4">
                       <Card
                         className="group hover-lift animate-fade-in cursor-pointer border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full"
                         style={{ animationDelay: `${index * 0.1}s` }}

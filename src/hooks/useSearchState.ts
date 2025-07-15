@@ -22,10 +22,8 @@ export const useSearchState = () => {
   
   const [sortBy, setSortByState] = useState('relevance');
   
-  // ✅ CORREÇÃO: Ref para detectar mudanças de resourceType
   const previousResourceTypeRef = useRef<string[]>([]);
   
-  // Ler página da URL e sincronizar com estado
   const pageFromUrl = parseInt(searchParams.get('pagina') || '1', 10);
   const [currentPage, setCurrentPageState] = useState(pageFromUrl);
 
@@ -38,7 +36,6 @@ export const useSearchState = () => {
   useEffect(() => {
     const resourceTypesFromUrl = searchParams.getAll('filtros');
     
-    // Map URL-friendly values back to internal filter values
     const reverseFilterMapping: { [key: string]: string } = {
       'livros': 'titulo',
       'videos': 'video',
@@ -49,7 +46,6 @@ export const useSearchState = () => {
       reverseFilterMapping[filter] || filter
     );
 
-    // ✅ CORREÇÃO: Detectar mudança de resourceType e resetar página
     const previousResourceType = previousResourceTypeRef.current;
     const resourceTypeChanged = 
       mappedFilters.length !== previousResourceType.length ||
@@ -62,23 +58,23 @@ export const useSearchState = () => {
       });
       setCurrentPageState(1);
       
-      // Atualizar URL para remover parâmetro de página
       const newSearchParams = new URLSearchParams(searchParams);
       newSearchParams.delete('pagina');
       setSearchParams(newSearchParams, { replace: true });
     } else {
-      // Sincronizar página da URL com estado apenas se não houve mudança de tipo
       const pageFromUrlEffect = parseInt(searchParams.get('pagina') || '1', 10);
       setCurrentPageState(pageFromUrlEffect);
     }
 
+    // Default para 'titulo' se não há filtros específicos
+    const finalFilters = mappedFilters.length > 0 ? mappedFilters : ['titulo'];
+    
     setFilters(prev => ({
       ...prev,
-      resourceType: mappedFilters
+      resourceType: finalFilters
     }));
 
-    // Atualizar ref com o novo resourceType
-    previousResourceTypeRef.current = mappedFilters;
+    previousResourceTypeRef.current = finalFilters;
 
     const sortParam = searchParams.get('ordenar');
     if (sortParam === 'recentes') {
@@ -90,14 +86,13 @@ export const useSearchState = () => {
     }
     
     console.log('✅ State synchronized with URL:', { 
-      resourceType: mappedFilters, 
+      resourceType: finalFilters, 
       sortBy: sortParam || 'relevance', 
       pagina: resourceTypeChanged ? 1 : parseInt(searchParams.get('pagina') || '1', 10),
       resourceTypeChanged
     });
   }, [searchParams, query, setSearchParams]);
 
-  // Track searches when query changes (from URL navigation)
   useEffect(() => {
     if (query.trim()) {
       trackSearch(query.trim());
@@ -128,7 +123,6 @@ export const useSearchState = () => {
     setSearchParams(newSearchParams);
   };
 
-  // Function to update filters and URL search params accordingly
   const updateFilters = (newFilters: SearchFilters) => {
     console.log('🔄 updateFilters received:', newFilters);
     
@@ -136,21 +130,17 @@ export const useSearchState = () => {
     
     setFilters(processedFilters);
     
-    // CORREÇÃO: Força atualização da URL sem race condition
     const newSearchParams = new URLSearchParams(searchParams);
     console.log('📋 Current URL params:', Object.fromEntries(searchParams.entries()));
     
-    // Clear existing filtros
     newSearchParams.delete('filtros');
     
-    // Map internal filter values to URL-friendly values
     const filterMapping: { [key: string]: string } = {
       'titulo': 'livros',
       'video': 'videos', 
       'podcast': 'podcasts'
     };
     
-    // Add new resource type filters with proper mapping
     if (processedFilters.resourceType.length > 0) {
       processedFilters.resourceType.forEach(type => {
         const urlValue = filterMapping[type] || type;
@@ -161,14 +151,12 @@ export const useSearchState = () => {
     
     console.log('📝 New URL params:', Object.fromEntries(newSearchParams.entries()));
     
-    // CORREÇÃO: Força atualização imediata da URL
     setTimeout(() => {
       console.log('🚀 Forçando atualização da URL...');
       setSearchParams(newSearchParams, { replace: false });
     }, 0);
   };
 
-  // Function to update current page and URL accordingly
   const setCurrentPage = (newPage: number) => {
     setCurrentPageState(newPage);
     const newSearchParams = new URLSearchParams(searchParams);

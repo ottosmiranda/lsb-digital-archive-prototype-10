@@ -1,5 +1,5 @@
 
-export type SearchType = 'paginated' | 'global' | 'filtered';
+export type SearchType = 'paginated' | 'filtered';
 
 export interface SearchContext {
   query: string;
@@ -10,14 +10,7 @@ export interface SearchContext {
 
 export class SearchTypeDetector {
   static detectSearchType(context: SearchContext): SearchType {
-    const { query, resourceTypes, hasOtherFilters } = context;
-    
-    // Busca global: sem filtros de tipo, query ou outros filtros
-    const isGlobalSearch = resourceTypes.length === 0 && !query.trim() && !hasOtherFilters;
-    
-    if (isGlobalSearch) {
-      return 'global';
-    }
+    const { query, hasOtherFilters } = context;
     
     // Busca com filtros de texto ou múltiplos filtros
     if (query.trim() || hasOtherFilters) {
@@ -30,7 +23,6 @@ export class SearchTypeDetector {
   
   static getDescription(type: SearchType): string {
     switch (type) {
-      case 'global': return 'Busca global com cache de longa duração';
       case 'paginated': return 'Busca paginada na API externa';
       case 'filtered': return 'Busca filtrada com cache temporário';
       default: return 'Tipo desconhecido';

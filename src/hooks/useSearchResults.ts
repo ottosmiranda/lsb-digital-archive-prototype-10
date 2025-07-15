@@ -26,7 +26,6 @@ export const useSearchResults = () => {
   const resultsPerPage = 9;
   const [searchParams] = useSearchParams();
   
-  // CORREÇÃO: Debouncing para prevenir race conditions
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const instanceId = useRef(`search_instance_${Date.now()}_${Math.random()}`);
@@ -72,48 +71,38 @@ export const useSearchResults = () => {
 
   const [usingFallback, setUsingFallback] = useState(false);
 
-  // Verificação de filtros ativos
   const hasActiveFilters = useMemo((): boolean => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
-  // LÓGICA SIMPLIFICADA: Verificar se deve executar busca
+  // Simplificada: sempre executar busca se há query, filtros específicos ou filtros ativos
   const shouldSearch = useMemo((): boolean => {
     const hasQuery = query.trim() !== '';
     const hasResourceTypeFilters = filters.resourceType.length > 0;
     const hasOtherFilters = hasActiveFilters;
     
-    const isGlobalSearch = filters.resourceType.length === 0 && !hasOtherFilters;
-    
-    console.log('🔍 Lógica shouldSearch SIMPLIFICADA:', { 
+    console.log('🔍 Lógica shouldSearch:', { 
       hasQuery, 
       hasResourceTypeFilters, 
       hasOtherFilters,
-      isGlobalSearch,
-      resourceType: filters.resourceType,
-      result: hasQuery || hasResourceTypeFilters || hasOtherFilters || isGlobalSearch
+      result: hasQuery || hasResourceTypeFilters || hasOtherFilters
     });
     
-    // Se há query, filtros específicos, ou deve fazer busca global, executar busca
-    return hasQuery || hasResourceTypeFilters || hasOtherFilters || isGlobalSearch;
+    return hasQuery || hasResourceTypeFilters || hasOtherFilters;
   }, [query, filters.resourceType, hasActiveFilters]);
 
-  // NOVA IMPLEMENTAÇÃO: Busca com paginação real e debouncing
   const performSearch = useCallback(async () => {
     const requestId = `search_${Date.now()}`;
-    console.group(`🔍 ${requestId} - Nova Arquitetura de Busca [${instanceId.current}]`);
+    console.group(`🔍 ${requestId} - Busca Específica [${instanceId.current}]`);
     console.log('📋 Parâmetros:', { query, filters, sortBy, currentPage, shouldSearch });
     
-    // CORREÇÃO: Cancelar busca anterior se existir
     if (abortControllerRef.current) {
       console.log('🛑 Cancelando busca anterior...');
       abortControllerRef.current.abort();
     }
     
-    // Criar novo AbortController para esta busca
     abortControllerRef.current = new AbortController();
 
-    // Se não deve buscar, limpar resultados
     if (!shouldSearch) {
       console.log('❌ Não deve buscar - limpando resultados');
       setSearchResponse({
@@ -136,9 +125,8 @@ export const useSearchResults = () => {
     }
 
     try {
-      console.log('🚀 Executando busca com paginação real via Nova API...');
+      console.log('🚀 Executando busca específica...');
       
-      // CORREÇÃO: Verificar se a requisição foi cancelada
       if (abortControllerRef.current?.signal.aborted) {
         console.log('🛑 Busca cancelada antes da execução');
         console.groupEnd();
@@ -147,10 +135,9 @@ export const useSearchResults = () => {
       
       const response = await search(query, filters, sortBy, currentPage);
       
-      // Validação da resposta
       if (!response.results || !Array.isArray(response.results)) {
-        console.error('❌ Resposta inválida da Nova API:', response);
-        throw new Error('Estrutura de resposta inválida da Nova API');
+        console.error('❌ Resposta inválida da API:', response);
+        throw new Error('Estrutura de resposta inválida da API');
       }
       
       setSearchResponse({
@@ -162,17 +149,15 @@ export const useSearchResults = () => {
       setUsingFallback(!response.success);
 
       if (response.error) {
-        console.warn('⚠️ Nova API com erros:', response.error);
+        console.warn('⚠️ API com erros:', response.error);
       } else {
-        console.log('✅ Nova API bem-sucedida:', {
+        console.log('✅ Busca bem-sucedida:', {
           results: response.results.length,
           totalResults: response.pagination.totalResults,
           currentPage: response.pagination.currentPage,
-          totalPages: response.pagination.totalPages,
-          paginaçãoReal: '🎯 SIM'
+          totalPages: response.pagination.totalPages
         });
         
-        // Prefetch da próxima página se disponível
         if (response.pagination.hasNextPage) {
           console.log('🔮 Prefetching próxima página...');
           prefetchNextPage(query, filters, sortBy, currentPage);
@@ -180,7 +165,7 @@ export const useSearchResults = () => {
       }
 
     } catch (err) {
-      console.error('❌ Nova API falhou:', err);
+      console.error('❌ Busca falhou:', err);
       setUsingFallback(true);
       
       setSearchResponse({
@@ -203,20 +188,16 @@ export const useSearchResults = () => {
     console.groupEnd();
   }, [query, filters, sortBy, currentPage, shouldSearch, search, prefetchNextPage]);
 
-  // CORREÇÃO: Effect com debouncing para prevenir múltiplas buscas simultâneas
   useEffect(() => {
-    // Limpar timeout anterior
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
     
-    // CORREÇÃO: Debouncing de 300ms para múltiplas mudanças rápidas
     searchTimeoutRef.current = setTimeout(() => {
       console.log(`🎯 [${instanceId.current}] Executando busca após debouncing...`);
       performSearch();
     }, 300);
     
-    // Cleanup
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -224,11 +205,9 @@ export const useSearchResults = () => {
     };
   }, [performSearch]);
 
-  // Handlers otimizados
   const handleFilterChange = useCallback((newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
-    console.log('🔄 Mudança de filtro (Nova API):', { newFilters, options });
+    console.log('🔄 Mudança de filtro:', { newFilters, options });
     
-    // ✅ CORREÇÃO: Detectar mudança de resourceType e resetar página
     const resourceTypeChanged = 
       newFilters.resourceType.length !== filters.resourceType.length ||
       newFilters.resourceType.some((type, index) => type !== filters.resourceType[index]);
@@ -241,24 +220,24 @@ export const useSearchResults = () => {
     setFilters(newFilters);
     
     if (!options?.authorTyping && !resourceTypeChanged) {
-      setCurrentPage(1); // Reset para página 1 em nova busca (exceto mudança de tipo)
+      setCurrentPage(1);
     }
   }, [setFilters, setCurrentPage, filters.resourceType]);
 
   const handleSortChange = useCallback((newSort: string) => {
-    console.log('📊 Mudança de ordenação (Nova API):', newSort);
+    console.log('📊 Mudança de ordenação:', newSort);
     setSortBy(newSort);
-    setCurrentPage(1); // Reset para página 1
+    setCurrentPage(1);
   }, [setSortBy, setCurrentPage]);
 
   const handlePageChange = useCallback((page: number) => {
-    console.log('📄 Mudança de página (PAGINAÇÃO REAL):', page);
+    console.log('📄 Mudança de página:', page);
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [setCurrentPage]);
 
   const forceRefresh = useCallback(async () => {
-    console.log('🔄 Refresh forçado (Nova API) - limpando cache');
+    console.log('🔄 Refresh forçado - limpando cache');
     clearCache();
     await performSearch();
   }, [clearCache, performSearch]);

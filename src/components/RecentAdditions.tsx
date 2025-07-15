@@ -1,3 +1,4 @@
+
 import { Book, Video, Headphones, Calendar, Sparkles, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -159,70 +160,73 @@ const RecentAdditions = () => {
 
         {recentItems.length > 0 ? (
           <>
-            {/* Mobile: Single column, Tablet: 2 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
+            {/* Grid responsivo com cards de altura fixa */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {recentItems.map((item, index) => {
                 const IconComponent = getIcon(item.type);
                 return (
                   <Link key={item.type + '-' + item.id} to={`/recurso/${item.id}`}>
-                    <Card className="group hover-lift animate-fade-in cursor-pointer h-full" style={{
+                    <Card className="group hover-lift animate-fade-in cursor-pointer h-full min-h-[200px] flex flex-col" style={{
                       animationDelay: `${index * 0.1}s`
                     }}>
-                      <CardContent className="p-4 md:p-6 h-full">
-                        <div className="flex flex-col sm:flex-row items-start space-y-3 sm:space-y-0 sm:space-x-4 h-full">
-                          <div className="flex-shrink-0 w-full sm:w-auto flex justify-center sm:justify-start">
-                            <div className="w-12 h-12 bg-lsb-section rounded-lg flex items-center justify-center">
-                              <IconComponent className="h-6 w-6 lsb-primary" />
+                      <CardContent className="p-4 md:p-6 flex flex-col h-full">
+                        {/* Header com ícone e badges */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-shrink-0">
+                            <div className="w-10 h-10 bg-lsb-section rounded-lg flex items-center justify-center">
+                              <IconComponent className="h-5 w-5 lsb-primary" />
                             </div>
                           </div>
                           
-                          <div className="flex-1 min-w-0 text-center sm:text-left">
-                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-2 md:mb-3">
-                              <Badge className={getTypeColor(item.type)}>
-                                {getTypeLabel(item.type)}
+                          <div className="flex flex-wrap gap-1 ml-3">
+                            <Badge className={`text-xs ${getTypeColor(item.type)}`}>
+                              {getTypeLabel(item.type)}
+                            </Badge>
+                            {item.isRotated ? (
+                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                <Star className="h-3 w-3 mr-1" />
+                                Destacado
                               </Badge>
-                              {item.isRotated ? (
-                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                  <Star className="h-3 w-3 mr-1" />
-                                  Destacado
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="bg-lsb-card-accent text-white border-lsb-card-accent">
-                                  <Sparkles className="h-3 w-3 mr-1" />
-                                  Novo
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            <h3 className="font-semibold text-base md:text-lg mb-1 md:mb-2 group-hover:text-lsb-primary transition-colors line-clamp-2">
-                              {item.title}
-                            </h3>
-                            <p className="text-sm text-gray-600 mb-1 md:mb-2 truncate">{item.author}</p>
-                            <p className="text-xs md:text-sm text-gray-700 line-clamp-2">
-                              {item.description}
-                            </p>
+                            ) : (
+                              <Badge variant="outline" className="text-xs bg-lsb-card-accent text-white border-lsb-card-accent">
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                Novo
+                              </Badge>
+                            )}
                           </div>
-                          
-                          <div className="flex-shrink-0 w-full sm:w-auto flex justify-center sm:justify-end">
-                            <div className="w-16 h-16 sm:w-20 sm:h-20 relative overflow-hidden rounded">
-                              {shouldShowImage(item.thumbnail, item.type) ? (
-                                <img 
-                                  src={item.thumbnail} 
-                                  alt={item.title} 
-                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
-                                  onError={handleImageError} 
-                                />
-                              ) : (
-                                <ThumbnailPlaceholder 
-                                  type={item.type as 'titulo' | 'video' | 'podcast'} 
-                                  className="w-16 h-16 sm:w-20 sm:h-20" 
-                                  size="small" 
-                                  style={{
-                                    display: item.thumbnail ? 'none' : 'flex'
-                                  }} 
-                                />
-                              )}
-                            </div>
+                        </div>
+                        
+                        {/* Conteúdo principal */}
+                        <div className="flex-1 flex flex-col">
+                          <h3 className="font-semibold text-base md:text-lg mb-2 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight">
+                            {item.title}
+                          </h3>
+                          <p className="text-sm text-gray-600 mb-2 truncate">{item.author}</p>
+                          <p className="text-xs md:text-sm text-gray-700 line-clamp-3 flex-1">
+                            {item.description}
+                          </p>
+                        </div>
+                        
+                        {/* Thumbnail na parte inferior */}
+                        <div className="mt-3 flex justify-center">
+                          <div className="w-16 h-16 relative overflow-hidden rounded">
+                            {shouldShowImage(item.thumbnail, item.type) ? (
+                              <img 
+                                src={item.thumbnail} 
+                                alt={item.title} 
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                                onError={handleImageError} 
+                              />
+                            ) : (
+                              <ThumbnailPlaceholder 
+                                type={item.type as 'titulo' | 'video' | 'podcast'} 
+                                className="w-16 h-16" 
+                                size="small" 
+                                style={{
+                                  display: item.thumbnail ? 'none' : 'flex'
+                                }} 
+                              />
+                            )}
                           </div>
                         </div>
                       </CardContent>

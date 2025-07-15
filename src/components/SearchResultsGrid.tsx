@@ -72,7 +72,7 @@ const SearchResultsGrid = ({
   };
 
   const handleResourceClick = (result: SearchResult) => {
-    console.group('🎯 SEARCH GRID NAVIGATION (IDs CORRIGIDOS PARA "ALL")');
+    console.group('🎯 SEARCH GRID NAVIGATION - VALIDAÇÃO RIGOROSA');
     console.log('📋 Clicked resource:', {
       id: result.id,
       originalId: result.originalId,
@@ -81,19 +81,31 @@ const SearchResultsGrid = ({
       filtroAtual: searchParams.get('filtros')
     });
     
-    // ✅ VALIDAÇÃO: Garantir que ID não seja "0" ou inválido
+    // ✅ FASE 4: Validação Rigorosa de ID antes da navegação
+    const invalidIds = ['', '0', 'undefined', 'null', 'missing-id', null, undefined];
     const navigationId = String(result.id);
-    if (!navigationId || navigationId === '0' || navigationId === 'undefined' || navigationId === 'null') {
-      console.error('❌ ID INVÁLIDO DETECTADO:', {
+    
+    if (invalidIds.includes(navigationId) || !navigationId.trim()) {
+      console.error('❌ ID INVÁLIDO DETECTADO - NAVEGAÇÃO BLOQUEADA:', {
         resultId: result.id,
         originalId: result.originalId,
-        navigationId: navigationId
+        navigationId: navigationId,
+        type: result.type,
+        title: result.title.substring(0, 30) + '...',
+        invalidReason: invalidIds.includes(navigationId) ? 'ID na lista de inválidos' : 'ID vazio após trim'
       });
       console.groupEnd();
+      
+      // Mostrar feedback visual para o usuário
+      console.warn('🚫 Navegação bloqueada: ID inválido para este item');
       return;
     }
     
-    console.log('✅ Using VALID ID for navigation:', navigationId);
+    console.log('✅ ID VÁLIDO - PROSSEGUINDO COM NAVEGAÇÃO:', {
+      validId: navigationId,
+      type: result.type,
+      title: result.title.substring(0, 40) + '...'
+    });
     
     // Preserve current search state in the detail page URL
     const currentParams = new URLSearchParams(searchParams);
@@ -117,13 +129,15 @@ const SearchResultsGrid = ({
         {results.map(result => {
           const typeBadge = getTypeBadge(result.type, result.documentType);
           
-          // ✅ VALIDAÇÃO ADICIONAL: Log de IDs suspeitos
-          if (!result.id || result.id === '0' || result.id === 'undefined') {
-            console.warn('⚠️ ITEM COM ID SUSPEITO:', {
+          // ✅ VALIDAÇÃO ADICIONAL: Log de IDs suspeitos durante render
+          const invalidIds = ['', '0', 'undefined', 'null', 'missing-id'];
+          if (!result.id || invalidIds.includes(String(result.id))) {
+            console.warn('⚠️ ITEM COM ID SUSPEITO RENDERIZADO:', {
               id: result.id,
               originalId: result.originalId,
               title: result.title.substring(0, 30) + '...',
-              type: result.type
+              type: result.type,
+              willBlockNavigation: true
             });
           }
           

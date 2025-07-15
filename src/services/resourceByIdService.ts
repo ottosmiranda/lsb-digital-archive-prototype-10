@@ -40,22 +40,22 @@ export class ResourceByIdService {
   private static readonly TIMEOUT_MS = 8000;
 
   static async fetchResourceById(id: string, resourceType: string): Promise<Resource | null> {
-    console.group(`🎯 FETCH RESOURCE BY ID - CORRIGIDO PARA 'ALL'`);
+    console.group(`🎯 FETCH RESOURCE BY ID - LÓGICA POLIMÓRFICA ATUALIZADA`);
     console.log(`📋 Target: ${resourceType} ID ${id}`);
     
     try {
-      // ✅ CORREÇÃO: Usar AllContentService corrigido para tipo 'all'
+      // ✅ FASE 5: Sincronização com AllContentService
       if (resourceType === 'all') {
-        console.log('🎯 USANDO ENDPOINT CORRIGIDO /item/{id} para tipo "all"');
+        console.log('🎯 USANDO LÓGICA POLIMÓRFICA para tipo "all"');
         const data = await AllContentService.fetchItemById(id);
-        const transformedResource = this.transformToResource(data, resourceType, id);
+        const transformedResource = this.transformToResourcePolymorphic(data, resourceType, id);
         
         if (transformedResource && this.isValidResource(transformedResource)) {
-          console.log(`✅ RECURSO 'ALL' VÁLIDO CRIADO:`, transformedResource.title);
+          console.log(`✅ RECURSO 'ALL' POLIMÓRFICO VÁLIDO:`, transformedResource.title);
           console.groupEnd();
           return transformedResource;
         } else {
-          console.error(`❌ RECURSO 'ALL' INVÁLIDO APÓS TRANSFORMAÇÃO:`, transformedResource);
+          console.error(`❌ RECURSO 'ALL' INVÁLIDO APÓS TRANSFORMAÇÃO POLIMÓRFICA:`, transformedResource);
           console.groupEnd();
           return null;
         }
@@ -113,6 +113,71 @@ export class ResourceByIdService {
       } else {
         console.error(`❌ ERRO FETCH: ${resourceType} ID ${id}:`, error);
       }
+      console.groupEnd();
+      return null;
+    }
+  }
+
+  private static transformToResourcePolymorphic(data: any, resourceType: string, requestedId: string): Resource {
+    console.group(`🔄 TRANSFORMAÇÃO POLIMÓRFICA: ${resourceType} ID ${requestedId}`);
+    console.log('📋 Raw API data:', data);
+
+    try {
+      // ✅ LÓGICA POLIMÓRFICA: Extrair dados usando a mesma lógica do AllContentService
+      const extractedId = data.episodio_id || data.id || requestedId;
+      const extractedTitle = data.episodio_titulo || data.titulo || data.title || 'Título não disponível';
+      const extractedThumbnail = data.imagem_url || data.thumbnail || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png';
+      const extractedType = data.tipo || data.type || 'unknown';
+
+      // Detectar tipo usando a mesma lógica
+      let detectedType: 'video' | 'titulo' | 'podcast';
+      let author = '';
+      let description = '';
+      
+      if (data.episodio_id || data.podcast_id || extractedType === 'podcast' || data.podcast_titulo) {
+        detectedType = 'podcast';
+        author = data.publicador || 'Publicador desconhecido';
+        description = data.descricao || `Episódio de ${data.podcast_titulo || 'podcast'}`;
+      } else if (extractedType === 'video' || data.canal || data.embed_url) {
+        detectedType = 'video';
+        author = data.canal || 'Canal desconhecido';
+        description = data.descricao || `Vídeo de ${author}`;
+      } else {
+        detectedType = 'titulo';
+        author = data.autor || 'Autor desconhecido';
+        description = data.descricao || `${data.tipo_documento || 'Documento'} de ${author}`;
+      }
+      
+      console.log('🔍 TIPO DETECTADO POLIMÓRFICO:', detectedType);
+      
+      const resource: Resource = {
+        id: String(extractedId),
+        originalId: String(extractedId),
+        title: extractedTitle,
+        author: author,
+        year: data.ano || new Date(data.data_lancamento || Date.now()).getFullYear(),
+        description: description,
+        subject: data.categorias?.[0] || data.categoria || 'Geral',
+        type: detectedType,
+        thumbnail: extractedThumbnail,
+        duration: detectedType === 'video' && data.duracao ? this.formatDuration(data.duracao * 1000) :
+                  detectedType === 'podcast' && data.duracao_ms ? this.formatDuration(data.duracao_ms) : undefined,
+        pages: data.paginas,
+        episodes: detectedType === 'podcast' ? 1 : undefined,
+        embedUrl: data.embed_url,
+        pdfUrl: data.url,
+        documentType: data.tipo_documento,
+        language: this.mapLanguageCode(data.idioma),
+        categories: Array.isArray(data.categorias) ? data.categorias : (data.categoria ? [data.categoria] : []),
+        podcast_titulo: detectedType === 'podcast' ? data.podcast_titulo : undefined
+      };
+      
+      console.log('✅ RECURSO POLIMÓRFICO TRANSFORMADO:', resource);
+      console.groupEnd();
+      return resource;
+      
+    } catch (error) {
+      console.error('❌ ERRO NA TRANSFORMAÇÃO POLIMÓRFICA:', error);
       console.groupEnd();
       return null;
     }

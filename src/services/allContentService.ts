@@ -26,9 +26,12 @@ export interface AllContentItem {
   idioma?: string;
   podcast_titulo?: string;
   episodio_titulo?: string;
+  episodio_id?: string;
+  podcast_id?: string;
   publicador?: string;
   data_lancamento?: string;
   duracao_ms?: number;
+  tipo?: string;
 }
 
 export class AllContentService {
@@ -139,64 +142,97 @@ export class AllContentService {
   }
 
   static transformToSearchResult(item: AllContentItem): SearchResult {
-    console.group('🔄 ALL CONTENT - Transform to SearchResult (IDs CORRIGIDOS)');
-    console.log('📋 Original item ID:', item.id, typeof item.id);
+    console.group('🔄 ALL CONTENT - Lógica Polimórfica Robusta');
     
-    // Detectar tipo de conteúdo baseado nas propriedades
-    let type: 'video' | 'titulo' | 'podcast';
-    let title = '';
+    // ✅ FASE 1: Extração Polimórfica de ID, Título e Imagem
+    // Usar cadeia de verificação para lidar com estruturas heterogêneas
+    const extractedId = item.episodio_id || item.id || 'missing-id';
+    const extractedTitle = item.episodio_titulo || item.titulo || item.title || 'Título não disponível';
+    const extractedThumbnail = item.imagem_url || item.thumbnail || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png';
+    const extractedType = item.tipo || item.type || 'unknown';
+
+    // ✅ FASE 2: Detecção Inteligente de Tipo de Conteúdo
+    let detectedType: 'video' | 'titulo' | 'podcast';
     let author = '';
     let description = '';
     
-    if (item.type === 'video' || item.canal) {
-      type = 'video';
-      title = item.titulo || 'Vídeo sem título';
-      author = item.canal || 'Canal desconhecido';
-      description = item.descricao || `Vídeo de ${author}`;
-    } else if (item.type === 'podcast' || item.podcast_titulo || item.episodio_titulo) {
-      type = 'podcast';
-      title = item.episodio_titulo || item.podcast_titulo || 'Podcast sem título';
+    // Detectar podcast pelos campos específicos
+    if (item.episodio_id || item.podcast_id || extractedType === 'podcast' || item.podcast_titulo) {
+      detectedType = 'podcast';
       author = item.publicador || 'Publicador desconhecido';
       description = item.descricao || `Episódio de ${item.podcast_titulo || 'podcast'}`;
-    } else {
-      // Livros e artigos
-      type = 'titulo';
-      title = item.titulo || 'Título não disponível';
+    } 
+    // Detectar vídeo
+    else if (extractedType === 'video' || item.canal || item.embed_url) {
+      detectedType = 'video';
+      author = item.canal || 'Canal desconhecido';
+      description = item.descricao || `Vídeo de ${author}`;
+    } 
+    // Livros e artigos (fallback)
+    else {
+      detectedType = 'titulo';
       author = item.autor || 'Autor desconhecido';
       description = item.descricao || `${item.tipo_documento || 'Documento'} de ${author}`;
     }
 
-    // ✅ CORREÇÃO CRÍTICA: Preservar ID como string, não converter para número
-    const finalId = String(item.id);
-    
+    // ✅ FASE 3: Logs Diagnósticos Detalhados
+    console.log('📊 Dados extraídos:', {
+      originalData: {
+        id: item.id,
+        episodio_id: item.episodio_id,
+        titulo: item.titulo,
+        episodio_titulo: item.episodio_titulo,
+        tipo: item.tipo,
+        type: item.type
+      },
+      extracted: {
+        id: extractedId,
+        title: extractedTitle.substring(0, 50) + '...',
+        type: detectedType,
+        thumbnail: extractedThumbnail ? 'presente' : 'ausente'
+      },
+      isValidId: extractedId !== 'missing-id' && extractedId !== 'undefined' && extractedId !== null
+    });
+
+    // ✅ VALIDAÇÃO: Rejeitar itens com ID inválido
+    if (!extractedId || extractedId === 'missing-id' || extractedId === 'undefined' || extractedId === 'null') {
+      console.error('❌ ID INVÁLIDO REJEITADO:', {
+        item: item,
+        extractedId: extractedId
+      });
+      console.groupEnd();
+      return null;
+    }
+
     const searchResult: SearchResult = {
-      id: finalId,  // ✅ Manter como string
-      originalId: finalId,  // ✅ Manter como string
-      title: title,
-      type: type,
+      id: String(extractedId),
+      originalId: String(extractedId),
+      title: extractedTitle,
+      type: detectedType,
       author: author,
       description: description,
-      year: item.ano || new Date().getFullYear(),
+      year: item.ano || new Date(item.data_lancamento || Date.now()).getFullYear(),
       subject: item.categorias?.[0] || 'Geral',
-      thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png',
-      duration: type === 'video' && item.duracao ? `${Math.floor(item.duracao / 60)}m` :
-                type === 'podcast' && item.duracao_ms ? this.formatDuration(item.duracao_ms) : undefined,
+      thumbnail: extractedThumbnail,
+      duration: detectedType === 'video' && item.duracao ? `${Math.floor(item.duracao / 60)}m` :
+                detectedType === 'podcast' && item.duracao_ms ? this.formatDuration(item.duracao_ms) : undefined,
       pages: item.paginas,
-      episodes: type === 'podcast' ? 1 : undefined,
+      episodes: detectedType === 'podcast' ? 1 : undefined,
       embedUrl: item.embed_url,
       pdfUrl: item.url,
       documentType: item.tipo_documento,
       language: item.idioma,
-      program: type === 'podcast' ? item.podcast_titulo : undefined,
-      channel: type === 'video' ? item.canal : undefined,
+      program: detectedType === 'podcast' ? item.podcast_titulo : undefined,
+      channel: detectedType === 'video' ? item.canal : undefined,
       categories: item.categorias || []
     };
 
-    console.log('✅ RESULTADO FINAL:', {
-      originalId: item.id,
-      finalId: finalId,
-      type: type,
-      title: title.substring(0, 50) + '...'
+    console.log('✅ RESULTADO FINAL POLIMÓRFICO:', {
+      originalId: extractedId,
+      finalId: searchResult.id,
+      type: detectedType,
+      title: extractedTitle.substring(0, 50) + '...',
+      navigationReady: true
     });
     console.groupEnd();
 

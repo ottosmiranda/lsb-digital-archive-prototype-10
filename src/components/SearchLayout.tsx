@@ -84,22 +84,22 @@ const SearchLayout = ({
   
   const hasResults = currentResults.length > 0;
   
-  // ✅ LÓGICA DE RENDERIZAÇÃO BLINDADA - Loading tem prioridade absoluta
+  // ✅ LÓGICA DE RENDERIZAÇÃO BLINDADA COM LOADING ATÔMICO
   const shouldShowSearch = true;
   
-  // SÓ mostrar estado vazio se NÃO estiver carregando E não houver resultados
+  // ✅ CORREÇÃO CRÍTICA: Estado vazio só aparece se NÃO estiver carregando (loading atômico)
   const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
   const showWelcomeState = false;
   
-  // Paginação só aparece se NÃO estiver carregando E houver resultados
+  // ✅ Paginação só aparece se NÃO estiver carregando E houver resultados
   const showPagination = !loading && hasResults && totalPages > 1;
 
-  console.group('🛡️ SearchLayout - RENDERING GUARDS');
-  console.log('📋 Loading:', loading);
+  console.group('🛡️ SearchLayout - RENDERING GUARDS ATÔMICOS');
+  console.log('📋 Loading (atômico):', loading);
   console.log('📋 HasResults:', hasResults);
   console.log('📋 ShowEmptyState:', showEmptyState);
   console.log('📋 ShowPagination:', showPagination);
-  console.log('🛡️ Loading state takes precedence over all other states');
+  console.log('🛡️ Loading atômico impede renderização prematura de estados vazios');
   console.groupEnd();
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
@@ -139,7 +139,7 @@ const SearchLayout = ({
   };
 
   const handleContentTypeChange = (type: string) => {
-    console.group('🎯 SearchLayout - Content type change');
+    console.group('🎯 SearchLayout - Content type change ATÔMICO');
     console.log('📋 From:', activeContentType, 'To:', type);
     
     onPageChange(1);
@@ -147,9 +147,10 @@ const SearchLayout = ({
     const newFilters = { ...filters };
     newFilters.resourceType = [type];
     
-    console.log('🔄 Calling onFiltersChange for type:', type);
+    console.log('⚡ Calling onFiltersChange with ATOMIC loading for type:', type);
     console.groupEnd();
     
+    // ✅ CHAMADA ATÔMICA: O handleFilterChange já ativa o loading imediatamente
     onFiltersChange(newFilters);
     
     if (onRefreshData && type !== activeContentType) {
@@ -224,7 +225,7 @@ const SearchLayout = ({
                     onClearAll={onClearFilters}
                   />
                   
-                  {/* ✅ RENDERIZAÇÃO BLINDADA - Loading tem prioridade máxima */}
+                  {/* ✅ RENDERIZAÇÃO BLINDADA ATÔMICA - Loading tem prioridade máxima absoluta */}
                   {loading ? (
                     <SearchResultsGrid 
                       results={[]}
@@ -291,7 +292,7 @@ const SearchLayout = ({
                       onClearAll={onClearFilters}
                     />
                     
-                    {/* ✅ RENDERIZAÇÃO BLINDADA - Loading tem prioridade máxima */}
+                    {/* ✅ RENDERIZAÇÃO BLINDADA ATÔMICA - Loading tem prioridade máxima absoluta */}
                     {loading ? (
                       <SearchResultsGrid 
                         results={[]}

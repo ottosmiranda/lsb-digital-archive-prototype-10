@@ -43,7 +43,13 @@ export const useSearchResults = () => {
     setQuery
   } = useSearchState();
 
-  const { search, loading, error, clearCache, prefetchNextPage } = useApiSearch({ resultsPerPage });
+  const { search, loading: apiLoading, error, clearCache, prefetchNextPage } = useApiSearch({ resultsPerPage });
+  
+  // ✅ CORREÇÃO ATÔMICA: Estado de loading local para controle imediato
+  const [localLoading, setLocalLoading] = useState(false);
+  
+  // ✅ Loading combinado: local OU da API
+  const loading = localLoading || apiLoading;
   
   const [searchResponse, setSearchResponse] = useState<SearchResponse>({
     results: [],
@@ -140,6 +146,7 @@ export const useSearchResults = () => {
           sortBy
         }
       });
+      setLocalLoading(false); // ✅ Limpar loading local
       console.groupEnd();
       return;
     }
@@ -239,6 +246,9 @@ export const useSearchResults = () => {
           sortBy
         }
       });
+    } finally {
+      // ✅ SEMPRE limpar loading local quando terminar
+      setLocalLoading(false);
     }
     
     console.groupEnd();
@@ -267,12 +277,6 @@ export const useSearchResults = () => {
     
     console.log(`🎯 [${instanceId.current}] Agendando busca - Filtro: ${isFilterChange}, Query: ${isQueryChange}, Debounce: ${debounceTime}ms`);
     
-    // ✅ LOADING IMEDIATO: Mostrar loading na mudança de filtro
-    if (isFilterChange && shouldSearch) {
-      console.log('⚡ LOADING IMEDIATO para mudança de filtro');
-      // O hook useApiSearch já gerencia o loading state internamente
-    }
-    
     searchTimeoutRef.current = setTimeout(() => {
       console.log(`🎯 [${instanceId.current}] Executando busca após debouncing (${debounceTime}ms)...`);
       performSearch();
@@ -286,16 +290,20 @@ export const useSearchResults = () => {
     };
   }, [performSearch, query, filters.resourceType, shouldSearch]);
 
-  // Handlers otimizados
+  // ✅ CORREÇÃO ATÔMICA: Handler de mudança de filtros com loading imediato
   const handleFilterChange = useCallback((newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
-    console.log('🔄 handleFilterChange:', { newFilters, options });
+    console.log('🔄 handleFilterChange ATÔMICO:', { newFilters, options });
     
-    // ✅ CORREÇÃO: Detectar mudança de resourceType e resetar página
+    // ✅ AÇÃO CRÍTICA: Detectar mudança de resourceType
     const resourceTypeChanged = 
       newFilters.resourceType.length !== filters.resourceType.length ||
       newFilters.resourceType.some((type, index) => type !== filters.resourceType[index]);
 
     if (resourceTypeChanged) {
+      console.log('⚡ ATIVAÇÃO IMEDIATA DO LOADING para mudança de filtro');
+      // ✅ CORREÇÃO ATÔMICA: Ativar loading IMEDIATAMENTE
+      setLocalLoading(true);
+      
       console.log('🔄 ResourceType mudou, resetando página e limpando cache');
       setCurrentPage(1);
       clearCache();
@@ -334,10 +342,10 @@ export const useSearchResults = () => {
     totalResults: searchResponse.pagination.totalResults,
     totalPages: searchResponse.pagination.totalPages,
     currentPage: searchResponse.pagination.currentPage,
-    loading,
+    loading, // ✅ Loading combinado (local + API)
     hasActiveFilters,
     usingFallback,
-    handleFilterChange,
+    handleFilterChange, // ✅ Versão atômica
     handleSortChange,
     handlePageChange,
     setFilters,

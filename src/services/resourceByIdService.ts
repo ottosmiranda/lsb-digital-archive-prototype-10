@@ -1,5 +1,6 @@
 import { Resource } from '@/types/resourceTypes';
 import { API_BASE_URL } from './api/apiConfig';
+import { AllContentService } from './allContentService';
 
 export interface ApiResourceResponse {
   // Para livros e artigos
@@ -43,6 +44,21 @@ export class ResourceByIdService {
     console.log(`📋 Target: ${resourceType} ID ${id}`);
     
     try {
+      // ✅ NOVO: Usar AllContentService para tipo 'all'
+      if (resourceType === 'all') {
+        const data = await AllContentService.fetchItemById(id);
+        const transformedResource = this.transformToResource(data, resourceType, id);
+        
+        if (transformedResource && this.isValidResource(transformedResource)) {
+          console.log(`✅ RECURSO 'ALL' VÁLIDO CRIADO:`, transformedResource.title);
+          console.groupEnd();
+          return transformedResource;
+        } else {
+          console.error(`❌ RECURSO 'ALL' INVÁLIDO APÓS TRANSFORMAÇÃO:`, transformedResource);
+          console.groupEnd();
+          return null;
+        }
+      }
       const endpoint = this.getEndpointForType(resourceType, id);
       console.log(`🔗 Endpoint: ${endpoint}`);
       
@@ -116,7 +132,7 @@ export class ResourceByIdService {
       return false;
     }
     
-    if (!resource.type || !['video', 'titulo', 'podcast'].includes(resource.type)) {
+    if (!resource.type || !['video', 'titulo', 'podcast', 'all'].includes(resource.type)) {
       console.log('❌ VALIDAÇÃO: Tipo inválido:', resource.type);
       return false;
     }
@@ -138,6 +154,9 @@ export class ResourceByIdService {
         return `https://acnympbxfptajtxvmkqn.supabase.co/functions/v1/fetch-articles?id=${id}`;
       case 'podcast':
         return `${API_BASE_URL}/conteudo-lbs/podcast/${id}`;
+      case 'all':
+        // Para 'all', usar AllContentService - este método não deveria ser chamado
+        throw new Error(`Tipo 'all' deve usar AllContentService.fetchItemById`);
       default:
         throw new Error(`Tipo de recurso não suportado: ${resourceType}`);
     }
@@ -214,7 +233,7 @@ export class ResourceByIdService {
         return resource;
       }
 
-      if (resourceType === 'titulo' || resourceType === 'livro' || resourceType === 'artigos') {
+      if (resourceType === 'titulo' || resourceType === 'livro' || resourceType === 'artigos' || resourceType === 'all') {
         const year = this.extractYearFromDate(data.data_publicacao || data.ano);
         const documentType = resourceType === 'artigos' ? 'Artigo' : (data.tipo_documento || 'Livro');
         

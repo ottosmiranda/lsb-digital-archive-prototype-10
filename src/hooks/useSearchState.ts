@@ -42,6 +42,7 @@ export const useSearchState = () => {
     
     // ✅ CORRIGIDO: Map URL-friendly values back to internal filter values
     const reverseFilterMapping: { [key: string]: string } = {
+      'todos': 'all',
       'livros': 'titulo',
       'videos': 'video',
       'podcasts': 'podcast'
@@ -157,6 +158,7 @@ export const useSearchState = () => {
     
     // ✅ CORRIGIDO: Map internal filter values to URL-friendly values
     const filterMapping: { [key: string]: string } = {
+      'all': 'todos',
       'titulo': 'livros',
       'video': 'videos', 
       'podcast': 'podcasts'

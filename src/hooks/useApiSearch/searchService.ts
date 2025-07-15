@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { SearchFilters } from '@/types/searchTypes';
 import { SearchResponse } from './types';
+import { AllContentService } from '@/services/allContentService';
 
 export class SearchService {
   async executeSearch(
@@ -11,6 +12,10 @@ export class SearchService {
     page: number,
     resultsPerPage: number
   ): Promise<SearchResponse> {
+    // ✅ NOVO: Detectar se é busca no filtro "Todos"
+    if (filters.resourceType.includes('all')) {
+      return this.executeAllContentSearch(page, resultsPerPage);
+    }
     const requestId = `search_${Date.now()}`;
     console.group(`🔍 ${requestId} - API Search Request`);
     console.log('📋 Parameters:', { query, filters, sortBy, page, resultsPerPage });
@@ -156,6 +161,74 @@ export class SearchService {
       
     } catch (error) {
       console.error(`❌ Query search failed for "${query}":`, error);
+      console.groupEnd();
+      throw error;
+    }
+  }
+
+  // ✅ NOVO: Busca para o filtro "Todos" usando AllContentService
+  async executeAllContentSearch(page: number, resultsPerPage: number): Promise<SearchResponse> {
+    const requestId = `all_search_${Date.now()}`;
+    console.group(`🔍 ${requestId} - All Content Search`);
+    console.log('📋 Parameters:', { page, resultsPerPage });
+    
+    try {
+      const response = await AllContentService.fetchAllContent(page, resultsPerPage);
+      
+      // Transformar itens para SearchResult
+      const results = response.conteudo.map(item => 
+        AllContentService.transformToSearchResult(item)
+      );
+      
+      const searchResponse: SearchResponse = {
+        success: true,
+        results: results,
+        pagination: {
+          currentPage: response.page,
+          totalPages: response.totalPages,
+          totalResults: response.total,
+          hasNextPage: response.page < response.totalPages,
+          hasPreviousPage: response.page > 1
+        },
+        searchInfo: {
+          query: '',
+          appliedFilters: { resourceType: ['all'], subject: [], author: [], year: '', duration: '', language: [], documentType: [], program: [], channel: [] },
+          sortBy: 'relevance'
+        }
+      };
+      
+      console.log('✅ All content search successful:', {
+        results: searchResponse.results.length,
+        totalResults: searchResponse.pagination.totalResults,
+        currentPage: searchResponse.pagination.currentPage,
+        totalPages: searchResponse.pagination.totalPages
+      });
+      
+      console.groupEnd();
+      return searchResponse;
+      
+    } catch (error) {
+      console.error('❌ All content search failed:', error);
+      
+      // Retornar resposta vazia em caso de erro
+      const errorResponse: SearchResponse = {
+        success: false,
+        results: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalResults: 0,
+          hasNextPage: false,
+          hasPreviousPage: false
+        },
+        searchInfo: {
+          query: '',
+          appliedFilters: { resourceType: ['all'], subject: [], author: [], year: '', duration: '', language: [], documentType: [], program: [], channel: [] },
+          sortBy: 'relevance'
+        },
+        error: error instanceof Error ? error.message : 'All content search failed'
+      };
+      
       console.groupEnd();
       throw error;
     }

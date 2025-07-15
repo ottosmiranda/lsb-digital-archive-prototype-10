@@ -28,6 +28,7 @@ const SearchHeaderWithTabs = ({
   onContentTypeChange
 }: SearchHeaderWithTabsProps) => {
   const contentTypes = [
+    { id: 'all', label: 'Todos', icon: Grid3X3 },
     { id: 'titulo', label: 'Livros & Artigos', icon: Book },
     { id: 'video', label: 'Vídeos', icon: Play },
     { id: 'podcast', label: 'Podcasts', icon: Headphones }

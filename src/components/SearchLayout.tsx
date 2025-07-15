@@ -54,7 +54,7 @@ const SearchLayout = ({
   onRefreshData
 }: SearchLayoutProps) => {
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [activeContentType, setActiveContentType] = useState('titulo');
+  const [activeContentType, setActiveContentType] = useState('all'); // ✅ NOVO: Padrão é 'all'
   const [showFilters, setShowFilters] = useState(false);
   const [searchParams] = useSearchParams();
   
@@ -74,15 +74,15 @@ const SearchLayout = ({
     
     if (filters.resourceType.length === 1) {
       const resourceType = filters.resourceType[0];
-      if (['titulo', 'video', 'podcast'].includes(resourceType)) {
+      if (['all', 'titulo', 'video', 'podcast'].includes(resourceType)) {
         console.log(`✅ Setting activeContentType to: ${resourceType}`);
         setActiveContentType(resourceType);
       }
     } else if (filters.resourceType.length === 0 && urlFilters.length === 0) {
-      // ✅ CORREÇÃO: Só definir 'titulo' como padrão se NÃO houver filtros na URL
-      console.log('✅ No filters - setting default to titulo');
-      setActiveContentType('titulo');
-      onFiltersChange({ ...filters, resourceType: ['titulo'] });
+      // ✅ NOVO: Definir 'all' como padrão
+      console.log('✅ No filters - setting default to all (todos)');
+      setActiveContentType('all');
+      onFiltersChange({ ...filters, resourceType: ['all'] });
     } else if (urlFilters.length > 0) {
       // ✅ NOVO: Respeitar filtros da URL sem forçar 'titulo'
       console.log('🔗 URL has filters - preserving navigation context');

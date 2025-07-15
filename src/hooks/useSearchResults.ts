@@ -83,16 +83,20 @@ export const useSearchResults = () => {
     const hasResourceTypeFilters = filters.resourceType.length > 0;
     const hasOtherFilters = hasActiveFilters;
     
-    console.log('🔍 Lógica shouldSearch SIMPLIFICADA:', { 
+    // ✅ NOVO: Verificar se há filtro "Todos"
+    const hasAllFilter = filters.resourceType.includes('all');
+    
+    console.log('🔍 Lógica shouldSearch com suporte ALL:', { 
       hasQuery, 
       hasResourceTypeFilters, 
       hasOtherFilters,
+      hasAllFilter,
       resourceType: filters.resourceType,
-      result: hasQuery || hasResourceTypeFilters || hasOtherFilters
+      result: hasQuery || hasResourceTypeFilters || hasOtherFilters || hasAllFilter
     });
     
-    // Se há query ou filtros específicos, executar busca
-    return hasQuery || hasResourceTypeFilters || hasOtherFilters;
+    // Se há query, filtros específicos, ou filtro "Todos", executar busca
+    return hasQuery || hasResourceTypeFilters || hasOtherFilters || hasAllFilter;
   }, [query, filters.resourceType, hasActiveFilters]);
 
   // NOVA IMPLEMENTAÇÃO: Busca com paginação real e debouncing

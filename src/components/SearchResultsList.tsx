@@ -1,8 +1,7 @@
-
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { WipeButton } from '@/components/ui/WipeButton';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
@@ -174,14 +173,14 @@ const SearchResultsList = ({
 
                   {/* Action Button */}
                   <div className="flex-shrink-0 w-full sm:w-auto">
-                    <Button 
-                      className="w-full sm:w-auto bg-lsb-primary hover:bg-lsb-primary/90 text-white text-sm"
+                    <WipeButton 
+                      className="w-full sm:w-auto text-sm"
                       onClick={() => handleResourceClick(result)}
                     >
                       {result.type === 'video' && 'Assistir'}
                       {result.type === 'podcast' && 'Ouvir'}
                       {result.type === 'titulo' && (result.documentType === 'Artigo' ? 'Ler' : 'Ler')}
-                    </Button>
+                    </WipeButton>
                   </div>
                 </div>
               </CardContent>

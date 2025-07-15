@@ -1,9 +1,8 @@
-
 import { useEffect } from 'react';
 import { Play, Book, Headphones, Clock, User, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { WipeButton } from '@/components/ui/WipeButton';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SearchResult } from '@/types/searchTypes';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
@@ -229,14 +228,14 @@ const SearchResultsGrid = ({
                       {result.subject}
                     </Badge>
 
-                    <Button 
-                      className="w-full mt-3 md:mt-4 bg-lsb-primary hover:bg-lsb-primary/90 text-white text-sm md:text-base py-2" 
+                    <WipeButton 
+                      className="w-full mt-3 md:mt-4 text-sm md:text-base py-2" 
                       onClick={() => handleResourceClick(result)}
                     >
                       {result.type === 'video' && 'Assistir Vídeo'}
                       {result.type === 'podcast' && 'Ouvir Podcast'}
                       {result.type === 'titulo' && (result.documentType === 'Artigo' ? 'Ler Artigo' : 'Ler Agora')}
-                    </Button>
+                    </WipeButton>
                   </div>
                 </div>
               </CardContent>

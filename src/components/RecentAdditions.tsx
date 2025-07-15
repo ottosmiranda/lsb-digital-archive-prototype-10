@@ -1,4 +1,3 @@
-
 import { Book, Video, Headphones, Calendar, Sparkles, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +9,7 @@ import RecentAdditionsSkeleton from '@/components/skeletons/RecentAdditionsSkele
 import ThumbnailPlaceholder from '@/components/ui/ThumbnailPlaceholder';
 import { shouldShowImage } from '@/utils/thumbnailUtils';
 import { useThumbnailFallback } from '@/hooks/useThumbnailFallback';
+import { WipeButton } from '@/components/ui/WipeButton';
 
 const getIcon = (type: string) => {
   switch (type) {
@@ -235,9 +235,9 @@ const RecentAdditions = () => {
 
               <div className="text-center mt-8 md:mt-12 px-4">
                 <Link to="/buscar?ordenar=recentes">
-                  <Button size="lg" variant="outline" className="border-lsb-primary text-lsb-primary hover:bg-lsb-primary hover:text-white">
+                  <WipeButton className="px-6 md:px-8 py-3 md:py-4">
                     Ver Todas as Novidades
-                  </Button>
+                  </WipeButton>
                 </Link>
               </div>
             </>

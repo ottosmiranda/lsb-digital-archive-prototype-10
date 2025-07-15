@@ -38,9 +38,9 @@ const PodcastDetailHero = ({
     <section className="relative mb-6 md:mb-8 px-4 md:px-0">
       {/* Mobile-first responsive layout */}
       <div className="flex flex-col space-y-6 md:space-y-0 md:flex-row md:gap-6 lg:gap-8 py-2 md:py-[7px]">
-        {/* Cover Image - Centered on mobile, left on desktop */}
+        {/* Cover Image - Full width on mobile, left on desktop */}
         <div className="flex justify-center md:justify-start flex-shrink-0">
-          <div className="w-40 h-40 sm:w-48 sm:h-48 md:w-60 md:h-60 relative overflow-hidden rounded-lg border shadow-md bg-gray-200">
+          <div className="w-full h-64 sm:w-48 sm:h-48 md:w-60 md:h-60 relative overflow-hidden rounded-lg border shadow-md bg-gray-200">
             {cover && (
               <img 
                 src={cover} 
@@ -96,10 +96,31 @@ const PodcastDetailHero = ({
               Ouça o episódio
             </Button>
           </div>
+
+          {/* Share Card - Moved below play button on mobile */}
+          <div className="mt-4 w-full md:hidden">
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-gray-700 text-center">
+                    Compartilhar
+                  </h3>
+                  <ShareButtons
+                    shareUrl={shareUrl}
+                    shareTitle={shareTitle}
+                    shareDescription={shareDescription}
+                    layout="horizontal"
+                    iconSize={32}
+                    showCopyButton={true}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        {/* Share Card - Full width on mobile, sidebar on desktop */}
-        <div className="w-full md:w-auto md:flex-shrink-0 order-first md:order-last">
+        {/* Share Card - Desktop only sidebar */}
+        <div className="hidden md:block w-auto flex-shrink-0">
           <Card>
             <CardContent className="p-4 space-y-3">
               <div className="space-y-2">

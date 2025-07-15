@@ -26,11 +26,11 @@ export const useSearchResults = () => {
   const resultsPerPage = 9;
   const [searchParams] = useSearchParams();
   
-  // ✅ CORREÇÃO: Debouncing otimizado e controle de race conditions
+  // ✅ NOVO: Controle melhorado de instância e race conditions
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const instanceId = useRef(`search_instance_${Date.now()}_${Math.random()}`);
-  const lastFilterTypeRef = useRef<string>('');
+  const lastSearchParamsRef = useRef<string>('');
+  const lastActiveFilterRef = useRef<string>('');
   
   const {
     query,
@@ -78,52 +78,49 @@ export const useSearchResults = () => {
     return checkHasActiveFilters(filters);
   }, [filters]);
 
-  // ✅ LÓGICA SIMPLIFICADA: Verificar se deve executar busca
+  // ✅ LÓGICA: Verificar se deve executar busca
   const shouldSearch = useMemo((): boolean => {
     const hasQuery = query.trim() !== '';
     const hasResourceTypeFilters = filters.resourceType.length > 0;
     const hasOtherFilters = hasActiveFilters;
-    
-    // ✅ NOVO: Verificar se há filtro "Todos"
     const hasAllFilter = filters.resourceType.includes('all');
     
-    console.log('🔍 Lógica shouldSearch com suporte ALL:', { 
+    const result = hasQuery || hasResourceTypeFilters || hasOtherFilters || hasAllFilter;
+    
+    console.log('🔍 shouldSearch logic:', { 
       hasQuery, 
       hasResourceTypeFilters, 
       hasOtherFilters,
       hasAllFilter,
       resourceType: filters.resourceType,
-      result: hasQuery || hasResourceTypeFilters || hasOtherFilters || hasAllFilter
+      result
     });
     
-    // Se há query, filtros específicos, ou filtro "Todos", executar busca
-    return hasQuery || hasResourceTypeFilters || hasOtherFilters || hasAllFilter;
+    return result;
   }, [query, filters.resourceType, hasActiveFilters]);
 
-  // ✅ NOVA IMPLEMENTAÇÃO: Busca com controle otimizado de race conditions
+  // ✅ CORREÇÃO: Busca com validação de consistência
   const performSearch = useCallback(async () => {
     const requestId = `search_${Date.now()}`;
     const currentFilterType = filters.resourceType[0] || 'none';
+    const currentSearchParams = searchParams.toString();
     
-    console.group(`🔍 ${requestId} - Nova Arquitetura de Busca [${instanceId.current}]`);
-    console.log('📋 Parâmetros:', { query, filters, sortBy, currentPage, shouldSearch, currentFilterType });
+    console.group(`🔍 ${requestId} - performSearch [${instanceId.current}]`);
+    console.log('📋 Parâmetros atuais:', { 
+      query, 
+      currentFilterType, 
+      currentPage, 
+      shouldSearch,
+      searchParams: currentSearchParams
+    });
     
-    // ✅ CORREÇÃO: Detectar mudança de tipo de filtro e invalidar cache específico
-    if (currentFilterType !== lastFilterTypeRef.current && lastFilterTypeRef.current !== '') {
-      console.log(`🔄 Mudança de filtro detectada: ${lastFilterTypeRef.current} → ${currentFilterType}`);
-      console.log('🗑️ Invalidando cache específico...');
-      // Note: clearCache() será chamado automaticamente pelo useApiSearch
+    // ✅ VALIDAÇÃO: Detectar mudança de filtro e invalidar cache específico
+    if (currentFilterType !== lastActiveFilterRef.current && lastActiveFilterRef.current !== '') {
+      console.log(`🔄 Mudança de filtro detectada: ${lastActiveFilterRef.current} → ${currentFilterType}`);
+      clearCache(); // Limpa todo o cache ao mudar tipo de filtro
     }
-    lastFilterTypeRef.current = currentFilterType;
-    
-    // ✅ CORREÇÃO: Cancelar busca anterior apenas se for do mesmo tipo de filtro
-    if (abortControllerRef.current) {
-      console.log('🛑 Cancelando busca anterior...');
-      abortControllerRef.current.abort();
-    }
-    
-    // Criar novo AbortController para esta busca
-    abortControllerRef.current = new AbortController();
+    lastActiveFilterRef.current = currentFilterType;
+    lastSearchParamsRef.current = currentSearchParams;
 
     // Se não deve buscar, limpar resultados
     if (!shouldSearch) {
@@ -148,21 +145,28 @@ export const useSearchResults = () => {
     }
 
     try {
-      console.log('🚀 Executando busca com paginação real via Nova API...');
-      
-      // ✅ CORREÇÃO: Verificar se a requisição foi cancelada
-      if (abortControllerRef.current?.signal.aborted) {
-        console.log('🛑 Busca cancelada antes da execução');
-        console.groupEnd();
-        return;
-      }
+      console.log('🚀 Executando busca com validação de consistência...');
       
       const response = await search(query, filters, sortBy, currentPage);
       
-      // Validação da resposta
+      // ✅ VALIDAÇÃO CRÍTICA: Verificar se resposta corresponde ao estado atual
+      const responseFilterType = response.searchInfo?.appliedFilters?.resourceType?.[0] || 'unknown';
+      const currentStateFilter = filters.resourceType[0] || 'none';
+      
+      if (responseFilterType !== 'unknown' && responseFilterType !== currentStateFilter) {
+        console.warn('⚠️ INCONSISTÊNCIA DETECTADA:', {
+          estadoAtual: currentStateFilter,
+          respostaRecebida: responseFilterType,
+          ignorandoResposta: true
+        });
+        console.groupEnd();
+        return; // Ignorar resposta inconsistente
+      }
+      
+      // Validação da estrutura da resposta
       if (!response.results || !Array.isArray(response.results)) {
-        console.error('❌ Resposta inválida da Nova API:', response);
-        throw new Error('Estrutura de resposta inválida da Nova API');
+        console.error('❌ Estrutura de resposta inválida:', response);
+        throw new Error('Estrutura de resposta inválida');
       }
       
       setSearchResponse({
@@ -174,15 +178,15 @@ export const useSearchResults = () => {
       setUsingFallback(!response.success);
 
       if (response.error) {
-        console.warn('⚠️ Nova API com erros:', response.error);
+        console.warn('⚠️ Busca com erros:', response.error);
       } else {
-        console.log('✅ Nova API bem-sucedida:', {
+        console.log('✅ Busca bem-sucedida:', {
           results: response.results.length,
           totalResults: response.pagination.totalResults,
           currentPage: response.pagination.currentPage,
           totalPages: response.pagination.totalPages,
           filterType: currentFilterType,
-          paginaçãoReal: '🎯 SIM'
+          consistente: responseFilterType === currentStateFilter
         });
         
         // Prefetch da próxima página se disponível
@@ -193,7 +197,14 @@ export const useSearchResults = () => {
       }
 
     } catch (err) {
-      console.error('❌ Nova API falhou:', err);
+      // ✅ TRATAMENTO: Ignorar erros de cancelamento
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('✅ Busca cancelada (ignorando)');
+        console.groupEnd();
+        return;
+      }
+      
+      console.error('❌ Busca falhou:', err);
       setUsingFallback(true);
       
       setSearchResponse({
@@ -214,22 +225,24 @@ export const useSearchResults = () => {
     }
     
     console.groupEnd();
-  }, [query, filters, sortBy, currentPage, shouldSearch, search, prefetchNextPage]);
+  }, [query, filters, sortBy, currentPage, shouldSearch, search, prefetchNextPage, clearCache, searchParams]);
 
-  // ✅ CORREÇÃO: Effect com debouncing otimizado para mudanças de filtro
+  // ✅ CORREÇÃO: Effect com debouncing otimizado
   useEffect(() => {
     // Limpar timeout anterior
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
     
-    // ✅ CORREÇÃO: Debouncing reduzido para 100ms em mudanças de filtro
+    // ✅ DEBOUNCING: Reduzido para 100ms em mudanças de filtro
     const currentFilterType = filters.resourceType[0] || 'none';
-    const isFilterChange = currentFilterType !== lastFilterTypeRef.current;
-    const debounceTime = isFilterChange ? 100 : 300; // Mudança de filtro mais rápida
+    const isFilterChange = currentFilterType !== lastActiveFilterRef.current;
+    const debounceTime = isFilterChange ? 100 : 300;
+    
+    console.log(`🎯 [${instanceId.current}] Agendando busca com debounce ${debounceTime}ms...`);
     
     searchTimeoutRef.current = setTimeout(() => {
-      console.log(`🎯 [${instanceId.current}] Executando busca após debouncing (${debounceTime}ms)...`);
+      console.log(`🎯 [${instanceId.current}] Executando busca após debouncing...`);
       performSearch();
     }, debounceTime);
     
@@ -243,7 +256,7 @@ export const useSearchResults = () => {
 
   // Handlers otimizados
   const handleFilterChange = useCallback((newFilters: SearchFilters, options?: { authorTyping?: boolean }) => {
-    console.log('🔄 Mudança de filtro (Nova API):', { newFilters, options });
+    console.log('🔄 handleFilterChange:', { newFilters, options });
     
     // ✅ CORREÇÃO: Detectar mudança de resourceType e resetar página
     const resourceTypeChanged = 
@@ -251,32 +264,32 @@ export const useSearchResults = () => {
       newFilters.resourceType.some((type, index) => type !== filters.resourceType[index]);
 
     if (resourceTypeChanged) {
-      console.log('🔄 ResourceType mudou, resetando página para 1 e limpando cache');
+      console.log('🔄 ResourceType mudou, resetando página e limpando cache');
       setCurrentPage(1);
-      clearCache(); // ✅ NOVO: Limpar cache em mudança de tipo
+      clearCache();
     }
     
     setFilters(newFilters);
     
     if (!options?.authorTyping && !resourceTypeChanged) {
-      setCurrentPage(1); // Reset para página 1 em nova busca (exceto mudança de tipo)
+      setCurrentPage(1); // Reset para página 1 em nova busca
     }
   }, [setFilters, setCurrentPage, filters.resourceType, clearCache]);
 
   const handleSortChange = useCallback((newSort: string) => {
-    console.log('📊 Mudança de ordenação (Nova API):', newSort);
+    console.log('📊 handleSortChange:', newSort);
     setSortBy(newSort);
-    setCurrentPage(1); // Reset para página 1
+    setCurrentPage(1);
   }, [setSortBy, setCurrentPage]);
 
   const handlePageChange = useCallback((page: number) => {
-    console.log('📄 Mudança de página (PAGINAÇÃO REAL):', page);
+    console.log('📄 handlePageChange:', page);
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [setCurrentPage]);
 
   const forceRefresh = useCallback(async () => {
-    console.log('🔄 Refresh forçado (Nova API) - limpando cache');
+    console.log('🔄 forceRefresh - limpando cache e re-executando');
     clearCache();
     await performSearch();
   }, [clearCache, performSearch]);

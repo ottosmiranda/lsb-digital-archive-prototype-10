@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { SearchFilters } from '@/types/searchTypes';
 import { SearchResponse, UseApiSearchProps } from './types';
 import { SearchCache } from './searchCache';
@@ -10,6 +10,9 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
   const [error, setError] = useState<string | null>(null);
   const [searchCache] = useState(() => new SearchCache());
   const [searchService] = useState(() => new SearchService());
+  
+  // ✅ NOVO: AbortController para cancelar requisições anteriores
+  const activeControllerRef = useRef<AbortController | null>(null);
 
   const search = useCallback(async (
     query: string,
@@ -17,41 +20,110 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
     sortBy: string,
     page: number = 1
   ): Promise<SearchResponse> => {
-    const cacheKey = searchCache.getCacheKey(query, filters, sortBy, page);
+    const requestId = `search_${Date.now()}_${Math.random()}`;
+    console.group(`🔍 ${requestId} - Nova Busca com AbortController`);
     
+    // ✅ CORREÇÃO 1: Cancelar requisição anterior para evitar race conditions
+    if (activeControllerRef.current) {
+      console.log('🛑 Cancelando requisição anterior para evitar race condition');
+      activeControllerRef.current.abort();
+    }
+
+    // Criar novo AbortController para esta requisição
+    const controller = new AbortController();
+    activeControllerRef.current = controller;
+
+    // ✅ CORREÇÃO 2: Cache key melhorada com tipo de filtro
+    const activeFilterType = filters.resourceType[0] || 'none';
+    const cacheKey = searchCache.getCacheKey(query, filters, sortBy, page, activeFilterType);
+    
+    console.log('📋 Parâmetros da busca:', { 
+      query, 
+      activeFilterType, 
+      filters: filters.resourceType, 
+      page, 
+      requestId 
+    });
+
     // Verificar cache válido
     if (searchCache.isValidCache(cacheKey)) {
       const cached = searchCache.getCache(cacheKey);
       if (cached) {
-        console.log('📦 Cache HIT:', { 
+        console.log('📦 Cache HIT para tipo:', activeFilterType, { 
           results: cached.results.length,
           totalResults: cached.pagination.totalResults 
         });
+        console.groupEnd();
         return cached;
       }
     }
 
-    console.log('🌐 Making API request to edge function...');
+    console.log('🌐 Fazendo requisição para filtro tipo:', activeFilterType);
     setLoading(true);
     setError(null);
 
     try {
+      // ✅ CORREÇÃO 3: Passar AbortController para o SearchService
       const response = await searchService.executeSearch(
         query,
         filters,
         sortBy,
         page,
-        resultsPerPage
+        resultsPerPage,
+        controller.signal
       );
 
+      // ✅ CORREÇÃO 4: Verificar se a requisição não foi cancelada antes de processar
+      if (controller.signal.aborted) {
+        console.log('🛑 Requisição foi cancelada, ignorando resposta');
+        console.groupEnd();
+        return {
+          success: false,
+          results: [],
+          pagination: {
+            currentPage: page,
+            totalPages: 0,
+            totalResults: 0,
+            hasNextPage: false,
+            hasPreviousPage: false
+          },
+          searchInfo: { query, appliedFilters: filters, sortBy },
+          error: 'Request cancelled'
+        };
+      }
+
+      // ✅ VALIDAÇÃO: Garantir que a resposta corresponde ao filtro ativo
+      const responseFilterType = response.searchInfo?.appliedFilters?.resourceType?.[0] || 'unknown';
+      if (responseFilterType !== 'unknown' && responseFilterType !== activeFilterType) {
+        console.warn('⚠️ INCONSISTÊNCIA: Resposta para filtro diferente!', {
+          esperado: activeFilterType,
+          recebido: responseFilterType
+        });
+      }
+
       searchCache.setCache(cacheKey, response);
+      
+      console.log('✅ Busca bem-sucedida para tipo:', activeFilterType, {
+        results: response.results.length,
+        totalResults: response.pagination.totalResults,
+        requestId
+      });
+      
+      console.groupEnd();
       return response;
 
     } catch (err) {
+      // ✅ CORREÇÃO 5: Tratar AbortError de forma especial
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('✅ Requisição cancelada com sucesso (AbortError)');
+        console.groupEnd();
+        throw err; // Re-throw para ser tratado pelo caller
+      }
+
       const errorMessage = err instanceof Error ? err.message : 'Search failed';
+      console.error('❌ Busca falhou para tipo:', activeFilterType, errorMessage);
       setError(errorMessage);
       
-      // Retornar resposta vazia em caso de erro
       const errorResponse: SearchResponse = {
         success: false,
         results: [],
@@ -70,6 +142,7 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
         error: errorMessage
       };
       
+      console.groupEnd();
       return errorResponse;
     } finally {
       setLoading(false);
@@ -87,12 +160,15 @@ export const useApiSearch = ({ resultsPerPage = 9 }: UseApiSearchProps = {}) => 
     currentPage: number
   ) => {
     const nextPage = currentPage + 1;
-    const cacheKey = searchCache.getCacheKey(query, filters, sortBy, nextPage);
+    const activeFilterType = filters.resourceType[0] || 'none';
+    const cacheKey = searchCache.getCacheKey(query, filters, sortBy, nextPage, activeFilterType);
     
     if (!searchCache.isValidCache(cacheKey)) {
-      console.log('🔮 Prefetching page:', nextPage);
+      console.log('🔮 Prefetching page:', nextPage, 'para tipo:', activeFilterType);
       search(query, filters, sortBy, nextPage).catch(err => {
-        console.warn('⚠️ Prefetch failed:', err);
+        if (err.name !== 'AbortError') {
+          console.warn('⚠️ Prefetch failed:', err);
+        }
       });
     }
   }, [search, searchCache]);

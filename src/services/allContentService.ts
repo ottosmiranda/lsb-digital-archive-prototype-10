@@ -12,10 +12,12 @@ export interface AllContentItem {
   id: string;
   type: string;
   titulo?: string;
+  title?: string; // ✅ Adicionado
   autor?: string;
   ano?: number;
   descricao?: string;
   imagem_url?: string;
+  thumbnail?: string; // ✅ Adicionado
   categorias?: string[];
   canal?: string;
   duracao?: number;

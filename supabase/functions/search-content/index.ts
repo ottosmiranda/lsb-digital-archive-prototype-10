@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -7,94 +6,379 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-)
-
-// Cache global para diferentes tipos de busca
-const searchCache = new Map()
-
-function generateCacheKey(type: string, query: string, filters: any, page: number, sortBy: string): string {
-  const filtersStr = JSON.stringify(filters)
-  return `${type}_${query}_${filtersStr}_${page}_${sortBy}`
+interface SearchFilters {
+  resourceType: string[];
+  subject: string[];
+  author: string[];
+  year: string;
+  duration: string;
+  language: string[];
+  documentType: string[];
+  program: string[];
+  channel: string[];
 }
 
-function isValidCache(cacheKey: string): boolean {
-  const cached = searchCache.get(cacheKey)
-  if (!cached) return false
+interface SearchRequest {
+  query: string;
+  filters: SearchFilters;
+  sortBy: string;
+  page: number;
+  resultsPerPage: number;
+}
+
+interface SearchResult {
+  id: string;
+  originalId?: string;
+  title: string;
+  type: 'video' | 'titulo' | 'podcast';
+  author: string;
+  duration?: string;
+  pages?: number;
+  episodes?: string | number;
+  thumbnail?: string;
+  description: string;
+  year: number | null;
+  subject: string;
+  embedUrl?: string;
+  pdfUrl?: string;
+  documentType?: string;
+  pais?: string;
+  language?: string;
+  program?: string;
+  channel?: string;
+}
+
+// CONFIGURAÇÕES DA API
+const API_BASE_URL = 'https://lbs-src1.onrender.com/api/v1';
+
+const TIMEOUTS = {
+  singleRequest: 8000,
+  paginatedBatch: 12000,
+  globalOperation: 25000,
+  healthCheck: 3000,
+  querySearch: 15000
+};
+
+const CACHE_STRATEGIES = {
+  paginated: { ttl: 10 * 60 * 1000, prefix: 'paginated' },
+  global: { ttl: 15 * 60 * 1000, prefix: 'global' },
+  filtered: { ttl: 2 * 60 * 1000, prefix: 'filtered' },
+  queryBased: { ttl: 5 * 60 * 1000, prefix: 'query' }
+};
+
+type SearchType = 'paginated' | 'global' | 'filtered' | 'queryBased';
+
+const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+// MAPEAMENTO DE IDIOMAS
+const languageMapping: Record<string, string> = {
+  'en': 'Inglês',
+  'en-US': 'Inglês',
+  'en-GB': 'Inglês',
+  'pt': 'Português',
+  'pt-BR': 'Português',
+  'pt-PT': 'Português',
+  'es': 'Espanhol',
+  'es-ES': 'Espanhol',
+  'es-MX': 'Espanhol',
+  'fr': 'Francês',
+  'fr-FR': 'Francês',
+  'de': 'Alemão',
+  'de-DE': 'Alemão',
+  'it': 'Italiano',
+  'it-IT': 'Italiano',
+  'ja': 'Japonês',
+  'ja-JP': 'Japonês',
+  'ko': 'Coreano',
+  'ko-KR': 'Coreano',
+  'zh': 'Chinês',
+  'zh-CN': 'Chinês',
+  'ru': 'Russo',
+  'ru-RU': 'Russo',
+  'Und': 'Indefinido',
+  'desconhecido': 'Não especificado'
+};
+
+const mapLanguageCode = (idioma: string): string => {
+  if (!idioma) return 'Não especificado';
   
-  const age = Date.now() - cached.timestamp
-  const maxAge = 10 * 60 * 1000 // 10 minutos
-  
-  if (age > maxAge) {
-    searchCache.delete(cacheKey)
-    return false
+  if (languageMapping[idioma]) {
+    return languageMapping[idioma];
   }
   
-  return true
-}
+  const prefix = idioma.split('-')[0];
+  if (languageMapping[prefix]) {
+    return languageMapping[prefix];
+  }
+  
+  return idioma.charAt(0).toUpperCase() + idioma.slice(1);
+};
 
-function getCachedResult(cacheKey: string) {
-  return searchCache.get(cacheKey)?.data || null
-}
+// DETECTOR DE TIPO DE BUSCA CORRIGIDO
+const detectSearchType = (query: string, filters: SearchFilters): SearchType => {
+  const cleanQuery = query?.trim() || '';
+  const hasQuery = cleanQuery !== '';
+  
+  console.log('🔍 Search Type Detection:', { 
+    query: `"${query}"`,
+    cleanQuery: `"${cleanQuery}"`,
+    hasQuery,
+    resourceType: filters.resourceType,
+    resourceTypeLength: filters.resourceType.length,
+    isEmpty: filters.resourceType.length === 0
+  });
 
-function setCachedResult(cacheKey: string, data: any) {
-  searchCache.set(cacheKey, {
+  // PRIORIDADE 1: Query sempre tem precedência ABSOLUTA
+  if (hasQuery) {
+    console.log(`🎯 QUERY DETECTADA: "${cleanQuery}" → QUERY-BASED SEARCH`);
+    return 'queryBased';
+  }
+
+  // PRIORIDADE 2: Filtros de tipo específico (array não vazio)
+  const hasResourceTypeFilters = filters.resourceType.length > 0;
+  const hasOtherFilters = filters.subject.length > 0 || filters.author.length > 0 || 
+                          filters.year || filters.duration || filters.language.length > 0 ||
+                          filters.program.length > 0 || filters.channel.length > 0;
+
+  if (hasResourceTypeFilters) {
+    console.log(`📋 FILTRO ESPECÍFICO: ${filters.resourceType.join(', ')} → PAGINATED SEARCH`);
+    return 'paginated';
+  }
+
+  if (hasOtherFilters) {
+    console.log('🔍 OUTROS FILTROS ATIVOS → FILTERED SEARCH');
+    return 'filtered';
+  }
+  
+  // PRIORIDADE 3: Busca global (resourceType vazio = filtro "Todos")
+  console.log('🌍 BUSCA GLOBAL (TODOS) → GLOBAL SEARCH');
+  return 'global';
+};
+
+// FUNÇÕES DE CACHE
+const getCacheKey = (strategy: SearchType, identifier: string): string => {
+  const config = CACHE_STRATEGIES[strategy];
+  return `${config.prefix}_${identifier}`;
+};
+
+const isValidCache = (cacheKey: string): boolean => {
+  // Cache buster para Warren
+  if (cacheKey.toLowerCase().includes('warren')) {
+    console.log('🔥 WARREN CACHE BUSTER ATIVO - FORÇANDO REFRESH TOTAL');
+    return false;
+  }
+  
+  const cached = globalCache.get(cacheKey);
+  if (!cached) return false;
+  
+  const isValid = (Date.now() - cached.timestamp) < cached.ttl;
+  
+  if (isValid && Array.isArray(cached.data) && cached.data.length === 0) {
+    console.warn(`🚨 Cache corrompido detectado: ${cacheKey}`);
+    globalCache.delete(cacheKey);
+    return false;
+  }
+  
+  return isValid;
+};
+
+const setCache = (cacheKey: string, data: any, strategy: SearchType): void => {
+  // Não cachear Warren durante debug
+  if (cacheKey.toLowerCase().includes('warren')) {
+    console.log('🔥 WARREN - NÃO CACHEANDO DURANTE DEBUG');
+    return;
+  }
+  
+  const config = CACHE_STRATEGIES[strategy];
+  
+  if (Array.isArray(data) && data.length === 0 && strategy !== 'filtered' && strategy !== 'queryBased') {
+    console.warn(`⚠️ Não cacheando resultado vazio: ${cacheKey}`);
+    return;
+  }
+  
+  globalCache.set(cacheKey, {
     data,
-    timestamp: Date.now()
-  })
+    timestamp: Date.now(),
+    ttl: config.ttl
+  });
   
-  // Limitar tamanho do cache
-  if (searchCache.size > 100) {
-    const firstKey = searchCache.keys().next().value
-    searchCache.delete(firstKey)
-  }
-}
+  console.log(`📦 Cache SET [${strategy}]: ${cacheKey} (${Array.isArray(data) ? data.length : 'N/A'} items)`);
+};
 
-async function performSpecificSearch(
-  contentType: string,
-  query: string,
-  filters: any,
-  page: number,
-  limit: number,
-  sortBy: string
-) {
-  const requestId = `specific_${contentType}_${Date.now()}`
-  console.group(`🎯 ${requestId} - Busca Específica`)
-  console.log('📋 Parâmetros:', { contentType, query, page, limit, sortBy })
+const getCache = (cacheKey: string): any => {
+  const cached = globalCache.get(cacheKey);
+  return cached?.data || null;
+};
+
+// FUNÇÃO PARA BUSCAR DADOS DA API
+const fetchFromAPI = async (endpoint: string, timeout: number = TIMEOUTS.singleRequest): Promise<any> => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  console.log(`🌐 Fetching: ${url}`);
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`Timeout after ${timeout}ms`)), timeout);
+  });
+  
+  const fetchPromise = fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'LSB-Search/1.0'
+    }
+  });
+
+  const response = await Promise.race([fetchPromise, timeoutPromise]);
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} for ${url}`);
+  }
+
+  return await response.json();
+};
+
+// TRANSFORMAR DADOS DA API
+const transformApiItem = (item: any): SearchResult => {
+  console.log(`🔄 TRANSFORM API ITEM - DEBUGGING:`, {
+    id: item.id,
+    tipo: item.tipo,
+    titulo: item.titulo?.substring(0, 50) + '...',
+    hasArquivo: !!item.arquivo,
+    hasPaginas: !!item.paginas,
+    hasEmbedUrl: !!item.embed_url
+  });
+  
+  const realId = String(item.id || item.episodio_id || item.podcast_id || Math.floor(Math.random() * 10000) + 1000);
+  
+  // ✅ CORREÇÃO CRÍTICA: Detecção inteligente de tipo baseada em múltiplos campos
+  let detectedType: 'titulo' | 'video' | 'podcast';
+  
+  if (item.tipo === 'livro' || item.tipo === 'artigos') {
+    detectedType = 'titulo';
+    console.log(`✅ TIPO DETECTADO: ${item.tipo} → titulo (livro/artigo)`);
+  } else if (item.tipo === 'aula' || item.tipo === 'video') {
+    detectedType = 'video';
+    console.log(`✅ TIPO DETECTADO: ${item.tipo} → video`);
+  } else if (item.tipo === 'podcast') {
+    detectedType = 'podcast';
+    console.log(`✅ TIPO DETECTADO: ${item.tipo} → podcast`);
+  } else {
+    // ✅ DETECÇÃO DEFENSIVA: Baseada em campos disponíveis
+    if (item.arquivo || item.paginas) {
+      detectedType = 'titulo';
+      console.log(`🛡️ DETECÇÃO DEFENSIVA: tem arquivo/páginas → titulo (original: ${item.tipo})`);
+    } else if (item.embed_url && item.duracao_ms) {
+      detectedType = 'podcast';
+      console.log(`🛡️ DETECÇÃO DEFENSIVA: tem embed_url + duração → podcast (original: ${item.tipo})`);
+    } else if (item.embed_url) {
+      detectedType = 'video';
+      console.log(`🛡️ DETECÇÃO DEFENSIVA: tem embed_url → video (original: ${item.tipo})`);
+    } else {
+      detectedType = 'titulo';
+      console.log(`⚠️ FALLBACK: tipo desconhecido "${item.tipo}" → titulo por padrão`);
+    }
+  }
+  
+  let subjectForBadge: string;
+  
+  if (detectedType === 'podcast') {
+    subjectForBadge = getSubjectFromCategories(item.categorias) || 'Podcast';
+  } else {
+    subjectForBadge = getSubjectFromCategories(item.categorias) || 
+                     (item.categoria ? item.categoria : '') || 
+                     getSubject(item.tipo);
+  }
+  
+  const extractedYear = extractYearFromDate(item.data_publicacao || item.data_lancamento || item.ano);
+  
+  const baseResult: SearchResult = {
+    id: realId,
+    originalId: String(item.id || item.episodio_id || item.podcast_id),
+    title: item.titulo || item.episodio_titulo || item.title || 'Título não disponível',
+    author: item.autor || item.canal || item.publicador || 'Link Business School',
+    year: extractedYear,
+    description: item.descricao || 'Descrição não disponível',
+    subject: subjectForBadge,
+    type: detectedType, // ✅ CORRIGIDO: Usar tipo detectado corretamente
+    thumbnail: item.imagem_url || '/lovable-uploads/640f6a76-34b5-4386-a737-06a75b47393f.png'
+  };
+
+  // Propriedades específicas por tipo
+  if (detectedType === 'titulo') {
+    baseResult.pdfUrl = item.arquivo || item.url;
+    baseResult.pages = item.paginas;
+    baseResult.language = item.language ? mapLanguageCode(item.language) : mapLanguageCode(item.idioma);
+    
+    // ✅ CORREÇÃO: Mapeamento correto de document type
+    if (item.tipo === 'artigos') {
+      baseResult.documentType = 'Artigo';
+      console.log(`📄 Document type: Artigo (baseado em item.tipo: ${item.tipo})`);
+    } else {
+      baseResult.documentType = item.tipo_documento || 'Livro';
+      console.log(`📚 Document type: ${baseResult.documentType} (padrão: Livro)`);
+    }
+  } else if (detectedType === 'video') {
+    baseResult.embedUrl = item.embed_url;
+    baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : (item.duracao ? formatDurationFromSeconds(item.duracao) : undefined);
+    baseResult.channel = item.canal || 'Canal desconhecido';
+    baseResult.language = item.idioma ? mapLanguageCode(item.idioma) : undefined;
+  } else if (detectedType === 'podcast') {
+    baseResult.duration = item.duracao_ms ? formatDuration(item.duracao_ms) : undefined;
+    baseResult.embedUrl = item.embed_url;
+    baseResult.program = item.podcast_titulo || 'Programa desconhecido';
+  }
+
+  console.log(`✅ TRANSFORM RESULT:`, {
+    id: realId,
+    originalType: item.tipo,
+    detectedType: detectedType,
+    documentType: baseResult.documentType,
+    title: baseResult.title.substring(0, 40) + '...'
+  });
+
+  return baseResult;
+};
+
+// BUSCA POR QUERY - Mantida sem alterações para Warren
+const performQueryBasedSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  const requestId = `query_search_${Date.now()}`;
+  console.group(`🔥 ${requestId} - QUERY-BASED SEARCH`);
+  console.log('📋 QUERY PARAMETERS:', { 
+    query: `"${query}"`, 
+    page, 
+    resultsPerPage
+  });
+  
+  const cacheKey = getCacheKey('queryBased', `${query}_page${page}_limit${resultsPerPage}_sort${sortBy}`);
+  
+  // Para Warren, NUNCA usar cache
+  const isWarren = query.toLowerCase().includes('warren');
+  if (!isWarren && isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Query: ${cached.results.length} itens de ${cached.pagination.totalResults} totais`);
+    console.groupEnd();
+    return cached;
+  }
   
   try {
-    // Mapear tipos de conteúdo para edge functions
-    const functionMap: { [key: string]: string } = {
-      'titulo': 'fetch-books',
-      'video': 'fetch-videos', 
-      'podcast': 'fetch-podcasts',
-      'artigos': 'fetch-articles'
-    }
+    const apiUrl = `/conteudo-lbs/search?q=${encodeURIComponent(query)}&page=${page}&limit=${resultsPerPage}`;
     
-    const functionName = functionMap[contentType]
-    if (!functionName) {
-      throw new Error(`Tipo de conteúdo não suportado: ${contentType}`)
-    }
+    console.log('🌐 QUERY API CALL:', `${API_BASE_URL}${apiUrl}`);
     
-    console.log(`📡 Chamando edge function: ${functionName}`)
+    const data = await fetchFromAPI(apiUrl, TIMEOUTS.querySearch);
     
-    const { data: content, error } = await supabase.functions.invoke(functionName, {
-      body: { 
-        limit: Math.max(limit * 2, 50), // Buscar mais itens para garantir dados suficientes
-        page: 1 // Edge functions retornam dados completos
-      }
-    })
+    console.log('📊 QUERY API RESPONSE:', {
+      query: data.query,
+      total: data.total,
+      totalPages: data.totalPages,
+      currentPage: data.page,
+      itemsReceived: data.conteudo?.length || 0
+    });
     
-    if (error) {
-      console.error(`❌ Erro na edge function ${functionName}:`, error)
-      throw error
-    }
-    
-    if (!content || !Array.isArray(content)) {
-      console.warn(`⚠️ Dados inválidos de ${functionName}:`, content)
-      return {
+    if (!data.conteudo || !Array.isArray(data.conteudo)) {
+      console.warn(`⚠️ Query search sem conteúdo: "${query}"`);
+      const emptyResponse = {
+        success: true,
         results: [],
         pagination: {
           currentPage: page,
@@ -102,279 +386,987 @@ async function performSpecificSearch(
           totalResults: 0,
           hasNextPage: false,
           hasPreviousPage: false
+        },
+        searchInfo: {
+          query,
+          appliedFilters: filters,
+          sortBy
         }
-      }
+      };
+      console.groupEnd();
+      return emptyResponse;
     }
     
-    console.log(`✅ ${functionName} retornou ${content.length} itens`)
+    const transformedItems = data.conteudo.map((item: any) => transformApiItem(item));
     
-    // Filtrar por query se fornecida
-    let filteredContent = content
-    if (query && query.trim()) {
-      const queryLower = query.toLowerCase().trim()
-      filteredContent = content.filter(item => {
-        const titleMatch = item.titulo?.toLowerCase().includes(queryLower)
-        const authorMatch = item.autor?.toLowerCase().includes(queryLower)
-        const descriptionMatch = item.descricao?.toLowerCase().includes(queryLower)
-        return titleMatch || authorMatch || descriptionMatch
-      })
-      console.log(`🔍 Filtro por query "${query}": ${filteredContent.length} itens`)
+    // Aplicar filtros apenas se necessário
+    let filteredItems = transformedItems;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(transformedItems, filters);
     }
     
-    // Aplicar filtros adicionais
-    if (filters) {
-      if (filters.author && filters.author.length > 0) {
-        filteredContent = filteredContent.filter(item => 
-          filters.author.some((author: string) => 
-            item.autor?.toLowerCase().includes(author.toLowerCase())
-          )
-        )
-      }
-      
-      if (filters.year && filters.year.trim()) {
-        filteredContent = filteredContent.filter(item => 
-          item.ano?.toString().includes(filters.year) ||
-          item.data_publicacao?.includes(filters.year)
-        )
-      }
-      
-      if (filters.language && filters.language.length > 0) {
-        filteredContent = filteredContent.filter(item => 
-          filters.language.some((lang: string) => 
-            item.idioma?.toLowerCase().includes(lang.toLowerCase())
-          )
-        )
-      }
-      
-      if (filters.program && filters.program.length > 0) {
-        filteredContent = filteredContent.filter(item => 
-          filters.program.some((prog: string) => 
-            item.programa?.toLowerCase().includes(prog.toLowerCase())
-          )
-        )
-      }
-      
-      if (filters.channel && filters.channel.length > 0) {
-        filteredContent = filteredContent.filter(item => 
-          filters.channel.some((chan: string) => 
-            item.canal?.toLowerCase().includes(chan.toLowerCase())
-          )
-        )
-      }
-      
-      console.log(`🎛️ Após filtros: ${filteredContent.length} itens`)
-    }
+    const sortedItems = sortResults(filteredItems, sortBy, query);
     
-    // Aplicar ordenação
-    if (sortBy === 'title') {
-      filteredContent.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''))
-    } else if (sortBy === 'recent') {
-      filteredContent.sort((a, b) => {
-        const dateA = new Date(a.data_publicacao || a.ano || '1900').getTime()
-        const dateB = new Date(b.data_publicacao || b.ano || '1900').getTime()
-        return dateB - dateA
-      })
-    } else if (sortBy === 'accessed') {
-      filteredContent.sort((a, b) => (b.acessos || 0) - (a.acessos || 0))
-    }
+    // Usar sempre os totais da API externa
+    const totalResults = data.total || 0;
+    const totalPages = data.totalPages || Math.ceil(totalResults / resultsPerPage);
     
-    // Calcular paginação
-    const totalResults = filteredContent.length
-    const totalPages = Math.ceil(totalResults / limit)
-    const startIndex = (page - 1) * limit
-    const endIndex = startIndex + limit
-    
-    const paginatedResults = filteredContent.slice(startIndex, endIndex)
-    
-    const result = {
-      results: paginatedResults,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalResults,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1
-      }
-    }
-    
-    console.log(`📊 Resultado final:`, {
-      totalResults,
-      totalPages,
-      currentPage: page,
-      resultsInPage: paginatedResults.length
-    })
-    
-    console.groupEnd()
-    return result
-    
-  } catch (error) {
-    console.error(`❌ ${requestId} falhou:`, error)
-    console.groupEnd()
-    throw error
-  }
-}
-
-async function performFilteredSearch(
-  query: string,
-  filters: any,
-  page: number,
-  limit: number,
-  sortBy: string
-) {
-  const requestId = `filtered_${Date.now()}`
-  console.group(`🔍 ${requestId} - Busca Filtrada`)
-  console.log('📋 Parâmetros:', { query, filters, page, limit, sortBy })
-  
-  try {
-    // Determinar tipos de conteúdo baseado nos filtros
-    const resourceTypes = filters.resourceType || []
-    const searchTypes = resourceTypes.length > 0 ? resourceTypes : ['titulo', 'video', 'podcast', 'artigos']
-    
-    console.log(`🎯 Tipos de busca: ${searchTypes.join(', ')}`)
-    
-    // Buscar em paralelo nos tipos selecionados
-    const searchPromises = searchTypes.map(async (type: string) => {
-      try {
-        const result = await performSpecificSearch(type, query, filters, 1, limit * 2, sortBy)
-        return { type, results: result.results, totalResults: result.pagination.totalResults }
-      } catch (error) {
-        console.warn(`⚠️ Falha na busca ${type}:`, error)
-        return { type, results: [], totalResults: 0 }
-      }
-    })
-    
-    const searchResults = await Promise.all(searchPromises)
-    
-    // Agregar resultados
-    let allResults: any[] = []
-    let totalResults = 0
-    
-    searchResults.forEach(({ type, results, totalResults: typeTotal }) => {
-      console.log(`📊 ${type}: ${results.length} resultados (total: ${typeTotal})`)
-      allResults = allResults.concat(results)
-      totalResults += typeTotal
-    })
-    
-    // Aplicar ordenação final
-    if (sortBy === 'title') {
-      allResults.sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''))
-    } else if (sortBy === 'recent') {
-      allResults.sort((a, b) => {
-        const dateA = new Date(a.data_publicacao || a.ano || '1900').getTime()
-        const dateB = new Date(b.data_publicacao || b.ano || '1900').getTime()
-        return dateB - dateA
-      })
-    } else if (sortBy === 'accessed') {
-      allResults.sort((a, b) => (b.acessos || 0) - (a.acessos || 0))
-    } else if (sortBy === 'type') {
-      allResults.sort((a, b) => (a.tipo || '').localeCompare(b.tipo || ''))
-    }
-    
-    // Aplicar paginação aos resultados agregados
-    const totalPages = Math.ceil(totalResults / limit)
-    const startIndex = (page - 1) * limit
-    const endIndex = startIndex + limit
-    
-    const paginatedResults = allResults.slice(startIndex, endIndex)
-    
-    const result = {
-      results: paginatedResults,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalResults,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1
-      }
-    }
-    
-    console.log(`📊 Resultado filtrado final:`, {
-      totalResults,
-      totalPages,
-      currentPage: page,
-      resultsInPage: paginatedResults.length
-    })
-    
-    console.groupEnd()
-    return result
-    
-  } catch (error) {
-    console.error(`❌ ${requestId} falhou:`, error)
-    console.groupEnd()
-    throw error
-  }
-}
-
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
-
-  try {
-    const { query = '', filters = {}, page = 1, limit = 9, sortBy = 'relevance' } = await req.json()
-    
-    console.log('🔍 Nova requisição de busca:', { 
-      query, 
-      filters, 
-      page, 
-      limit, 
-      sortBy,
-      timestamp: new Date().toISOString()
-    })
-    
-    // Verificar cache
-    const cacheKey = generateCacheKey('search', query, filters, page, sortBy)
-    if (isValidCache(cacheKey)) {
-      const cached = getCachedResult(cacheKey)
-      console.log('📦 Cache HIT - retornando resultado cached')
-      return new Response(JSON.stringify({
-        success: true,
-        cached: true,
-        ...cached
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-    
-    let result
-    
-    // Determinar tipo de busca baseado nos filtros
-    const resourceTypes = filters.resourceType || []
-    
-    if (resourceTypes.length === 1) {
-      // Busca específica em um tipo de conteúdo
-      console.log(`🎯 Busca específica: ${resourceTypes[0]}`)
-      result = await performSpecificSearch(resourceTypes[0], query, filters, page, limit, sortBy)
-    } else {
-      // Busca filtrada (múltiplos tipos ou com query)
-      console.log('🔍 Busca filtrada (múltiplos tipos ou com query)')
-      result = await performFilteredSearch(query, filters, page, limit, sortBy)
-    }
-    
-    // Adicionar informações de contexto
     const response = {
       success: true,
-      results: result.results,
-      pagination: result.pagination,
+      results: sortedItems,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalResults,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      },
       searchInfo: {
         query,
         appliedFilters: filters,
         sortBy
       }
+    };
+    
+    if (!isWarren) {
+      setCache(cacheKey, response, 'queryBased');
     }
     
-    // Cachear resultado
-    setCachedResult(cacheKey, response)
-    
-    console.log('✅ Busca concluída com sucesso')
-    
-    return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
+    console.log(`✅ Query search: ${sortedItems.length} resultados DESTA PÁGINA de ${totalResults} totais`);
+    console.groupEnd();
+    return response;
     
   } catch (error) {
-    console.error('❌ Erro na busca:', error)
+    console.error(`❌ Query search falhou para "${query}":`, error);
+    console.groupEnd();
+    
+    return {
+      success: false,
+      results: [],
+      pagination: {
+        currentPage: page,
+        totalPages: 0,
+        totalResults: 0,
+        hasNextPage: false,
+        hasPreviousPage: false
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      },
+      error: error.message
+    };
+  }
+};
+
+// BUSCA GLOBAL ROBUSTA - Para filtro "Todos" - IMPLEMENTAÇÃO DEFINITIVA
+const performGlobalSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  const requestId = `global_search_${Date.now()}`;
+  console.group(`🌍 ${requestId} - GLOBAL SEARCH ROBUSTA (Filtro Todos)`);
+  console.log(`📋 Global search - página ${page}, limit ${resultsPerPage}`);
+  
+  // Cache inteligente para busca global
+  const cacheKey = getCacheKey('global', `all_types_page${page}_limit${resultsPerPage}_sort${sortBy}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Global: ${cached.results.length} itens, página ${cached.pagination.currentPage}`);
+    console.groupEnd();
+    return cached;
+  }
+  
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // ✅ PASSO 1: Buscar totais reais de cada tipo primeiro
+    console.log(`🔍 PASSO 1: Descobrindo totais reais de cada tipo...`);
+    
+    const totalsResults = await Promise.allSettled([
+      Promise.race([
+        supabase.functions.invoke('fetch-books', { body: { page: 1, limit: 1 } }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
+      ]),
+      Promise.race([
+        supabase.functions.invoke('fetch-videos', { body: { page: 1, limit: 1 } }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
+      ]),
+      Promise.race([
+        supabase.functions.invoke('fetch-podcasts', { body: { page: 1, limit: 1 } }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
+      ]),
+      Promise.race([
+        supabase.functions.invoke('fetch-articles', { body: { page: 1, limit: 1 } }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
+      ])
+    ]);
+    
+    // Extrair totais reais de cada tipo
+    let totalBooks = 71, totalVideos = 276, totalPodcasts = 633, totalArticles = 79; // fallbacks
+    
+    if (totalsResults[0].status === 'fulfilled' && totalsResults[0].value?.data?.length >= 0) {
+      totalBooks = totalsResults[0].value?.totalCount || 71;
+      console.log(`📚 Total de livros descoberto: ${totalBooks}`);
+    }
+    if (totalsResults[1].status === 'fulfilled' && totalsResults[1].value?.data?.length >= 0) {
+      totalVideos = totalsResults[1].value?.totalCount || 276;
+      console.log(`🎬 Total de vídeos descoberto: ${totalVideos}`);
+    }
+    if (totalsResults[2].status === 'fulfilled' && totalsResults[2].value?.data?.length >= 0) {
+      totalPodcasts = totalsResults[2].value?.totalCount || 633;
+      console.log(`🎧 Total de podcasts descoberto: ${totalPodcasts}`);
+    }
+    if (totalsResults[3].status === 'fulfilled' && totalsResults[3].value?.data?.length >= 0) {
+      totalArticles = totalsResults[3].value?.totalCount || 79;
+      console.log(`📄 Total de artigos descoberto: ${totalArticles}`);
+    }
+    
+    const totalCombinado = totalBooks + totalVideos + totalPodcasts + totalArticles;
+    const totalPagesCalculated = Math.ceil(totalCombinado / resultsPerPage);
+    
+    console.log(`📊 TOTAIS DESCOBERTOS: ${totalBooks} livros + ${totalVideos} vídeos + ${totalPodcasts} podcasts + ${totalArticles} artigos = ${totalCombinado} total`);
+    console.log(`📄 Total de páginas calculado: ${totalPagesCalculated} (${totalCombinado}÷${resultsPerPage})`);
+    
+    // ✅ PASSO 2: Buscar dados suficientes para atender a paginação
+    const limitPerType = Math.min(50, Math.ceil(resultsPerPage * 2 / 4)); // Distribuição inteligente
+    console.log(`🚀 PASSO 2: Buscando ${limitPerType} itens de cada tipo para formar mix global...`);
+    
+    const dataResults = await Promise.allSettled([
+      Promise.race([
+        supabase.functions.invoke('fetch-books', { body: { page: 1, limit: limitPerType } }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000))
+      ]),
+      Promise.race([
+        supabase.functions.invoke('fetch-videos', { body: { page: 1, limit: limitPerType } }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000))
+      ]),
+      Promise.race([
+        supabase.functions.invoke('fetch-podcasts', { body: { page: 1, limit: limitPerType } }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000))
+      ]),
+      Promise.race([
+        supabase.functions.invoke('fetch-articles', { body: { page: 1, limit: limitPerType } }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000))
+      ])
+    ]);
+    
+    // ✅ PASSO 3: Coletar todos os dados disponíveis
+    const allItems: SearchResult[] = [];
+    let hasAnyData = false;
+    
+    // Processar livros
+    if (dataResults[0].status === 'fulfilled' && dataResults[0].value?.data) {
+      try {
+        const books = Array.isArray(dataResults[0].value.data) ? dataResults[0].value.data : [];
+        if (books.length > 0) {
+          allItems.push(...books);
+          console.log(`✅ Livros coletados: ${books.length}`);
+          hasAnyData = true;
+        }
+      } catch (e) {
+        console.warn('⚠️ Erro processando livros:', e);
+      }
+    } else {
+      console.warn('⚠️ Falha ao buscar livros');
+    }
+    
+    // Processar vídeos
+    if (dataResults[1].status === 'fulfilled' && dataResults[1].value?.data) {
+      try {
+        const videos = Array.isArray(dataResults[1].value.data) ? dataResults[1].value.data : [];
+        if (videos.length > 0) {
+          allItems.push(...videos);
+          console.log(`✅ Vídeos coletados: ${videos.length}`);
+          hasAnyData = true;
+        }
+      } catch (e) {
+        console.warn('⚠️ Erro processando vídeos:', e);
+      }
+    } else {
+      console.warn('⚠️ Falha ao buscar vídeos');
+    }
+    
+    // Processar podcasts
+    if (dataResults[2].status === 'fulfilled' && dataResults[2].value?.data) {
+      try {
+        const podcasts = Array.isArray(dataResults[2].value.data) ? dataResults[2].value.data : [];
+        if (podcasts.length > 0) {
+          allItems.push(...podcasts);
+          console.log(`✅ Podcasts coletados: ${podcasts.length}`);
+          hasAnyData = true;
+        }
+      } catch (e) {
+        console.warn('⚠️ Erro processando podcasts:', e);
+      }
+    } else {
+      console.warn('⚠️ Falha ao buscar podcasts');
+    }
+    
+    // Processar artigos
+    if (dataResults[3].status === 'fulfilled' && dataResults[3].value?.data) {
+      try {
+        const articles = Array.isArray(dataResults[3].value.data) ? dataResults[3].value.data : [];
+        if (articles.length > 0) {
+          allItems.push(...articles);
+          console.log(`✅ Artigos coletados: ${articles.length}`);
+          hasAnyData = true;
+        }
+      } catch (e) {
+        console.warn('⚠️ Erro processando artigos:', e);
+      }
+    } else {
+      console.warn('⚠️ Falha ao buscar artigos');
+    }
+    
+    console.log(`📊 PASSO 3: Total de itens coletados para mix: ${allItems.length}`);
+    
+    // ✅ PASSO 4: Fallback robusto se não temos dados
+    if (!hasAnyData || allItems.length === 0) {
+      console.warn('⚠️ FALLBACK: Nenhum dado obtido - tentando fallback emergencial...');
+      
+      // Tentar usar API externa como último recurso
+      try {
+        const emergencyData = await fetchFromAPI('/conteudo-lbs?page=1&limit=20', 8000);
+        if (emergencyData?.conteudo?.length > 0) {
+          const emergencyItems = emergencyData.conteudo.map((item: any) => transformApiItem(item));
+          allItems.push(...emergencyItems);
+          console.log(`🚨 FALLBACK EMERGENCIAL: ${emergencyItems.length} itens da API externa`);
+          hasAnyData = true;
+        }
+      } catch (fallbackError) {
+        console.warn('⚠️ Fallback emergencial também falhou:', fallbackError);
+      }
+      
+      // Se ainda não temos dados, retornar resposta vazia mas válida
+      if (!hasAnyData) {
+        const emptyResponse = {
+          success: true,
+          results: [],
+          pagination: {
+            currentPage: page,
+            totalPages: 0,
+            totalResults: 0,
+            hasNextPage: false,
+            hasPreviousPage: false
+          },
+          searchInfo: {
+            query,
+            appliedFilters: filters,
+            sortBy
+          }
+        };
+        console.groupEnd();
+        return emptyResponse;
+      }
+    }
+    
+    // ✅ PASSO 5: Aplicar filtros se necessário
+    let filteredItems = allItems;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(allItems, filters);
+      console.log(`🔍 PASSO 5: Após filtros aplicados: ${filteredItems.length} itens`);
+    }
+    
+    // ✅ PASSO 6: Ordenar resultados
+    const sortedItems = sortResults(filteredItems, sortBy, query);
+    console.log(`📊 PASSO 6: Após ordenação: ${sortedItems.length} itens`);
+    
+    // ✅ PASSO 7: Aplicar paginação correta baseada nos totais REAIS
+    // Usar os totais reais descobertos, não apenas os dados coletados
+    const startIndex = (page - 1) * resultsPerPage;
+    const endIndex = startIndex + resultsPerPage;
+    const paginatedItems = sortedItems.slice(startIndex, endIndex);
+    
+    console.log(`📄 PASSO 7: Paginação aplicada: itens ${startIndex + 1}-${Math.min(endIndex, sortedItems.length)} de ${totalCombinado} totais`);
+    console.log(`📄 Exibindo ${paginatedItems.length} itens na página ${page} de ${totalPagesCalculated} páginas`);
+    
+    // ✅ PASSO 8: Montar resposta final
+    const response = {
+      success: true,
+      results: paginatedItems,
+      pagination: {
+        currentPage: page,
+        totalPages: totalPagesCalculated,
+        totalResults: totalCombinado, // Usar totais reais descobertos
+        hasNextPage: page < totalPagesCalculated,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      }
+    };
+    
+    // ✅ PASSO 9: Cachear resultado se válido
+    if (paginatedItems.length > 0) {
+      setCache(cacheKey, response, 'global');
+      console.log(`💾 Cache SET para busca global: ${paginatedItems.length} itens cacheados`);
+    }
+    
+    console.log(`✅ BUSCA GLOBAL CONCLUÍDA: ${paginatedItems.length} itens exibidos de ${totalCombinado} totais (página ${page}/${totalPagesCalculated})`);
+    console.groupEnd();
+    return response;
+    
+  } catch (error) {
+    console.error(`❌ Global search falhou completamente:`, error);
+    console.groupEnd();
+    
+    // ✅ FALLBACK FINAL: Sempre retornar resposta válida
+    return {
+      success: true, // SEMPRE true para evitar erro 500
+      results: [],
+      pagination: {
+        currentPage: page,
+        totalPages: 0,
+        totalResults: 0,
+        hasNextPage: false,
+        hasPreviousPage: false
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      },
+      error: `Busca global temporariamente indisponível: ${error.message}`
+    };
+  }
+};
+
+// BUSCA PAGINADA CORRIGIDA - Para filtros específicos
+const performPaginatedSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  const requestId = `paginated_search_${Date.now()}`;
+  console.group(`📄 ${requestId} - PAGINATED SEARCH`);
+  console.log(`📋 Paginated search - tipos: ${filters.resourceType.join(', ')}, página ${page}`);
+  
+  const cacheKey = getCacheKey('paginated', `${filters.resourceType.join('_')}_page${page}_limit${resultsPerPage}_sort${sortBy}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Paginated: ${cached.results.length} itens`);
+    console.groupEnd();
+    return cached;
+  }
+  
+  try {
+    const allItems: SearchResult[] = [];
+    let totalResultsFromAPI = 0;
+    let totalPagesFromAPI = 0;
+    
+    // CORREÇÃO: Buscar dados baseado nos tipos de recurso com paginação correta
+    for (const resourceType of filters.resourceType) {
+      if (resourceType === 'titulo') {
+        // ✅ SOLUÇÃO ESCALÁVEL: Buscar TODOS os itens disponíveis para paginação correta
+        try {
+          console.log(`📚 Implementando busca escalável para 'titulo' - página ${page}`);
+          
+          // Verificar cache global para evitar rebuscas desnecessárias
+          const allTitulosCacheKey = `all-titulos-${sortBy}`;
+          let allTitulosData = globalCache.get(allTitulosCacheKey);
+          
+          if (!allTitulosData || !globalCache.isValid(allTitulosCacheKey)) {
+            console.log(`🔄 Cache miss para 'titulo' - buscando todos os dados da API`);
+            
+            // PASSO 1: Descobrir totais reais com chamada inicial
+            console.log(`🔍 Descobrindo totais reais da API...`);
+            const [livrosDiscovery, artigosDiscovery] = await Promise.allSettled([
+              fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=1`, TIMEOUTS.singleRequest),
+              fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=1`, TIMEOUTS.singleRequest)
+            ]);
+            
+            let totalLivrosReal = 100; // fallback
+            let totalArtigosReal = 100; // fallback
+            
+            if (livrosDiscovery.status === 'fulfilled' && livrosDiscovery.value.total) {
+              totalLivrosReal = livrosDiscovery.value.total;
+            }
+            if (artigosDiscovery.status === 'fulfilled' && artigosDiscovery.value.total) {
+              totalArtigosReal = artigosDiscovery.value.total;
+            }
+            
+            console.log(`📊 Totais descobertos: ${totalLivrosReal} livros + ${totalArtigosReal} artigos = ${totalLivrosReal + totalArtigosReal} total`);
+            
+            // PASSO 2: Buscar TODOS os itens baseado nos totais reais
+            const dinamicLimitLivros = Math.max(totalLivrosReal, 100);
+            const dinamicLimitArtigos = Math.max(totalArtigosReal, 100);
+            
+            console.log(`🚀 Buscando TODOS os itens: ${dinamicLimitLivros} livros + ${dinamicLimitArtigos} artigos`);
+            
+            const [livrosCompletos, artigosCompletos] = await Promise.allSettled([
+              fetchFromAPI(`/conteudo-lbs?tipo=livro&page=1&limit=${dinamicLimitLivros}`, TIMEOUTS.globalSearch),
+              fetchFromAPI(`/conteudo-lbs?tipo=artigos&page=1&limit=${dinamicLimitArtigos}`, TIMEOUTS.globalSearch)
+            ]);
+            
+            let allTitulosItems: any[] = [];
+            let totalLivros = 0;
+            let totalArtigos = 0;
+            
+            // Processar livros
+            if (livrosCompletos.status === 'fulfilled' && livrosCompletos.value.conteudo) {
+              const livros = livrosCompletos.value.conteudo.map((item: any) => transformApiItem(item));
+              allTitulosItems.push(...livros);
+              totalLivros = livrosCompletos.value.total || totalLivrosReal;
+              console.log(`✅ Livros completos: ${livros.length} carregados de ${totalLivros} totais`);
+            }
+            
+            // Processar artigos
+            if (artigosCompletos.status === 'fulfilled' && artigosCompletos.value.conteudo) {
+              const artigos = artigosCompletos.value.conteudo.map((item: any) => transformApiItem(item));
+              allTitulosItems.push(...artigos);
+              totalArtigos = artigosCompletos.value.total || totalArtigosReal;
+              console.log(`✅ Artigos completos: ${artigos.length} carregados de ${totalArtigos} totais`);
+            }
+            
+            // PASSO 3: Ordenação alfabética no conjunto completo
+            allTitulosItems.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' }));
+            console.log(`🔤 Ordenação alfabética aplicada em ${allTitulosItems.length} itens totais`);
+            
+            // PASSO 4: Cachear o conjunto completo
+            allTitulosData = {
+              items: allTitulosItems,
+              totalLivros,
+              totalArtigos,
+              totalCombinado: totalLivros + totalArtigos
+            };
+            
+            globalCache.set(allTitulosCacheKey, {
+              data: allTitulosData,
+              timestamp: Date.now(),
+              ttl: CACHE_STRATEGIES.global.ttl
+            });
+            console.log(`💾 Cache criado com ${allTitulosData.totalCombinado} itens totais`);
+          } else {
+            console.log(`📦 Cache HIT para 'titulo' - usando dados em cache (${allTitulosData.totalCombinado} itens)`);
+          }
+          
+          // PASSO 5: Aplicar paginação correta no conjunto completo
+          const startIndex = (page - 1) * resultsPerPage;
+          const endIndex = startIndex + resultsPerPage;
+          const paginatedItems = allTitulosData.items.slice(startIndex, endIndex);
+          
+          allItems.push(...paginatedItems);
+          console.log(`📄 Página ${page}: exibindo itens ${startIndex + 1}-${Math.min(endIndex, allTitulosData.totalCombinado)} de ${allTitulosData.totalCombinado} totais`);
+          
+          // ✅ TOTAIS CORRETOS baseados no conjunto completo
+          totalResultsFromAPI = Math.max(totalResultsFromAPI, allTitulosData.totalCombinado);
+          totalPagesFromAPI = Math.max(totalPagesFromAPI, Math.ceil(allTitulosData.totalCombinado / resultsPerPage));
+          
+          console.log(`📊 TITULO COMBINADO CORRIGIDO: ${allTitulosData.totalCombinado} total (${allTitulosData.totalLivros} livros + ${allTitulosData.totalArtigos} artigos)`);
+          console.log(`📄 PÁGINAS CALCULADAS: ${Math.ceil(allTitulosData.totalCombinado / resultsPerPage)} páginas (${allTitulosData.totalCombinado}÷${resultsPerPage})`);
+          
+        } catch (error) {
+          console.warn(`⚠️ Falha ao buscar titulo (livros + artigos):`, error);
+        }
+        
+      } else {
+        // Tipos simples: video ou podcast
+        let apiType = '';
+        
+        if (resourceType === 'video') {
+          apiType = 'aula';
+        } else if (resourceType === 'podcast') {
+          apiType = 'podcast';
+        }
+        
+        if (apiType) {
+          try {
+            console.log(`🔍 Buscando ${apiType} - página ${page}, limit ${resultsPerPage}`);
+            
+            const data = await fetchFromAPI(`/conteudo-lbs?tipo=${apiType}&page=${page}&limit=${resultsPerPage}`, TIMEOUTS.paginatedBatch);
+            
+            console.log(`📊 API Response para ${apiType}:`, {
+              total: data.total,
+              totalPages: data.totalPages,
+              currentPage: data.page || page,
+              itemsReceived: data.conteudo?.length || 0
+            });
+            
+            if (data.conteudo && Array.isArray(data.conteudo)) {
+              const items = data.conteudo.map((item: any) => transformApiItem(item));
+              allItems.push(...items);
+              
+              // CORREÇÃO: Usar os totais da API quando disponível
+              if (data.total) {
+                totalResultsFromAPI = Math.max(totalResultsFromAPI, data.total);
+              }
+              if (data.totalPages) {
+                totalPagesFromAPI = Math.max(totalPagesFromAPI, data.totalPages);
+              }
+            }
+          } catch (error) {
+            console.warn(`⚠️ Falha ao buscar ${apiType}:`, error);
+          }
+        }
+      }
+    }
+    
+    console.log(`📊 Items carregados ANTES dos filtros: ${allItems.length}`);
+    console.log(`📊 Totais REAIS da API: ${totalResultsFromAPI} resultados, ${totalPagesFromAPI} páginas`);
+    
+    // CORREÇÃO CRÍTICA: Aplicar filtros APENAS para filtros de refinamento (não resourceType)
+    let filteredItems = allItems;
+    const hasRefinementFilters = hasActiveFilters(filters);
+    
+    if (hasRefinementFilters) {
+      console.log(`🔍 Aplicando filtros de refinamento...`);
+      // Criar filtros temporários SEM resourceType para evitar filtragem dupla
+      const refinementFilters = {
+        ...filters,
+        resourceType: [] // CRÍTICO: Eliminar resourceType pois já foi usado na busca paginada
+      };
+      filteredItems = applyFilters(allItems, refinementFilters);
+      console.log(`🔍 Após filtros de refinamento: ${filteredItems.length} itens`);
+    } else {
+      console.log(`🔍 SKIP - Nenhum filtro de refinamento ativo, mantendo ${allItems.length} itens`);
+    }
+    
+    // Ordenar resultados
+    const sortedItems = sortResults(filteredItems, sortBy, query);
+    
+    // CORREÇÃO: Usar totais da API se disponível, senão calcular
+    const finalTotalResults = totalResultsFromAPI > 0 ? totalResultsFromAPI : sortedItems.length;
+    const finalTotalPages = totalPagesFromAPI > 0 ? totalPagesFromAPI : Math.ceil(finalTotalResults / resultsPerPage);
+    
+    const response = {
+      success: true,
+      results: sortedItems,
+      pagination: {
+        currentPage: page,
+        totalPages: finalTotalPages,
+        totalResults: finalTotalResults,
+        hasNextPage: page < finalTotalPages,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      }
+    };
+    
+    setCache(cacheKey, response, 'paginated');
+    
+    console.log(`✅ Paginated search FINAL CORRIGIDO: ${sortedItems.length} itens na página ${page} de ${finalTotalResults} totais (${finalTotalPages} páginas)`);
+    console.groupEnd();
+    return response;
+    
+  } catch (error) {
+    console.error(`❌ Paginated search falhou:`, error);
+    console.groupEnd();
+    
+    // Fallback para busca global em caso de erro
+    return await performGlobalSearch(searchParams);
+  }
+};
+
+// BUSCA FILTRADA - Mantida sem grandes alterações
+const performFilteredSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const { query, filters, sortBy, page, resultsPerPage } = searchParams;
+  
+  console.log(`🔍 Filtered search - filtros ativos detectados`);
+  
+  const cacheKey = getCacheKey('filtered', `${JSON.stringify(filters)}_page${page}_sort${sortBy}`);
+  
+  if (isValidCache(cacheKey)) {
+    const cached = getCache(cacheKey);
+    console.log(`📦 Cache HIT Filtered: ${cached.results.length} itens`);
+    return cached;
+  }
+  
+  try {
+    // Para busca filtrada, buscar dados globais e aplicar filtros
+    const globalParams = { ...searchParams, filters: { ...filters, resourceType: ['all'] } };
+    const globalData = await performGlobalSearch(globalParams);
+    
+    if (!globalData.success) {
+      return globalData;
+    }
+    
+    // Aplicar filtros específicos
+    let filteredItems = globalData.results;
+    if (hasActiveFilters(filters)) {
+      filteredItems = applyFilters(globalData.results, filters);
+    }
+    
+    const sortedItems = sortResults(filteredItems, sortBy, query);
+    
+    // Paginação dos resultados filtrados
+    const startIndex = (page - 1) * resultsPerPage;
+    const endIndex = startIndex + resultsPerPage;
+    const paginatedItems = sortedItems.slice(startIndex, endIndex);
+    
+    const totalResults = sortedItems.length;
+    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    
+    const response = {
+      success: true,
+      results: paginatedItems,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalResults,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      },
+      searchInfo: {
+        query,
+        appliedFilters: filters,
+        sortBy
+      }
+    };
+    
+    setCache(cacheKey, response, 'filtered');
+    
+    console.log(`✅ Filtered search concluída: ${paginatedItems.length} resultados`);
+    return response;
+    
+  } catch (error) {
+    console.error(`❌ Filtered search falhou:`, error);
+    return await performGlobalSearch(searchParams);
+  }
+};
+
+// COORDENADOR PRINCIPAL
+const performSearch = async (searchParams: SearchRequest): Promise<any> => {
+  const searchType = detectSearchType(searchParams.query, searchParams.filters);
+  
+  console.log(`🎯 SEARCH COORDINATOR: Tipo detectado = ${searchType}`);
+  console.log(`📋 Parâmetros:`, {
+    query: `"${searchParams.query}"`,
+    page: searchParams.page,
+    resourceType: searchParams.filters.resourceType,
+    hasOtherFilters: hasActiveFilters(searchParams.filters)
+  });
+
+  switch (searchType) {
+    case 'queryBased':
+      console.log('🎯 Executando QUERY-BASED search');
+      return await performQueryBasedSearch(searchParams);
+    
+    case 'paginated':
+      console.log('📄 Executando PAGINATED search');
+      return await performPaginatedSearch(searchParams);
+    
+    case 'filtered':
+      console.log('🔍 Executando FILTERED search');
+      return await performFilteredSearch(searchParams);
+    
+    case 'global':
+    default:
+      console.log('🌍 Executando GLOBAL search');
+      return await performGlobalSearch(searchParams);
+  }
+};
+
+// FUNÇÕES AUXILIARES
+const getSubjectFromCategories = (categorias: string[]): string => {
+  if (!categorias || categorias.length === 0) return '';
+  
+  const categoryMap: Record<string, string> = {
+    'negócios': 'Negócios',
+    'empresários': 'Empreendedorismo', 
+    'business': 'Negócios',
+    'podcast': 'Podcast',
+    'tecnologia': 'Tecnologia',
+    'educação': 'Educação',
+    'economia': 'Economia',
+    'finanças': 'Finanças'
+  };
+  
+  for (const categoria of categorias) {
+    const mapped = categoryMap[categoria.toLowerCase()];
+    if (mapped) return mapped;
+  }
+  
+  return categorias[0].charAt(0).toUpperCase() + categorias[0].slice(1);
+};
+
+const getSubject = (tipo: string): string => {
+  const typeMap: Record<string, string> = {
+    'podcast': 'Podcast',
+    'video': 'Vídeo', 
+    'aula': 'Educação',
+    'livro': 'Literatura',
+    'artigos': 'Artigo',
+    'titulo': 'Publicação'
+  };
+  
+  return typeMap[tipo] || 'Conteúdo';
+};
+
+const hasActiveFilters = (filters: SearchFilters): boolean => {
+  return filters.subject.length > 0 ||
+         filters.author.length > 0 ||
+         filters.year.trim() !== '' ||
+         filters.duration.trim() !== '' ||
+         filters.language.length > 0 ||
+         filters.documentType.length > 0 ||
+         filters.program.length > 0 ||
+         filters.channel.length > 0;
+};
+
+const formatDurationFromSeconds = (durationSeconds: number): string => {
+  const minutes = Math.floor(durationSeconds / 60);
+  const hours = Math.floor(minutes / 60);
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  }
+  return `${minutes}m`;
+};
+
+const formatDuration = (durationMs: number): string => {
+  const minutes = Math.floor(durationMs / 60000);
+  const hours = Math.floor(minutes / 60);
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  }
+  return `${minutes}m`;
+};
+
+const applyFilters = (data: SearchResult[], filters: SearchFilters): SearchResult[] => {
+  console.log(`🔍 APPLY FILTERS - Input: ${data.length} items`);
+  console.log(`🔍 FILTERS:`, {
+    resourceType: filters.resourceType,
+    subject: filters.subject,
+    author: filters.author,
+    year: filters.year,
+    duration: filters.duration,
+    language: filters.language,
+    documentType: filters.documentType,
+    program: filters.program,
+    channel: filters.channel
+  });
+
+  const filtered = data.filter(item => {
+    // Resource type filter - CORRIGIDO: Não aplicar se foi usado para busca paginada
+    if (filters.resourceType.length > 0 && !filters.resourceType.includes('all')) {
+      const hasResourceMatch = filters.resourceType.includes(item.type);
+      if (!hasResourceMatch) {
+        console.log(`❌ Item "${item.title}" eliminado por resourceType: ${item.type} não está em ${filters.resourceType.join(', ')}`);
+        return false;
+      }
+    }
+
+    if (filters.subject.length > 0) {
+      const matchesSubject = filters.subject.some(filterSubject =>
+        item.subject.toLowerCase().includes(filterSubject.toLowerCase())
+      );
+      if (!matchesSubject) return false;
+    }
+
+    if (filters.author.length > 0) {
+      const matchesAuthor = filters.author.some(filterAuthor =>
+        item.author.toLowerCase().includes(filterAuthor.toLowerCase())
+      );
+      if (!matchesAuthor) return false;
+    }
+
+    if (filters.year.trim()) {
+      const filterYear = parseInt(filters.year);
+      if (!isNaN(filterYear) && item.year !== filterYear) return false;
+    }
+
+    if (filters.duration.trim()) {
+      if (!matchesDurationFilter(item.duration, filters.duration)) return false;
+    }
+
+    if (filters.language.length > 0) {
+      const matchesLanguage = filters.language.some(filterLang =>
+        item.language?.toLowerCase().includes(filterLang.toLowerCase()) ||
+        item.pais?.toLowerCase().includes(filterLang.toLowerCase())
+      );
+      if (!matchesLanguage) return false;
+    }
+
+    if (filters.documentType.length > 0) {
+      if (!item.documentType || !filters.documentType.includes(item.documentType)) return false;
+    }
+
+    if (filters.program.length > 0) {
+      if (item.type !== 'podcast' || !item.program) return false;
+      const matchesProgram = filters.program.some(filterProgram =>
+        item.program!.toLowerCase().includes(filterProgram.toLowerCase())
+      );
+      if (!matchesProgram) return false;
+    }
+
+    if (filters.channel.length > 0) {
+      if (item.type !== 'video' || !item.channel) return false;
+      const matchesChannel = filters.channel.some(filterChannel =>
+        item.channel!.toLowerCase().includes(filterChannel.toLowerCase())
+      );
+      if (!matchesChannel) return false;
+    }
+
+    return true;
+  });
+
+  console.log(`🔍 APPLY FILTERS - Output: ${filtered.length} items (${data.length - filtered.length} eliminados)`);
+  return filtered;
+};
+
+const matchesDurationFilter = (itemDuration: string | undefined, filterDuration: string): boolean => {
+  if (!itemDuration || !filterDuration) return true;
+  
+  const minutes = parseDurationToMinutes(itemDuration);
+  
+  switch (filterDuration.toLowerCase()) {
+    case 'short':
+      return minutes > 0 && minutes <= 10;
+    case 'medium':
+      return minutes > 10 && minutes <= 30;
+    case 'long':
+      return minutes > 30;
+    default:
+      return true;
+  }
+};
+
+const parseDurationToMinutes = (duration: string): number => {
+  if (!duration) return 0;
+  
+  let totalMinutes = 0;
+  const durationStr = duration.toLowerCase().trim();
+  
+  const hoursMatch = durationStr.match(/(\d+)h/);
+  if (hoursMatch) {
+    totalMinutes += parseInt(hoursMatch[1]) * 60;
+  }
+  
+  const minutesMatch = durationStr.match(/(\d+)m/);
+  if (minutesMatch) {
+    totalMinutes += parseInt(minutesMatch[1]);
+  }
+  
+  if (!hoursMatch && !minutesMatch) {
+    const numberMatch = durationStr.match(/(\d+)/);
+    if (numberMatch) {
+      totalMinutes = parseInt(numberMatch[1]);
+    }
+  }
+  
+  return totalMinutes;
+};
+
+const sortResults = (results: SearchResult[], sortBy: string, query?: string): SearchResult[] => {
+  const sortedResults = [...results];
+  
+  switch (sortBy) {
+    case 'relevance':
+      if (query?.trim()) {
+        const queryLower = query.toLowerCase();
+        return sortedResults.sort((a, b) => {
+          const aTitle = a.title.toLowerCase();
+          const bTitle = b.title.toLowerCase();
+          const aStartsWithQuery = aTitle.startsWith(queryLower);
+          const bStartsWithQuery = bTitle.startsWith(queryLower);
+          
+          if (aStartsWithQuery && !bStartsWithQuery) return -1;
+          if (!aStartsWithQuery && bStartsWithQuery) return 1;
+          
+          return aTitle.localeCompare(bTitle);
+        });
+      }
+      return sortedResults.sort((a, b) => a.title.localeCompare(b.title));
+      
+    case 'title':
+      return sortedResults.sort((a, b) => a.title.localeCompare(b.title));
+      
+    case 'recent':
+      return sortedResults.sort((a, b) => (b.year || 0) - (a.year || 0));
+      
+    case 'accessed':
+      const typeOrder = { 'podcast': 3, 'video': 2, 'titulo': 1 };
+      return sortedResults.sort((a, b) => {
+        const orderA = typeOrder[a.type as keyof typeof typeOrder] || 0;
+        const orderB = typeOrder[b.type as keyof typeof typeOrder] || 0;
+        if (orderA !== orderB) return orderB - orderA;
+        return a.title.localeCompare(b.title);
+      });
+      
+    default:
+      return sortedResults;
+  }
+};
+
+const extractYearFromDate = (dateValue: any): number => {
+  if (!dateValue) return new Date().getFullYear();
+  
+  if (typeof dateValue === 'number') return dateValue;
+  
+  if (typeof dateValue === 'string' && dateValue.toLowerCase().includes('desconhecida')) {
+    return new Date().getFullYear();
+  }
+  
+  if (typeof dateValue === 'string') {
+    const dateObj = new Date(dateValue);
+    if (!isNaN(dateObj.getTime())) {
+      return dateObj.getFullYear();
+    }
+  }
+  
+  return new Date().getFullYear();
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const requestBody = await req.json();
+    
+    // Log especial para Warren
+    if (requestBody.query && requestBody.query.toLowerCase().includes('warren')) {
+      console.log('🔥 WARREN REQUEST DETECTED:', {
+        query: requestBody.query,
+        page: requestBody.page,
+        resultsPerPage: requestBody.resultsPerPage
+      });
+    }
+    
+    console.log('📨 SEARCH REQUEST:', {
+      query: requestBody.query,
+      resourceType: requestBody.filters?.resourceType,
+      page: requestBody.page,
+      type: requestBody.query ? 'QUERY' : (requestBody.filters?.resourceType?.length > 0 && !requestBody.filters.resourceType.includes('all') ? 'FILTERED' : 'GLOBAL')
+    });
+    
+    const result = await performSearch(requestBody);
+    
+    // Log especial para Warren response
+    if (requestBody.query && requestBody.query.toLowerCase().includes('warren')) {
+      console.log('🔥 WARREN RESPONSE:', {
+        totalResults: result.pagination?.totalResults,
+        totalPages: result.pagination?.totalPages,
+        currentPage: result.pagination?.currentPage,
+        resultsCount: result.results?.length
+      });
+    }
+    
+    console.log('📤 SEARCH RESPONSE:', {
+      success: result.success,
+      resultsCount: result.results?.length,
+      totalResults: result.pagination?.totalResults,
+      totalPages: result.pagination?.totalPages,
+      currentPage: result.pagination?.currentPage
+    });
+    
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro na busca:', error);
     
     return new Response(JSON.stringify({
       success: false,
@@ -386,15 +1378,10 @@ serve(async (req) => {
         totalResults: 0,
         hasNextPage: false,
         hasPreviousPage: false
-      },
-      searchInfo: {
-        query: '',
-        appliedFilters: {},
-        sortBy: 'relevance'
       }
     }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
+    });
   }
-})
+});

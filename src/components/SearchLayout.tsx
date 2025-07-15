@@ -58,6 +58,7 @@ const SearchLayout = ({
   const [showFilters, setShowFilters] = useState(false);
   const [searchParams] = useSearchParams();
   
+  // ✅ NOVO: Obter contentCounts do contexto para badges corretas
   const { contentCounts } = useHomepageContentContext();
 
   // Sync activeContentType with filters.resourceType
@@ -67,19 +68,18 @@ const SearchLayout = ({
         setActiveContentType(filters.resourceType[0]);
       }
     } else if (filters.resourceType.length === 0) {
-      // Default para 'titulo' quando não há filtro específico
-      setActiveContentType('titulo');
+      // ✅ CORREÇÃO: Quando não há filtro, usar 'all' (busca global)
+      setActiveContentType('all');
     } else {
-      // Múltiplos filtros - usar o primeiro
-      setActiveContentType(filters.resourceType[0] || 'titulo');
+      setActiveContentType('all'); // Múltiplos filtros = busca global
     }
   }, [filters.resourceType]);
   
   const hasResults = currentResults.length > 0;
   
-  const shouldShowSearch = true;
+  const shouldShowSearch = true; // Sempre mostrar interface de busca
   const showEmptyState = !loading && !hasResults && (query || hasActiveFilters);
-  const showWelcomeState = false;
+  const showWelcomeState = false; // Nunca mostrar estado de boas-vindas
   const showPagination = hasResults && totalPages > 1;
 
   const handleRemoveFilter = (filterType: keyof SearchFiltersType, value?: string) => {
@@ -121,12 +121,21 @@ const SearchLayout = ({
   const handleContentTypeChange = (type: string) => {
     console.log('🎯 Content type change:', { from: activeContentType, to: type });
     
+    // ✅ CORREÇÃO: Reset página para 1 quando mudar tipo de conteúdo
+    console.log('🔄 Resetando página para 1 devido à mudança de tipo');
     onPageChange(1);
+    
     setActiveContentType(type); 
     const newFilters = { ...filters };
     
-    // Sempre definir um tipo específico
-    newFilters.resourceType = [type];
+    if (type === 'all') {
+      // Para busca global (Todos), usar array vazio
+      newFilters.resourceType = [];
+      console.log('🌍 Filtro "Todos" selecionado - resourceType vazio para busca global');
+    } else {
+      // Para filtros específicos
+      newFilters.resourceType = [type];
+    }
     
     console.log('🔄 Calling onFiltersChange with:', newFilters);
     onFiltersChange(newFilters);
@@ -147,6 +156,7 @@ const SearchLayout = ({
               />
             )}
 
+            {/* Debug Info - apenas em desenvolvimento */}
             <SearchDebugInfo
               filters={filters}
               totalResults={totalResults}
@@ -175,6 +185,7 @@ const SearchLayout = ({
             <div className="block lg:hidden">
               {!showWelcomeState && (
                 <>
+                  {/* Mobile Filter Toggle - Always visible but collapsible */}
                   <div className={`transition-all duration-300 overflow-hidden ${showFilters ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
                     <div className="bg-lsb-section rounded-lg p-4 mb-4">
                       <StreamlinedSearchFilters 
@@ -213,6 +224,7 @@ const SearchLayout = ({
                         />
                       )}
                       
+                      {/* Mobile Pagination */}
                       {showPagination && (
                         <div className="mt-6">
                           <SearchPagination
@@ -273,6 +285,7 @@ const SearchLayout = ({
                           />
                         )}
                         
+                        {/* Desktop Pagination */}
                         {showPagination && (
                           <SearchPagination
                             currentPage={currentPage}

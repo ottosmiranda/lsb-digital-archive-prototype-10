@@ -13,22 +13,22 @@ export interface GlobalContentStats {
 export class GlobalContentService {
   private static readonly DEFAULT_ITEMS_PER_PAGE = 9;
 
-  // Busca paginada específica por tipo
-  static async fetchSpecificTypePage(
-    type: string,
+  // NOVA ABORDAGEM: Busca paginada real sem carregamento completo
+  static async fetchGlobalPage(
     page: number, 
     limit: number = this.DEFAULT_ITEMS_PER_PAGE,
     sortBy?: string
   ): Promise<{ items: SearchResult[]; stats: GlobalContentStats }> {
     
-    const requestId = `specific_${type}_page_${page}_${Date.now()}`;
-    console.group(`🎯 ${requestId} - Busca Específica`);
+    const requestId = `global_page_${page}_${Date.now()}`;
+    console.group(`🎯 ${requestId} - Busca Global Página REAL`);
     
-    const cacheKey = GlobalPageCacheService.generatePageCacheKey(page, limit, `${type}_${sortBy}`);
+    const cacheKey = GlobalPageCacheService.generatePageCacheKey(page, limit, sortBy);
     
+    // Verificar cache primeiro
     if (GlobalPageCacheService.isValidCache(cacheKey)) {
       const cached = GlobalPageCacheService.getPageCache(cacheKey);
-      console.log(`📦 Cache HIT: ${cached.items.length} itens da página ${page} (${type})`);
+      console.log(`📦 Cache HIT: ${cached.items.length} itens da página ${page}`);
       console.groupEnd();
       return cached;
     }
@@ -47,15 +47,21 @@ export class GlobalContentService {
         }
       };
       
+      // Cache da página
       GlobalPageCacheService.setPageCache(cacheKey, result);
       
-      console.log(`✅ Página específica ${type} ${page}: ${response.items.length} itens carregados`);
+      // Prefetch próxima página
+      if (response.currentPage < response.totalPages) {
+        GlobalPageCacheService.prefetchNextPage(page, limit, sortBy);
+      }
+      
+      console.log(`✅ Página global ${page}: ${response.items.length} itens carregados`);
       console.groupEnd();
       
       return result;
       
     } catch (error) {
-      console.error(`❌ Erro carregando página específica ${type} ${page}:`, error);
+      console.error(`❌ Erro carregando página global ${page}:`, error);
       console.groupEnd();
       throw error;
     }
@@ -69,11 +75,14 @@ export class GlobalContentService {
     return UnifiedPaginationService.getTotalItems();
   }
 
-  static clearCache(): void {
+  static clearGlobalCache(): void {
     GlobalPageCacheService.clearPageCache();
   }
 
   static getCacheStats() {
     return GlobalPageCacheService.getCacheStats();
   }
+
+  // REMOVIDAS: Funções de agregação completa (fetchAllContentByType, aggregateAllContent)
+  // JUSTIFICATIVA: Violavam o princípio YAGNI e causavam overhead desnecessário
 }

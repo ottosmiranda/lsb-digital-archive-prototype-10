@@ -210,7 +210,7 @@ const FeaturedHighlights = () => {
                                 size="large"
                               />
                             )}
-                            <Badge className="absolute top-2 md:top-3 left-2 md:left-3 bg-lsb-accent text-lsb-primary flex items-center gap-1 text-xs">
+                            <Badge className="absolute top-2 md:top-3 left-2 md:left-3 bg-lsb-card-accent text-white flex items-center gap-1 text-xs">
                               <Star className="h-3 w-3" />
                               <span className="hidden sm:inline">Escolha da Equipe</span>
                               <span className="sm:hidden">Destaque</span>

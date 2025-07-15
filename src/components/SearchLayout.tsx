@@ -68,10 +68,12 @@ const SearchLayout = ({
         setActiveContentType(filters.resourceType[0]);
       }
     } else if (filters.resourceType.length === 0) {
-      // ✅ CORREÇÃO: Quando não há filtro, usar 'all' (busca global)
-      setActiveContentType('all');
-    } else {
-      setActiveContentType('all'); // Múltiplos filtros = busca global
+      // Quando não há filtro, usar 'titulo' como padrão
+      setActiveContentType('titulo');
+      // Definir 'titulo' como filtro padrão quando não há nenhum
+      if (filters.resourceType.length === 0) {
+        onFiltersChange({ ...filters, resourceType: ['titulo'] });
+      }
     }
   }, [filters.resourceType]);
   
@@ -121,21 +123,15 @@ const SearchLayout = ({
   const handleContentTypeChange = (type: string) => {
     console.log('🎯 Content type change:', { from: activeContentType, to: type });
     
-    // ✅ CORREÇÃO: Reset página para 1 quando mudar tipo de conteúdo
+    // Reset página para 1 quando mudar tipo de conteúdo
     console.log('🔄 Resetando página para 1 devido à mudança de tipo');
     onPageChange(1);
     
     setActiveContentType(type); 
     const newFilters = { ...filters };
     
-    if (type === 'all') {
-      // Para busca global (Todos), usar array vazio
-      newFilters.resourceType = [];
-      console.log('🌍 Filtro "Todos" selecionado - resourceType vazio para busca global');
-    } else {
-      // Para filtros específicos
-      newFilters.resourceType = [type];
-    }
+    // Para filtros específicos
+    newFilters.resourceType = [type];
     
     console.log('🔄 Calling onFiltersChange with:', newFilters);
     onFiltersChange(newFilters);

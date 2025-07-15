@@ -28,7 +28,6 @@ const SearchHeaderWithTabs = ({
   onContentTypeChange
 }: SearchHeaderWithTabsProps) => {
   const contentTypes = [
-    { id: 'all', label: 'Todos os conteúdos', icon: Grid3X3 },
     { id: 'titulo', label: 'Livros & Artigos', icon: Book },
     { id: 'video', label: 'Vídeos', icon: Play },
     { id: 'podcast', label: 'Podcasts', icon: Headphones }
@@ -84,7 +83,7 @@ const SearchHeaderWithTabs = ({
                  <TabsTrigger 
                   key={type.id} 
                   value={type.id}
-                  className={`flex items-center justify-center gap-2 h-11 px-4 py-3 text-white data-[state=active]:bg-lsb-accent data-[state=active]:text-lsb-primary hover:bg-lsb-hover-blue data-[state=active]:hover:bg-lsb-accent ${type.id === 'all' ? 'w-[170px]' : 'w-[145px]'}`}
+                  className="flex items-center justify-center gap-2 h-11 px-4 py-3 text-white data-[state=active]:bg-lsb-accent data-[state=active]:text-lsb-primary hover:bg-lsb-hover-blue data-[state=active]:hover:bg-lsb-accent w-[145px]"
                 >
                   <div 
                     style={{

@@ -83,19 +83,16 @@ export const useSearchResults = () => {
     const hasResourceTypeFilters = filters.resourceType.length > 0;
     const hasOtherFilters = hasActiveFilters;
     
-    const isGlobalSearch = filters.resourceType.length === 0 && !hasOtherFilters;
-    
     console.log('🔍 Lógica shouldSearch SIMPLIFICADA:', { 
       hasQuery, 
       hasResourceTypeFilters, 
       hasOtherFilters,
-      isGlobalSearch,
       resourceType: filters.resourceType,
-      result: hasQuery || hasResourceTypeFilters || hasOtherFilters || isGlobalSearch
+      result: hasQuery || hasResourceTypeFilters || hasOtherFilters
     });
     
-    // Se há query, filtros específicos, ou deve fazer busca global, executar busca
-    return hasQuery || hasResourceTypeFilters || hasOtherFilters || isGlobalSearch;
+    // Se há query ou filtros específicos, executar busca
+    return hasQuery || hasResourceTypeFilters || hasOtherFilters;
   }, [query, filters.resourceType, hasActiveFilters]);
 
   // NOVA IMPLEMENTAÇÃO: Busca com paginação real e debouncing

@@ -160,7 +160,9 @@ const FeaturedHighlights = () => {
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold lsb-primary mb-3 md:mb-4">
               Destaques da Semana
             </h2>
-            <div className="w-16 md:w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
+            <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
+              Destaques selecionados para inspirar seus estudos
+            </p>
           </div>
 
           {highlights.length === 0 ? (

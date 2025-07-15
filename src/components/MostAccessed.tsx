@@ -81,7 +81,7 @@ const MostAccessed = () => {
                 Mais Acessados
               </h2>
               <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
-                Os conteúdos mais populares da nossa biblioteca digital
+                Veja o que está em alta na plataforma
               </p>
             </div>
             <div className="text-center my-8 md:my-12 text-base md:text-lg text-gray-400">
@@ -102,7 +102,9 @@ const MostAccessed = () => {
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold lsb-primary mb-3 md:mb-4">
               Mais Acessados
             </h2>
-            <div className="w-16 md:w-24 h-1 bg-lsb-accent mx-auto rounded-full"></div>
+            <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
+              Veja o que está em alta na plataforma
+            </p>
           </div>
 
           {/* Most Accessed Carousel */}

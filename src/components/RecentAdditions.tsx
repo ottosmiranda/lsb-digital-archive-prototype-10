@@ -140,124 +140,122 @@ const RecentAdditions = () => {
   return (
     <section className="py-12 md:py-16 lg:py-24 bg-lsb-section-gray">
       <div className="lsb-container">
-        <div className="lsb-content">
-          <div className="text-center mb-8 md:mb-12 animate-fade-in px-4">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold lsb-primary mb-3 md:mb-4">
-              Novidades no Acervo
-            </h2>
-            <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
-              Confira os materiais mais recentes adicionados à nossa biblioteca
+        <div className="text-center mb-8 md:mb-12 animate-fade-in">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold lsb-primary mb-3 md:mb-4">
+            Novidades no Acervo
+          </h2>
+          <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
+            Confira os materiais mais recentes adicionados à nossa biblioteca
+          </p>
+        </div>
+
+        {error && (
+          <div className="bg-[#FEC641]/10 border border-[#FEC641]/30 rounded-lg p-3 md:p-4 mb-6 md:mb-8">
+            <p className="text-[#B78A00] text-center text-sm md:text-base">
+              ⚠️ Problemas ao carregar conteúdo recente. Mostrando dados disponíveis.
             </p>
           </div>
+        )}
 
-          {error && (
-            <div className="bg-[#FEC641]/10 border border-[#FEC641]/30 rounded-lg p-3 md:p-4 mb-6 md:mb-8 mx-4">
-              <p className="text-[#B78A00] text-center text-sm md:text-base">
-                ⚠️ Problemas ao carregar conteúdo recente. Mostrando dados disponíveis.
-              </p>
-            </div>
-          )}
-
-          {recentItems.length > 0 ? (
-            <>
-              {/* Mobile: Single column, Tablet: 2 columns */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 lg:gap-8 px-4">
-                {recentItems.map((item, index) => {
-                  const IconComponent = getIcon(item.type);
-                  return (
-                    <Link key={item.type + '-' + item.id} to={`/recurso/${item.id}`}>
-                      <Card className="group hover-lift animate-fade-in cursor-pointer h-full" style={{
-                        animationDelay: `${index * 0.1}s`
-                      }}>
-                        <CardContent className="p-4 md:p-6 h-full">
-                          <div className="flex flex-col sm:flex-row items-start space-y-3 sm:space-y-0 sm:space-x-4 h-full">
-                            <div className="flex-shrink-0 w-full sm:w-auto flex justify-center sm:justify-start">
-                              <div className="w-12 h-12 bg-lsb-section rounded-lg flex items-center justify-center">
-                                <IconComponent className="h-6 w-6 lsb-primary" />
-                              </div>
-                            </div>
-                            
-                            <div className="flex-1 min-w-0 text-center sm:text-left">
-                              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-2 md:mb-3">
-                                <Badge className={getTypeColor(item.type)}>
-                                  {getTypeLabel(item.type)}
-                                </Badge>
-                                {item.isRotated ? (
-                                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                    <Star className="h-3 w-3 mr-1" />
-                                    Destacado
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="bg-lsb-card-accent text-white border-lsb-card-accent">
-                                    <Sparkles className="h-3 w-3 mr-1" />
-                                    Novo
-                                  </Badge>
-                                )}
-                              </div>
-                              
-                              <h3 className="font-semibold text-base md:text-lg mb-1 md:mb-2 group-hover:text-lsb-primary transition-colors line-clamp-2">
-                                {item.title}
-                              </h3>
-                              <p className="text-sm text-gray-600 mb-1 md:mb-2 truncate">{item.author}</p>
-                              <p className="text-xs md:text-sm text-gray-700 line-clamp-2">
-                                {item.description}
-                              </p>
-                            </div>
-                            
-                            <div className="flex-shrink-0 w-full sm:w-auto flex justify-center sm:justify-end">
-                              <div className="w-16 h-16 sm:w-20 sm:h-20 relative overflow-hidden rounded">
-                                {shouldShowImage(item.thumbnail, item.type) ? (
-                                  <img 
-                                    src={item.thumbnail} 
-                                    alt={item.title} 
-                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
-                                    onError={handleImageError} 
-                                  />
-                                ) : (
-                                  <ThumbnailPlaceholder 
-                                    type={item.type as 'titulo' | 'video' | 'podcast'} 
-                                    className="w-16 h-16 sm:w-20 sm:h-20" 
-                                    size="small" 
-                                    style={{
-                                      display: item.thumbnail ? 'none' : 'flex'
-                                    }} 
-                                  />
-                                )}
-                              </div>
+        {recentItems.length > 0 ? (
+          <>
+            {/* Mobile: Single column, Tablet: 2 columns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
+              {recentItems.map((item, index) => {
+                const IconComponent = getIcon(item.type);
+                return (
+                  <Link key={item.type + '-' + item.id} to={`/recurso/${item.id}`}>
+                    <Card className="group hover-lift animate-fade-in cursor-pointer h-full" style={{
+                      animationDelay: `${index * 0.1}s`
+                    }}>
+                      <CardContent className="p-4 md:p-6 h-full">
+                        <div className="flex flex-col sm:flex-row items-start space-y-3 sm:space-y-0 sm:space-x-4 h-full">
+                          <div className="flex-shrink-0 w-full sm:w-auto flex justify-center sm:justify-start">
+                            <div className="w-12 h-12 bg-lsb-section rounded-lg flex items-center justify-center">
+                              <IconComponent className="h-6 w-6 lsb-primary" />
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  );
-                })}
-              </div>
-
-              <div className="text-center mt-8 md:mt-12 px-4">
-                <Link to="/buscar?ordenar=recentes">
-                  <WipeButton className="px-6 md:px-8 py-3 md:py-4">
-                    Ver Todas as Novidades
-                  </WipeButton>
-                </Link>
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-6 md:py-8 px-4">
-              <p className="text-gray-600 text-sm md:text-base">
-                {loading ? 'Carregando novidades...' : 'Nenhum conteúdo disponível no momento.'}
-              </p>
-              {!loading && (
-                <Button 
-                  onClick={() => window.location.reload()} 
-                  variant="outline" 
-                  className="mt-4"
-                >
-                  Tentar Novamente
-                </Button>
-              )}
+                          
+                          <div className="flex-1 min-w-0 text-center sm:text-left">
+                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-2 md:mb-3">
+                              <Badge className={getTypeColor(item.type)}>
+                                {getTypeLabel(item.type)}
+                              </Badge>
+                              {item.isRotated ? (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                  <Star className="h-3 w-3 mr-1" />
+                                  Destacado
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-lsb-card-accent text-white border-lsb-card-accent">
+                                  <Sparkles className="h-3 w-3 mr-1" />
+                                  Novo
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            <h3 className="font-semibold text-base md:text-lg mb-1 md:mb-2 group-hover:text-lsb-primary transition-colors line-clamp-2">
+                              {item.title}
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-1 md:mb-2 truncate">{item.author}</p>
+                            <p className="text-xs md:text-sm text-gray-700 line-clamp-2">
+                              {item.description}
+                            </p>
+                          </div>
+                          
+                          <div className="flex-shrink-0 w-full sm:w-auto flex justify-center sm:justify-end">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 relative overflow-hidden rounded">
+                              {shouldShowImage(item.thumbnail, item.type) ? (
+                                <img 
+                                  src={item.thumbnail} 
+                                  alt={item.title} 
+                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                                  onError={handleImageError} 
+                                />
+                              ) : (
+                                <ThumbnailPlaceholder 
+                                  type={item.type as 'titulo' | 'video' | 'podcast'} 
+                                  className="w-16 h-16 sm:w-20 sm:h-20" 
+                                  size="small" 
+                                  style={{
+                                    display: item.thumbnail ? 'none' : 'flex'
+                                  }} 
+                                />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
             </div>
-          )}
-        </div>
+
+            <div className="text-center mt-8 md:mt-12">
+              <Link to="/buscar?ordenar=recentes">
+                <WipeButton className="px-6 md:px-8 py-3 md:py-4">
+                  Ver Todas as Novidades
+                </WipeButton>
+              </Link>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-6 md:py-8">
+            <p className="text-gray-600 text-sm md:text-base">
+              {loading ? 'Carregando novidades...' : 'Nenhum conteúdo disponível no momento.'}
+            </p>
+            {!loading && (
+              <Button 
+                onClick={() => window.location.reload()} 
+                variant="outline" 
+                className="mt-4"
+              >
+                Tentar Novamente
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

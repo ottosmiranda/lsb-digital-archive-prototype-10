@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -57,6 +56,7 @@ const SearchLayout = ({
   const [activeContentType, setActiveContentType] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [searchParams] = useSearchParams();
+  const [isFilterTransitioning, setIsFilterTransitioning] = useState(false);
   
   const { contentCounts } = useHomepageContentContext();
 
@@ -142,6 +142,8 @@ const SearchLayout = ({
     console.group('🎯 SearchLayout - Content type change ATÔMICO');
     console.log('📋 From:', activeContentType, 'To:', type);
     
+    setIsFilterTransitioning(true);
+    
     onPageChange(1);
     setActiveContentType(type); 
     const newFilters = { ...filters };
@@ -150,7 +152,6 @@ const SearchLayout = ({
     console.log('⚡ Calling onFiltersChange with ATOMIC loading for type:', type);
     console.groupEnd();
     
-    // ✅ CHAMADA ATÔMICA: O handleFilterChange já ativa o loading imediatamente
     onFiltersChange(newFilters);
     
     if (onRefreshData && type !== activeContentType) {
@@ -161,11 +162,19 @@ const SearchLayout = ({
     }
   };
 
+  // Reset transitioning state when loading finishes
+  useEffect(() => {
+    if (!loading) {
+      setIsFilterTransitioning(false);
+    }
+  }, [loading]);
+
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
       
-      <div className="lsb-container">
+      {/* ✅ Container com overflow-x-hidden para prevenir scroll horizontal */}
+      <div className="lsb-container overflow-x-hidden">
         <div className="lsb-content">
           <div className="py-4 md:py-8">
             {onRefreshData && (
@@ -176,7 +185,6 @@ const SearchLayout = ({
               />
             )}
 
-            {/* Debug Info - apenas em desenvolvimento */}
             <SearchDebugInfo
               filters={filters}
               totalResults={totalResults}
@@ -201,76 +209,79 @@ const SearchLayout = ({
               />
             )}
             
-            {/* Mobile Layout - Stack vertically */}
+            {/* ✅ Mobile Layout - Stack vertically com widths controladas */}
             <div className="block lg:hidden">
               {!showWelcomeState && (
                 <>
-                  {/* Mobile Filter Toggle - Always visible but collapsible */}
-                  <div className={`transition-all duration-300 overflow-hidden ${showFilters ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <div className="bg-lsb-section rounded-lg p-4 mb-4">
-                      <StreamlinedSearchFilters 
-                        filters={filters}
-                        onFiltersChange={onFiltersChange}
-                        currentResults={currentResults}
-                        activeContentType={activeContentType}
-                        globalContentCounts={contentCounts}
-                        isMobile={true}
-                      />
-                    </div>
+                  {/* ✅ Mobile Filters - SEMPRE visível como component */}
+                  <div className="mb-4">
+                    <StreamlinedSearchFilters 
+                      filters={filters}
+                      onFiltersChange={onFiltersChange}
+                      currentResults={currentResults}
+                      activeContentType={activeContentType}
+                      globalContentCounts={contentCounts}
+                      isMobile={true}
+                    />
                   </div>
 
-                  <FilterChips
-                    filters={filters}
-                    onRemoveFilter={handleRemoveFilter}
-                    onClearAll={onClearFilters}
-                  />
+                  {/* ✅ Filter Chips com width controlada */}
+                  <div className="w-full overflow-x-auto mb-4">
+                    <FilterChips
+                      filters={filters}
+                      onRemoveFilter={handleRemoveFilter}
+                      onClearAll={onClearFilters}
+                    />
+                  </div>
                   
-                  {/* ✅ RENDERIZAÇÃO BLINDADA ATÔMICA - Loading tem prioridade máxima absoluta */}
-                  {loading ? (
-                    <SearchResultsGrid 
-                      results={[]}
-                      loading={true}
-                    />
-                  ) : showEmptyState ? (
-                    <EmptySearchState 
-                      query={query} 
-                      onClearFilters={onClearFilters} 
-                    />
-                  ) : (
-                    <>
-                      {view === 'grid' ? (
-                        <SearchResultsGrid 
-                          results={currentResults}
-                          loading={false}
-                        />
-                      ) : (
-                        <SearchResultsList 
-                          results={currentResults}
-                          loading={false}
-                        />
-                      )}
-                      
-                      {/* Mobile Pagination - só aparece se não estiver carregando */}
-                      {showPagination && (
-                        <div className="mt-6">
-                          <SearchPagination
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            onPageChange={onPageChange}
-                            isMobile={true}
+                  {/* ✅ Results container com width 100% */}
+                  <div className="w-full">
+                    {loading ? (
+                      <SearchResultsGrid 
+                        results={[]}
+                        loading={true}
+                      />
+                    ) : showEmptyState ? (
+                      <EmptySearchState 
+                        query={query} 
+                        onClearFilters={onClearFilters} 
+                        isTransitioning={isFilterTransitioning}
+                      />
+                    ) : (
+                      <>
+                        {view === 'grid' ? (
+                          <SearchResultsGrid 
+                            results={currentResults}
+                            loading={false}
                           />
-                        </div>
-                      )}
-                    </>
-                  )}
+                        ) : (
+                          <SearchResultsList 
+                            results={currentResults}
+                            loading={false}
+                          />
+                        )}
+                        
+                        {showPagination && (
+                          <div className="mt-6 w-full">
+                            <SearchPagination
+                              currentPage={currentPage}
+                              totalPages={totalPages}
+                              onPageChange={onPageChange}
+                              isMobile={true}
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </>
               )}
             </div>
 
-            {/* Desktop Layout - Side by side */}
-            <div className="hidden lg:flex lg:gap-8 mt-8">
+            {/* ✅ Desktop Layout - Side by side com gaps controlados */}
+            <div className="hidden lg:flex lg:gap-6 xl:gap-8 mt-8">
               {!showWelcomeState && (
-                <div className="w-80 flex-shrink-0">
+                <div className="w-72 xl:w-80 flex-shrink-0">
                   <StreamlinedSearchFilters 
                     filters={filters}
                     onFiltersChange={onFiltersChange}
@@ -292,7 +303,6 @@ const SearchLayout = ({
                       onClearAll={onClearFilters}
                     />
                     
-                    {/* ✅ RENDERIZAÇÃO BLINDADA ATÔMICA - Loading tem prioridade máxima absoluta */}
                     {loading ? (
                       <SearchResultsGrid 
                         results={[]}
@@ -302,6 +312,7 @@ const SearchLayout = ({
                       <EmptySearchState 
                         query={query} 
                         onClearFilters={onClearFilters} 
+                        isTransitioning={isFilterTransitioning}
                       />
                     ) : (
                       <>
@@ -317,7 +328,6 @@ const SearchLayout = ({
                           />
                         )}
                         
-                        {/* Desktop Pagination - só aparece se não estiver carregando */}
                         {showPagination && (
                           <SearchPagination
                             currentPage={currentPage}

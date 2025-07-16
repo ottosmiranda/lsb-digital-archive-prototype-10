@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -99,12 +100,12 @@
     --font-h4: 24px;
     --font-h5: 20px;
     --font-h6: 18px;
-    --font-p1: 20px;
-    --font-p2: 18px;
-    --font-p3: 16px;
-    --font-p4: 14px;
-    --font-p5: 13px;
-    --font-p6: 12px;
+    --font-p1: 22px;
+    --font-p2: 20px;
+    --font-p3: 18px;
+    --font-p4: 16px;
+    --font-p5: 15px;
+    --font-p6: 14px;
     --line-height-title: 110%;
     --line-height-body: 140%;
     --letter-spacing-title: 0.5px;

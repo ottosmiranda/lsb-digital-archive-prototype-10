@@ -7,10 +7,12 @@ import { useHomepageContentContext } from '@/contexts/HomepageContentContext';
 import { useMemo } from 'react';
 import FeaturedMediaSkeleton from '@/components/skeletons/FeaturedMediaSkeleton';
 import { WipeButton } from '@/components/ui/WipeButton';
-
 const FeaturedMedia = () => {
-  const { content, rotatedContent, loading } = useHomepageContentContext();
-
+  const {
+    content,
+    rotatedContent,
+    loading
+  } = useHomepageContentContext();
   console.group('🎬 PHASE 3: FeaturedMedia Component with Daily Rotation');
   console.log('Loading state:', loading);
   console.log('Rotated daily media:', {
@@ -22,67 +24,63 @@ const FeaturedMedia = () => {
     podcasts: content.podcasts.length
   });
   console.groupEnd();
-
-  const { videos, podcasts } = useMemo(() => {
+  const {
+    videos,
+    podcasts
+  } = useMemo(() => {
     console.log('🔄 PHASE 3: Processing FeaturedMedia with rotation logic...');
-    
+
     // Prioridade 1: Usar conteúdo rotacionado se disponível
     if (rotatedContent.dailyMedia.videos.length > 0 || rotatedContent.dailyMedia.podcasts.length > 0) {
       console.log('✅ Using rotated daily media:', {
         videos: rotatedContent.dailyMedia.videos.length,
         podcasts: rotatedContent.dailyMedia.podcasts.length
       });
-      
       return {
         videos: rotatedContent.dailyMedia.videos,
         podcasts: rotatedContent.dailyMedia.podcasts
       };
     }
-    
+
     // Prioridade 2: Fallback para dados da API
     console.log('🔄 Fallback: Using API data for featured media...');
-    
-    const videoData = content.videos
-      .slice(0, 3)
-      .map(video => ({
-        id: video.id,
-        title: video.title,
-        duration: video.duration || 'N/A',
-        thumbnail: video.thumbnail,
-        author: video.author,
-        type: video.type || 'video'
-      }));
-
-    const podcastData = content.podcasts
-      .slice(0, 3)
-      .map(podcast => ({
-        id: podcast.id,
-        title: podcast.title,
-        duration: podcast.duration || 'N/A',
-        thumbnail: podcast.thumbnail,
-        author: podcast.author,
-        type: podcast.type || 'podcast'
-      }));
-
+    const videoData = content.videos.slice(0, 3).map(video => ({
+      id: video.id,
+      title: video.title,
+      duration: video.duration || 'N/A',
+      thumbnail: video.thumbnail,
+      author: video.author,
+      type: video.type || 'video'
+    }));
+    const podcastData = content.podcasts.slice(0, 3).map(podcast => ({
+      id: podcast.id,
+      title: podcast.title,
+      duration: podcast.duration || 'N/A',
+      thumbnail: podcast.thumbnail,
+      author: podcast.author,
+      type: podcast.type || 'podcast'
+    }));
     console.log('✅ PHASE 3: FeaturedMedia data processed:', {
       source: 'api_fallback',
       processedVideos: videoData.length,
       processedPodcasts: podcastData.length
     });
-
-    return { videos: videoData, podcasts: podcastData };
+    return {
+      videos: videoData,
+      podcasts: podcastData
+    };
   }, [content, rotatedContent.dailyMedia]);
-
-  const MediaCard = ({ item, type }: { item: any; type: 'video' | 'podcast' }) => (
-    <Link to={`/recurso/${item.type || type}/${item.id}`} className="block">
+  const MediaCard = ({
+    item,
+    type
+  }: {
+    item: any;
+    type: 'video' | 'podcast';
+  }) => <Link to={`/recurso/${item.type || type}/${item.id}`} className="block">
       <Card className="group hover-lift cursor-pointer h-full">
         <CardContent className="p-0 h-full flex flex-col">
           <div className="relative aspect-video bg-gray-200 rounded-t-lg overflow-hidden">
-            <img
-              src={item.thumbnail}
-              alt={item.title}
-              className="w-full h-full object-cover"
-            />
+            <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors flex items-center justify-center">
               <div className="w-10 md:w-12 h-10 md:h-12 bg-white/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Play className="h-5 w-5 md:h-6 md:w-6 text-lsb-primary ml-0.5" />
@@ -101,15 +99,11 @@ const FeaturedMedia = () => {
           </div>
         </CardContent>
       </Card>
-    </Link>
-  );
-
+    </Link>;
   if (loading) {
     return <FeaturedMediaSkeleton />;
   }
-
-  return (
-    <section className="py-8 md:py-16 lg:py-24 bg-white">
+  return <section className="py-8 md:py-16 lg:py-24 bg-slate-50">
       <div className="lsb-container">
         <div className="text-center mb-8 md:mb-12 animate-fade-in">
           <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold lsb-primary mb-3 md:mb-4">
@@ -127,12 +121,9 @@ const FeaturedMedia = () => {
           </TabsList>
 
           <TabsContent value="videos" className="animate-fade-in">
-            {videos.length > 0 ? (
-              <>
+            {videos.length > 0 ? <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                  {videos.map((video) => (
-                    <MediaCard key={video.id} item={video} type="video" />
-                  ))}
+                  {videos.map(video => <MediaCard key={video.id} item={video} type="video" />)}
                 </div>
                 <div className="text-center mt-6 md:mt-8">
                   <Link to="/buscar?filtros=video">
@@ -141,21 +132,15 @@ const FeaturedMedia = () => {
                     </WipeButton>
                   </Link>
                 </div>
-              </>
-            ) : (
-              <div className="text-center py-6 md:py-8">
+              </> : <div className="text-center py-6 md:py-8">
                 <p className="text-gray-600">Nenhum vídeo disponível no momento.</p>
-              </div>
-            )}
+              </div>}
           </TabsContent>
 
           <TabsContent value="podcasts" className="animate-fade-in">
-            {podcasts.length > 0 ? (
-              <>
+            {podcasts.length > 0 ? <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                  {podcasts.map((podcast) => (
-                    <MediaCard key={podcast.id} item={podcast} type="podcast" />
-                  ))}
+                  {podcasts.map(podcast => <MediaCard key={podcast.id} item={podcast} type="podcast" />)}
                 </div>
                 <div className="text-center mt-6 md:mt-8">
                   <Link to="/buscar?filtros=podcast">
@@ -164,17 +149,12 @@ const FeaturedMedia = () => {
                     </WipeButton>
                   </Link>
                 </div>
-              </>
-            ) : (
-              <div className="text-center py-6 md:py-8">
+              </> : <div className="text-center py-6 md:py-8">
                 <p className="text-gray-600">Nenhum podcast disponível no momento.</p>
-              </div>
-            )}
+              </div>}
           </TabsContent>
         </Tabs>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default FeaturedMedia;

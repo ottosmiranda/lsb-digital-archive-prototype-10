@@ -9,9 +9,7 @@ const MinhaBlioteca = () => {
         </div>
 
         {/* Título principal */}
-        <h2 className="h2 text-lsb-primary mb-6 md:mb-8">
-          Quer ter acesso a milhares de e-books?
-        </h2>
+        <h2 className="h2 text-lsb-primary mb-6 md:mb-8">EXPLORE MILHARES DE E-BOOKS DISPONÍVEIS PARA VOCÊ!</h2>
 
         {/* Subtítulo */}
         <p className="p1 text-lsb-subtitle max-w-3xl mx-auto mb-8 md:mb-10">

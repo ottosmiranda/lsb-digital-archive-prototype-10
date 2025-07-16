@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -93,7 +94,7 @@
     --color-subtitle: #626F88;
     --color-muted: #BDC5D5;
     --color-body: #292929;
-    --font-h1: 56px;
+    --font-h1: 52px;
     --font-h2: 44px;
     --font-h3: 32px;
     --font-h4: 24px;
@@ -108,6 +109,8 @@
     --line-height-title: 110%;
     --line-height-body: 140%;
     --letter-spacing-title: 0.5px;
+    --letter-spacing-h1: -1.44px;
+    --letter-spacing-h2: -1.2px;
   }
 
   .dark {
@@ -157,7 +160,7 @@
     text-transform: uppercase;
     color: var(--color-title);
     line-height: var(--line-height-title);
-    letter-spacing: var(--letter-spacing-title);
+    letter-spacing: var(--letter-spacing-h1);
     margin-bottom: 20px;
   }
 
@@ -168,7 +171,7 @@
     text-transform: uppercase;
     color: var(--color-title);
     line-height: var(--line-height-title);
-    letter-spacing: var(--letter-spacing-title);
+    letter-spacing: var(--letter-spacing-h2);
     margin-bottom: 18px;
   }
 

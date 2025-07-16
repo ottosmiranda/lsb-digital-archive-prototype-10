@@ -378,8 +378,21 @@
   }
 }
 
+@keyframes wipe-diagonal-reveal {
+  0% {
+    transform: translateX(-50%) translateY(-50%) rotate(45deg) scaleX(0);
+  }
+  100% {
+    transform: translateX(-50%) translateY(-50%) rotate(45deg) scaleX(1);
+  }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
+}
+
+.animate-wipe-diagonal-reveal {
+  animation: wipe-diagonal-reveal 0.4s ease-out forwards;
 }
 
 /* Skeleton loading */

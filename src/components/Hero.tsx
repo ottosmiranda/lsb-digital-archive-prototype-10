@@ -3,6 +3,8 @@ import { Search, Filter, Command, Book, Play, Headphones, Sparkles } from 'lucid
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { WipeButton } from '@/components/ui/WipeButton';
+import { OutlineWipeButton } from '@/components/ui/OutlineWipeButton';
 import { useSearchForm } from '@/hooks/useSearchForm';
 import EnhancedSearchSuggestions from '@/components/EnhancedSearchSuggestions';
 
@@ -34,6 +36,18 @@ const Hero = () => {
     icon: Headphones
   }];
 
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const navHeight = 80; // Altura aproximada da navegação
+      const elementPosition = element.offsetTop - navHeight;
+      window.scrollTo({
+        top: elementPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
     <section className="relative min-h-screen bg-[#10284E] overflow-hidden flex items-center">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -54,7 +68,7 @@ const Hero = () => {
             </div>
 
             {/* Enhanced Search Section - Mobile first */}
-            <div className="animate-slide-up max-w-4xl mx-auto">
+            <div className="animate-slide-up max-w-4xl mx-auto mb-8 md:mb-12">
               <div className="bg-white/10 backdrop-blur-lg rounded-lg md:rounded-[2px] p-4 sm:p-6 md:p-8 border border-white/20 shadow-2xl">
                 <div className="flex items-center justify-center mb-4 md:mb-6">
                   <Search className="h-5 w-5 md:h-6 md:w-6 text-lsb-accent mr-2 md:mr-3" />
@@ -112,6 +126,23 @@ const Hero = () => {
                   </div>
                 </form>
               </div>
+            </div>
+
+            {/* CTA Buttons Section */}
+            <div className="animate-fade-in flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center max-w-2xl mx-auto">
+              <WipeButton
+                onClick={() => scrollToSection('destaques-semana')}
+                className="w-full sm:w-auto px-8 py-4 text-base md:text-lg"
+              >
+                Explore Nosso Conteúdo
+              </WipeButton>
+              
+              <OutlineWipeButton
+                onClick={() => scrollToSection('minha-biblioteca')}
+                className="w-full sm:w-auto px-8 py-4 text-base md:text-lg"
+              >
+                Descubra a Minha Biblioteca
+              </OutlineWipeButton>
             </div>
           </div>
         </div>

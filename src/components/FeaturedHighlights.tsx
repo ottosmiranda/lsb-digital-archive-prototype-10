@@ -146,7 +146,8 @@ const FeaturedHighlights = () => {
   if (loading) {
     return <FeaturedHighlightsSkeleton />;
   }
-  return <section className="py-8 md:py-16 lg:py-24 bg-slate-50">
+  return (
+    <section id="destaques-semana" className="py-8 md:py-16 lg:py-24 bg-slate-50">
       <div className="lsb-container">
         <div className="lsb-content">
           <div className="text-center mb-8 md:mb-12 animate-fade-in">
@@ -211,6 +212,8 @@ const FeaturedHighlights = () => {
             </div>}
         </div>
       </div>
-    </section>;
+    </section>
+  );
 };
+
 export default FeaturedHighlights;

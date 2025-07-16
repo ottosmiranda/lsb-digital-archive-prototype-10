@@ -19,7 +19,16 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				'aeonik': ['Aeonik', 'Montserrat', 'sans-serif'],
+				'aeonik': ['Aeonik', 'Montserrat', 'system-ui', '-apple-system', 'sans-serif'],
+			},
+			fontWeight: {
+				'thin': '100',
+				'air': '200',
+				'light': '300',
+				'normal': '400',
+				'medium': '500',
+				'bold': '700',
+				'black': '900',
 			},
 			colors: {
 				border: 'hsl(var(--border))',

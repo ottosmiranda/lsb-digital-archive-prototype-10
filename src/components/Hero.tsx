@@ -48,7 +48,7 @@ const Hero = () => {
                 </span>
               </h1>
               
-              <p className="text-lg sm:text-xl md:text-2xl text-white max-w-4xl mx-auto leading-relaxed">
+              <p className="p1 text-white max-w-4xl mx-auto leading-relaxed">
                 Explore livros, artigos, vídeos e podcasts em um único lugar
               </p>
             </div>

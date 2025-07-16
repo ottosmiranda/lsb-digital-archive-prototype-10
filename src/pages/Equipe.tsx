@@ -40,7 +40,7 @@ const Equipe = () => {
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
                 Nossa Equipe
               </h1>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="p1 text-gray-600 max-w-3xl mx-auto">
                 Conheça os profissionais dedicados que tornam possível o acesso 
                 aos recursos educacionais da Biblioteca Digital LSB.
               </p>
@@ -62,7 +62,7 @@ const Equipe = () => {
                       <p className="text-lsb-primary font-medium mb-3">
                         {member.role}
                       </p>
-                      <p className="text-gray-600 leading-relaxed">
+                      <p className="p2 text-gray-600 leading-relaxed">
                         {member.description}
                       </p>
                     </div>
@@ -83,7 +83,7 @@ const Equipe = () => {
                     </svg>
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Excelência</h3>
-                  <p className="text-gray-600">
+                  <p className="p2 text-gray-600">
                     Comprometidos em oferecer recursos de alta qualidade e serviços excepcionais.
                   </p>
                 </div>
@@ -94,7 +94,7 @@ const Equipe = () => {
                     </svg>
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Inovação</h3>
-                  <p className="text-gray-600">
+                  <p className="p2 text-gray-600">
                     Sempre buscando novas tecnologias e metodologias para melhorar a experiência do usuário.
                   </p>
                 </div>
@@ -105,7 +105,7 @@ const Equipe = () => {
                     </svg>
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Colaboração</h3>
-                  <p className="text-gray-600">
+                  <p className="p2 text-gray-600">
                     Trabalhando em equipe para criar um ambiente de aprendizado colaborativo e inclusivo.
                   </p>
                 </div>

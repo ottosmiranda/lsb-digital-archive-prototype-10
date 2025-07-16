@@ -1,4 +1,3 @@
-
 import { Play, Calendar, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,7 +72,7 @@ const EpisodeItem = ({
 
         {/* Description with expand/collapse */}
         <div className="mb-3">
-          <p className={`text-sm text-gray-600 leading-relaxed break-words ${
+          <p className={`p2 text-gray-600 leading-relaxed break-words ${
             !isDescriptionExpanded ? 'line-clamp-3' : ''
           }`}>
             {episode.description}

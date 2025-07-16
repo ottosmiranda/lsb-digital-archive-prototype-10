@@ -1,4 +1,3 @@
-
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,7 +73,7 @@ const Midia = () => {
           <div className="py-8">
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900 mb-4">Explorar Mídia</h1>
-              <p className="text-lg text-gray-600">
+              <p className="p1 text-gray-600">
                 Acesse nossa coleção completa de vídeos, livros e podcasts
               </p>
             </div>
@@ -91,7 +90,7 @@ const Midia = () => {
                           <IconComponent className="h-8 w-8 text-gray-600" />
                         </div>
                         <CardTitle className="text-xl">{mediaType.name}</CardTitle>
-                        <CardDescription>{mediaType.description}</CardDescription>
+                        <CardDescription className="p2">{mediaType.description}</CardDescription>
                       </CardHeader>
                       <CardContent className="text-center">
                         <div className="space-y-2">

@@ -1,4 +1,3 @@
-
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -150,7 +149,7 @@ const Sobre = () => {
                     <span className="block text-lsb-accent mt-2">Biblioteca Digital da Link</span>
                   </h1>
                   
-                  <p className="text-base md:text-lg lg:text-xl text-white max-w-4xl mx-auto leading-relaxed px-4">
+                  <p className="p1 text-white max-w-4xl mx-auto leading-relaxed px-4">
                     Oferecemos acesso qualificado à informação e ao conhecimento, promovendo a educação, a pesquisa e a cultura
                   </p>
                 </div>
@@ -167,7 +166,7 @@ const Sobre = () => {
                 <div className="animate-slide-up order-2 lg:order-1">
                   <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold uppercase text-gray-900 mb-6">Missão</h2>
                   <div className="prose prose-lg text-gray-600">
-                    <p className="leading-relaxed text-base md:text-lg">
+                    <p className="p2 leading-relaxed">
                       A Biblioteca Digital Link tem como objetivo proporcionar acesso a uma ampla gama de recursos informacionais, promovendo o aprendizado e a pesquisa no campo da administração de empresas com ênfase em empreendedorismo e outras áreas do conhecimento.
                     </p>
                   </div>
@@ -184,7 +183,7 @@ const Sobre = () => {
                   >
                     <BookOpen className="h-10 w-10 md:h-12 md:w-12 text-lsb-accent mb-4" />
                     <h3 className="text-xl md:text-2xl font-semibold mb-3 md:mb-4">Conhecimento Acessível</h3>
-                    <p className="text-blue-100 leading-relaxed text-sm md:text-base">
+                    <p className="p2 text-blue-100 leading-relaxed">
                       Democratizamos o acesso ao conhecimento através de uma plataforma digital moderna e intuitiva, conectando estudantes e professores aos melhores recursos acadêmicos.
                     </p>
                   </div>
@@ -200,7 +199,7 @@ const Sobre = () => {
             <div className="lsb-content px-4">
               <div className="text-center mb-8 md:mb-12">
                 <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold uppercase text-gray-900 mb-4 md:mb-6">Função da Biblioteca Digital Link</h2>
-                <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">
+                <p className="p1 text-gray-600 max-w-2xl mx-auto px-4">
                   Compete à Biblioteca Digital Link realizar as seguintes funções
                 </p>
               </div>
@@ -222,7 +221,7 @@ const Sobre = () => {
                       </CardHeader>
                       
                       <CardContent className="pt-0">
-                        <CardDescription className="text-gray-600 leading-relaxed text-sm md:text-base">
+                        <CardDescription className="p2 text-gray-600 leading-relaxed">
                           {func.description}
                         </CardDescription>
                       </CardContent>
@@ -240,7 +239,7 @@ const Sobre = () => {
             <div className="lsb-content px-4">
               <div className="text-center mb-8 md:mb-12">
                 <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold uppercase text-gray-900 mb-4 md:mb-6">Função do Bibliotecário</h2>
-                <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">
+                <p className="p1 text-gray-600 max-w-2xl mx-auto px-4">
                   O bibliotecário da Link tem um papel fundamental na gestão da Biblioteca Digital Link
                 </p>
               </div>
@@ -257,7 +256,7 @@ const Sobre = () => {
                         <CardTitle className="text-sm md:text-base lg:text-lg text-gray-900 uppercase font-bold leading-tight text-center">
                           {func.title}
                         </CardTitle>
-                        <CardDescription className="text-gray-600 leading-relaxed text-xs md:text-sm text-center">
+                        <CardDescription className="p2 text-gray-600 leading-relaxed text-center">
                           {func.description}
                         </CardDescription>
                       </div>

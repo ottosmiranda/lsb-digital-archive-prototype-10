@@ -38,7 +38,7 @@ const ResourceContent = ({ resource }: { resource: Resource }) => {
           {getTypeLabel(resource.type)}
         </Badge>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">{resource.title}</h1>
-        <div className="text-lg text-gray-600">
+        <div className="p2 text-gray-600">
           {displayedDescription}
           {shouldTruncateDescription && (
             <Button
@@ -55,14 +55,14 @@ const ResourceContent = ({ resource }: { resource: Resource }) => {
       {shouldShowFullDescription && (
         <div>
           <h2 className="text-xl font-semibold mb-3">Descrição Completa</h2>
-          <p className="text-gray-700 leading-relaxed">{resource.fullDescription}</p>
+          <p className="p2 text-gray-700 leading-relaxed">{resource.fullDescription}</p>
         </div>
       )}
 
       {resource.type === 'titulo' && resource.tableOfContents && (
         <div>
           <h3 className="text-lg font-semibold mb-2">Sumário</h3>
-          <ul className="list-disc list-inside space-y-1 text-gray-700">
+          <ul className="list-disc list-inside space-y-1 p2 text-gray-700">
             {resource.tableOfContents.map((chapter, index) => (
               <li key={index}>{chapter}</li>
             ))}

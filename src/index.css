@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -86,6 +87,28 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+
+    /* Custom LSB Typography Variables */
+    --color-title: #10284E;
+    --color-title-light: #fff;
+    --color-subtitle: #626F88;
+    --color-muted: #BDC5D5;
+    --color-body: #292929;
+    --font-h1: 56px;
+    --font-h2: 44px;
+    --font-h3: 32px;
+    --font-h4: 24px;
+    --font-h5: 20px;
+    --font-h6: 18px;
+    --font-p1: 22px;
+    --font-p2: 20px;
+    --font-p3: 18px;
+    --font-p4: 16px;
+    --font-p5: 15px;
+    --font-p6: 14px;
+    --line-height-title: 110%;
+    --line-height-body: 140%;
+    --letter-spacing-title: 0.5px;
   }
 
   .dark {
@@ -120,8 +143,75 @@
   * {
     @apply border-border;
   }
+  
   body {
     @apply bg-background text-foreground;
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    color: var(--color-body);
+  }
+
+  /* Títulos H1 a H6 */
+  h1, .h1 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-h1);
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-title);
+    line-height: var(--line-height-title);
+    letter-spacing: var(--letter-spacing-title);
+    margin-bottom: 20px;
+  }
+
+  h2, .h2 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-h2);
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-title);
+    line-height: var(--line-height-title);
+    letter-spacing: var(--letter-spacing-title);
+    margin-bottom: 18px;
+  }
+
+  h3, .h3 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-h3);
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-title);
+    line-height: var(--line-height-title);
+    letter-spacing: var(--letter-spacing-title);
+    margin-bottom: 16px;
+  }
+
+  h4, .h4 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-h4);
+    font-weight: 500;
+    text-transform: uppercase;
+    color: var(--color-title);
+    line-height: var(--line-height-title);
+    margin-bottom: 12px;
+  }
+
+  h5, .h5 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-h5);
+    font-weight: 500;
+    text-transform: uppercase;
+    color: var(--color-title);
+    line-height: var(--line-height-title);
+    margin-bottom: 10px;
+  }
+
+  h6, .h6 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-h6);
+    font-weight: 400;
+    text-transform: uppercase;
+    color: var(--color-title);
+    line-height: var(--line-height-title);
+    margin-bottom: 8px;
   }
 }
 
@@ -132,6 +222,94 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* Parágrafos P1 a P6 */
+  .p1 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-p1);
+    font-weight: 400;
+    color: var(--color-body);
+    line-height: var(--line-height-body);
+    margin-bottom: 16px;
+  }
+
+  .p2 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-p2);
+    font-weight: 400;
+    color: var(--color-body);
+    line-height: var(--line-height-body);
+    margin-bottom: 14px;
+  }
+
+  .p3 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-p3);
+    font-weight: 400;
+    color: var(--color-body);
+    line-height: var(--line-height-body);
+    margin-bottom: 12px;
+  }
+
+  .p4 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-p4);
+    font-weight: 400;
+    color: var(--color-body);
+    line-height: var(--line-height-body);
+    margin-bottom: 10px;
+  }
+
+  .p5 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-p5);
+    font-weight: 400;
+    color: var(--color-body);
+    line-height: var(--line-height-body);
+    margin-bottom: 8px;
+  }
+
+  .p6 {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: var(--font-p6);
+    font-weight: 400;
+    color: var(--color-body);
+    line-height: var(--line-height-body);
+    margin-bottom: 6px;
+  }
+
+  /* Subtítulos e descrições de apoio */
+  .subtitle, .section-subtitle {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--color-subtitle);
+    line-height: var(--line-height-body);
+    margin-bottom: 10px;
+  }
+
+  /* Destaque para números/etapas */
+  .number-highlight {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: 56px;
+    font-weight: 700;
+    color: var(--color-muted);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  /* Exemplo botão */
+  .button, .btn {
+    font-family: 'Aeonik', 'Montserrat', sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
   }
 }
 

@@ -51,11 +51,11 @@ const Hero = () => {
   return (
     <section className="relative min-h-screen bg-[#10284E] overflow-hidden flex items-center">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="relative flex items-center justify-center min-h-[80vh] md:min-h-screen py-8 md:py-0">
+        <div className="relative flex items-center justify-center min-h-[85vh] py-8">
           <div className="text-center w-full max-w-5xl mx-auto">
             {/* Enhanced Hero Content - Mobile optimized */}
-            <div className="animate-fade-in mb-8 md:mb-12">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-[-0.04em] leading-[1.1] text-white mb-4 md:mb-6">
+            <div className="animate-fade-in mb-6 md:mb-8">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-[-0.04em] leading-[1.1] text-white mb-3 md:mb-4">
                 Conhecimento ao
                 <span className="block text-lsb-accent bg-gradient-to-r from-lsb-accent to-[#FEC641] bg-clip-text text-transparent">
                   seu alcance
@@ -68,14 +68,14 @@ const Hero = () => {
             </div>
 
             {/* Enhanced Search Section - Mobile first */}
-            <div className="animate-slide-up max-w-4xl mx-auto mb-8 md:mb-12">
+            <div className="animate-slide-up max-w-4xl mx-auto mb-6 md:mb-8">
               <div className="bg-white/10 backdrop-blur-lg rounded-lg md:rounded-[2px] p-4 sm:p-6 md:p-8 border border-white/20 shadow-2xl">
-                <div className="flex items-center justify-center mb-4 md:mb-6">
+                <div className="flex items-center justify-center mb-3 md:mb-4">
                   <Search className="h-5 w-5 md:h-6 md:w-6 text-lsb-accent mr-2 md:mr-3" />
                   <h3 className="text-white font-semibold text-lg md:text-xl">Busca no acervo</h3>
                 </div>
                 
-                <form onSubmit={handleSearch} className="space-y-4 md:space-y-6">
+                <form onSubmit={handleSearch} className="space-y-3 md:space-y-4">
                   {/* Enhanced Search Input - Mobile optimized */}
                   <div className="relative" ref={searchRef}>
                     <Input
@@ -129,17 +129,17 @@ const Hero = () => {
             </div>
 
             {/* CTA Buttons Section */}
-            <div className="animate-fade-in flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center max-w-2xl mx-auto">
+            <div className="animate-fade-in flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center max-w-2xl mx-auto">
               <WipeButton
                 onClick={() => scrollToSection('destaques-semana')}
-                className="w-full sm:w-auto px-8 py-4 text-base md:text-lg"
+                className="w-full sm:w-auto px-6 py-3 text-base md:text-lg"
               >
                 Explore Nosso Conteúdo
               </WipeButton>
               
               <OutlineWipeButton
                 onClick={() => scrollToSection('minha-biblioteca')}
-                className="w-full sm:w-auto px-8 py-4 text-base md:text-lg"
+                className="w-full sm:w-auto px-6 py-3 text-base md:text-lg"
               >
                 Descubra a Minha Biblioteca
               </OutlineWipeButton>

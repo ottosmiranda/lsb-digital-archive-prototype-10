@@ -1,3 +1,4 @@
+
 import { Book, Video, Headphones, Calendar, Sparkles, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -159,56 +160,20 @@ const RecentAdditions = () => {
 
         {recentItems.length > 0 ? (
           <>
-            {/* Grid responsivo com cards de altura fixa */}
+            {/* Grid responsivo com novo layout de imagem */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {recentItems.map((item, index) => {
                 const IconComponent = getIcon(item.type);
                 return (
                   <Link key={item.type + '-' + item.id} to={`/recurso/${item.id}`}>
-                    <Card className="group hover-lift animate-fade-in cursor-pointer h-full min-h-[200px] flex flex-col" style={{
+                    <Card className="group hover-lift animate-fade-in cursor-pointer h-full overflow-hidden" style={{
                       animationDelay: `${index * 0.1}s`
                     }}>
-                      <CardContent className="p-4 md:p-6 flex flex-col h-full">
-                        {/* Header com ícone e badges */}
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-shrink-0">
-                            <div className="w-10 h-10 bg-lsb-section rounded-lg flex items-center justify-center">
-                              <IconComponent className="h-5 w-5 lsb-primary" />
-                            </div>
-                          </div>
-                          
-                          <div className="flex flex-wrap gap-1 ml-3">
-                            <Badge className={`text-xs ${getTypeColor(item.type)}`}>
-                              {getTypeLabel(item.type)}
-                            </Badge>
-                            {item.isRotated ? (
-                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                                <Star className="h-3 w-3 mr-1" />
-                                Destacado
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs bg-lsb-card-accent text-white border-lsb-card-accent">
-                                <Sparkles className="h-3 w-3 mr-1" />
-                                Novo
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Conteúdo principal */}
-                        <div className="flex-1 flex flex-col">
-                          <h3 className="font-semibold text-base md:text-lg mb-2 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight">
-                            {item.title}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-2 truncate">{item.author}</p>
-                          <p className="text-xs md:text-sm text-gray-700 line-clamp-3 flex-1">
-                            {item.description}
-                          </p>
-                        </div>
-                        
-                        {/* Thumbnail na parte inferior - versão mobile melhorada */}
-                        <div className="mt-3 flex justify-center">
-                          <div className="w-full h-20 md:w-16 md:h-16 relative overflow-hidden rounded">
+                      <CardContent className="p-0 h-full flex flex-col">
+                        {/* Layout horizontal: imagem à esquerda, conteúdo à direita */}
+                        <div className="flex h-full">
+                          {/* Seção da imagem */}
+                          <div className="flex-shrink-0 w-24 md:w-28 lg:w-32 relative">
                             {shouldShowImage(item.thumbnail, item.type) ? (
                               <img 
                                 src={item.thumbnail} 
@@ -219,13 +184,56 @@ const RecentAdditions = () => {
                             ) : (
                               <ThumbnailPlaceholder 
                                 type={item.type as 'titulo' | 'video' | 'podcast'} 
-                                className="w-full h-20 md:w-16 md:h-16" 
-                                size="small" 
-                                style={{
-                                  display: item.thumbnail ? 'none' : 'flex'
-                                }} 
+                                className="w-full h-full" 
+                                size="small"
                               />
                             )}
+                            {/* Overlay sutil na imagem */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/5 group-hover:to-black/10 transition-colors" />
+                          </div>
+                          
+                          {/* Seção do conteúdo */}
+                          <div className="flex-1 p-4 md:p-5 flex flex-col justify-between">
+                            {/* Header com ícone e badges */}
+                            <div>
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-shrink-0">
+                                  <div className="w-8 h-8 bg-lsb-section rounded-lg flex items-center justify-center">
+                                    <IconComponent className="h-4 w-4 lsb-primary" />
+                                  </div>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-1 ml-2">
+                                  <Badge className={`text-xs ${getTypeColor(item.type)}`}>
+                                    {getTypeLabel(item.type)}
+                                  </Badge>
+                                  {item.isRotated ? (
+                                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                      <Star className="h-3 w-3 mr-1" />
+                                      Destacado
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-xs bg-lsb-card-accent text-white border-lsb-card-accent">
+                                      <Sparkles className="h-3 w-3 mr-1" />
+                                      Novo
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Conteúdo principal */}
+                              <h3 className="font-semibold text-sm md:text-base mb-2 group-hover:text-lsb-primary transition-colors line-clamp-2 leading-tight">
+                                {item.title}
+                              </h3>
+                              <p className="text-xs md:text-sm text-gray-600 mb-2 truncate">{item.author}</p>
+                            </div>
+                            
+                            {/* Descrição na parte inferior */}
+                            <div className="mt-auto">
+                              <p className="text-xs text-gray-700 line-clamp-2">
+                                {item.description}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </CardContent>

@@ -1,6 +1,6 @@
 
 import { ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { WipeButton } from '@/components/ui/WipeButton';
 
 const MinhaBlioteca = () => {
   return (
@@ -27,21 +27,15 @@ const MinhaBlioteca = () => {
         </p>
 
         {/* CTA Button */}
-        <Button 
-          asChild 
-          size="lg" 
-          className="bg-lsb-accent hover:bg-lsb-accent/90 text-lsb-primary font-semibold px-8 py-3 text-lg"
+        <WipeButton 
+          onClick={() => window.open('https://app.minhabiblioteca.com.br', '_blank', 'noopener,noreferrer')}
+          className="px-8 py-3 text-lg"
         >
-          <a 
-            href="https://app.minhabiblioteca.com.br" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="inline-flex items-center gap-2"
-          >
+          <span className="flex items-center gap-2">
             Acesse agora
             <ExternalLink className="h-5 w-5" />
-          </a>
-        </Button>
+          </span>
+        </WipeButton>
       </div>
     </section>
   );

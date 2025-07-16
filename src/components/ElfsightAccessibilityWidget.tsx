@@ -29,8 +29,13 @@ const ElfsightAccessibilityWidget = () => {
 
   return (
     <div 
-      className="elfsight-app-c2433c27-3c13-4590-8922-e4a2560e739d" 
+      className="elfsight-app-c2433c27-3c13-4590-8922-e4a2560e739d fixed bottom-4 right-4 z-50 pointer-events-auto" 
       data-elfsight-app-lazy
+      style={{ 
+        maxHeight: '0px',
+        overflow: 'hidden',
+        visibility: 'hidden'
+      }}
     />
   );
 };

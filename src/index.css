@@ -447,3 +447,44 @@
     display: none !important;
   }
 }
+
+/* Elfsight Widget Override - Eliminar margem branca */
+.elfsight-app-c2433c27-3c13-4590-8922-e4a2560e739d {
+  position: fixed !important;
+  bottom: 1rem !important;
+  right: 1rem !important;
+  z-index: 9999 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Garantir que o widget não ocupe espaço visual */
+.elfsight-app-c2433c27-3c13-4590-8922-e4a2560e739d * {
+  max-height: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Garantir que não há espaço em branco após o footer */
+body {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+html {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}

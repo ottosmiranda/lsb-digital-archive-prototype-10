@@ -28,7 +28,7 @@ const MinhaBlioteca = () => {
 
         {/* CTA Button */}
         <WipeButton 
-          onClick={() => window.open('https://app.minhabiblioteca.com.br', '_blank', 'noopener,noreferrer')}
+          onClick={() => window.open('https://portal.dli.minhabiblioteca.com.br/Login.aspx?key=LSB', '_blank', 'noopener,noreferrer')}
           className="px-8 py-3 text-lg"
         >
           <span className="flex items-center gap-2">

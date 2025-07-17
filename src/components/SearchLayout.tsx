@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SearchHeaderWithTabs from '@/components/SearchHeaderWithTabs';
@@ -8,7 +9,6 @@ import EmptySearchState from '@/components/EmptySearchState';
 import SearchWelcomeState from '@/components/SearchWelcomeState';
 import SearchPagination from '@/components/SearchPagination';
 import FilterChips from '@/components/FilterChips';
-import DataRefreshButton from '@/components/DataRefreshButton';
 import SearchDebugInfo from '@/components/SearchDebugInfo';
 import Footer from '@/components/Footer';
 import { SearchResult, SearchFilters as SearchFiltersType } from '@/types/searchTypes';
@@ -177,14 +177,6 @@ const SearchLayout = ({
       <div className="lsb-container overflow-x-hidden">
         <div className="lsb-content">
           <div className="py-4 md:py-8">
-            {onRefreshData && (
-              <DataRefreshButton
-                onRefresh={onRefreshData}
-                loading={loading}
-                usingFallback={usingFallback}
-              />
-            )}
-
             <SearchDebugInfo
               filters={filters}
               totalResults={totalResults}
